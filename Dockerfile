@@ -5,7 +5,7 @@ FROM ros:jazzy-ros-base
 ARG TARGETARCH
 
 # apt update & install
-RUN apt update && apt install -y &&\
+RUN apt-get update && apt-get install -y \
     git \
     nano \
     vim \
@@ -41,7 +41,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       ros-jazzy-rqt-graph \
       ros-jazzy-rviz2 \
       ros-jazzy-foxglove-bridge \
-      ccache \
+      ccache; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
