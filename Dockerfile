@@ -44,6 +44,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       ccache; \
     fi && rm -rf /var/lib/apt/lists/*
 
+RUN cd /root/ros2_ws && colcon build
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
 
