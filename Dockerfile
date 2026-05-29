@@ -1,6 +1,6 @@
 FROM ros:jazzy-ros-base
 
-#SHELL ["/bin/bash", "-c"]
+SHELL ["/bin/bash", "-c"]
 
 ARG TARGETARCH
 
@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-joy \
     ros-jazzy-teleop-twist-joy \
     evtest \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
     #lsof is used to check which process is using the port
