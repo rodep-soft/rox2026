@@ -34,7 +34,6 @@ RUN if [ "${TARGETARCH}" = "arm64" ]; then \
       libgpiod-dev ; \
     fi && rm -rf /var/lib/apt/lists/*
 
-
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
       apt-get update && apt-get install -y \
       ros-jazzy-rqt \
@@ -43,9 +42,6 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       ros-jazzy-foxglove-bridge \
       ccache; \
     fi && rm -rf /var/lib/apt/lists/*
-
-RUN source /opt/ros/jazzy/setup.bash && \
-    cd /root/ros2_ws && colcon build --symlink-install
 
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
