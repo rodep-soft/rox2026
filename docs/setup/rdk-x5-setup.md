@@ -27,4 +27,3 @@
 : SSH越しで相手のPCのGUIを操作可能
 * System -> RDK Configuration -> Interface Options -> VSCでOn, Off可能
 (*デフォルトでPasswordは設定してないのでLogin Passwordを8字いないで作る必要がある)
-
