@@ -1,0 +1,26 @@
+name: ros2 build and test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start container
+        run: |
+          docker compose up -d
+
+      - name: Run test
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bach -c " 
+          source /opt/ros/jazzy/setup.bash && \ 
+          cd /root/ros2_ws && \ 
+          source install/setup.bash && \
+          colcon test && \ 
+          colcon test-result --verbose "
