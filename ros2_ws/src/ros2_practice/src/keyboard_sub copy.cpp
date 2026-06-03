@@ -5,27 +5,20 @@
 
 class TextSubscriber : public rclcpp::Node
 {
-public:
-    TextSubscriber()
-    : Node("text_subscriber")
+  public:
+    TextSubscriber() : Node("text_subscriber")
     {
         auto topic_callback = [this](const std_msgs::msg::String::SharedPtr msg) -> void {
-            RCLCPP_INFO(this->get_logger(),
-                        "受信: '%s'",
-                        msg->data.c_str());
+            RCLCPP_INFO(this->get_logger(), "受信: '%s'", msg->data.c_str());
         };
-        subscription_ =
-            this->create_subscription<std_msgs::msg::String>(
-                "chatter",
-                10,
-                topic_callback);
+        subscription_ = this->create_subscription<std_msgs::msg::String>("chatter", 10, topic_callback);
     }
 
-private:
+  private:
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
 

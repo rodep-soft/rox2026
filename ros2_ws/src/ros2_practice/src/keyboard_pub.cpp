@@ -10,19 +10,15 @@ using namespace std::chrono_literals;
 
 class KeyboardPublisher : public rclcpp::Node
 {
-public:
-    KeyboardPublisher()
-    : Node("keyboard_publisher")
+  public:
+    KeyboardPublisher() : Node("keyboard_publisher")
     {
-        publisher_ =
-            this->create_publisher<std_msgs::msg::String>("chatter", 10);
+        publisher_ = this->create_publisher<std_msgs::msg::String>("chatter", 10);
 
-        timer_ = this->create_wall_timer(
-            100ms,
-            std::bind(&KeyboardPublisher::timer_callback, this));
+        timer_ = this->create_wall_timer(100ms, std::bind(&KeyboardPublisher::timer_callback, this));
     }
 
-private:
+  private:
     void timer_callback()
     {
         std::string input;
@@ -33,9 +29,7 @@ private:
         auto message = std_msgs::msg::String();
         message.data = input;
 
-        RCLCPP_INFO(this->get_logger(),
-                    "送信: '%s'",
-                    message.data.c_str());
+        RCLCPP_INFO(this->get_logger(), "送信: '%s'", message.data.c_str());
 
         publisher_->publish(message);
     }
@@ -44,7 +38,7 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
 
