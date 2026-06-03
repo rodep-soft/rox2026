@@ -7,7 +7,16 @@ sudo apt update
 sudo apt install -y \
   tmux \
   fzf \
-  openssh-server
+  openssh-server \
+  build-essential make cmake \
+  git curl unzip zip \
+  python3-pip \
+  libssl-dev zlib1g-dev \
+  libncurses5-dev \
+  device-tree-compiler \
+  u-boot-tools \
+  rsync \
+  udev
 
 #  SSHサーバの有効化
 sudo systemctl enable ssh
