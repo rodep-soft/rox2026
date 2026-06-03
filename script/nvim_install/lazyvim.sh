@@ -24,11 +24,6 @@ backup_if_exists "$HOME/.local/share/nvim"
 backup_if_exists "$HOME/.local/state/nvim"
 backup_if_exists "$HOME/.cache/nvim"
 
-mkdir -p "$HOME/.config"
-mv "$TMP_DIR/nvim" "$HOME/.config/nvim"
-
-# Overlay the repo's config files onto the starter.
-cp -a "$SCRIPT_DIR/nvim/." "$HOME/.config/nvim/"
-rm -rf "$HOME/.config/nvim/.git"
-
 echo "LazyVim installed. Run: nvim"
+echo "But config is submodule"
+echo "So, you take the repository"
