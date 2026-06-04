@@ -1,3 +1,3 @@
-[submodule "script/nvim_install/nvim_config"]
-	path = script/nvim_install/nvim_config
-	url = git@github.com:Zyodooon/nvim_git.git
+[submodule "ros2_ws/src/can_driver"]
+	path = ros2_ws/src/can_driver
+	url = git@github.com:rodep-soft/el05_usb_can_driver.git
