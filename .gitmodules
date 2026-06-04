@@ -4,4 +4,3 @@
 [submodule "ros2_ws/src/el05_driver"]
 	path = ros2_ws/src/el05_driver
 	url = git@github.com:rodep-soft/ROS2-Seeed-Studio-USB-CAN-Analyzer-Driver.git
-
