@@ -22,7 +22,7 @@ services:
       - DEBIAN_FRONTEND=noninteractive #for apt-get install without user interaction
 
     volumes:
-      - ./ros2_ws/src:/root/ros2_ws/src
+      - ./ros2_ws:/root/ros2_ws
       #- ~/.ccache:/root/.ccache #for buikding ros2 packages with ccache
 
       #- /var/run/dbus:/var/run/dbus #bluetoothをROS2内で使用する場合
