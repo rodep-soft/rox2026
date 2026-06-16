@@ -25,7 +25,8 @@ private:
     vel_pub_->publish(cmd_msg);
   }
 
-}
+};
+
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<JoyController>());
