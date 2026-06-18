@@ -3,11 +3,10 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 
-class TextSubscriber : public rclcpp::Node{
+class TextSubscriber : public rclcpp::Node {
  public:
 TextSubscriber()
-  : Node("text_subscriber")
-  {
+  : Node("text_subscriber"){
     subscription_ = this->create_subscription<std_msgs::msg::String>(
       "chatter", 10, std::bind(&TextSubscriber::topic_callback, this, std::placeholders::_1));
   }
@@ -22,9 +21,9 @@ TextSubscriber()
 
 int main( int argc  , char * argv[])
 {
-  rclcpp::init(argc, argv);
+  rclcpp::init(argc,argv);
 
-  rclcpp::spin(std::make_shared<TextSubscriber>());
+  rclcpp::spin(   std::make_shared<TextSubscriber>());
 
   rclcpp::shutdown();
      return 0 ;
