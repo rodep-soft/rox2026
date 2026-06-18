@@ -28,19 +28,26 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
           apt update && \
-          apt install -y ros-humble-ament-clang-format && \
+          apt install -y uncrustify && \
           pip3 install black"
 
       - name: Format C++
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            find src \( \
-                -name "*.cpp" \
-                -o -name "*.hpp" \
-                -o -name "*.h" \
-                \) \
-                -exec clang-format -i {} \;"
+            find src \
+            \( \
+              -name '*.cpp' \
+              -o -name '*.hpp' \
+              -o -name '*.h' \
+              -o -name '*.ipp' \
+            \) \
+            -exec uncrustify \
+              -c \
+              /opt/ros/humble/share/ament_uncrustify/configuration/ament_code_style.cfg \
+              --replace \
+              --no-backup \
+              {} +"
                 
       - name: Format Python
         run: |
