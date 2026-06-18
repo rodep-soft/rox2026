@@ -32,6 +32,19 @@ jobs:
           ros-humble-ament-uncrustify && \
           pip3 install black"
 
+      - name: Debug formatter install
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bash -c "
+            which uncrustify || true
+
+            dpkg -s ros-humble-ament-uncrustify || true
+
+            find /opt/ros -name '*uncrustify*' 2>/dev/null || true
+
+            find /opt/ros -name '*.cfg' 2>/dev/null || true
+          "
+          
       - name: Format C++
         run: |
           docker compose exec -T ros2_rox2026 \
