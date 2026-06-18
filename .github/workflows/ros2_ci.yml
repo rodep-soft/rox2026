@@ -46,9 +46,7 @@ jobs:
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            black \
-            ros2_ws/src
-            "
+            black src"
 
       - name: Run test & test results
         run: |
