@@ -1,6 +1,10 @@
+#ifndef MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_
+#define MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_
+
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 #include <array>
 
 class MecanumControllerNode : public rclcpp::Node
@@ -34,7 +38,6 @@ private:
     double wheel_radius ;
     double robot_length;
     double robot_width;
+};
 
-
-
-}
+#endif  // MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_
