@@ -58,6 +58,14 @@ jobs:
           bash -ec "
             black src"
 
+      - name: Run build
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bash -ec " 
+          source /opt/ros/humble/setup.bash && \
+          cd /root/ros2_ws && \
+          colcon build --symlink-install"
+
       - name: Run test & test results
         run: |
           docker compose exec -T ros2_rox2026 \
