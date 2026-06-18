@@ -2,19 +2,19 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 
-class JoyController : public rclcpp::Node {
+class BaseController : public rclcpp::Node {
 public:
-  JoyController() : Node("joy_controller"), max_linear_velocity_(1.0), angular_velocity_(1.0) {
+  BaseController() : Node("base_controller"), max_linear_velocity_(2.0), angular_velocity_(2.0) {
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
-    "joy", 10, std::bind(&JoyController::joy_callback, this, std::placeholders::_1));
+    "joy", 10, std::bind(&BaseController::joy_callback, this, std::placeholders::_1));
 
     vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
   }
 private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr vel_pub_;
-  double max_linear_velocity_;
-  double angular_velocity_;
+  double max_linear_velocity_; // m/s
+  double angular_velocity_;    // rad/s
   
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg) {
   
@@ -29,7 +29,7 @@ private:
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<JoyController>());
+  rclcpp::spin(std::make_shared<BaseController>());
   rclcpp::shutdown();
   return 0;
 }

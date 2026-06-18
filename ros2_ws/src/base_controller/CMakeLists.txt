@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(joy_controller)
+project(base_controller)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,18 +11,18 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_executable(joy_controller src/joy_controller.cpp)
-target_include_directories(joy_controller PUBLIC
+add_executable(base_controller src/base_controller.cpp)
+target_include_directories(base_controller PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(joy_controller
+ament_target_dependencies(base_controller
   rclcpp
   sensor_msgs
   geometry_msgs
 )
 
 install(TARGETS
-  joy_controller
+  base_controller
   DESTINATION lib/${PROJECT_NAME}
 )
 
