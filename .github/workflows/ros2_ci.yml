@@ -28,7 +28,7 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
           apt update && \
-          apt install -y ros-humble-ament-clang-format \
+          apt install -y ros-humble-ament-clang-format && \
           pip3 install black"
 
       - name: Format C++
