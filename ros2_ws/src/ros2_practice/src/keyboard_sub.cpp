@@ -9,7 +9,7 @@ TextSubscriber()
   : Node("text_subscriber")
   {
     subscription_ = this->create_subscription<std_msgs::msg::String>(
-            "chatter", 10, std::bind(&TextSubscriber::topic_callback, this, std::placeholders::_1));
+      "chatter", 10, std::bind(&TextSubscriber::topic_callback, this, std::placeholders::_1));
   }
 
    private:
