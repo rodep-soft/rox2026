@@ -28,7 +28,8 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
           apt update && \
-          apt install -y uncrustify && \
+          apt install -y uncrustify \
+          ros-humble-ament-uncrustify && \
           pip3 install black"
 
       - name: Format C++
