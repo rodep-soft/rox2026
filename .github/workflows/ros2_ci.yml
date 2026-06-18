@@ -44,11 +44,16 @@ jobs:
 
             find /opt/ros -name '*.cfg' 2>/dev/null || true
           "
-          
+
       - name: Format C++
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
+            CFG=\$(python3 - <<'PY' \
+            import ament_uncrustify.configuration \
+            print(ament_uncrustify.configuration.ament_code_style) \
+            PY \
+            ) && \
             find src \
             \( \
               -name '*.cpp' \
@@ -58,7 +63,7 @@ jobs:
             \) \
             -exec uncrustify \
               -c \
-              /opt/ros/humble/share/ament_uncrustify/ament_code_style.cfg \
+              \$CFG \
               --replace \
               --no-backup \
               {} +"
