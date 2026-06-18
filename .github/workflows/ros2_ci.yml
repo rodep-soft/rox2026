@@ -45,7 +45,7 @@ jobs:
             \) \
             -exec uncrustify \
               -c \
-              /opt/ros/humble/share/ament_uncrustify/configuration/ament_code_style.cfg \
+              /opt/ros/humble/share/ament_uncrustify/ament_code_style.cfg \
               --replace \
               --no-backup \
               {} +"
