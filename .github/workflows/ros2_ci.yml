@@ -49,11 +49,9 @@ jobs:
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            CFG=\$(python3 - <<'PY' \
+            CFG=\$(python3 -c " \
             import ament_uncrustify.configuration \
-            print(ament_uncrustify.configuration.ament_code_style) \
-            PY \
-            ) && \
+            print(ament_uncrustify.configuration.ament_code_style)") && \
             find src \
             \( \
               -name '*.cpp' \
