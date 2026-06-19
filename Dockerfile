@@ -59,7 +59,7 @@ RUN source /opt/ros/humble/setup.bash && \
       --ignore-src \
       -r \
       -y && \
-    colcon build --symlink-install
+      colcon build --symlink-install
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
