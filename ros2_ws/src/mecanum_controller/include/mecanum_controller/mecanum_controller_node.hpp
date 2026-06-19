@@ -22,7 +22,7 @@ private:
     void motor_enable();
     
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr vel_sub_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr vel_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr motor_vel_pub_;
 
     enum WheelIndex
         {
@@ -35,7 +35,7 @@ private:
 
     double vx, vy, wz;
 
-    double wheel_radius ;
+    double wheel_radius;
     double robot_length;
     double robot_width;
 };
