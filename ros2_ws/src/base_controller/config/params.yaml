@@ -1,0 +1,4 @@
+base_controller:
+  ros__parameters:
+    max_linear: 2.0
+    max_angular: 2.0
