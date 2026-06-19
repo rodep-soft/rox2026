@@ -51,6 +51,6 @@ void MecanumControllerNode::get_parameters()
 
 void MecanumControllerNode::motor_init()
 {
-    this->get_logger().info("モーター初期化中...");
+    RCLCPP_INFO(this->get_logger(), "モーター初期化中...");
     //モーター初期化のcan_msgs/msg/Frameを送信する処理をここに追加
 }
