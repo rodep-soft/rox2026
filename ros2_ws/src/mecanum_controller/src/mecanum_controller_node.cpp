@@ -12,7 +12,7 @@ MecanumControllerNode::MecanumControllerNode()
     get_parameters();
     vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
         "/cmd_vel", 10, std::bind(&MecanumControllerNode::velocityCallback, this, std::placeholders::_1));
-    vel_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/velocity_command", 10);
+    motor_vel_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/motor_vel", 10);
 }
 
 
@@ -23,16 +23,16 @@ void MecanumControllerNode::velocityCallback(const geometry_msgs::msg::Twist::Sh
     wz = msg->angular.z;
 
     // Mecanumホイールの速度計算
-    wheel_vels[FL] = (vx - vy - (robot_length + robot_width) * wz) / wheel_radius;
-    wheel_vels[FR] = (vx + vy + (robot_length + robot_width) * wz) / wheel_radius;
-    wheel_vels[RL] = (vx + vy - (robot_length + robot_width) * wz) / wheel_radius;
-    wheel_vels[RR] = (vx - vy + (robot_length + robot_width) * wz) / wheel_radius;
+    wheel_vels[FL] = (vx - vy - (robot_length + robot_width)/2 * wz) / wheel_radius;
+    wheel_vels[FR] = (vx + vy + (robot_length + robot_width)/2 * wz) / wheel_radius;
+    wheel_vels[RL] = (vx + vy - (robot_length + robot_width)/2 * wz) / wheel_radius;
+    wheel_vels[RR] = (vx - vy + (robot_length + robot_width)/2 * wz) / wheel_radius;
 
     std_msgs::msg::Float64MultiArray cmd_msg;
     for (const auto& vel : wheel_vels) {
         cmd_msg.data.push_back(vel);
     }
-    vel_pub_->publish(cmd_msg); 
+    motor_vel_pub_->publish(cmd_msg); 
 }
 
 void MecanumControllerNode::declare_parameters()
@@ -51,5 +51,6 @@ void MecanumControllerNode::get_parameters()
 
 void MecanumControllerNode::motor_init()
 {
-    
+    this->get_logger().info("モーター初期化中...");
+    //モーター初期化のcan_msgs/msg/Frameを送信する処理をここに追加
 }
