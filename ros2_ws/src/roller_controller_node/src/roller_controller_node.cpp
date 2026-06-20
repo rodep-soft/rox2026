@@ -19,11 +19,11 @@ RollerControllerNode::RollerControllerNode()
   current_command_.pwm_value = GetPwmValueFromMode(RotationMode::Stop);
 
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-      "/joy", 10,
-      std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
+    "/joy", 10,
+    std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
 
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
-      "/mabuchi555/pwm_cmd", 10);
+    "/mabuchi555/pwm_cmd", 10);
 
   RCLCPP_INFO(this->get_logger(), "RollerControllerNode started.");
 }
@@ -58,7 +58,7 @@ bool RollerControllerNode::IsButtonPressed(
   int button_index) const
 {
   // configのbutton_indexがJoy msgのbuttons配列外なら、押されていない扱いにする。
-  if(button_index < 0 || button_index >= static_cast<int>(msg->buttons.size())) {
+  if (button_index < 0 || button_index >= static_cast<int>(msg->buttons.size())) {
     RCLCPP_WARN(this->get_logger(), "button_index is not valid");
     return false;
   }
@@ -82,19 +82,19 @@ void RollerControllerNode::JoyCallback(
   const bool is_enable_pressed = IsButtonPressed(msg, enable_button_);
 
   // enable_button単体では更新しない。enable + direction_button の時だけ新コマンドにする。
-  if(is_enable_pressed) {
+  if (is_enable_pressed) {
     // それぞれのボタンが押されていてどのモードにするのかを判断するための変数
     const bool is_negative_pressed = IsButtonPressed(msg, negative_button_);
     const bool is_stop_pressed = IsButtonPressed(msg, stop_button_);
     const bool is_positive_pressed = IsButtonPressed(msg, positive_button_);
 
-    if(is_negative_pressed) {
+    if (is_negative_pressed) {
       next_mode = RotationMode::NegativeRotate;
       has_new_command = true;
-    } else if(is_stop_pressed) {
+    } else if (is_stop_pressed) {
       next_mode = RotationMode::Stop;
       has_new_command = true;
-    } else if(is_positive_pressed) {
+    } else if (is_positive_pressed) {
       next_mode = RotationMode::PositiveRotate;
       has_new_command = true;
     }
@@ -102,7 +102,7 @@ void RollerControllerNode::JoyCallback(
   }
 
   // 新しいコマンドが確定した時だけ、保持しているmode/pwm_valueを書き換える。
-  if(has_new_command) {
+  if (has_new_command) {
     current_command_.mode = next_mode;
     current_command_.pwm_value = GetPwmValueFromMode(next_mode);
 
@@ -120,7 +120,7 @@ int16_t RollerControllerNode::GetPwmValueFromMode(RotationMode mode) const
 {
   int pwm_value = stop_pwm_;
 
-  switch(mode) {
+  switch (mode) {
     case RotationMode::PositiveRotate:
       pwm_value = positive_pwm_;
       break;
@@ -141,7 +141,7 @@ int16_t RollerControllerNode::GetPwmValueFromMode(RotationMode mode) const
   return static_cast<int16_t>(pwm_value);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<RollerControllerNode>());
