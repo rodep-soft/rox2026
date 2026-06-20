@@ -21,7 +21,7 @@ MadMotorNode::MadMotorNode()
     "/joy", 10,
     std::bind(&MadMotorNode::JoyCallback, this, std::placeholders::_1));
 
-  pwm_publisher_ = this->create_publisher<std_msgs::msg::UInt8>(
+  pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
     "/mad_motor/pwm_value", 10);
 
   RCLCPP_INFO(this->get_logger(), "MadMotorNode started.");
@@ -113,13 +113,13 @@ void MadMotorNode::JoyCallback(
     current_pwm_value_ = GetPwmValueFromMode(next_mode);
   }
 
-  std_msgs::msg::UInt8 pwm_msg;
+  std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_pwm_value_;
 
   pwm_publisher_->publish(pwm_msg);
 }
 
-uint8_t MadMotorNode::GetPwmValueFromMode(MadMotorMode mode) const
+int16_t MadMotorNode::GetPwmValueFromMode(MadMotorMode mode) const
 {
   int pwm_value = stop_pwm_;
 
@@ -146,10 +146,10 @@ uint8_t MadMotorNode::GetPwmValueFromMode(MadMotorMode mode) const
       break;
   }
 
-  // std_msgs::msg::UInt8で送るため、範囲外の設定値はここで丸める。
+  // MADモータは逆回転を使わないため、範囲外の設定値は0~255に丸める。
   pwm_value = std::clamp(pwm_value, 0, 255);
 
-  return static_cast<uint8_t>(pwm_value);
+  return static_cast<int16_t>(pwm_value);
 }
 
 int main(int argc, char * argv[])

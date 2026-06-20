@@ -4,7 +4,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
-#include <std_msgs/msg/u_int8.hpp>
+#include <std_msgs/msg/int16.hpp>
 
 // MadMotorNode
 //
@@ -25,7 +25,7 @@ public:
 
 private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr pwm_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr pwm_publisher_;
 
   void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg);
 
@@ -35,8 +35,8 @@ private:
   // Joy msgのbuttons配列を範囲チェックしてから押下状態を返す。
   bool IsButtonPressed(const sensor_msgs::msg::Joy::SharedPtr joy_msg, int button_index) const;
 
-  // modeに対応するpwmパラメータを返す。UInt8で送るため0~255に丸める。
-  uint8_t GetPwmValueFromMode(MadMotorMode mode) const;
+  // modeに対応するpwmパラメータを返す。MADモータは0~255に丸める。
+  int16_t GetPwmValueFromMode(MadMotorMode mode) const;
 
   int enable_button_;
   int stop_button_;
@@ -53,5 +53,5 @@ private:
 
   // 最後に有効だったコマンド。新しい更新入力がない時はこの値を継続する。
   MadMotorMode current_mode_;
-  uint8_t current_pwm_value_;
+  int16_t current_pwm_value_;
 };
