@@ -1,0 +1,11 @@
+motor_can_bridge_node:
+  ros__parameters:
+    mabuchi_pwm_topic: "/mabuchi555/pwm_value"  # 一応paramで管理
+    mad_motor_pwm_topic: "/mad_motor/pwm_value" # pwmではなくrpmか何かを送る可能性もあるから
+    can_tx_topic: "/can_tx"
+
+    mabuchi_can_id: 0x201
+    mad_motor_can_id: 0x202
+
+    send_period_ms: 20
+    timeout_ms: 500
