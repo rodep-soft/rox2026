@@ -23,7 +23,7 @@ RollerControllerNode::RollerControllerNode()
     std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
 
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
-    "/mabuchi555/pwm_cmd", 10);
+    "/mabuchi555/pwm_value", 10);
 
   RCLCPP_INFO(this->get_logger(), "RollerControllerNode started.");
 }

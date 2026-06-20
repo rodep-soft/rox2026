@@ -9,7 +9,7 @@
 // RollerControllerNode
 //
 // /joy のボタン入力を受け取り、ローラー用のPWM値を
-// /mabuchi555/pwm_cmd に publish するノード。
+// /mabuchi555/pwm_value に publish するノード。
 //
 // enable_button + direction_button の同時押しで回転方向を更新する。
 // 新しい更新ボタンの組み合わせが押されていない間は、
