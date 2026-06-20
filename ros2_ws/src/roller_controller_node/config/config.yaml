@@ -1,0 +1,10 @@
+roller_controller_node:
+  ros__parameters:
+    enable_button: 1    # 変更しなけりゃ
+    positive_button: 2  # 変更しなけりゃ
+    negative_button: 3  # 変更しなけりゃ
+    stop_button: 0      # 変更しなけりゃ
+
+    positive_pwm: 200   # 調整が必要
+    negative_pwm: -200
+    stop_pwm: 0
