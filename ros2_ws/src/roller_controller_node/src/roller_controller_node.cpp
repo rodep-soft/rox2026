@@ -4,13 +4,17 @@
 #include <functional>
 #include <memory>
 
+// /joy の入力からローラーの回転方向とPWM値を決める。
+// enable_button と各direction_buttonが同時に押された時だけ更新し、
+// それ以外のJoy入力では前回のmode/pwm_valueを継続する。
+
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
 {
   DeclareParameters();
   GetParameters();
 
-  // コンストラクタなので最初のRollerのModeを"Stop"に設定
+  // 起動直後は安全側としてStopを現在コマンドにする。
   current_command_.mode = RotationMode::Stop;
   current_command_.pwm_value = GetPwmValueFromMode(RotationMode::Stop);
 
@@ -53,7 +57,7 @@ bool RollerControllerNode::IsButtonPressed(
   const sensor_msgs::msg::Joy::SharedPtr msg,
   int button_index) const
 {
-  // "button_index" が適正かどうか判断(configで設定してる)
+  // configのbutton_indexがJoy msgのbuttons配列外なら、押されていない扱いにする。
   if(button_index < 0 || button_index >= static_cast<int>(msg->buttons.size())) {
     RCLCPP_WARN(this->get_logger(), "button_index is not valid");
     return false;
@@ -70,14 +74,14 @@ bool RollerControllerNode::IsButtonPressed(
 void RollerControllerNode::JoyCallback(
   const sensor_msgs::msg::Joy::SharedPtr msg)
 {
-  // 次のmodeをこの構造体に格納
+  // 初期値を現在値にしておくことで、新しい更新入力がない場合は前回値を維持する。
   RotationMode next_mode = current_command_.mode;
   bool has_new_command = false;
 
   // l2ボタンが押されてるかどうかを判断する変数
   const bool is_enable_pressed = IsButtonPressed(msg, enable_button_);
 
-  // l2ボタンが押されてるなら
+  // enable_button単体では更新しない。enable + direction_button の時だけ新コマンドにする。
   if(is_enable_pressed) {
     // それぞれのボタンが押されていてどのモードにするのかを判断するための変数
     const bool is_negative_pressed = IsButtonPressed(msg, negative_button_);
@@ -97,7 +101,7 @@ void RollerControllerNode::JoyCallback(
 
   }
 
-  // commandの更新
+  // 新しいコマンドが確定した時だけ、保持しているmode/pwm_valueを書き換える。
   if(has_new_command) {
     current_command_.mode = next_mode;
     current_command_.pwm_value = GetPwmValueFromMode(next_mode);
@@ -131,7 +135,7 @@ int16_t RollerControllerNode::GetPwmValueFromMode(RotationMode mode) const
       break;
   }
 
-  // -255~255に
+  // std_msgs::msg::Int16で送るが、モータ指令として使う範囲は-255~255に制限する。
   pwm_value = std::clamp(pwm_value, -255, 255);
 
   return static_cast<int16_t>(pwm_value);
