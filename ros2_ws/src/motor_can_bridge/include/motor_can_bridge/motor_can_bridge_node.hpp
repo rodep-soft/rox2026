@@ -36,7 +36,7 @@ private:
     uint32_t can_id,
     int16_t pwm,
     const rclcpp::Time & stamp) const;
-  
+
   // param
   std::string mabuchi_pwm_topic_;
   std::string mad_motor_pwm_topic_;
