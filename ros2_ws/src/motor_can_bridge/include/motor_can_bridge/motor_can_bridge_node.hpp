@@ -3,10 +3,9 @@
 #include <cstdint>
 #include <string>
 
+#include <can_msgs/msg/frame.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/int16.hpp>
-
-#include "motor_can_bridge/msg/can_frame.hpp"
 
 // motor controller nodesのPWM topicを受け取り、STMへ送るCAN frame形式に詰め替える。
 // このnode自身はCAN busへ直接送らず、/can_tx にpublishしてCAN送信nodeへ渡す。
@@ -31,9 +30,10 @@ private:
     const rclcpp::Time & last_update_time,
     const rclcpp::Time & now) const;
 
-  // 8byte CAN payloadを作る。data[1..2]にint16 little-endianのPWMを入れる。
-  motor_can_bridge::msg::CanFrame CreateMotorCanFrame(
+  // 8byte CAN payloadを作る。data[0]にmotor_id、data[1..2]にint16 little-endianのPWMを入れる。
+  can_msgs::msg::Frame CreateMotorCanFrame(
     uint32_t can_id,
+    uint8_t motor_id,
     int16_t pwm,
     const rclcpp::Time & stamp) const;
 
@@ -41,8 +41,11 @@ private:
   std::string mabuchi_pwm_topic_;
   std::string mad_motor_pwm_topic_;
   std::string can_tx_topic_;
+  uint32_t stm_feedback_can_id_;
   uint32_t mabuchi_can_id_;
   uint32_t mad_motor_can_id_;
+  uint8_t mabuchi_motor_id_;
+  uint8_t mad_motor_motor_id_;
   int send_period_ms_;
   int timeout_ms_;
 
@@ -54,6 +57,6 @@ private:
 
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr mabuchi_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr mad_motor_subscription_;
-  rclcpp::Publisher<motor_can_bridge::msg::CanFrame>::SharedPtr can_publisher_;
+  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_publisher_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

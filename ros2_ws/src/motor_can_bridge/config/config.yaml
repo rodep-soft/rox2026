@@ -4,8 +4,15 @@ motor_can_bridge_node:
     mad_motor_pwm_topic: "/mad_motor/pwm_value" # pwmではなくrpmか何かを送る可能性もあるから
     can_tx_topic: "/can_tx"
 
+    # CAN IDs
+    stm_feedback_can_id: 0x200  # stm -> rdk. Not used by this tx-only node yet.
     mabuchi_can_id: 0x201
     mad_motor_can_id: 0x202
 
+    # CAN data byte0
+    mabuchi_motor_id: 1
+    mad_motor_motor_id: 2
+
+    # CAN bus: 500 kbps, CAN frame data length: 8 bytes
     send_period_ms: 20
     timeout_ms: 500

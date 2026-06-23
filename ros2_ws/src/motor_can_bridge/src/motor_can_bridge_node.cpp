@@ -10,10 +10,10 @@
 namespace
 {
 constexpr uint8_t kCanDataSize = 8;
-constexpr int16_t kMabuchiMinPwm = -255;
-constexpr int16_t kMabuchiMaxPwm = 255;
-constexpr int16_t kMadMotorMinPwm = 0;
-constexpr int16_t kMadMotorMaxPwm = 255;
+constexpr int16_t kMinPwm = -255;
+constexpr int16_t kMaxPwm = 255;
+constexpr int kMinMotorId = 0;
+constexpr int kMaxMotorId = 255;
 
 int16_t ClampToInt16Range(int value, int16_t min_value, int16_t max_value)
 {
@@ -41,7 +41,7 @@ MotorCanBridgeNode::MotorCanBridgeNode()
     mad_motor_pwm_topic_, 10,
     std::bind(&MotorCanBridgeNode::MadMotorPwmCallback, this, std::placeholders::_1));
 
-  can_publisher_ = this->create_publisher<motor_can_bridge::msg::CanFrame>(
+  can_publisher_ = this->create_publisher<can_msgs::msg::Frame>(
     can_tx_topic_, 10);
 
   timer_ = this->create_wall_timer(
@@ -56,8 +56,11 @@ void MotorCanBridgeNode::DeclareParameters()
   this->declare_parameter<std::string>("mabuchi_pwm_topic", "/mabuchi555/pwm_value");
   this->declare_parameter<std::string>("mad_motor_pwm_topic", "/mad_motor/pwm_value");
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
+  this->declare_parameter<int>("stm_feedback_can_id", 0x200);
   this->declare_parameter<int>("mabuchi_can_id", 0x201);
   this->declare_parameter<int>("mad_motor_can_id", 0x202);
+  this->declare_parameter<int>("mabuchi_motor_id", 1);
+  this->declare_parameter<int>("mad_motor_motor_id", 2);
   this->declare_parameter<int>("send_period_ms", 20);
   this->declare_parameter<int>("timeout_ms", 500);
 }
@@ -67,21 +70,33 @@ void MotorCanBridgeNode::GetParameters()
   mabuchi_pwm_topic_ = this->get_parameter("mabuchi_pwm_topic").as_string();
   mad_motor_pwm_topic_ = this->get_parameter("mad_motor_pwm_topic").as_string();
   can_tx_topic_ = this->get_parameter("can_tx_topic").as_string();
+  stm_feedback_can_id_ = static_cast<uint32_t>(
+    this->get_parameter("stm_feedback_can_id").as_int());
   mabuchi_can_id_ = static_cast<uint32_t>(this->get_parameter("mabuchi_can_id").as_int());
   mad_motor_can_id_ = static_cast<uint32_t>(this->get_parameter("mad_motor_can_id").as_int());
+  mabuchi_motor_id_ = static_cast<uint8_t>(
+    std::clamp(
+      static_cast<int>(this->get_parameter("mabuchi_motor_id").as_int()),
+      kMinMotorId,
+      kMaxMotorId));
+  mad_motor_motor_id_ = static_cast<uint8_t>(
+    std::clamp(
+      static_cast<int>(this->get_parameter("mad_motor_motor_id").as_int()),
+      kMinMotorId,
+      kMaxMotorId));
   send_period_ms_ = std::max(1, static_cast<int>(this->get_parameter("send_period_ms").as_int()));
   timeout_ms_ = std::max(1, static_cast<int>(this->get_parameter("timeout_ms").as_int()));
 }
 
 void MotorCanBridgeNode::MabuchiPwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
 {
-  latest_mabuchi_pwm_ = ClampToInt16Range(msg->data, kMabuchiMinPwm, kMabuchiMaxPwm);
+  latest_mabuchi_pwm_ = ClampToInt16Range(msg->data, kMinPwm, kMaxPwm);
   last_mabuchi_time_ = this->now();
 }
 
 void MotorCanBridgeNode::MadMotorPwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
 {
-  latest_mad_motor_pwm_ = ClampToInt16Range(msg->data, kMadMotorMinPwm, kMadMotorMaxPwm);
+  latest_mad_motor_pwm_ = ClampToInt16Range(msg->data, kMinPwm, kMaxPwm);
   last_mad_motor_time_ = this->now();
 }
 
@@ -94,8 +109,10 @@ void MotorCanBridgeNode::TimerCallback()
   const int16_t mad_motor_pwm = GetPwmOrZeroOnTimeout(
     latest_mad_motor_pwm_, last_mad_motor_time_, now);
 
-  can_publisher_->publish(CreateMotorCanFrame(mabuchi_can_id_, mabuchi_pwm, now));
-  can_publisher_->publish(CreateMotorCanFrame(mad_motor_can_id_, mad_motor_pwm, now));
+  can_publisher_->publish(
+    CreateMotorCanFrame(mabuchi_can_id_, mabuchi_motor_id_, mabuchi_pwm, now));
+  can_publisher_->publish(
+    CreateMotorCanFrame(mad_motor_can_id_, mad_motor_motor_id_, mad_motor_pwm, now));
 }
 
 int16_t MotorCanBridgeNode::GetPwmOrZeroOnTimeout(
@@ -111,24 +128,22 @@ int16_t MotorCanBridgeNode::GetPwmOrZeroOnTimeout(
   return latest_pwm;
 }
 
-motor_can_bridge::msg::CanFrame MotorCanBridgeNode::CreateMotorCanFrame(
+can_msgs::msg::Frame MotorCanBridgeNode::CreateMotorCanFrame(
   uint32_t can_id,
+  uint8_t motor_id,
   int16_t pwm,
   const rclcpp::Time & stamp) const
 {
-  motor_can_bridge::msg::CanFrame frame;
+  can_msgs::msg::Frame frame;
   frame.header.stamp = stamp;
   frame.id = can_id;
-  frame.extended = false;
-  frame.fd = false;
-  frame.brs = false;
-  frame.esi = false;
-  frame.rtr = false;
-  frame.size = kCanDataSize;
+  frame.is_rtr = false;
+  frame.is_extended = false;
+  frame.is_error = false;
+  frame.dlc = kCanDataSize;
   frame.data.fill(0);
 
-  // data[0] is reserved for future flags. data[1..2] is int16 little-endian PWM.
-  frame.data[0] = 0x00;
+  frame.data[0] = motor_id;
   frame.data[1] = static_cast<uint8_t>(pwm & 0xFF);
   frame.data[2] = static_cast<uint8_t>((pwm >> 8) & 0xFF);
 
