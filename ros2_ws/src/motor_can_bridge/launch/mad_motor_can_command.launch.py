@@ -6,17 +6,14 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-NODE_NAMES = [
-    "mabuchi_can_command_node",
-    "mad_motor_can_command_node",
-]
+NODE_NAME = "mad_motor_can_command_node"
 
 
-def create_motor_can_command_node(node_name, config_file):
+def create_motor_can_command_node(config_file):
     return Node(
         package="motor_can_bridge",
         executable="motor_can_command_node",
-        name=node_name,
+        name=NODE_NAME,
         output="screen",
         parameters=[config_file],
     )
@@ -28,16 +25,13 @@ def generate_launch_description():
     )
     config_file = LaunchConfiguration("config_file")
 
-    launch_items = [
-        DeclareLaunchArgument(
-            "config_file",
-            default_value=default_config_file,
-            description="motor_can_command_nodeに渡すparameter yaml",
-        )
-    ]
-    launch_items.extend(
-        create_motor_can_command_node(node_name, config_file)
-        for node_name in NODE_NAMES
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "config_file",
+                default_value=default_config_file,
+                description=f"{NODE_NAME}に渡すparameter yaml",
+            ),
+            create_motor_can_command_node(config_file),
+        ]
     )
-
-    return LaunchDescription(launch_items)
