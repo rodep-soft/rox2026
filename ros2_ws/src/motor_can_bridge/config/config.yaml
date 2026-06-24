@@ -1,0 +1,23 @@
+mabuchi_can_command_node:
+  ros__parameters:
+    pwm_topic: "/mabuchi555/pwm_value"
+    can_tx_topic: "/can_tx"
+    can_id: 0x201
+    motor_id: 1
+    is_extended: false
+    min_pwm: -255
+    max_pwm: 255
+    send_period_ms: 20
+    timeout_ms: 500
+
+mad_motor_can_command_node:
+  ros__parameters:
+    pwm_topic: "/mad_motor/pwm_value"
+    can_tx_topic: "/can_tx"
+    can_id: 0x202
+    motor_id: 2
+    is_extended: false
+    min_pwm: -255
+    max_pwm: 255
+    send_period_ms: 20
+    timeout_ms: 500
