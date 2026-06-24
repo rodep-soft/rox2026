@@ -53,14 +53,12 @@ WORKDIR /root/ros2_ws
 COPY ./ros2_ws/src ./src
 
 # rosdep install
-RUN apt-get update && \
-    source /opt/ros/humble/setup.bash && \
+RUN source /opt/ros/humble/setup.bash && \
     rosdep install \
       --from-paths src \
       --ignore-src \
       -r \
-      -y && \
-    rm -rf /var/lib/apt/lists/*
+      -y
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
