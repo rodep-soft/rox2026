@@ -31,13 +31,14 @@ public:
   RollerControllerNode();
 
 private:
+  // /joyを受け取るためのsubscriberと、PWM値を出すためのpublisher。
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr pwm_publisher_;
 
-  // Callback
+  // /joy topicにmessageが届いた時に呼ばれる処理。
   void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg);
 
-  // Parameters
+  // DeclareParametersでparameter名と初期値を登録し、GetParametersで実際の値を読む。
   void DeclareParameters();
   void GetParameters();
 
@@ -47,15 +48,14 @@ private:
   // modeに対応するpwmパラメータを返す。ローラーは正逆回転があるため-255~255に丸める。
   int16_t GetPwmValueFromMode(RotationMode mode) const;
 
-  // Parameters
-  // "enable_button_" + "それぞれのbutton"で
-  // Positive, Negative, StopのModeを判断
+  // Joy messageのbuttons配列で使うindex。
+  // enable_button_ + 各buttonの同時押しでPositive, Negative, Stopのmodeを判断する。
   int enable_button_;
   int positive_button_;
   int negative_button_;
   int stop_button_;
 
-  // pwm値を送るためのparam
+  // 各modeに対応するPWM値。config.yamlで変更できる。
   int positive_pwm_;
   int negative_pwm_;
   int stop_pwm_;

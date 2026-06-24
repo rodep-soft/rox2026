@@ -16,6 +16,7 @@ public:
   MotorCanBridgeNode();
 
 private:
+  // DeclareParametersでparameter名と初期値を登録し、GetParametersで実際の値を読む。
   void DeclareParameters();
   void GetParameters();
 
@@ -37,7 +38,7 @@ private:
     int16_t pwm,
     const rclcpp::Time & stamp) const;
 
-  // param
+  // config.yamlやlaunch fileから変更できるparameter値。
   std::string mabuchi_pwm_topic_;
   std::string mad_motor_pwm_topic_;
   std::string can_tx_topic_;
@@ -47,11 +48,13 @@ private:
   int timeout_ms_;
 
   // Subscribe callbackで更新され、TimerCallbackで周期送信に使われる最新値。
+  // last_*_time_は、古いPWMを送り続けないためのtimeout判定に使う。
   int16_t latest_mabuchi_pwm_;
   int16_t latest_mad_motor_pwm_;
   rclcpp::Time last_mabuchi_time_;
   rclcpp::Time last_mad_motor_time_;
 
+  // PWM topicを受け取るsubscriber、CAN frameを出すpublisher、周期送信用timer。
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr mabuchi_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr mad_motor_subscription_;
   rclcpp::Publisher<motor_can_bridge::msg::CanFrame>::SharedPtr can_publisher_;

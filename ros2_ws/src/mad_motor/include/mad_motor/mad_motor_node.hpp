@@ -24,11 +24,14 @@ public:
   MadMotorNode();
 
 private:
+  // /joyを受け取るためのsubscriberと、PWM値を出すためのpublisher。
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr pwm_publisher_;
 
+  // /joy topicにmessageが届いた時に呼ばれる処理。
   void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg);
 
+  // DeclareParametersでparameter名と初期値を登録し、GetParametersで実際の値を読む。
   void DeclareParameters();
   void GetParameters();
 
@@ -38,6 +41,7 @@ private:
   // modeに対応するpwmパラメータを返す。MADモータは0~255に丸める。
   int16_t GetPwmValueFromMode(MadMotorMode mode) const;
 
+  // Joy messageのbuttons配列で使うindex。
   int enable_button_;
   int stop_button_;
   int circle_button_;
@@ -45,6 +49,7 @@ private:
   int triangle_button_;
   int square_button_;
 
+  // 各modeに対応するPWM値。config.yamlで変更できる。
   int stop_pwm_;
   int circle_pwm_;
   int cross_pwm_;

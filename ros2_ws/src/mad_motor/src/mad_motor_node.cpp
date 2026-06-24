@@ -4,23 +4,35 @@
 #include <functional>
 #include <memory>
 
-// /joy の入力からMADモータのPWM値を決める。
-// enable_button と各mode_buttonが同時に押された時だけ更新し、
-// それ以外のJoy入力では前回のmode/pwm_valueを継続する。
+// /joy の入力からMADモータのPWM値を決めるnode。
+//
+// ROS 2では、node同士がtopicを通してmessageをやり取りする。
+// このnodeは /joy をsubscribeしてコントローラ入力を受け取り、
+// 決定したPWM値を /mad_motor/pwm_value にpublishする。
+//
+// 誤操作防止のため、enable_buttonと各mode_buttonが同時に押された時だけ
+// modeを更新する。それ以外のJoy入力では前回のmode/pwm_valueを継続する。
 
 MadMotorNode::MadMotorNode()
 : Node("mad_motor_node")
 {
+  // parameterはlaunch fileやconfig.yamlから変更できる設定値。
+  // declareしてからgetする、という順番がROS 2 C++の基本的な使い方。
   DeclareParameters();
   GetParameters();
 
+  // 起動直後は安全側として停止状態から始める。
   current_mode_ = MadMotorMode::Stop;
   current_pwm_value_ = GetPwmValueFromMode(current_mode_);
 
+  // /joy topicにmessageが届くたびにJoyCallbackが呼ばれる。
+  // 第2引数の10はqueue sizeで、処理待ちmessageを最大10個まで保持する。
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
     "/joy", 10,
     std::bind(&MadMotorNode::JoyCallback, this, std::placeholders::_1));
 
+  // MADモータ用のPWM値をpublishする。
+  // このnodeはPWM値を出すだけで、CAN変換はmotor_can_bridge側が担当する。
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
     "/mad_motor/pwm_value", 10);
 
@@ -29,6 +41,8 @@ MadMotorNode::MadMotorNode()
 
 void MadMotorNode::DeclareParameters()
 {
+  // ボタン番号はJoy messageのbuttons配列のindex。
+  // コントローラの割り当てを変えたい時はconfig.yaml側を変更する。
   this->declare_parameter<int>("enable_button", 7);
   this->declare_parameter<int>("stop_button", 4);
   this->declare_parameter<int>("circle_button", 1);
@@ -36,6 +50,7 @@ void MadMotorNode::DeclareParameters()
   this->declare_parameter<int>("triangle_button", 2);
   this->declare_parameter<int>("square_button", 3);
 
+  // 各modeに対応するPWM値。MADモータでは0~255の範囲に丸めて使う。
   this->declare_parameter<int>("stop_pwm", 0);
   this->declare_parameter<int>("circle_pwm", 0);
   this->declare_parameter<int>("cross_pwm", 85);
@@ -45,6 +60,8 @@ void MadMotorNode::DeclareParameters()
 
 void MadMotorNode::GetParameters()
 {
+  // declare_parameterで用意した値を、実際にメンバ変数へ読み込む。
+  // 以降の処理ではROS parameterを直接読まず、このメンバ変数を使う。
   enable_button_ = this->get_parameter("enable_button").as_int();
   stop_button_ = this->get_parameter("stop_button").as_int();
   circle_button_ = this->get_parameter("circle_button").as_int();
@@ -75,6 +92,9 @@ bool MadMotorNode::IsButtonPressed(
 void MadMotorNode::JoyCallback(
   const sensor_msgs::msg::Joy::SharedPtr msg)
 {
+  // callbackは /joy が届くたびに1回実行される。
+  // ここで「今回の入力から新しいmodeを決めるか」を判断する。
+
   // 初期値を現在値にしておくことで、新しい更新入力がない場合は前回値を維持する。
   MadMotorMode next_mode = current_mode_;
   bool has_new_command = false;
@@ -113,9 +133,11 @@ void MadMotorNode::JoyCallback(
     current_pwm_value_ = GetPwmValueFromMode(next_mode);
   }
 
+  // publishするmessageを作る。std_msgs::msg::Int16はdataフィールドだけを持つ単純な型。
   std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_pwm_value_;
 
+  // 他のnodeは /mad_motor/pwm_value をsubscribeすることで、このPWM値を受け取れる。
   pwm_publisher_->publish(pwm_msg);
 }
 
@@ -154,8 +176,13 @@ int16_t MadMotorNode::GetPwmValueFromMode(MadMotorMode mode) const
 
 int main(int argc, char * argv[])
 {
+  // ROS 2の初期化。nodeを作る前に必ず呼ぶ。
   rclcpp::init(argc, argv);
+
+  // spin中はcallback待ち状態になる。/joyが届くたびにJoyCallbackが呼ばれる。
   rclcpp::spin(std::make_shared<MadMotorNode>());
+
+  // Ctrl+Cなどでspinが終わった後、ROS 2を終了処理する。
   rclcpp::shutdown();
   return 0;
 }

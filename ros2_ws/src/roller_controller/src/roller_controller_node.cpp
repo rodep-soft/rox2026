@@ -4,13 +4,20 @@
 #include <functional>
 #include <memory>
 
-// /joy の入力からローラーの回転方向とPWM値を決める。
-// enable_button と各direction_buttonが同時に押された時だけ更新し、
-// それ以外のJoy入力では前回のmode/pwm_valueを継続する。
+// /joy の入力からローラーの回転方向とPWM値を決めるnode。
+//
+// ROS 2では、node同士がtopicを通してmessageをやり取りする。
+// このnodeは /joy をsubscribeしてコントローラ入力を受け取り、
+// 決定したPWM値を /mabuchi555/pwm_value にpublishする。
+//
+// 誤操作防止のため、enable_buttonとdirection_buttonが同時に押された時だけ
+// 回転方向を更新する。それ以外のJoy入力では前回のmode/pwm_valueを継続する。
 
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
 {
+  // parameterはlaunch fileやconfig.yamlから変更できる設定値。
+  // declareしてからgetする、という順番がROS 2 C++の基本的な使い方。
   DeclareParameters();
   GetParameters();
 
@@ -18,10 +25,14 @@ RollerControllerNode::RollerControllerNode()
   current_command_.mode = RotationMode::Stop;
   current_command_.pwm_value = GetPwmValueFromMode(RotationMode::Stop);
 
+  // /joy topicにmessageが届くたびにJoyCallbackが呼ばれる。
+  // 第2引数の10はqueue sizeで、処理待ちmessageを最大10個まで保持する。
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
     "/joy", 10,
     std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
 
+  // ローラー用MabuchiモータのPWM値をpublishする。
+  // このnodeはPWM値を出すだけで、CAN変換はmotor_can_bridge側が担当する。
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
     "/mabuchi555/pwm_value", 10);
 
@@ -30,11 +41,14 @@ RollerControllerNode::RollerControllerNode()
 
 void RollerControllerNode::DeclareParameters()
 {
+  // ボタン番号はJoy messageのbuttons配列のindex。
+  // コントローラの割り当てを変えたい時はconfig.yaml側を変更する。
   this->declare_parameter<int>("enable_button", 1);
   this->declare_parameter<int>("positive_button", 2);
   this->declare_parameter<int>("negative_button", 3);
   this->declare_parameter<int>("stop_button", 0);
 
+  // 各modeに対応するPWM値。ローラーは正逆回転があるため負の値も使う。
   this->declare_parameter<int>("positive_pwm", 200);
   this->declare_parameter<int>("negative_pwm", -200);
   this->declare_parameter<int>("stop_pwm", 0);
@@ -42,6 +56,8 @@ void RollerControllerNode::DeclareParameters()
 
 void RollerControllerNode::GetParameters()
 {
+  // declare_parameterで用意した値を、実際にメンバ変数へ読み込む。
+  // 以降の処理ではROS parameterを直接読まず、このメンバ変数を使う。
   enable_button_ = this->get_parameter("enable_button").as_int();
   positive_button_ = this->get_parameter("positive_button").as_int();
   negative_button_ = this->get_parameter("negative_button").as_int();
@@ -52,7 +68,7 @@ void RollerControllerNode::GetParameters()
   stop_pwm_ = this->get_parameter("stop_pwm").as_int();
 }
 
-// 押されてるかどうかを判断
+// Joy messageのbuttons配列を見て、指定したボタンが押されているかを判断する。
 bool RollerControllerNode::IsButtonPressed(
   const sensor_msgs::msg::Joy::SharedPtr msg,
   int button_index) const
@@ -63,22 +79,23 @@ bool RollerControllerNode::IsButtonPressed(
     return false;
   }
 
-  // buttonsのbutton_indexが押されていたらtrue
+  // buttons[button_index]は、押されていれば1、押されていなければ0になる。
   return msg->buttons[button_index] == 1;
 }
 
-// '/joy'を受け取ったときに呼ばれるcallback
-// joyからのmsgでRollerのmodeを判断
-// int16_tでpwmの値をpublishする
-// l2 + 〇, △, ×でそれぞれのモードを判断する
+// /joyを受け取ったときに呼ばれるcallback。
+// Joy messageからRollerのmodeを判断し、Int16のPWM値をpublishする。
 void RollerControllerNode::JoyCallback(
   const sensor_msgs::msg::Joy::SharedPtr msg)
 {
+  // callbackは /joy が届くたびに1回実行される。
+  // ここで「今回の入力から新しいmodeを決めるか」を判断する。
+
   // 初期値を現在値にしておくことで、新しい更新入力がない場合は前回値を維持する。
   RotationMode next_mode = current_command_.mode;
   bool has_new_command = false;
 
-  // l2ボタンが押されてるかどうかを判断する変数
+  // enableボタンが押されているかどうか。押されていない時はmodeを変更しない。
   const bool is_enable_pressed = IsButtonPressed(msg, enable_button_);
 
   // enable_button単体では更新しない。enable + direction_button の時だけ新コマンドにする。
@@ -98,20 +115,19 @@ void RollerControllerNode::JoyCallback(
       next_mode = RotationMode::PositiveRotate;
       has_new_command = true;
     }
-
   }
 
   // 新しいコマンドが確定した時だけ、保持しているmode/pwm_valueを書き換える。
   if (has_new_command) {
     current_command_.mode = next_mode;
     current_command_.pwm_value = GetPwmValueFromMode(next_mode);
-
   }
 
-  //int16型のmsgを作成し、publish
+  // publishするmessageを作る。std_msgs::msg::Int16はdataフィールドだけを持つ単純な型。
   std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_command_.pwm_value;
 
+  // 他のnodeは /mabuchi555/pwm_value をsubscribeすることで、このPWM値を受け取れる。
   pwm_publisher_->publish(pwm_msg);
 }
 
@@ -143,8 +159,13 @@ int16_t RollerControllerNode::GetPwmValueFromMode(RotationMode mode) const
 
 int main(int argc, char * argv[])
 {
+  // ROS 2の初期化。nodeを作る前に必ず呼ぶ。
   rclcpp::init(argc, argv);
+
+  // spin中はcallback待ち状態になる。/joyが届くたびにJoyCallbackが呼ばれる。
   rclcpp::spin(std::make_shared<RollerControllerNode>());
+
+  // Ctrl+Cなどでspinが終わった後、ROS 2を終了処理する。
   rclcpp::shutdown();
   return 0;
 }

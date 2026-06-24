@@ -2,6 +2,10 @@
 
 // 1つのモータPWM topicを、STM向けのCAN frameに変換するnode。
 //
+// ROS 2では、node同士がtopicを通してmessageをやり取りする。
+// このnodeはpwm_topicをsubscribeしてPWM値を受け取り、
+// can_tx_topicへcan_msgs/msg/Frameをpublishする。
+//
 // このnodeはSocketCANへ直接writeしない。出力はcan_msgs/msg/Frameのtopicなので、
 // 別のCAN driver nodeがcan_tx_topicをsubscribeしてcan0/can1へ送信する想定。
 //
@@ -25,9 +29,12 @@ constexpr uint8_t kCanDataSize = 8;
 MotorCanCommandNode::MotorCanCommandNode()
 : Node("motor_can_command_node")
 {
+  // parameterはlaunch fileやconfig.yamlから変更できる設定値。
+  // declareしてからgetする、という順番がROS 2 C++の基本的な使い方。
   DeclareParameters();
   GetParameters();
 
+  // 起動直後は、まだPWM topicを受け取っていないので停止指令の0から始める。
   latest_pwm_ = 0;
   last_pwm_time_ = this->now();
 
@@ -44,6 +51,7 @@ MotorCanCommandNode::MotorCanCommandNode()
 void MotorCanCommandNode::SetupRosInterfaces()
 {
   // PWM topicは入力値の更新だけに使う。CAN送信はこのcallback内では行わない。
+  // messageが届くたびにPwmCallbackが呼ばれ、最新PWM値だけを保存する。
   pwm_subscription_ = this->create_subscription<std_msgs::msg::Int16>(
     pwm_topic_, 10,
     std::bind(&MotorCanCommandNode::PwmCallback, this, std::placeholders::_1));
@@ -52,6 +60,7 @@ void MotorCanCommandNode::SetupRosInterfaces()
   can_publisher_ = this->create_publisher<can_msgs::msg::Frame>(can_tx_topic_, 10);
 
   // STMへ一定周期でcommandを送り続けるためのtimer。
+  // send_period_msごとにTimerCallbackが呼ばれる。
   timer_ = this->create_wall_timer(
     std::chrono::milliseconds(send_period_ms_),
     std::bind(&MotorCanCommandNode::TimerCallback, this));
@@ -60,6 +69,7 @@ void MotorCanCommandNode::SetupRosInterfaces()
 void MotorCanCommandNode::DeclareParameters()
 {
   // launch/configから上書きできる値をここで宣言する。
+  // 同じ実行ファイルを複数起動しても、parameterを変えることで別モータ用に使える。
   this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
   this->declare_parameter<int>("can_id", 0x201);
@@ -104,6 +114,8 @@ void MotorCanCommandNode::PwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
 
 void MotorCanCommandNode::TimerCallback()
 {
+  // TimerCallbackはsend_period_msごとに呼ばれる。
+  // 最新PWM値をCAN frameへ変換し、can_tx_topicへpublishする。
   const rclcpp::Time now = this->now();
   // PWM入力が来ていなくても、timeoutするまでは最後のPWMを周期送信する。
   can_publisher_->publish(CreateCanFrame(GetPwmOrZeroOnTimeout(now), now));
@@ -111,6 +123,7 @@ void MotorCanCommandNode::TimerCallback()
 
 int16_t MotorCanCommandNode::ClampPwm(int value) const
 {
+  // PWM範囲はモータごとに違うので、parameterで指定したmin/maxに丸める。
   return static_cast<int16_t>(std::clamp(value, min_pwm_, max_pwm_));
 }
 
@@ -130,6 +143,9 @@ can_msgs::msg::Frame MotorCanCommandNode::CreateCanFrame(
   const rclcpp::Time & stamp) const
 {
   can_msgs::msg::Frame frame;
+
+  // header.stampは「このframeを作った時刻」。
+  // 後でログや可視化を見る時に、いつのmessageか追いやすくなる。
   frame.header.stamp = stamp;
   frame.id = can_id_;
 
@@ -151,8 +167,14 @@ can_msgs::msg::Frame MotorCanCommandNode::CreateCanFrame(
 
 int main(int argc, char * argv[])
 {
+  // ROS 2の初期化。nodeを作る前に必ず呼ぶ。
   rclcpp::init(argc, argv);
+
+  // spin中はcallback待ち状態になる。
+  // PWM topicが届けばPwmCallback、timer周期ではTimerCallbackが呼ばれる。
   rclcpp::spin(std::make_shared<MotorCanCommandNode>());
+
+  // Ctrl+Cなどでspinが終わった後、ROS 2を終了処理する。
   rclcpp::shutdown();
   return 0;
 }
