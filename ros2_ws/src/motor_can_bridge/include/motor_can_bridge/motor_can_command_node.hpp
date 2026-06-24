@@ -15,6 +15,7 @@ public:
 private:
   void DeclareParameters();
   void GetParameters();
+  void SetupRosInterfaces();
   void PwmCallback(const std_msgs::msg::Int16::SharedPtr msg);
   void TimerCallback();
 
@@ -25,8 +26,8 @@ private:
   std::string pwm_topic_;
   std::string can_tx_topic_;
   uint32_t can_id_;
-  uint8_t motor_id_;
   bool is_extended_;
+
   int min_pwm_;
   int max_pwm_;
   int send_period_ms_;
