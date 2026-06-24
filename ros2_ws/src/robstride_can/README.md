@@ -66,12 +66,47 @@ ros2 topic pub --once /robstride_velocity_node/stop std_msgs/msg/Empty '{}'
 
 node終了時にもstop commandを送る設定にしています。
 
+## 入出力
+
+```mermaid
+flowchart LR
+  cmd["~/enable<br/>~/stop<br/>~/set_mode<br/>~/velocity_command"]
+  node["robstride_velocity_node"]
+  can["Linux SocketCAN<br/>can0 など"]
+  motor["Robstride EduLite 05"]
+  state["/joint_states<br/>~/status<br/>~/fault<br/>~/mode_status"]
+
+  cmd --> node
+  node --> can --> motor
+  motor --> can --> node --> state
+```
+
+### Subscribe
+
+- `~/enable` (`std_msgs/msg/Bool`): `true` で enable、`false` で stop
+- `~/stop` (`std_msgs/msg/Empty`): stop command を送る
+- `~/set_mode` (`std_msgs/msg/UInt8`): `run_mode` parameter を書く。velocity mode は `2`
+- `~/velocity_command` (`std_msgs/msg/Float64MultiArray`): `[speed_rad_s, current_limit_a]`
+
+### Publish
+
+- `~/status` (`std_msgs/msg/String`): feedbackをJSON風の文字列でpublish
+- `~/fault` (`std_msgs/msg/UInt32`): fault bit
+- `~/mode_status` (`std_msgs/msg/UInt8`): Robstrideから返るmode status
+- `/joint_states` (`sensor_msgs/msg/JointState`): position、velocity、torque
+
 ## 主なparameter
 
 - `can_interface`: 使用するSocketCAN interface。例: `can0`
 - `motor_id`: Robstrideに設定されているmotor CAN ID
 - `host_id`: Robstrideのstatus responseを受けるhost ID
+- `joint_name`: `/joint_states` に出すjoint名
 - `current_limit_a`: velocity modeの電流制限
+- `auto_enable`: 起動時に stop、velocity mode設定、enable を送る
+- `stop_on_shutdown`: node終了時に stop command を送る
+- `position_min_rad` / `position_max_rad`: feedback位置の変換範囲
+- `velocity_min_rad_s` / `velocity_max_rad_s`: feedback速度の変換範囲
+- `torque_min_nm` / `torque_max_nm`: feedbackトルクの変換範囲
 
 ## 注意
 
