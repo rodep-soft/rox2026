@@ -167,7 +167,8 @@ void RobstrideVelocityNode::SetupRosInterfaces()
 void RobstrideVelocityNode::StartReceiveThread()
 {
   running_ = true;
-  receive_thread_ = std::thread([this]() {
+  receive_thread_ = std::thread(
+    [this]() {
       ReceiveLoop();
     });
 }
