@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "limit_switch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -135,6 +135,8 @@ if(HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
 	          pwm_target_value = 0;
 	      }
 	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_target_value);
+
+	  LimitSwitch_UpdateAndSend(&hcan);
 
 	  HAL_Delay(1);
     /* USER CODE END WHILE */
