@@ -5,7 +5,6 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
-
 NODE_NAME = "mad_motor_can_command_node"
 
 
