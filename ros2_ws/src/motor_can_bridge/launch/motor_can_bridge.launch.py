@@ -35,8 +35,7 @@ def generate_launch_description():
         )
     ]
     launch_items.extend(
-        create_motor_can_bridge_node(node_name, config_file)
-        for node_name in NODE_NAMES
+        create_motor_can_bridge_node(node_name, config_file) for node_name in NODE_NAMES
     )
 
     return LaunchDescription(launch_items)
