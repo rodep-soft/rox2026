@@ -10,6 +10,45 @@ ROS 2 の `node`、`topic`、`message`、`parameter`、`launch` の基本は [..
 - `motor_can_command_node`
 - `robstride_velocity_node`
 
+## roller_controller / motor_can_bridge / mad_motor の関係
+
+この 3 つは、ジョイコン入力から STM へ送る CAN 指令を作るための一連のノード。
+`motor_can_ridge` と呼んでいるものは、このリポジトリ上では `motor_can_bridge` package を指す。
+
+役割は次のように分かれている。
+
+- `roller_controller`: `/joy` からローラー用 Mabuchi 555 の PWM 値を作る
+- `mad_motor`: `/joy` から MAD motor 用の PWM 値を作る
+- `motor_can_bridge`: それぞれの PWM topic を CAN frame に変換して `/can_tx` へ流す
+
+つまり `roller_controller` と `mad_motor` は「操作入力を PWM にする側」で、`motor_can_bridge` は「PWM を CAN に詰め替える側」。
+`roller_controller` や `mad_motor` は CAN bus へ直接送信しない。
+
+現在の topic 接続は次の通り。
+
+```text
+/joy
+  ├─> roller_controller_node
+  │     └─> /mabuchi555/pwm_value
+  │           └─> motor_can_bridge_node or mabuchi_can_command_node
+  │                 └─> /can_tx
+  │
+  └─> mad_motor_node
+        └─> /mad_motor/pwm_value
+              └─> motor_can_bridge_node or mad_motor_can_command_node
+                    └─> /can_tx
+```
+
+CAN ID は `motor_can_bridge/config/config.yaml` で分かれている。
+
+- Mabuchi 555 / roller: `0x201`
+- MAD motor: `0x202`
+
+`motor_can_bridge_node` を使う場合は、Mabuchi 用と MAD motor 用の 2 つの PWM topic を 1 つのノードがまとめて購読し、package 独自の `motor_can_bridge/msg/CanFrame` を `/can_tx` に publish する。
+
+`motor_can_command_node` を使う場合は、1 ノードにつき 1 つの PWM topic を `can_msgs/msg/Frame` に変換する。
+launch では同じ executable を `mabuchi_can_command_node` と `mad_motor_can_command_node` という別名で 2 つ起動し、それぞれ CAN ID `0x201` と `0x202` を担当させる。
+
 `roller_controller_node`、`mad_motor_node`、`motor_can_bridge_node` は STM 向けの PWM CAN bridge 系。
 `robstride_velocity_node` は Robstride EduLite 05 向けで、SocketCAN へ直接 write する別系統の node。
 

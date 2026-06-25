@@ -1,5 +1,19 @@
 #include "motor_can_bridge/motor_can_bridge_node.hpp"
 
+// 1つのモータPWM topicを、STM向けのCAN frameに変換するnode。
+//
+// ROS 2では、node同士がtopicを通してmessageをやり取りする。
+// このnodeはpwm_topicをsubscribeしてPWM値を受け取り、
+// can_tx_topicへcan_msgs/msg/Frameをpublishする。
+//
+// このnodeはSocketCANへ直接writeしない。出力はcan_msgs/msg/Frameのtopicなので、
+// 別のCAN driver nodeがcan_tx_topicをsubscribeしてcan0/can1へ送信する想定。
+//
+// モータ種別はCAN IDで判別する。STM向けpayloadは以下の形式。
+//   byte0: pwm low byte
+//   byte1: pwm high byte
+//   byte2-7: 予備、現状は0
+
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -7,34 +21,9 @@
 #include <memory>
 #include <string>
 
-// 2つのPWM topicを受け取り、STMが読むCAN frame形式に変換するnode。
-//
-// このnodeは以下の流れで動く。
-//   1. /mabuchi555/pwm_value と /mad_motor/pwm_value をsubscribeする
-//   2. 各callbackで「最後に受け取ったPWM値」と「受け取った時刻」を保存する
-//   3. timerで一定周期ごとにCAN frameを作り、/can_txへpublishする
-//
-// callbackで即publishせずtimerを使う理由は、入力が来た瞬間だけでなく
-// STMへ一定周期で指令を送り続けるため。
-
 namespace
 {
-// CAN data frameのpayload長。STM側の受信仕様に合わせて8byte固定で送る。
 constexpr uint8_t kCanDataSize = 8;
-
-// モータごとに許可するPWM範囲を分ける。
-// Mabuchiは正逆回転するため-255~255、MADモータは正方向のみなので0~255。
-constexpr int16_t kMabuchiMinPwm = -255;
-constexpr int16_t kMabuchiMaxPwm = 255;
-constexpr int16_t kMadMotorMinPwm = 0;
-constexpr int16_t kMadMotorMaxPwm = 255;
-
-// configや別nodeから範囲外のPWM値が来ても、そのままCANへ流さず安全な範囲に丸める。
-int16_t ClampToInt16Range(int value, int16_t min_value, int16_t max_value)
-{
-  return static_cast<int16_t>(
-    std::clamp(value, static_cast<int>(min_value), static_cast<int>(max_value)));
-}
 }  // namespace
 
 MotorCanBridgeNode::MotorCanBridgeNode()
@@ -46,127 +35,132 @@ MotorCanBridgeNode::MotorCanBridgeNode()
   GetParameters();
 
   // 起動直後は、まだPWM topicを受け取っていないので停止指令の0から始める。
-  latest_mabuchi_pwm_ = 0;
-  latest_mad_motor_pwm_ = 0;
-  last_mabuchi_time_ = this->now();
-  last_mad_motor_time_ = this->now();
+  latest_pwm_ = 0;
+  last_pwm_time_ = this->now();
 
-  // Mabuchi用PWM topicを購読する。messageが届くたびにMabuchiPwmCallbackが呼ばれる。
-  mabuchi_subscription_ = this->create_subscription<std_msgs::msg::Int16>(
-    mabuchi_pwm_topic_, 10,
-    std::bind(&MotorCanBridgeNode::MabuchiPwmCallback, this, std::placeholders::_1));
+  SetupRosInterfaces();
 
-  // MADモータ用PWM topicを購読する。messageが届くたびにMadMotorPwmCallbackが呼ばれる。
-  mad_motor_subscription_ = this->create_subscription<std_msgs::msg::Int16>(
-    mad_motor_pwm_topic_, 10,
-    std::bind(&MotorCanBridgeNode::MadMotorPwmCallback, this, std::placeholders::_1));
+  RCLCPP_INFO(
+    this->get_logger(),
+    "MotorCanBridgeNode started. pwm_topic=%s, can_tx_topic=%s, can_id=0x%X",
+    pwm_topic_.c_str(),
+    can_tx_topic_.c_str(),
+    can_id_);
+}
 
-  // STMへ送るCAN frameをpublishするtopic。
-  // 実際にCAN busへ流す処理は、このtopicをsubscribeする別nodeが担当する想定。
-  can_publisher_ = this->create_publisher<motor_can_bridge::msg::CanFrame>(
-    can_tx_topic_, 10);
+void MotorCanBridgeNode::SetupRosInterfaces()
+{
+  // PWM topicは入力値の更新だけに使う。CAN送信はこのcallback内では行わない。
+  // messageが届くたびにPwmCallbackが呼ばれ、最新PWM値だけを保存する。
+  pwm_subscription_ = this->create_subscription<std_msgs::msg::Int16>(
+    pwm_topic_, 10,
+    std::bind(&MotorCanBridgeNode::PwmCallback, this, std::placeholders::_1));
 
-  // timerは指定周期でcallbackを呼ぶ仕組み。
-  // send_period_msごとにTimerCallbackを呼び、最新PWMをCAN frameとしてpublishする。
+  // このtopicをCAN driver nodeがsubscribeして、実際のCAN busへ送る。
+  can_publisher_ = this->create_publisher<can_msgs::msg::Frame>(can_tx_topic_, 10);
+
+  // STMへ一定周期でcommandを送り続けるためのtimer。
+  // send_period_msごとにTimerCallbackが呼ばれる。
   timer_ = this->create_wall_timer(
     std::chrono::milliseconds(send_period_ms_),
     std::bind(&MotorCanBridgeNode::TimerCallback, this));
-
-  RCLCPP_INFO(this->get_logger(), "MotorCanBridgeNode started.");
 }
 
 void MotorCanBridgeNode::DeclareParameters()
 {
-  // topic名とCAN IDをparameterにしておくと、コードを変更せずconfig.yamlで調整できる。
-  this->declare_parameter<std::string>("mabuchi_pwm_topic", "/mabuchi555/pwm_value");
-  this->declare_parameter<std::string>("mad_motor_pwm_topic", "/mad_motor/pwm_value");
+  // launch/configから上書きできる値をここで宣言する。
+  // 同じ実行ファイルを複数起動しても、parameterを変えることで別モータ用に使える。
+  this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
-  this->declare_parameter<int>("mabuchi_can_id", 0x201);
-  this->declare_parameter<int>("mad_motor_can_id", 0x202);
+  this->declare_parameter<int>("can_id", 0x201);
+  this->declare_parameter<bool>("is_extended", false);
+  this->declare_parameter<int>("min_pwm", -255);
+  this->declare_parameter<int>("max_pwm", 255);
   this->declare_parameter<int>("send_period_ms", 20);
   this->declare_parameter<int>("timeout_ms", 500);
 }
 
 void MotorCanBridgeNode::GetParameters()
 {
-  // declare_parameterで用意した値を、実際にメンバ変数へ読み込む。
-  // 以降の処理ではROS parameterを直接読まず、このメンバ変数を使う。
-  mabuchi_pwm_topic_ = this->get_parameter("mabuchi_pwm_topic").as_string();
-  mad_motor_pwm_topic_ = this->get_parameter("mad_motor_pwm_topic").as_string();
+  // configで指定されたtopic名やCAN IDを読み込む。
+  pwm_topic_ = this->get_parameter("pwm_topic").as_string();
   can_tx_topic_ = this->get_parameter("can_tx_topic").as_string();
-  mabuchi_can_id_ = static_cast<uint32_t>(this->get_parameter("mabuchi_can_id").as_int());
-  mad_motor_can_id_ = static_cast<uint32_t>(this->get_parameter("mad_motor_can_id").as_int());
-  send_period_ms_ = std::max(1, static_cast<int>(this->get_parameter("send_period_ms").as_int()));
-  timeout_ms_ = std::max(1, static_cast<int>(this->get_parameter("timeout_ms").as_int()));
+  can_id_ = static_cast<uint32_t>(this->get_parameter("can_id").as_int());
+  is_extended_ = this->get_parameter("is_extended").as_bool();
+  min_pwm_ = static_cast<int>(this->get_parameter("min_pwm").as_int());
+  max_pwm_ = static_cast<int>(this->get_parameter("max_pwm").as_int());
+  send_period_ms_ = std::max(
+    1,
+    static_cast<int>(this->get_parameter("send_period_ms").as_int()));
+  timeout_ms_ = std::max(
+    1,
+    static_cast<int>(this->get_parameter("timeout_ms").as_int()));
+
+  // 設定ミスでmin/maxが逆でも、nodeを落とさず安全側に補正する。
+  if (min_pwm_ > max_pwm_) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "min_pwm is greater than max_pwm. Swapping values.");
+    std::swap(min_pwm_, max_pwm_);
+  }
 }
 
-void MotorCanBridgeNode::MabuchiPwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
+void MotorCanBridgeNode::PwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
 {
-  // callback内ではCAN frameを作らず、最新値だけ保存する。
-  // 実際のCAN送信周期はTimerCallback側でそろえる。
-  latest_mabuchi_pwm_ = ClampToInt16Range(msg->data, kMabuchiMinPwm, kMabuchiMaxPwm);
-  last_mabuchi_time_ = this->now();
-}
-
-void MotorCanBridgeNode::MadMotorPwmCallback(const std_msgs::msg::Int16::SharedPtr msg)
-{
-  // MADモータは逆回転を使わないため、0~255に丸めて保存する。
-  latest_mad_motor_pwm_ = ClampToInt16Range(msg->data, kMadMotorMinPwm, kMadMotorMaxPwm);
-  last_mad_motor_time_ = this->now();
+  // ここでは最新のPWMだけ保存する。CAN送信周期はTimerCallback側で管理する。
+  latest_pwm_ = ClampPwm(msg->data);
+  last_pwm_time_ = this->now();
 }
 
 void MotorCanBridgeNode::TimerCallback()
 {
   // TimerCallbackはsend_period_msごとに呼ばれる。
-  // ここで2つのモータ分のCAN frameをまとめてpublishする。
+  // 最新PWM値をCAN frameへ変換し、can_tx_topicへpublishする。
   const rclcpp::Time now = this->now();
-
-  const int16_t mabuchi_pwm = GetPwmOrZeroOnTimeout(
-    latest_mabuchi_pwm_, last_mabuchi_time_, now);
-  const int16_t mad_motor_pwm = GetPwmOrZeroOnTimeout(
-    latest_mad_motor_pwm_, last_mad_motor_time_, now);
-
-  can_publisher_->publish(CreateMotorCanFrame(mabuchi_can_id_, mabuchi_pwm, now));
-  can_publisher_->publish(CreateMotorCanFrame(mad_motor_can_id_, mad_motor_pwm, now));
+  // PWM入力が来ていなくても、timeoutするまでは最後のPWMを周期送信する。
+  can_publisher_->publish(CreateCanFrame(GetPwmOrZeroOnTimeout(now), now));
 }
 
-int16_t MotorCanBridgeNode::GetPwmOrZeroOnTimeout(
-  int16_t latest_pwm,
-  const rclcpp::Time & last_update_time,
-  const rclcpp::Time & now) const
+int16_t MotorCanBridgeNode::ClampPwm(int value) const
 {
-  const auto elapsed = now - last_update_time;
+  // PWM範囲はモータごとに違うので、parameterで指定したmin/maxに丸める。
+  return static_cast<int16_t>(std::clamp(value, min_pwm_, max_pwm_));
+}
+
+int16_t MotorCanBridgeNode::GetPwmOrZeroOnTimeout(const rclcpp::Time & now) const
+{
+  const auto elapsed = now - last_pwm_time_;
   if (elapsed > rclcpp::Duration::from_seconds(static_cast<double>(timeout_ms_) / 1000.0)) {
-    // controller側が止まった時に古いPWMを送り続けないよう、timeout後は0にする。
+    // PWM入力が途切れた場合は、古いPWMを送り続けず停止指令にする。
     return 0;
   }
 
-  return latest_pwm;
+  return latest_pwm_;
 }
 
-motor_can_bridge::msg::CanFrame MotorCanBridgeNode::CreateMotorCanFrame(
-  uint32_t can_id,
+can_msgs::msg::Frame MotorCanBridgeNode::CreateCanFrame(
   int16_t pwm,
   const rclcpp::Time & stamp) const
 {
-  motor_can_bridge::msg::CanFrame frame;
+  can_msgs::msg::Frame frame;
 
   // header.stampは「このframeを作った時刻」。
   // 後でログや可視化を見る時に、いつのmessageか追いやすくなる。
   frame.header.stamp = stamp;
-  frame.id = can_id;
-  frame.extended = false;
-  frame.fd = false;
-  frame.brs = false;
-  frame.esi = false;
-  frame.rtr = false;
-  frame.size = kCanDataSize;
-  frame.data.fill(0);
+  frame.id = can_id_;
 
-  // data[0] is reserved for future flags. data[1..2] is int16 little-endian PWM.
-  frame.data[0] = 0x00;
-  frame.data[1] = static_cast<uint8_t>(pwm & 0xFF);
-  frame.data[2] = static_cast<uint8_t>((pwm >> 8) & 0xFF);
+  // 通常のdata frameを送る。remote/error frameはこのnodeでは使わない。
+  frame.is_rtr = false;
+  frame.is_extended = is_extended_;
+  frame.is_error = false;
+
+  // STM側の受信仕様に合わせて8byte固定で送る。
+  frame.dlc = kCanDataSize;
+
+  frame.data.fill(0);
+  // STM側ではint16のPWMをlittle-endianとして読む想定。
+  frame.data[0] = static_cast<uint8_t>(pwm & 0xFF);
+  frame.data[1] = static_cast<uint8_t>((pwm >> 8) & 0xFF);
 
   return frame;
 }
@@ -177,7 +171,7 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
 
   // spin中はcallback待ち状態になる。
-  // PWM topicが届けばsubscription callback、timer周期ではTimerCallbackが呼ばれる。
+  // PWM topicが届けばPwmCallback、timer周期ではTimerCallbackが呼ばれる。
   rclcpp::spin(std::make_shared<MotorCanBridgeNode>());
 
   // Ctrl+Cなどでspinが終わった後、ROS 2を終了処理する。
