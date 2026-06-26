@@ -7,7 +7,7 @@ class HeadingHoldNode : public rclcpp::Node
 {
 public:
   HeadingHoldNode()
-  : Node("heading_hold_node") 
+  : Node("heading_hold_node")
   {
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
       "/cmd_vel_raw", 10,
@@ -33,7 +33,7 @@ private:
   void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
   {
     // ここに書く
-    (void)msg; 
+    (void)msg;
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr raw_vel_sub_;
