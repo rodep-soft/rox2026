@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <cstring>
 
 class WheelToCanNode : public rclcpp::Node
 {
@@ -35,55 +36,116 @@ public:
 private:
     void init_motors(){
         for (int motor_id = 1; motor_id <= 4; motor_id++){
-            //6.8 Command 6: Set Operation Mode Velocity modeに設定
+            //4.1.9 Communication type 18: Single parameter write
             can_msgs::msg::Frame frame_mode;
-            frame_mode.id = motor_id;
-            frame_mode.is_extended = false; //11bit
+            frame_mode.id = 0x1200FD00 + motor_id;
+            frame_mode.is_extended = true; //29bit
             frame_mode.dlc = 8; //データ長は 8 固定
 
-            for (int i = 0; i < 6; i++){
-                frame_mode.data[i] = 0xFF; //前半6バイトはすべて 0xFF
-            }
-
-            frame_mode.data[6] = 0x02; //Velocity mode
-            frame_mode.data[7] = 0xFC; //Command 1 の識別子
-
+            // 運転モードを表すインデックス 0x7005 (run_mode) に 2 (Velocity mode) を書き込む
+            frame_mode.data[0] = 0x05; // Index下位
+            frame_mode.data[1] = 0x70; // Index上位
+            frame_mode.data[2] = 0x00;
+            frame_mode.data[3] = 0x00;
+            frame_mode.data[4] = 0x02; // 2: 速度モード (Velocity Mode)
+            frame_mode.data[5] = 0x00;
+            frame_mode.data[6] = 0x00;
+            frame_mode.data[7] = 0x00;
+            
             pub_->publish(std::move(frame_mode));
-
+           
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-            //6.3 Command 1: モーターの有効化
+            
+            //4.1.4Communication Type 3: Motor enabled to run
             can_msgs::msg::Frame frame_enable;
-            frame_enable.id = motor_id;
-            frame_enable.is_extended = false; // 11bit
+            frame_enable.id = 0x0300FD00 + motor_id;
+            frame_enable.is_extended = true; // 29bit
             frame_enable.dlc = 8;             // データ長は 8 固定
 
-            for (int i = 0; i < 7; i++){
-                frame_enable.data[i] = 0xFF;   // 前半7バイトはすべて 0xFF
+            for (int i = 0; i < 8; i++){
+                frame_enable.data[i] = 0; 
             }
-
-            frame_enable.data[7] = 0xFC;    // Command 1 の識別子
 
             pub_->publish(std::move(frame_enable));
 
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-            RCLCPP_INFO(this->get_logger(), "Motor %d: Velocity Mode Set & Enabled", motor_id);
-        
+            //4.1.9 Communication type 18: 電流制御
+            can_msgs::msg::Frame frame_cur_max;
+            frame_cur_max.id = 0x1200FD00 + motor_id;
+            frame_cur_max.is_extended = true; // 29bit
+            frame_cur_max.dlc = 8;             // データ長は 8 固定     
+
+            frame_cur_max.data[0] = 0x06; // Index下位
+            frame_cur_max.data[1] = 0x70; // Index上位
+            frame_cur_max.data[2] = 0x00;
+            frame_cur_max.data[3] = 0x00;
+            float current_limit = 11.0f; // 11A
+
+            uint8_t current_buffer[4];
+
+            auto cur_bytes = std::bit_cast<std::array<uint8_t,4>>(current_limit);
+
+            std::copy(cur_bytes.begin(), cur_bytes.end(), current_buffer);
+
+            for (int i = 4; i < 8; i++){
+                frame_cur_max.data[i] = current_buffer[7 - i];
+            }
+
+            pub_->publish(std::move(frame_cur_max));
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+             //4.1.9 Communication type 18: 加速度設定
+            can_msgs::msg::Frame frame_acc_rad;
+            frame_acc_rad.id = 0x1200FD00 + motor_id;
+            frame_acc_rad.is_extended = true; // 29bit
+            frame_acc_rad.dlc = 8;             // データ長は 8 固定     
+
+            frame_acc_rad.data[0] = 0x22; // Index下位
+            frame_acc_rad.data[1] = 0x70; // Index上位
+            frame_acc_rad.data[2] = 0x00;
+            frame_acc_rad.data[3] = 0x00;
+            float acc = 20.0f; // 20 rad/s^2
+
+            uint8_t acc_buffer[4];
+
+            auto cur_bytes = std::bit_cast<std::array<uint8_t,4>>(acc);
+
+            std::copy(cur_bytes.begin(), cur_bytes.end(), acc_buffer);
+
+            for (int i = 4; i < 8; i++){
+                frame_acc_rad.data[i] = acc_buffer[7 - i];
+            }
+
+            pub_->publish(std::move(frame_acc_rad));
+
+
         }
     }
 
     void stop_motors(){
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
-            can_msgs::msg::Frame frame_stop;
-            frame_stop.id = motor_id;          // 上位3ビットは0、そのままモーターid
-            frame_stop.is_extended = false;   // 11bit 
-            frame_stop.dlc = 8;               // データ長は 8 固定
-        for (int i = 0; i < 7; i++) {
-                frame_stop.data[i] = 0xFF; //7バイトFFにする
+            can_msgs::msg::Frame frame_vel_zero;
+            frame_vel_zero.id = 0x1200FD00 + motor_id;          // 上位3ビットは0、そのままモーターid
+            frame_vel_zero.is_extended = true;   // 29bit 
+            frame_vel_zero.dlc = 8;               // データ長は 8 固定
+        for (int i = 0; i < 8; i++) {
+                frame_vel_zero.data[i] = 0x00; //速度を０に
             }
 
-        frame_stop.data[7] = 0xFD;
+        pub_->publish(std::move(frame_vel_zero));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+        can_msgs::msg::Frame frame_stop;
+        frame_stop.id = 0x0400FD00 + motor_id;
+        frame_stop.is_extended = true;
+        frame_stop.dlc = 8;
+
+        for (int i = 0; i < 8; i++) {
+                frame_stop.data[i] = 0x00; 
+            }
 
         pub_->publish(std::move(frame_stop));
 
@@ -103,26 +165,27 @@ private:
 
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
 
-            //送られてきたデータからコピー
-            float value =  msg->data[motor_id - 1];
-            float current = 11.0;
+            float value =  msg->data[motor_id - 1];;
 
-            uint8_t buffer[8];
+            uint8_t buffer[4];
 
             auto vel_bytes = std::bit_cast<std::array<uint8_t,4>>(value);
-            auto cur_bytes = std::bit_cast<std::array<uint8_t,4>>(current);
 
-            std::copy(vel_bytes.begin(), vel_bytes.end(),buffer);
-            std::copy(cur_bytes.begin(), cur_bytes.end(), buffer + 4);
+            std::copy(vel_bytes.begin(), vel_bytes.end(), buffer);
+
 
             can_msgs::msg::Frame frame;
-            frame.id = 0x200 + motor_id;    // MIT 6.13 Velocity Mode Control
-            frame.is_extended = false;     //11bit
+            frame.id = 0x1200FD00 + motor_id;  // 速度制御 24~28 communication type  8~23 host id 1~8 motor id
+            frame.is_extended = true;     //29bit
             frame.dlc = 8;                // データ長は 8 固定
 
             //データを詰める
-            for (int i = 0; i< 8; i++){
-                frame.data[i] = buffer[i];
+            frame.data[0] = 0x0A; //下位bit
+            frame.data[1] = 0x70; //上位bit
+            frame.data[2] = 0; 
+            frame.data[3] = 0;
+            for (int i = 4; i < 8; i++){
+                frame.data[i] = buffer[7 - i];
             }
             pub_->publish(std::move(frame));
         }
