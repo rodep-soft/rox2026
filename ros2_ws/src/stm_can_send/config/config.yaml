@@ -1,0 +1,15 @@
+stm_can_send_node:
+  ros_parameters:
+    can_interface: "can0"
+
+    roller:
+      enabled: true
+      topic: "/roller/can_frame"
+      can_id: 0x201
+
+    belt:
+      enable: true
+      topic: "/belt/can_frame"
+      can_id: 0x202
+      
+
