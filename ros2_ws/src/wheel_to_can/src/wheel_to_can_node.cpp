@@ -110,9 +110,9 @@ private:
 
             uint8_t acc_buffer[4];
 
-            auto cur_bytes = std::bit_cast<std::array<uint8_t,4>>(acc);
+            auto acc_bytes = std::bit_cast<std::array<uint8_t,4>>(acc);
 
-            std::copy(cur_bytes.begin(), cur_bytes.end(), acc_buffer);
+            std::copy(acc_bytes.begin(), acc_bytes.end(), acc_buffer);
 
             for (int i = 4; i < 8; i++){
                 frame_acc_rad.data[i] = acc_buffer[7 - i];
