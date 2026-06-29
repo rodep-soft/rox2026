@@ -88,8 +88,8 @@ private:
 
             std::copy(cur_bytes.begin(), cur_bytes.end(), current_buffer);
 
-            for (int i = 4; i < 8; i++){
-                frame_cur_max.data[i] = current_buffer[7 - i];
+            for (int i = 0; i < 4; i++){
+                frame_cur_max.data[i + 4] = current_buffer[i];
             }
 
             pub_->publish(std::move(frame_cur_max));
@@ -110,17 +110,17 @@ private:
 
             uint8_t acc_buffer[4];
 
-            auto cur_bytes = std::bit_cast<std::array<uint8_t,4>>(acc);
+            auto acc_bytes = std::bit_cast<std::array<uint8_t,4>>(acc);
 
-            std::copy(cur_bytes.begin(), cur_bytes.end(), acc_buffer);
+            std::copy(acc_bytes.begin(), acc_bytes.end(), acc_buffer);
 
-            for (int i = 4; i < 8; i++){
-                frame_acc_rad.data[i] = acc_buffer[7 - i];
+            for (int i = 0; i < 4; i++){
+                frame_acc_rad.data[i + 4] = acc_buffer[i];
             }
 
             pub_->publish(std::move(frame_acc_rad));
 
-
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 
@@ -130,7 +130,12 @@ private:
             frame_vel_zero.id = 0x1200FD00 + motor_id;          // 上位3ビットは0、そのままモーターid
             frame_vel_zero.is_extended = true;   // 29bit 
             frame_vel_zero.dlc = 8;               // データ長は 8 固定
-        for (int i = 0; i < 8; i++) {
+
+
+
+            frame_vel_zero.data[0] = 0x0A; //下位bit
+            frame_vel_zero.data[1] = 0x70; //上位bit
+        for (int i = 2; i < 8; i++) {
                 frame_vel_zero.data[i] = 0x00; //速度を０に
             }
 
@@ -165,7 +170,7 @@ private:
 
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
 
-            float value =  msg->data[motor_id - 1];;
+            float value =  msg->data[motor_id - 1];
 
             uint8_t buffer[4];
 
@@ -184,8 +189,8 @@ private:
             frame.data[1] = 0x70; //上位bit
             frame.data[2] = 0; 
             frame.data[3] = 0;
-            for (int i = 4; i < 8; i++){
-                frame.data[i] = buffer[7 - i];
+             for (int i = 0; i < 4; i++){
+                frame.data[i + 4] = buffer[i];
             }
             pub_->publish(std::move(frame));
         }
