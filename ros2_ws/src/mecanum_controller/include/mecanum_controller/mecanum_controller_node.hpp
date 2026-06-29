@@ -17,7 +17,6 @@ private:
   void get_parameters();
 
   void velocityCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
-  void motor_init();
   void motor_enable();
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr vel_sub_;
