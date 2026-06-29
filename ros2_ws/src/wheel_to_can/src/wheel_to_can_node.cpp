@@ -17,7 +17,7 @@ public:
     {
         sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("motor_vel", 10,std::bind(&WheelToCanNode::callback, this, std::placeholders::_1));
 
-        pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN_can0_transmit", 10);
+        pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN/can0/transmit", 10);
 
         RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
