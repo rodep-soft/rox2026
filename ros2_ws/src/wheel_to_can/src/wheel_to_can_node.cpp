@@ -9,6 +9,9 @@
 #include <thread>
 #include <cstring>
 
+
+using namespace std::chrono_literals;
+
 class WheelToCanNode : public rclcpp::Node
 {
 public:
@@ -19,6 +22,10 @@ public:
 
         pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN/can0/transmit", 10);
 
+        last_vel_received_time_ = this->now();  // 初期化時に現在の時刻を設定
+
+        timeout_timer_ = this->create_wall_timer(100ms, std::bind(&WheelToCanNode::check_timeout, this)); // 100msごとにタイムアウトチェックを実行
+
         RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
         //少しだけ待ってから初期化を実行
@@ -27,9 +34,32 @@ public:
         init_motors(); //モーターの有効化
     }
 
+
+    void stop_motors(){
+        for (int motor_id = 1; motor_id <= 4; motor_id++) {
+            can_msgs::msg::Frame frame_vel_zero;
+            frame_vel_zero.id = 0x1200FD00 + motor_id;          // 上位3ビットは0、そのままモーターid
+            frame_vel_zero.is_extended = true;   // 29bit 
+            frame_vel_zero.dlc = 8;               // データ長は 8 固定
+
+
+
+            frame_vel_zero.data[0] = 0x0A; //下位bit
+            frame_vel_zero.data[1] = 0x70; //上位bit
+            for (int i = 2; i < 8; i++) {
+                frame_vel_zero.data[i] = 0x00; //速度を０に
+            }
+
+        pub_->publish(std::move(frame_vel_zero));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+        RCLCPP_INFO(this->get_logger(), "Motor %d: Sent Stop Command", motor_id);
+        }
+    }
+
     ~WheelToCanNode(){
         RCLCPP_INFO(this->get_logger(), "Stopping all motors");
-        stop_motors(); //モーターを止める
     }
 
 
@@ -124,42 +154,6 @@ private:
         }
     }
 
-    void stop_motors(){
-        for (int motor_id = 1; motor_id <= 4; motor_id++) {
-            can_msgs::msg::Frame frame_vel_zero;
-            frame_vel_zero.id = 0x1200FD00 + motor_id;          // 上位3ビットは0、そのままモーターid
-            frame_vel_zero.is_extended = true;   // 29bit 
-            frame_vel_zero.dlc = 8;               // データ長は 8 固定
-
-
-
-            frame_vel_zero.data[0] = 0x0A; //下位bit
-            frame_vel_zero.data[1] = 0x70; //上位bit
-        for (int i = 2; i < 8; i++) {
-                frame_vel_zero.data[i] = 0x00; //速度を０に
-            }
-
-        pub_->publish(std::move(frame_vel_zero));
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-
-        can_msgs::msg::Frame frame_stop;
-        frame_stop.id = 0x0400FD00 + motor_id;
-        frame_stop.is_extended = true;
-        frame_stop.dlc = 8;
-
-        for (int i = 0; i < 8; i++) {
-                frame_stop.data[i] = 0x00; 
-            }
-
-        pub_->publish(std::move(frame_stop));
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-        RCLCPP_INFO(this->get_logger(), "Motor %d: Sent Stop Command", motor_id);
-        }
-    }
-
     void callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
     {
         //データのサイズが4未満なら警告
@@ -167,6 +161,8 @@ private:
             RCLCPP_WARN(this->get_logger(), "Wheel speed array size < 4");
             return;
         }
+
+        last_vel_received_time_ = this->now();
 
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
 
@@ -195,14 +191,36 @@ private:
             pub_->publish(std::move(frame));
         }
     }
+
+
+    void check_timeout(){
+        auto duration_since_last_rx = this->now() - last_vel_received_time_;
+
+        if (duration_since_last_rx > rclcpp::Duration(1.0s)) {
+            RCLCPP_WARN(this->get_logger(), "motor_vel timeout Stopping motors");
+            
+            stop_motors();
+            
+            last_vel_received_time_ = this->now();
+        }
+    }
+
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_;
     rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr pub_;
+    rclcpp::TimerBase::SharedPtr timeout_timer_;
+    rclcpp::Time last_vel_received_time_;
+
 };
+
+    
 
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<WheelToCanNode>());
+    auto node = std::make_shared<WheelToCanNode>();
+    rclcpp::spin(node);
+    node->stop_motors();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     rclcpp::shutdown();
     return 0;
 }
