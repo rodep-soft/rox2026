@@ -89,7 +89,7 @@ jobs:
             -m \
             'style: auto format'
 
-            git push
+            git push origin HEAD:${{ github.ref_name }}
           fi
 
       - name: Stop container
