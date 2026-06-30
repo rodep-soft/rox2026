@@ -11,4 +11,3 @@ belt_shooter_controller_node:
     medium_pwm: 220
     low_pwm: 200
     stop_pwm: 0
-    
