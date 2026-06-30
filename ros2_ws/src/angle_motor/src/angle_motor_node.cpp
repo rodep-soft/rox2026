@@ -1,6 +1,5 @@
 #include <memory>
-#include "angle_motor_node.hpp"
-
+#include <functional> //bind関数
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 
@@ -46,7 +45,8 @@ void RollerControllerNode::joyCallback(const sensor_msgs::msg::Joy::SharedPtr jo
 }
 
 // ボタン入力から次のモードを判定する関数（優先順位: Stop > Negative > Positive）
-RotationMode RollerControllerNode::determineRotationMode(const sensor_msgs::msg::Joy::SharedPtr joy_msg, RotationMode previous_mode) const {
+// Joyメッセージを変更しないから最初のconstはあんま意味ない？
+RotationMode RollerControllerNode::determineRotationMode(sensor_msgs::msg::Joy::SharedPtr joy_msg, RotationMode previous_mode) const {
     if (isButtonPressed(joy_msg, enable_button_)) {
         if (isButtonPressed(joy_msg, stop_button_)) {
             return RotationMode::Stop;
@@ -62,10 +62,9 @@ RotationMode RollerControllerNode::determineRotationMode(const sensor_msgs::msg:
 // モードに対応するPWM値を返す関数
 int16_t RollerControllerNode::getPwmValueFromMode(RotationMode mode) const {
     switch (mode) {
-        case RotationMode::Stop:           return stop_pwm_;
         case RotationMode::PositiveRotate: return positive_pwm_;
         case RotationMode::NegativeRotate: return negative_pwm_;
-        default:                           return 0;
+        default:                           return stop_pwm_p
     }
 }
 
