@@ -6,12 +6,12 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="mecanum_controller",
-                executable="mecanum_controller_node",
+                package='mecanum_controller',
+                executable='mecanum_controller_node',
             ),
             Node(
-                package="mecanum_controller",
-                executable="base_controller",
+                package='mecanum_controller',
+                executable='base_controller',
             ),
         ]
     )
