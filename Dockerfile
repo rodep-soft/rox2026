@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     nano \
     vim \
     curl \
-    ccache
+    ccache \
     #less \
     tree \
     tmux \
