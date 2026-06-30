@@ -18,6 +18,20 @@ add_executable(mecanum_controller_node
   src/main.cpp
   src/mecanum_controller_node.cpp
 )
+add_executable(base_controller
+  src/base_controller.cpp
+)
+
+target_include_directories(base_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(base_controller
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+)
 target_include_directories(mecanum_controller_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -28,12 +42,16 @@ ament_target_dependencies(mecanum_controller_node
   geometry_msgs
   std_msgs
 )
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 install(TARGETS
   mecanum_controller_node
+  base_controller
   DESTINATION lib/${PROJECT_NAME}
 )
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
