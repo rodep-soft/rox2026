@@ -15,14 +15,15 @@ public:
   WheelToCanNode()
   : Node("wheel_to_can_node")
   {
-    sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("motor_vel", 10,
+    sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+      "motor_vel", 10,
       std::bind(&WheelToCanNode::callback, this, std::placeholders::_1));
 
     pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN/can0/transmit", 10);
 
     RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
-        //少しだけ待ってから初期化を実行
+    //少しだけ待ってから初期化を実行
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     init_motors();     //モーターの有効化
@@ -38,13 +39,13 @@ private:
   void init_motors()
   {
     for (int motor_id = 1; motor_id <= 4; motor_id++) {
-            //4.1.9 Communication type 18: Single parameter write
+      //4.1.9 Communication type 18: Single parameter write
       can_msgs::msg::Frame frame_mode;
       frame_mode.id = 0x1200FD00 + motor_id;
       frame_mode.is_extended = true;       //29bit
       frame_mode.dlc = 8;       //データ長は 8 固定
 
-            // 運転モードを表すインデックス 0x7005 (run_mode) に 2 (Velocity mode) を書き込む
+      // 運転モードを表すインデックス 0x7005 (run_mode) に 2 (Velocity mode) を書き込む
       frame_mode.data[0] = 0x05;       // Index下位
       frame_mode.data[1] = 0x70;       // Index上位
       frame_mode.data[2] = 0x00;
@@ -58,7 +59,7 @@ private:
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-            //4.1.4Communication Type 3: Motor enabled to run
+      //4.1.4Communication Type 3: Motor enabled to run
       can_msgs::msg::Frame frame_enable;
       frame_enable.id = 0x0300FD00 + motor_id;
       frame_enable.is_extended = true;       // 29bit
@@ -72,7 +73,7 @@ private:
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-            //4.1.9 Communication type 18: 電流制御
+      //4.1.9 Communication type 18: 電流制御
       can_msgs::msg::Frame frame_cur_max;
       frame_cur_max.id = 0x1200FD00 + motor_id;
       frame_cur_max.is_extended = true;       // 29bit
@@ -98,7 +99,7 @@ private:
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-             //4.1.9 Communication type 18: 加速度設定
+      //4.1.9 Communication type 18: 加速度設定
       can_msgs::msg::Frame frame_acc_rad;
       frame_acc_rad.id = 0x1200FD00 + motor_id;
       frame_acc_rad.is_extended = true;       // 29bit
@@ -164,7 +165,7 @@ private:
 
   void callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
   {
-        //データのサイズが4未満なら警告
+    //データのサイズが4未満なら警告
     if (msg->data.size() < 4) {
       RCLCPP_WARN(this->get_logger(), "Wheel speed array size < 4");
       return;
@@ -186,7 +187,7 @@ private:
       frame.is_extended = true;           //29bit
       frame.dlc = 8;                      // データ長は 8 固定
 
-            //データを詰める
+      //データを詰める
       frame.data[0] = 0x0A;       //下位bit
       frame.data[1] = 0x70;       //上位bit
       frame.data[2] = 0;
