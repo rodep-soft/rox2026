@@ -4,7 +4,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
-#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/float32_multi_array.hpp"
 #include <array>
 
 class MecanumControllerNode : public rclcpp::Node
@@ -17,11 +17,10 @@ private:
   void get_parameters();
 
   void velocityCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
-  void motor_init();
   void motor_enable();
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr vel_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr motor_vel_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr motor_vel_pub_;
 
   enum WheelIndex
   {
