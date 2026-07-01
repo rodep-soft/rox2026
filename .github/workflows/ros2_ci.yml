@@ -68,7 +68,8 @@ jobs:
           bash -ec "
             cd /root/ros2_ws &&
             find src -name 'CMakeLists.txt' \
-            -exec cmake-format --in-place {} +"
+            -exec cmake-format --config-files .cmake-format.yaml \
+            --in-place {} +"
 
       - name: Verify format
         run: |
