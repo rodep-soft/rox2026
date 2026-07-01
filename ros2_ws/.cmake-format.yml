@@ -4,11 +4,6 @@ line_width: 120
 tab_size: 2
 use_tabchars: false
 
-# 基本1行維持
-max_pargs_hwrap: 999
-max_subgroups_hwrap: 999
-max_rows_cmdline: 999
-
 # 勝手な折り返し禁止
 dangle_parens: false
 dangle_align: child
