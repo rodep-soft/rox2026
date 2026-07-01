@@ -1,0 +1,18 @@
+line_width: 100
+tab_size: 2
+separate_ctrl_name_with_space: false
+separate_fn_name_with_space: false
+
+max_subgroups_hwrap: 1
+max_pargs_hwrap: 1
+max_rows_cmdline: 1
+
+dangle_parens: true
+dangle_align: prefix
+
+always_wrap:
+  - add_executable
+  - add_library
+  - target_include_directories
+  - target_link_libraries
+  - ament_target_dependencies
