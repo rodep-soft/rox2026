@@ -1,5 +1,5 @@
-name: ros2 build and test
-# This workflow builds and tests ROS 2 packages using Docker Compose.
+name: ros2 build
+# This workflow builds ROS 2 packages using Docker Compose.
 # It is triggered on push and pull request events. The workflow ensures that only one instance runs for a given branch or pull request, canceling any in-progress runs if a new one is triggered.
 on:
   push:
@@ -27,6 +27,7 @@ jobs:
           docker compose up -d --build
 
       - name: Install CI tools
+        if: github.event_name == 'pull_request'
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
@@ -37,6 +38,7 @@ jobs:
           pip3 install cmake-format"
 
       - name: Format C++
+        if: github.event_name == 'pull_request'
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
@@ -57,12 +59,14 @@ jobs:
               {} +"
                 
       - name: Format Python
+        if: github.event_name == 'pull_request'
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             black src"
 
       - name: Format CMake
+        if: github.event_name == 'pull_request'
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
@@ -89,6 +93,7 @@ jobs:
       #     colcon test-result --verbose"
 
       - name: Commit formatted code
+        if: github.event_name == 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -99,10 +104,11 @@ jobs:
           then
             git commit -m 'style: auto format'
 
-            BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-
-            git push --force-with-lease origin HEAD:"refs/heads/$BRANCH"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            
           fi
+      #BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+      #git push --force-with-lease origin HEAD:"refs/heads/$BRANCH"
 
       - name: Stop container
         if: always()
