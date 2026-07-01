@@ -68,12 +68,17 @@ jobs:
           bash -ec "
             cd /root/ros2_ws &&
             find src -name 'CMakeLists.txt' \
-            -exec cmake-format --config-files .cmake-format.yaml \
+            -exec cmake-format --config-files /workspace/.cmake-format.yaml \
             --in-place {} +"
 
       - name: Verify format
         run: |
           git diff
+          
+      - name: Debug
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          ls -la /
 
       - name: Debug CMake lint
         run: |
