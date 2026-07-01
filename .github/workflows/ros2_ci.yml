@@ -34,13 +34,6 @@ jobs:
           ros-humble-ament-uncrustify && \
           pip3 install black && \
           pip3 install cmake-format"
-      - name: Check workspace files
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          bash -ec '
-            pwd
-            ls -la /root || true
-          find / -name ".cmake-format.yml" 2>/dev/null'
 
       - name: Format C++
         run: |
