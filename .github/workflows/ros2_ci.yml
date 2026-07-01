@@ -71,7 +71,7 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             cd /root &&
-            find src -name 'CMakeLists.txt' \
+            find /ros2_ws/src -name 'CMakeLists.txt' \
             -exec cmake-format --config-files /workspace/.cmake-format.yaml \
             --in-place {} +"
 
