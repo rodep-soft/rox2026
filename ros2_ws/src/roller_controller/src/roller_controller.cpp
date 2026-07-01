@@ -15,7 +15,7 @@ public:
         this->declare_parameter<double>("intake_angle", 30.0);
         this->declare_parameter<double>("shoot_angle", 60.0);
         
-        this->declare_parameter<int>("enable_button", 6);   // L2
+        this->declare_parameter<int>("enable_button", 4);   // L2
         this->declare_parameter<int>("storage_button", 1);  // 〇
         this->declare_parameter<int>("intake_button", 0);   // ×
         this->declare_parameter<int>("shoot_button", 2);    // △
@@ -60,8 +60,9 @@ private:
 
         // --- ボタン判定 ---
         // L2ボタンが押されているか確認（押されていなければ何もしない＝前回の目標角度を維持）
-        if (msg->buttons[enable_btn_idx] == 1) 
+        if (msg->axes[enable_btn_idx] <= -0.95) 
         {
+            RCLCPP_INFO(this->get_logger(), "反応した");
             // 優先順位に従って判定 (初期位置 > 吸着位置 > 射出位置)
             if (msg->buttons[storage_btn_idx] == 1) 
             {
