@@ -33,7 +33,8 @@ target_link_libraries(
   -lm
   -lpthread)
 
-ament_target_dependencies(ros2socketcan rclcpp std_msgs can_msgs)
+ament_target_dependencies(
+  ros2socketcan rclcpp std_msgs can_msgs)
 
 install(TARGETS ros2socketcan DESTINATION lib/${PROJECT_NAME})
 
