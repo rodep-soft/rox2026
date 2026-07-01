@@ -40,7 +40,7 @@ jobs:
           bash -ec '
             pwd
             ls -la /workspace || true
-          find / -name ".cmake-format.yaml" 2>/dev/null
+          find / -name ".cmake-format.yaml" 2>/dev/null'
 
       - name: Format C++
         run: |
