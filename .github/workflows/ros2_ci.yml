@@ -34,7 +34,13 @@ jobs:
           ros-humble-ament-uncrustify && \
           pip3 install black && \
           pip3 install cmake-format"
-
+      - name: Check workspace files
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bash -ec '
+            pwd
+            ls -la /workspace || true
+          find / -name ".cmake-format.yaml" 2>/dev/null
 
       - name: Format C++
         run: |
@@ -67,7 +73,7 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             find src -name 'CMakeLists.txt' \
-            -exec cmake-format --config-files /workspace/.cmake-format.yaml \
+            -exec cmake-format --config-files .cmake-format.yaml \
             --in-place {} +"
 
       - name: Debug CMake lint
