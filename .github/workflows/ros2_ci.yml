@@ -61,25 +61,14 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             black src"
-      - name: Debug
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          ls -la /
 
       - name: Format CMake
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            cd /root &&
-            find /root/ros2_ws/src -name 'CMakeLists.txt' \
+            find src -name 'CMakeLists.txt' \
             -exec cmake-format --config-files /workspace/.cmake-format.yaml \
             --in-place {} +"
-
-      - name: Verify format
-        run: |
-          git diff
-
-
 
       - name: Debug CMake lint
         run: |
