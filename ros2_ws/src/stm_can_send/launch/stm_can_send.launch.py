@@ -39,7 +39,9 @@ def generate_launch_description():
                 parameters=[
                     config_file,
                     {
-                        "roller_enabled": ParameterValue(roller_enabled, value_type=bool),
+                        "roller_enabled": ParameterValue(
+                            roller_enabled, value_type=bool
+                        ),
                         "belt_enabled": ParameterValue(belt_enabled, value_type=bool),
                     },
                 ],

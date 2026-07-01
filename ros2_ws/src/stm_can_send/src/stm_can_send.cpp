@@ -120,7 +120,7 @@ void StmCanSendNode::OpenCanSocket()
   can_socket_ = socket(PF_CAN, SOCK_RAW, CAN_RAW);
   if (can_socket_ < 0) {
     throw std::runtime_error(
-      "failed to open CAN socket: " + std::string(std::strerror(errno)));
+            "failed to open CAN socket: " + std::string(std::strerror(errno)));
   }
 
   ifreq ifr {};
@@ -132,7 +132,7 @@ void StmCanSendNode::OpenCanSocket()
     const std::string error_message = std::strerror(errno);
     CloseCanSocket();
     throw std::runtime_error(
-      "failed to find CAN interface " + can_interface_ + ": " + error_message);
+            "failed to find CAN interface " + can_interface_ + ": " + error_message);
   }
 
   sockaddr_can address {};
@@ -144,7 +144,7 @@ void StmCanSendNode::OpenCanSocket()
     const std::string error_message = std::strerror(errno);
     CloseCanSocket();
     throw std::runtime_error(
-      "failed to bind CAN interface " + can_interface_ + ": " + error_message);
+            "failed to bind CAN interface " + can_interface_ + ": " + error_message);
   }
 }
 
