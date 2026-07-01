@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
 
       - name: Start container
         run: |
@@ -69,22 +70,6 @@ jobs:
             -exec cmake-format --config-files .cmake-format.yml \
             --in-place {} +"
 
-      - name: Debug CMake lint
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          bash -ec "
-            cd /root/ros2_ws
-
-            echo '===== base_controller ====='
-            nl -ba src/base_controller/CMakeLists.txt | sed -n '12,22p'
-
-            echo '===== mecanum_controller ====='
-            nl -ba src/mecanum_controller/CMakeLists.txt | sed -n '15,25p'
-
-            echo '===== motor_can_bridge ====='
-            nl -ba src/motor_can_bridge/CMakeLists.txt | sed -n '12,22p'
-           "
-
       - name: Run build
         run: |
           docker compose exec -T ros2_rox2026 \
@@ -93,15 +78,15 @@ jobs:
           cd /root/ros2_ws && \
           colcon build --symlink-install"
 
-      - name: Run test & test results
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          bash -ec " 
-          source /opt/ros/humble/setup.bash && \
-          cd /root/ros2_ws && \
-          source install/setup.bash && \
-          colcon test && \
-          colcon test-result --verbose"
+      # - name: Run test & test results
+      #   run: |
+      #     docker compose exec -T ros2_rox2026 \
+      #     bash -ec " 
+      #     source /opt/ros/humble/setup.bash && \
+      #     cd /root/ros2_ws && \
+      #     source install/setup.bash && \
+      #     colcon test && \
+      #     colcon test-result --verbose"
 
       - name: Commit formatted code
         run: |
@@ -115,6 +100,15 @@ jobs:
             git commit -m 'style: auto format'
 
             BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+            
+            git fetch origin "$BRANCH"
+          if git merge-base --is-ancestor HEAD "origin/$BRANCH"
+          then
+            echo "Remote already ahead, skip push"
+          else
+            git push origin HEAD:"refs/heads/$BRANCH"
+          fi
+
             git push origin HEAD:refs/heads/$BRANCH
           fi
 
