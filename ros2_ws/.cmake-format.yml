@@ -11,13 +11,17 @@ max_rows_cmdline: 999
 
 # 勝手な折り返し禁止
 dangle_parens: false
-dangle_align: prefix
+dangle_align: child
 
 # 縦揃え禁止
 enable_markup: false
 
 # 自動折り返し禁止
-always_wrap: []
+always_wrap: 
+  - target_include_directories
+  - target_compile_features
+  - target_link_libraries
+  - ament_target_dependencies
 
 # コマンド直後スペース禁止
 separate_ctrl_name_with_space: false
