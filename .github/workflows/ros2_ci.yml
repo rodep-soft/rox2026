@@ -73,7 +73,23 @@ jobs:
       - name: Verify format
         run: |
           git diff
-          
+
+      - name: Debug CMake lint
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bash -ec "
+            cd /root/ros2_ws
+
+            echo '===== base_controller ====='
+            nl -ba src/base_controller/CMakeLists.txt | sed -n '12,22p'
+
+            echo '===== mecanum_controller ====='
+            nl -ba src/mecanum_controller/CMakeLists.txt | sed -n '15,25p'
+
+            echo '===== motor_can_bridge ====='
+            nl -ba src/motor_can_bridge/CMakeLists.txt | sed -n '12,22p'
+           "
+
       - name: Run build
         run: |
           docker compose exec -T ros2_rox2026 \
