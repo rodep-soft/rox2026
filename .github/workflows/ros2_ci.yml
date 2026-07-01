@@ -39,8 +39,8 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec '
             pwd
-            ls -la /workspace || true
-          find / -name ".cmake-format.yaml" 2>/dev/null'
+            ls -la /root || true
+          find / -name ".cmake-format.yml" 2>/dev/null'
 
       - name: Format C++
         run: |
@@ -73,7 +73,7 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             find src -name 'CMakeLists.txt' \
-            -exec cmake-format --config-files .cmake-format.yaml \
+            -exec cmake-format --config-files .cmake-format.yml \
             --in-place {} +"
 
       - name: Debug CMake lint
