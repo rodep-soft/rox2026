@@ -1,16 +1,10 @@
 stm_can_send_node:
   ros__parameters:
     can_interface: "can0"
+    can_id: 0x201
 
-    roller:
-      enabled: true
-      topic: "/roller/can_frame"
-      can_id: 0x201
-      override_can_id: true
+    roller_enabled: true
+    roller_topic: "/roller/can_frame"
 
-    belt:
-      enable: true
-      topic: "/belt/can_frame"
-      can_id: 0x202
-      override_can_id: true
-      
+    belt_enabled: true
+    belt_topic: "/belt/can_frame"
