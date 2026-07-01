@@ -61,7 +61,11 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             black src"
-
+      - name: Debug
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          ls -la /
+          
       - name: Format CMake
         run: |
           docker compose exec -T ros2_rox2026 \
@@ -74,11 +78,8 @@ jobs:
       - name: Verify format
         run: |
           git diff
-          
-      - name: Debug
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          ls -la /
+
+
 
       - name: Debug CMake lint
         run: |
