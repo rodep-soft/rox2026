@@ -12,24 +12,15 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 add_executable(base_controller src/base_controller.cpp)
-target_include_directories(base_controller PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(base_controller
-  rclcpp
-  sensor_msgs
-  geometry_msgs
-)
-
-install(TARGETS
+target_include_directories(
   base_controller
-  DESTINATION lib/${PROJECT_NAME}
-)
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(
+  base_controller rclcpp sensor_msgs geometry_msgs)
 
-install(DIRECTORY
-  config
-  DESTINATION share/${PROJECT_NAME}
-)
+install(TARGETS base_controller DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
