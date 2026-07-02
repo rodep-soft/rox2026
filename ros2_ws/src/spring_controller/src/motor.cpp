@@ -16,27 +16,24 @@ class SprMot : public rclcpp::Node
         this->create_subscription<std_msgs::msg::UInt8>(
             "/spring_cmd",
             10,
-            std::bind(&SprMot::spring_callback,this,std::placeholders::_1);
-        )
+            std::bind(&SprMot::spring_callback,this,std::placeholders::_1));
         
         limit_sub_ = 
         this -> create_subscription<std_msgs::msg::UInt8MultiArray>(
             "/limit_sw",
             10,
-            std::bind(&SprMot::limit_callback,this,std::placeholders::_1);
-        )
+            std::bind(&SprMot::limit_callback,this,std::placeholders::_1));
 
         spe_pub_ = 
         this->create_publisher<std_msgs::msg::Float32>(
             "/edulate_speed",
             10
-        );
+            );
 
         timer_ = 
         this -> create_wall_timer(
-            std::chrono::milliseconds(20);
-            std::bind(&SprMot::timer_callback,this)
-        );
+            std::chrono::milliseconds(20),
+            std::bind(&SprMot::timer_callback,this));
     }
 
     private:
@@ -53,7 +50,7 @@ class SprMot : public rclcpp::Node
     int fire_count_ = 0; //発射中にどれぐらい時間がたったか
     void spring_callback(const std_msgs::msg::UInt8::SharedPtr msg)
     {
-        if(msg -> masage == 1){
+        if(msg -> data == 1){
             fire_request_ = true;
         }
     }
@@ -99,10 +96,10 @@ class SprMot : public rclcpp::Node
         break;
     }
 
-    speed_pub_ -> publish(speed);
-}
+    spe_pub_ -> publish(speed);
+};
 rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr spr_sub_;
-rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::ShraedPtr limit_sub_;
+rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_sub_;
 
 rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spe_pub_;
 
