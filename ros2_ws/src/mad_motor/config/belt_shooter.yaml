@@ -1,0 +1,14 @@
+belt_shooter_controller_node:
+  ros__parameters:
+    #ボタン番号
+    enable_button: 6
+    
+    high_button: 2
+    medium_button: 1
+    low_button: 0
+    stop_button: 3
+    #pwmの値
+    high_pwm: 255
+    medium_pwm: 220
+    low_pwm: 200
+    stop_pwm: 0
