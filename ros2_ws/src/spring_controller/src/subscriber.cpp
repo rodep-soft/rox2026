@@ -26,7 +26,7 @@ class JoySub : public rclcpp::Node
     void topic_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     {
         std_msgs::msg::UInt8 command;
-        if(msg -> botton[6] == 1 && msg -> botton[5] == 1)
+        if(msg -> buttons[6] == 1 && msg -> buttons[5] == 1)
         {
             command.data = 1;
         }
@@ -43,7 +43,7 @@ class JoySub : public rclcpp::Node
 
 };
 
-int main(int argc,char * argv){
+int main(int argc,char * argv[]){
     rclcpp::init(argc,argv);
 
     rclcpp::spin(std::make_shared<JoySub>());
