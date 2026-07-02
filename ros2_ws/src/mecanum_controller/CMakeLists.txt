@@ -14,18 +14,17 @@ find_package(std_msgs REQUIRED)
 
 include_directories(include)
 
-add_executable(mecanum_controller_node src/main.cpp
-  src/mecanum_controller_node.cpp)
+add_executable(mecanum_controller_node src/main.cpp src/mecanum_controller_node.cpp)
 
 add_executable(base_controller_node src/base_controller.cpp)
 
 target_include_directories(
   mecanum_controller_node
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(mecanum_controller_node rclcpp sensor_msgs
-                          geometry_msgs std_msgs)
-ament_target_dependencies(base_controller_node rclcpp sensor_msgs geometry_msgs)
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(
+  mecanum_controller_node rclcpp sensor_msgs geometry_msgs std_msgs)
+ament_target_dependencies(
+  base_controller_node rclcpp sensor_msgs geometry_msgs)
 install(TARGETS mecanum_controller_node DESTINATION lib/${PROJECT_NAME})
 
 install(TARGETS base_controller_node DESTINATION lib/${PROJECT_NAME})
