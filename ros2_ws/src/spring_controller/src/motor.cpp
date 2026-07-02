@@ -26,7 +26,7 @@ class SprMot : public rclcpp::Node
 
         spe_pub_ = 
         this->create_publisher<std_msgs::msg::Float32>(
-            "/edulate_speed",
+            "/edulite_speed",
             10
             );
 
@@ -39,8 +39,7 @@ class SprMot : public rclcpp::Node
     private:
     enum State{
         LOAD, //装填中
-        FIRE, //発射中
-        STOP  //停止
+        FIRE //発射中
     };
 
     State state_ = LOAD; //state_→状態を表す
