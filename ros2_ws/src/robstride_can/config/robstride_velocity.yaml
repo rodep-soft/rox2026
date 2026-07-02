@@ -1,0 +1,15 @@
+robstride_velocity_node:
+  ros__parameters:
+    can_interface: "can0"        # RDKでRobstrideにつながっているCAN interface
+    motor_id: 0x7f               # Robstride側に設定されているmotor CAN ID
+    host_id: 0xfd                # Robstrideからのfeedback frameを受けるhost ID
+    joint_name: "el05_joint"     # /joint_statesに出すjoint名
+    current_limit_a: 1.0         # velocity modeで使う電流制限[A]
+    auto_enable: false           # 起動時にstop -> velocity mode設定 -> enableを送る
+    stop_on_shutdown: true       # node終了時にstop commandを送る
+    position_min_rad: -12.57     # feedback位置変換の下限[rad]
+    position_max_rad: 12.57      # feedback位置変換の上限[rad]
+    velocity_min_rad_s: -50.0    # feedback速度変換の下限[rad/s]
+    velocity_max_rad_s: 50.0     # feedback速度変換の上限[rad/s]
+    torque_min_nm: -6.0          # feedbackトルク変換の下限[Nm]
+    torque_max_nm: 6.0           # feedbackトルク変換の上限[Nm]
