@@ -18,6 +18,7 @@ private:
   {
     std::string name;
     std::string topic;
+    bool enabled;
     uint8_t received_index;
     uint8_t data_offset;
   };
