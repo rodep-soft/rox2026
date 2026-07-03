@@ -32,7 +32,7 @@ void RollerControllerNode::joyCallback(const sensor_msgs::msg::Joy::SharedPtr jo
 
   // 1. 判定ロジックの呼び出し (SharedPtrではなく実体の参照を渡す。引数から前回状態を削除)
   current_command_.mode = determineRotationMode(*joy_msg);
-  
+
   // 2. モードからPWM値を計算
   current_command_.pwm_value = getPwmValueFromMode(current_command_.mode);
 
@@ -44,14 +44,15 @@ void RollerControllerNode::joyCallback(const sensor_msgs::msg::Joy::SharedPtr jo
 
 // ボタン入力から次のモードを判定する関数（優先順位: Stop > Negative > Positive）
 // enableが押されていない場合は安全のため一律Stopを返す
-RotationMode RollerControllerNode::determineRotationMode(const sensor_msgs::msg::Joy &joy_msg) const
+RotationMode RollerControllerNode::determineRotationMode(const sensor_msgs::msg::Joy & joy_msg)
+const
 {
 
   // 【指摘対応】早期リターンにより、Stop > Negative > Positive の優先順位をロジカルに保証
   if (isButtonPressed(joy_msg, stop_button_)) {
     return RotationMode::Stop;
   }
-  
+
   if (isButtonPressed(joy_msg, negative_button_)) {
     return RotationMode::NegativeRotate;
   }
@@ -75,7 +76,9 @@ int16_t RollerControllerNode::getPwmValueFromMode(RotationMode mode) const
 }
 
 // 安全にボタン状態をチェックする関数 (SharedPtrではなく参照を受けるように変更)
-bool RollerControllerNode::isButtonPressed(const sensor_msgs::msg::Joy &joy_msg, int button_index) const
+bool RollerControllerNode::isButtonPressed(
+  const sensor_msgs::msg::Joy & joy_msg,
+  int button_index) const
 {
   // 【指摘対応】範囲チェックはここだけで完全に保証する
   if (button_index < 0 || static_cast<size_t>(button_index) >= joy_msg.buttons.size()) {
