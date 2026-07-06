@@ -71,7 +71,9 @@ void MotorCanCommandNode::DeclareParameters()
   // launch/configから上書きできる値をここで宣言する。
   this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
-  this->declare_parameter<int>("can_id", static_cast<int>(DefaultCanIdForNodeName(this->get_name())));
+  this->declare_parameter<int>(
+    "can_id",
+    static_cast<int>(DefaultCanIdForNodeName(this->get_name())));
   this->declare_parameter<bool>("is_extended", false);
   this->declare_parameter<int>("min_pwm", -255);
   this->declare_parameter<int>("max_pwm", 255);

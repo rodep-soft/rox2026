@@ -89,7 +89,9 @@ void MotorCanPackerNode::SetupRosInterfaces()
   }
 
   if (subscriptions_.empty()) {
-    RCLCPP_WARN(this->get_logger(), "All input channels are disabled. No CAN frames will be packed.");
+    RCLCPP_WARN(
+      this->get_logger(),
+      "All input channels are disabled. No CAN frames will be packed.");
   }
 }
 
