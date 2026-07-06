@@ -15,29 +15,36 @@ ROX2026用レポジトリ
 |---------|------|
 | mecanum_controller | 足回りのモーター速度の計算  |
 | wheel_to_can | 足回りeduliteのcanframe生成 |
+| roller_angle_controller | ベルト発射，ドリブル機構の動作決定 |
+| spring_launch_controller | ばね発射の動作決定 |
 | motor_can_bridge | stm32向けにMAD用のcan frame生成とroller/belt frameの集約 |
-| ros2socketcan_bridge | canframeからcanデータ生成と送受信 |
+| *ros2socketcan_bridge* | canframeからcanデータ生成と送受信 |
+| angle_motor_node | ドリブル機構動作? |
 
----
+*斜体は外部パッケージ
 
 ### Topic一覧
 
 | topic名 | 型 | publishing_node | subscribed_node |
 | --------|----|-----|-----|
-| /joy | sensor_msgs/msg/joy | joy_node | - |
-| /cmd_vel | geometory_msgs/msg/Twist | base_controller | mecanum_controller_node
+| /joy | sensor_msgs/msg/joy | joy_node | base_controller,angle_motor_node |
+| /cmd_vel | geometory_msgs/msg/Twist | base_controller | mecanum_controller_node |
 | /motor_vel | std_msgs/msg/Float32MultiArray | mecanum_controller_node | wheel_to_can_node |
-| /CAN/can0/transmit | can_msgs/msg/Frame | wheel_to_can_node, motor_can_packer_node | *ros2socketcan* |
+
+
 | /mad_motor/pwm_value | - | - | - |
-| /can_tx | can_msgs/msg/Frame | motor_can_command_node | - |
 | /roller/can_frame | can_msgs/msg/Frame | roller_controller_node | motor_can_packer_node |
 | /belt/can_frame | can_msgs/msg/Frame | belt_controller_node | motor_can_packer_node |
+| /can_tx | can_msgs/msg/Frame | motor_can_command_node | - |
+| /CAN/can0/transmit | can_msgs/msg/Frame | wheel_to_can_node, motor_can_packer_node | *ros2socketcan* |
+| /CAN/can0/receive | can_msgs/msg/Frame | *ros2socketcan* | - |
+| /mabuchi555/pwm_value | std_msgs/msg/Int16 | roller_controller_node | - |
+|
+
 
 *斜体は外部パッケージのノード
 
 詳細： `docs/topic.md`
-
----
 
 ### コントローラボタン配置
 
@@ -49,7 +56,7 @@ ROX2026用レポジトリ
 | R1 | ばね投射の発射キー |
 | △ | ベルト投射の発射キー |
 | 〇 | - |
-| ✕ | - |
+| ✕ | 遠隔非常停止 |
 
 ## stm32f303k8
 
