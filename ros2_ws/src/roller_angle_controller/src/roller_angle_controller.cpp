@@ -41,7 +41,7 @@ public:
       10,
       std::bind(&RollerPositionController::Joycallback, this, std::placeholders::_1)
     );
-  
+
     // 4. 起動時の初期位置をPublishする
     auto initial_msg = std_msgs::msg::Float64();
     initial_msg.data = current_target_angle_;
@@ -56,9 +56,9 @@ private:
   {
     // 【修正】境界チェック：0未満（マイナス）の異常値も確実にはじく安全対策を追加
     if (enable_btn_idx_ < 0 || static_cast<size_t>(enable_btn_idx_) >= msg->buttons.size() ||
-        storage_btn_idx_ < 0 || static_cast<size_t>(storage_btn_idx_) >= msg->buttons.size() ||
-        intake_btn_idx_ < 0 || static_cast<size_t>(intake_btn_idx_) >= msg->buttons.size() ||
-        shoot_btn_idx_ < 0 || static_cast<size_t>(shoot_btn_idx_) >= msg->buttons.size())
+      storage_btn_idx_ < 0 || static_cast<size_t>(storage_btn_idx_) >= msg->buttons.size() ||
+      intake_btn_idx_ < 0 || static_cast<size_t>(intake_btn_idx_) >= msg->buttons.size() ||
+      shoot_btn_idx_ < 0 || static_cast<size_t>(shoot_btn_idx_) >= msg->buttons.size())
     {
       RCLCPP_WARN_THROTTLE(
         this->get_logger(),
@@ -89,7 +89,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr subscription_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_;
   double current_target_angle_;   // 前回の目標角度を保持する変数
-  
+
   int enable_btn_idx_;
   int storage_btn_idx_;
   int intake_btn_idx_;
