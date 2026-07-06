@@ -2,20 +2,20 @@ mabuchi_can_command_node:
   ros__parameters:
     pwm_topic: "/mabuchi555/pwm_value"  # 入力するPWM topic
     can_tx_topic: "/can_tx"             # 変換したCAN frameをpublishするtopic
-    can_id: 0x201                       # STMがmabuchi用として受け取るCAN ID
-    is_extended: false                  # falseなら標準ID、trueなら拡張ID
     min_pwm: -255                       # 送信するPWMの下限値
     max_pwm: 255                        # 送信するPWMの上限値
-    send_period_ms: 20                  # CAN frameの送信周期[ms]
-    timeout_ms: 500                     # PWM入力が途切れたら0を送るまでの時間[ms]
 
 mad_motor_can_command_node:
   ros__parameters:
-    pwm_topic: "/mad_motor/pwm_value"  # 入力するPWM topic
+    pwm_topic: "/mad_motor/rpm"  # 入力するPWM topic
     can_tx_topic: "/can_tx"            # 変換したCAN frameをpublishするtopic
-    can_id: 0x202                      # STMがmad motor用として受け取るCAN ID
-    is_extended: false                 # falseなら標準ID、trueなら拡張ID
-    min_pwm: -255                      # 送信するPWMの下限値
+    min_pwm: 0                     # 送信するPWMの下限値
     max_pwm: 255                       # 送信するPWMの上限値
-    send_period_ms: 20                 # CAN frameの送信周期[ms]
-    timeout_ms: 500                    # PWM入力が途切れたら0を送るまでの時間[ms]
+
+motor_can_packer_node:
+  ros__parameters:
+    can_tx_topic: "/CAN/can0/transmit" # ros2socketcan_bridgeへ渡すCAN送信topic
+    can_id: 0x201                      # STMが受け取るCAN ID
+    is_extended: false                 # falseなら標準ID、trueなら拡張ID
+    roller_topic: "/roller/can_frame"  # roller側のCAN frame入力topic
+    belt_topic: "/belt/can_frame"      # belt側のCAN frame入力topic
