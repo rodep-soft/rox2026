@@ -16,23 +16,14 @@ find_package(can_msgs REQUIRED)
 add_executable(roller_angle_controller_node src/roller_angle_controller.cpp)
 
 # 【修正】ROS 2の標準的な依存関係のリンク方法に変更しました
-ament_target_dependencies(roller_angle_controller_node
-  rclcpp
-  sensor_msgs
-  std_msgs
-  can_msgs
-)
+ament_target_dependencies(
+  roller_angle_controller_node rclcpp sensor_msgs std_msgs can_msgs)
 
 # インストール設定
-install(TARGETS roller_angle_controller_node
-  DESTINATION lib/${PROJECT_NAME})
+install(TARGETS roller_angle_controller_node DESTINATION lib/${PROJECT_NAME})
 
 # launchとconfigの両方をインストール
-install(DIRECTORY
-  launch
-  config
-  DESTINATION share/${PROJECT_NAME}
-)
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -9,28 +9,19 @@ find_package(ament_cmake REQUIRED)
 find_package(can_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 
-add_executable(stm_can_send_node
-  src/stm_can_send.cpp
-)
-target_include_directories(stm_can_send_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(stm_can_send_node PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(stm_can_send_node
-  can_msgs
-  rclcpp
-)
-
-install(TARGETS
+add_executable(stm_can_send_node src/stm_can_send.cpp)
+target_include_directories(
   stm_can_send_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_compile_features(
+  stm_can_send_node
+  PUBLIC c_std_99 cxx_std_17)
+ament_target_dependencies(
+  stm_can_send_node can_msgs rclcpp)
 
-install(DIRECTORY
-  config
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
+install(TARGETS stm_can_send_node DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
