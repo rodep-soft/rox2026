@@ -8,8 +8,8 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
     // 現在の時刻を取得（ミリ秒）
     uint32_t current_time = HAL_GetTick();
 
-    // 前回送信した時刻から20ms以上経過しているかチェック
-    if ((current_time - last_send_time) >= 20) {
+    // 前回送信した時刻から10ms以上経過しているかチェック
+    if ((current_time - last_send_time) >= 10) {
 
         // 送信時刻を更新
         last_send_time = current_time;
@@ -21,7 +21,7 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         uint8_t TxData[8] = {0};
         uint32_t TxMailbox;
 
-        TxHeader.StdId = 0x200;
+        TxHeader.StdId = 0x202;
         TxHeader.ExtId = 0;
         TxHeader.RTR = CAN_RTR_DATA;
         TxHeader.IDE = CAN_ID_STD;
