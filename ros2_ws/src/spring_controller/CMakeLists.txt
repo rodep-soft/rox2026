@@ -21,28 +21,28 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-add_executable(subscriber
-  src/subscriber.cpp
+add_executable(spring_cal_motor_pub
+  src/spring_cal_motor_pub.cpp
 )
 
-ament_target_dependencies(subscriber
+ament_target_dependencies(spring_cal_motor_pub
+  rclcpp
+  std_msgs
+)
+
+add_executable(spring_joy_sub
+  src/spring_joy_sub.cpp
+)
+
+ament_target_dependencies(spring_joy_sub
   rclcpp
   sensor_msgs
   std_msgs
 )
 
-add_executable(motor
-  src/motor.cpp
-)
-
-ament_target_dependencies(motor
-  rclcpp
-  std_msgs
-)
-
 install(TARGETS
-  subscriber
-  motor
+  spring_joy_sub
+  spring_cal_motor_pub
   DESTINATION lib/${PROJECT_NAME}
 )
 
