@@ -11,6 +11,36 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+
+
+add_executable(subscriber
+  src/subscriber.cpp
+)
+
+ament_target_dependencies(subscriber
+  rclcpp
+  sensor_msgs
+  std_msgs
+)
+
+add_executable(motor
+  src/motor.cpp
+)
+
+ament_target_dependencies(motor
+  rclcpp
+  std_msgs
+)
+
+install(TARGETS
+  subscriber
+  motor
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
