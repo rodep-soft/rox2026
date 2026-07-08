@@ -6,13 +6,13 @@
 
 namespace
 {
-constexpr uint8_t kRollerReceivedIndex = 0;
-constexpr uint8_t kBeltReceivedIndex = 1;
-constexpr uint8_t kOutputDlc = 4;
-constexpr uint8_t kBytesPerInput = 2;
-constexpr uint8_t kBeltDataOffset = 0;
-constexpr uint8_t kRollerDataOffset = 2;
-constexpr char kExpectedCanFrameTopicType[] = "can_msgs/msg/Frame";
+constexpr uint8_t RollerReceivedIndex = 0;
+constexpr uint8_t BeltReceivedIndex = 1;
+constexpr uint8_t OutputDlc = 4;
+constexpr uint8_t BytesPerInput = 2;
+constexpr uint8_t BeltDataOffset = 0;
+constexpr uint8_t RollerDataOffset = 2;
+constexpr char ExpectedCanFrameTopicType[] = "can_msgs/msg/Frame";
 }  // namespace
 
 MotorCanPackerNode::MotorCanPackerNode()
@@ -32,15 +32,15 @@ MotorCanPackerNode::MotorCanPackerNode()
 void MotorCanPackerNode::DeclareParameters()
 {
   this->declare_parameter<std::string>("can_tx_topic", "/CAN/can0/transmit");
-  this->declare_parameter<std::string>("can_tx_topic_type", kExpectedCanFrameTopicType);
+  this->declare_parameter<std::string>("can_tx_topic_type", ExpectedCanFrameTopicType);
   this->declare_parameter<int>("can_id", 0x201);
   this->declare_parameter<bool>("is_extended", false);
   this->declare_parameter<bool>("roller_enabled", true);
   this->declare_parameter<std::string>("roller_topic", "/roller/can_frame");
-  this->declare_parameter<std::string>("roller_topic_type", kExpectedCanFrameTopicType);
+  this->declare_parameter<std::string>("roller_topic_type", ExpectedCanFrameTopicType);
   this->declare_parameter<bool>("belt_enabled", true);
   this->declare_parameter<std::string>("belt_topic", "/belt/can_frame");
-  this->declare_parameter<std::string>("belt_topic_type", kExpectedCanFrameTopicType);
+  this->declare_parameter<std::string>("belt_topic_type", ExpectedCanFrameTopicType);
 }
 
 void MotorCanPackerNode::GetParameters()
@@ -54,8 +54,8 @@ void MotorCanPackerNode::GetParameters()
   roller.name = "roller";
   roller.topic = this->get_parameter("roller_topic").as_string();
   roller.enabled = this->get_parameter("roller_enabled").as_bool();
-  roller.received_index = kRollerReceivedIndex;
-  roller.data_offset = kRollerDataOffset;
+  roller.received_index = RollerReceivedIndex;
+  roller.data_offset = RollerDataOffset;
   channels_.push_back(roller);
   const auto roller_topic_type = this->get_parameter("roller_topic_type").as_string();
 
@@ -63,31 +63,31 @@ void MotorCanPackerNode::GetParameters()
   belt.name = "belt";
   belt.topic = this->get_parameter("belt_topic").as_string();
   belt.enabled = this->get_parameter("belt_enabled").as_bool();
-  belt.received_index = kBeltReceivedIndex;
-  belt.data_offset = kBeltDataOffset;
+  belt.received_index = BeltReceivedIndex;
+  belt.data_offset = BeltDataOffset;
   channels_.push_back(belt);
   const auto belt_topic_type = this->get_parameter("belt_topic_type").as_string();
 
-  if (can_tx_topic_type != kExpectedCanFrameTopicType) {
+  if (can_tx_topic_type != ExpectedCanFrameTopicType) {
     RCLCPP_WARN(
       this->get_logger(),
       "can_tx_topic_type is '%s', but this node publishes as '%s'.",
       can_tx_topic_type.c_str(),
-      kExpectedCanFrameTopicType);
+      ExpectedCanFrameTopicType);
   }
-  if (roller_topic_type != kExpectedCanFrameTopicType) {
+  if (roller_topic_type != ExpectedCanFrameTopicType) {
     RCLCPP_WARN(
       this->get_logger(),
       "roller_topic_type is '%s', but this node subscribes as '%s'.",
       roller_topic_type.c_str(),
-      kExpectedCanFrameTopicType);
+      ExpectedCanFrameTopicType);
   }
-  if (belt_topic_type != kExpectedCanFrameTopicType) {
+  if (belt_topic_type != ExpectedCanFrameTopicType) {
     RCLCPP_WARN(
       this->get_logger(),
       "belt_topic_type is '%s', but this node subscribes as '%s'.",
       belt_topic_type.c_str(),
-      kExpectedCanFrameTopicType);
+      ExpectedCanFrameTopicType);
   }
 }
 
@@ -128,17 +128,17 @@ void MotorCanPackerNode::FrameCallback(
   const can_msgs::msg::Frame::SharedPtr msg,
   const ChannelConfig & channel)
 {
-  if (msg->dlc < kBytesPerInput) {
+  if (msg->dlc < BytesPerInput) {
     RCLCPP_WARN(
       this->get_logger(),
       "Dropping frame from %s: dlc=%u is shorter than required bytes=%u",
       channel.topic.c_str(),
       msg->dlc,
-      kBytesPerInput);
+      BytesPerInput);
     return;
   }
 
-  for (uint8_t i = 0; i < kBytesPerInput; ++i) {
+  for (uint8_t i = 0; i < BytesPerInput; ++i) {
     frame_data_[channel.data_offset + i] = msg->data[i];
   }
   received_[channel.received_index] = true;
@@ -169,10 +169,10 @@ can_msgs::msg::Frame MotorCanPackerNode::CreatePackedFrame(const rclcpp::Time & 
   frame.is_rtr = false;
   frame.is_extended = is_extended_;
   frame.is_error = false;
-  frame.dlc = kOutputDlc;
+  frame.dlc = OutputDlc;
   frame.data.fill(0);
 
-  for (uint8_t i = 0; i < kOutputDlc; ++i) {
+  for (uint8_t i = 0; i < OutputDlc; ++i) {
     frame.data[i] = frame_data_[i];
   }
 

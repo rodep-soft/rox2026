@@ -19,9 +19,9 @@
 
 namespace
 {
-constexpr uint8_t kCanDataSize = 8;
-constexpr char kExpectedPwmTopicType[] = "std_msgs/msg/Int16";
-constexpr char kExpectedCanTxTopicType[] = "can_msgs/msg/Frame";
+constexpr uint8_t CanDataSize = 8;
+constexpr char ExpectedPwmTopicType[] = "std_msgs/msg/Int16";
+constexpr char ExpectedCanTxTopicType[] = "can_msgs/msg/Frame";
 
 uint32_t DefaultCanIdForNodeName(const std::string & node_name)
 {
@@ -73,9 +73,9 @@ void MotorCanCommandNode::DeclareParameters()
 {
   // launch/configから上書きできる値をここで宣言する。
   this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
-  this->declare_parameter<std::string>("pwm_topic_type", kExpectedPwmTopicType);
+  this->declare_parameter<std::string>("pwm_topic_type", ExpectedPwmTopicType);
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
-  this->declare_parameter<std::string>("can_tx_topic_type", kExpectedCanTxTopicType);
+  this->declare_parameter<std::string>("can_tx_topic_type", ExpectedCanTxTopicType);
   this->declare_parameter<int>(
     "can_id",
     static_cast<int>(DefaultCanIdForNodeName(this->get_name())));
@@ -112,19 +112,19 @@ void MotorCanCommandNode::GetParameters()
     std::swap(min_pwm_, max_pwm_);
   }
 
-  if (pwm_topic_type != kExpectedPwmTopicType) {
+  if (pwm_topic_type != ExpectedPwmTopicType) {
     RCLCPP_WARN(
       this->get_logger(),
       "pwm_topic_type is '%s', but this node subscribes as '%s'.",
       pwm_topic_type.c_str(),
-      kExpectedPwmTopicType);
+      ExpectedPwmTopicType);
   }
-  if (can_tx_topic_type != kExpectedCanTxTopicType) {
+  if (can_tx_topic_type != ExpectedCanTxTopicType) {
     RCLCPP_WARN(
       this->get_logger(),
       "can_tx_topic_type is '%s', but this node publishes as '%s'.",
       can_tx_topic_type.c_str(),
-      kExpectedCanTxTopicType);
+      ExpectedCanTxTopicType);
   }
 }
 
@@ -172,7 +172,7 @@ can_msgs::msg::Frame MotorCanCommandNode::CreateCanFrame(
   frame.is_error = false;
 
   // STM側の受信仕様に合わせて8byte固定で送る。
-  frame.dlc = kCanDataSize;
+  frame.dlc = CanDataSize;
 
   frame.data.fill(0);
   // STM側ではint16のPWMをlittle-endianとして読む想定。
