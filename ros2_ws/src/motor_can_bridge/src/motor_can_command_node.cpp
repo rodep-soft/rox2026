@@ -20,6 +20,8 @@
 namespace
 {
 constexpr uint8_t kCanDataSize = 8;
+constexpr char kExpectedPwmTopicType[] = "std_msgs/msg/Int16";
+constexpr char kExpectedCanTxTopicType[] = "can_msgs/msg/Frame";
 
 uint32_t DefaultCanIdForNodeName(const std::string & node_name)
 {
@@ -70,7 +72,9 @@ void MotorCanCommandNode::DeclareParameters()
 {
   // launch/configから上書きできる値をここで宣言する。
   this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
+  this->declare_parameter<std::string>("pwm_topic_type", kExpectedPwmTopicType);
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");
+  this->declare_parameter<std::string>("can_tx_topic_type", kExpectedCanTxTopicType);
   this->declare_parameter<int>(
     "can_id",
     static_cast<int>(DefaultCanIdForNodeName(this->get_name())));
@@ -86,6 +90,8 @@ void MotorCanCommandNode::GetParameters()
   // configで指定されたtopic名やCAN IDを読み込む。
   pwm_topic_ = this->get_parameter("pwm_topic").as_string();
   can_tx_topic_ = this->get_parameter("can_tx_topic").as_string();
+  const auto pwm_topic_type = this->get_parameter("pwm_topic_type").as_string();
+  const auto can_tx_topic_type = this->get_parameter("can_tx_topic_type").as_string();
   can_id_ = static_cast<uint32_t>(this->get_parameter("can_id").as_int());
   is_extended_ = this->get_parameter("is_extended").as_bool();
   min_pwm_ = static_cast<int>(this->get_parameter("min_pwm").as_int());
@@ -103,6 +109,21 @@ void MotorCanCommandNode::GetParameters()
       this->get_logger(),
       "min_pwm is greater than max_pwm. Swapping values.");
     std::swap(min_pwm_, max_pwm_);
+  }
+
+  if (pwm_topic_type != kExpectedPwmTopicType) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "pwm_topic_type is '%s', but this node subscribes as '%s'.",
+      pwm_topic_type.c_str(),
+      kExpectedPwmTopicType);
+  }
+  if (can_tx_topic_type != kExpectedCanTxTopicType) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "can_tx_topic_type is '%s', but this node publishes as '%s'.",
+      can_tx_topic_type.c_str(),
+      kExpectedCanTxTopicType);
   }
 }
 

@@ -12,6 +12,7 @@ constexpr uint8_t kOutputDlc = 4;
 constexpr uint8_t kBytesPerInput = 2;
 constexpr uint8_t kBeltDataOffset = 0;
 constexpr uint8_t kRollerDataOffset = 2;
+constexpr char kExpectedCanFrameTopicType[] = "can_msgs/msg/Frame";
 }  // namespace
 
 MotorCanPackerNode::MotorCanPackerNode()
@@ -31,17 +32,21 @@ MotorCanPackerNode::MotorCanPackerNode()
 void MotorCanPackerNode::DeclareParameters()
 {
   this->declare_parameter<std::string>("can_tx_topic", "/CAN/can0/transmit");
+  this->declare_parameter<std::string>("can_tx_topic_type", kExpectedCanFrameTopicType);
   this->declare_parameter<int>("can_id", 0x201);
   this->declare_parameter<bool>("is_extended", false);
   this->declare_parameter<bool>("roller_enabled", true);
   this->declare_parameter<std::string>("roller_topic", "/roller/can_frame");
+  this->declare_parameter<std::string>("roller_topic_type", kExpectedCanFrameTopicType);
   this->declare_parameter<bool>("belt_enabled", true);
   this->declare_parameter<std::string>("belt_topic", "/belt/can_frame");
+  this->declare_parameter<std::string>("belt_topic_type", kExpectedCanFrameTopicType);
 }
 
 void MotorCanPackerNode::GetParameters()
 {
   can_tx_topic_ = this->get_parameter("can_tx_topic").as_string();
+  const auto can_tx_topic_type = this->get_parameter("can_tx_topic_type").as_string();
   can_id_ = static_cast<uint32_t>(this->get_parameter("can_id").as_int());
   is_extended_ = this->get_parameter("is_extended").as_bool();
 
@@ -52,6 +57,7 @@ void MotorCanPackerNode::GetParameters()
   roller.received_index = kRollerReceivedIndex;
   roller.data_offset = kRollerDataOffset;
   channels_.push_back(roller);
+  const auto roller_topic_type = this->get_parameter("roller_topic_type").as_string();
 
   ChannelConfig belt;
   belt.name = "belt";
@@ -60,6 +66,29 @@ void MotorCanPackerNode::GetParameters()
   belt.received_index = kBeltReceivedIndex;
   belt.data_offset = kBeltDataOffset;
   channels_.push_back(belt);
+  const auto belt_topic_type = this->get_parameter("belt_topic_type").as_string();
+
+  if (can_tx_topic_type != kExpectedCanFrameTopicType) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "can_tx_topic_type is '%s', but this node publishes as '%s'.",
+      can_tx_topic_type.c_str(),
+      kExpectedCanFrameTopicType);
+  }
+  if (roller_topic_type != kExpectedCanFrameTopicType) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "roller_topic_type is '%s', but this node subscribes as '%s'.",
+      roller_topic_type.c_str(),
+      kExpectedCanFrameTopicType);
+  }
+  if (belt_topic_type != kExpectedCanFrameTopicType) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "belt_topic_type is '%s', but this node subscribes as '%s'.",
+      belt_topic_type.c_str(),
+      kExpectedCanFrameTopicType);
+  }
 }
 
 void MotorCanPackerNode::SetupRosInterfaces()
