@@ -1,4 +1,4 @@
-mad_motor_node:
+belt_controller_node:
   ros__parameters:
     enable_button: 7
     stop_button: 4

@@ -6,22 +6,22 @@
 #include <sensor_msgs/msg/joy.hpp>
 #include <std_msgs/msg/int16.hpp>
 
-// MadMotorNode
+// BeltControllerNode
 //
 // /joy のボタン入力を受け取り、MADモータ用のPWM値を
-// /mad_motor/pwm_value に publish するノード。
+// /belt/rpm_value に publish するノード。
 //
 // 操作は誤入力を防ぐために enable_button + mode_button の同時押しで更新する。
 // 新しい更新ボタンの組み合わせが押されていない間は、
 // 前回決定した mode と pwm_value をそのまま publish し続ける。
 
 // Stop, それ以外のベルトの速度をmodeとして管理する。
-enum class MadMotorMode {Stop, Angle1High, Angle1Low, Angle2JHigh, Angle2Low};
+enum class BeltControllerMode {Stop, Angle1High, Angle1Low, Angle2JHigh, Angle2Low};
 
-class MadMotorNode : public rclcpp::Node
+class BeltControllerNode : public rclcpp::Node
 {
 public:
-  MadMotorNode();
+  BeltControllerNode();
 
 private:
   // /joyを受け取るためのsubscriberと、PWM値を出すためのpublisher。
@@ -39,7 +39,7 @@ private:
   bool IsButtonPressed(const sensor_msgs::msg::Joy::SharedPtr joy_msg, int button_index) const;
 
   // modeに対応するpwmパラメータを返す。MADモータは0~255に丸める。
-  int16_t GetPwmValueFromMode(MadMotorMode mode) const;
+  int16_t GetPwmValueFromMode(BeltControllerMode mode) const;
 
   // Joy messageのbuttons配列で使うindex。
   int enable_button_;
@@ -57,6 +57,6 @@ private:
   int square_pwm_;
 
   // 最後に有効だったコマンド。新しい更新入力がない時はこの値を継続する。
-  MadMotorMode current_mode_;
+  BeltControllerMode current_mode_;
   int16_t current_pwm_value_;
 };

@@ -56,6 +56,13 @@ def generate_launch_description():
             output="screen",
             parameters=[config_file],
         ),
+        Node(
+            package="mad_motor",
+            executable="belt_controller_node",
+            name="belt_controller_node",
+            output="screen",
+            parameters=[config_file],
+        ),
     ]
 
     launch_items.extend(

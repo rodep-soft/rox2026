@@ -54,7 +54,7 @@ public:
       "/joy", 10,
       std::bind(&BeltShooterController::joyCallback, this, std::placeholders::_1));
 
-    pwm_pub_ = create_publisher<std_msgs::msg::Int16>("/mad_motor/pwm_value", 10);
+    pwm_pub_ = create_publisher<std_msgs::msg::Int16>("/belt/rpm_value", 10);
 
     RCLCPP_INFO(get_logger(), "belt_shooter_controller_node_started");
 

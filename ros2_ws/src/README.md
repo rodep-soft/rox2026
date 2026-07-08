@@ -5,12 +5,12 @@
 ROS 2 の `node`、`topic`、`message`、`parameter`、`launch` の基本は [../README.md](../README.md) を参照。
 
 - `roller_controller_node`
-- `mad_motor_node`
+- `belt_controller_node`
 - `motor_can_bridge_node`
 - `motor_can_command_node`
 - `robstride_velocity_node`
 
-`roller_controller_node`、`mad_motor_node`、`motor_can_bridge_node` は STM 向けの PWM CAN bridge 系。
+`roller_controller_node`、`belt_controller_node`、`motor_can_bridge_node` は STM 向けの PWM CAN bridge 系。
 `robstride_velocity_node` は Robstride EduLite 05 向けで、SocketCAN へ直接 write する別系統の node。
 
 ## ノード間の流れ
@@ -22,7 +22,7 @@ flowchart LR
   joy["/joy<br/>sensor_msgs/msg/Joy"]
 
   roller["roller_controller_node<br/>roller_controller"]
-  mad["mad_motor_node<br/>mad_motor"]
+  mad["belt_controller_node<br/>mad_motor"]
   bridge["motor_can_bridge_node<br/>motor_can_bridge"]
   can_tx["/can_tx<br/>motor_can_bridge/msg/CanFrame"]
 
@@ -30,12 +30,12 @@ flowchart LR
   joy --> mad
 
   roller -->|"/mabuchi555/pwm_value<br/>std_msgs/msg/Int16"| bridge
-  mad -->|"/mad_motor/pwm_value<br/>std_msgs/msg/Int16"| bridge
+  mad -->|"/belt/rpm_value<br/>std_msgs/msg/Int16"| bridge
 
   bridge --> can_tx
 ```
 
-`roller_controller_node` と `mad_motor_node` は `/joy` を受け取り、それぞれ PWM 値を publish する。
+`roller_controller_node` と `belt_controller_node` は `/joy` を受け取り、それぞれ PWM 値を publish する。
 
 `motor_can_bridge_node` はその PWM 値を受け取り、CAN 送信用の `CanFrame` に詰め替えて `/can_tx` に publish する。
 
@@ -44,7 +44,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   mabuchi_pwm["/mabuchi555/pwm_value<br/>std_msgs/msg/Int16"]
-  mad_pwm["/mad_motor/pwm_value<br/>std_msgs/msg/Int16"]
+  mad_pwm["/belt/rpm_value<br/>std_msgs/msg/Int16"]
   mabuchi_cmd["mabuchi_can_command_node<br/>motor_can_command_node"]
   mad_cmd["mad_motor_can_command_node<br/>motor_can_command_node"]
   can_msgs_tx["/can_tx<br/>can_msgs/msg/Frame"]
@@ -106,7 +106,7 @@ Robstride の Private Protocol を使うため、STM 向け PWM bridge とは別
 
 `/joy` 自体を受信していない間は callback が呼ばれないため、このノードから新しい PWM は publish されない。
 
-## mad_motor_node
+## belt_controller_node
 
 ディレクトリ: `mad_motor`
 
@@ -118,7 +118,7 @@ MAD モータ用の PWM 指令を作るノード。
 
 ### Publish
 
-- `/mad_motor/pwm_value` (`std_msgs/msg/Int16`)
+- `/belt/rpm_value` (`std_msgs/msg/Int16`)
 
 ### 現在の動作
 
@@ -145,7 +145,7 @@ MAD モータ用の PWM 指令を作るノード。
 ### Subscribe
 
 - `/mabuchi555/pwm_value` (`std_msgs/msg/Int16`)
-- `/mad_motor/pwm_value` (`std_msgs/msg/Int16`)
+- `/belt/rpm_value` (`std_msgs/msg/Int16`)
 
 ### Publish
 
@@ -301,7 +301,7 @@ ros2 topic pub /robstride_velocity_node/velocity_command std_msgs/msg/Float64Mul
 ```mermaid
 flowchart LR
   joy_missing["/joy が来ない"]
-  controllers["roller_controller_node / mad_motor_node<br/>callback が呼ばれない"]
+  controllers["roller_controller_node / belt_controller_node<br/>callback が呼ばれない"]
   no_pwm["新しい PWM publish なし"]
   bridge_timeout["motor_can_bridge_node<br/>timeout_ms 超過"]
   can_zero["PWM 0 の CanFrame を publish"]
@@ -309,7 +309,7 @@ flowchart LR
   joy_missing --> controllers --> no_pwm --> bridge_timeout --> can_zero
 ```
 
-現在の実装では、`roller_controller_node` と `mad_motor_node` は `/joy` callback 内で publish する。
+現在の実装では、`roller_controller_node` と `belt_controller_node` は `/joy` callback 内で publish する。
 
 そのため `/joy` 自体が来ていない間は、これら 2 ノードから新しい PWM は publish されない。
 
