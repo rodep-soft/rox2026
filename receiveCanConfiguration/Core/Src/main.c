@@ -51,6 +51,7 @@ uint32_t debug_last_id = 0;       // 最後に受信したID
 uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
 uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
 uint32_t debug_rx_count = 0;
+uint32_t aa=0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -209,7 +210,7 @@ int main(void)
 
       // 6. PID周期を安定させるために10ms待機 (DT_SECと一致させること)
       HAL_Delay(10);
-
+aa++;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
