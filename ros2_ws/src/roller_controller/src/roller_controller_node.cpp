@@ -5,7 +5,7 @@
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/int16.hpp"
 
-#include "angle_motor/angle_motor_node.hpp"
+#include "roller_controller/roller_controller_node.hpp"
 
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
