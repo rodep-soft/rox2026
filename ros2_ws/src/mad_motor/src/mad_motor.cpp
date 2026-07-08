@@ -6,14 +6,11 @@
 
 
 class BeltShooterController : public rclcpp::Node
-
 {
 public:
-
   BeltShooterController()
 
   : Node("belt_shooter_controller_node"), last_pwm_(0)
-
   {
 
     //パラメーター定義
@@ -44,7 +41,6 @@ public:
     stop_pwm_ = get_parameter("stop_pwm").as_int();
 
 
-
     //範囲指定
 
     high_pwm_ = std::clamp(high_pwm_, 0, 255);
@@ -53,7 +49,10 @@ public:
     stop_pwm_ = std::clamp(stop_pwm_, 0, 255);
 
 
-    joy_sub_ =  create_subscription<sensor_msgs::msg::Joy>("/joy", 10,std::bind(&BeltShooterController::joyCallback, this, std::placeholders::_1));
+    joy_sub_ =
+      create_subscription<sensor_msgs::msg::Joy>(
+      "/joy", 10,
+      std::bind(&BeltShooterController::joyCallback, this, std::placeholders::_1));
 
     pwm_pub_ = create_publisher<std_msgs::msg::Int16>("/mad_motor/pwm_value", 10);
 
@@ -61,35 +60,31 @@ public:
 
   }
 
-
 private:
-
   void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
-    const auto & b= msg->buttons;
+    const auto & b = msg->buttons;
 
     if (!isValid(b, enable_button_) || b[enable_button_] == 0) {
 
-    std_msgs::msg::Int16 out;
+      std_msgs::msg::Int16 out;
 
-    out.data = last_pwm_;
+      out.data = last_pwm_;
 
-    pwm_pub_->publish(out);
+      pwm_pub_->publish(out);
 
-    return;
+      return;
 
     }
 
-   
 
     bool is_stop = isValid(b, stop_button_) && b[stop_button_];
 
-    bool is_low  = isValid(b, low_button_) && b[low_button_];
+    bool is_low = isValid(b, low_button_) && b[low_button_];
 
     bool is_medium = isValid(b, medium_button_) && b[medium_button_];
 
-    bool is_high   = isValid(b, high_button_) && b[high_button_];
-
+    bool is_high = isValid(b, high_button_) && b[high_button_];
 
 
     int pwm = computePwm(is_stop, is_low, is_medium, is_high);
@@ -109,7 +104,6 @@ private:
   }
 
   int computePwm(bool is_stop, bool is_low, bool is_medium, bool is_high)
-
   {
     int pwm = last_pwm_;
 
@@ -129,7 +123,6 @@ private:
   }
 
   bool isValid(const std::vector<int> & buttons, int idx) const
-
   {
     return idx >= 0 && idx < static_cast<int>(buttons.size());
   }
@@ -149,14 +142,13 @@ private:
   int high_pwm_;
   int medium_pwm_;
   int low_pwm_;
-  int stop_pwm_; 
+  int stop_pwm_;
 
   int last_pwm_;
 
 };
 
 int main(int argc, char * argv[])
-
 {
 
   rclcpp::init(argc, argv);
