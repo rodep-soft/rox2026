@@ -52,3 +52,13 @@ belt_controller_node:
     cross_pwm: 85
     triangle_pwm: 170
     square_pwm: 255
+
+roller_controller_node:
+  ros__parameters:
+    enable_button: 6
+    positive_button: 2
+    negative_button: 0
+    stop_button: 1
+    positive_pwm: 200
+    negative_pwm: -200
+    stop_pwm: 0

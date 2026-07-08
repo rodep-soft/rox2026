@@ -34,7 +34,8 @@ private:
   void declareParameters();
   void getParameters();
 
-  bool isButtonPressed(const sensor_msgs::msg::Joy::SharedPtr joy_msg, int button_index) const;
+  RotationMode determineRotationMode(const sensor_msgs::msg::Joy & joy_msg);
+  bool isButtonPressed(const sensor_msgs::msg::Joy & joy_msg, int button_index);
   int16_t getPwmValueFromMode(RotationMode mode) const;
 
   // ボタン・PWM関連変数のタイポをすべて修正

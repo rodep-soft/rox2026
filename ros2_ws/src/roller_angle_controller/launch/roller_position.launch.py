@@ -63,6 +63,13 @@ def generate_launch_description():
             output="screen",
             parameters=[config_file],
         ),
+        Node(
+            package="angle_motor",
+            executable="roller_controller_node",
+            name="roller_controller_node",
+            output="screen",
+            parameters=[config_file],
+        ),
     ]
 
     launch_items.extend(
