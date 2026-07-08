@@ -153,7 +153,8 @@ void RobstrideCanNode::GetParameters()
     std::swap(position_min_rad_, position_max_rad_);
   }
   if (velocity_min_rad_s_ > velocity_max_rad_s_) {
-    RCLCPP_WARN(this->get_logger(), "velocity_min_rad_s is greater than velocity_max_rad_s. Swapping.");
+    RCLCPP_WARN(
+      this->get_logger(), "velocity_min_rad_s is greater than velocity_max_rad_s. Swapping.");
     std::swap(velocity_min_rad_s_, velocity_max_rad_s_);
   }
 }
@@ -321,7 +322,7 @@ namespace
 // (rclcpp標準のsignal handlerは受信後すぐcontextを無効化してしまい、その後のpublishが
 //  失敗するため。contextが有効なうちに停止フレームを送りたい。)
 std::atomic<bool> g_stop_requested{false};
-void HandleSignal(int) { g_stop_requested = true; }
+void HandleSignal(int) {g_stop_requested = true;}
 }  // namespace
 
 int main(int argc, char * argv[])
