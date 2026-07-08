@@ -1,18 +1,20 @@
-mabuchi_can_command_node:
+roller_can_command_node:
   ros__parameters:
-    pwm_topic: "/mabuchi555/pwm_value"
+    pwm_topic: "/roller/rpm_value"
     pwm_topic_type: "std_msgs/msg/Int16"
     can_tx_topic: "/roller/can_frame"
     can_tx_topic_type: "can_msgs/msg/Frame"
+    can_id: 0x201
     min_pwm: -255
     max_pwm: 255
 
-mad_motor_can_command_node:
+belt_can_command_node:
   ros__parameters:
-    pwm_topic: "/mad_motor/pwm_value"
+    pwm_topic: "/belt/rpm_value"
     pwm_topic_type: "std_msgs/msg/Int16"
     can_tx_topic: "/belt/can_frame"
     can_tx_topic_type: "can_msgs/msg/Frame"
+    can_id: 0x202
     min_pwm: 0
     max_pwm: 255
 
@@ -36,17 +38,3 @@ ros2socketcan:
 joy_node:
   ros__parameters:
     dev: "/dev/input/js0"
-
-mad_motor_node:
-  ros__parameters:
-    enable_button: 7
-    stop_button: 4
-    circle_button: 1
-    cross_button: 0
-    triangle_button: 2
-    square_button: 3
-    stop_pwm: 0
-    circle_pwm: 30
-    cross_pwm: 85
-    triangle_pwm: 170
-    square_pwm: 255

@@ -16,7 +16,7 @@ RollerControllerNode::RollerControllerNode()
   current_command_.mode = RotationMode::Stop;
   current_command_.pwm_value = stop_pwm_;
 
-  pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>("/mabuchi555/pwm_value", 10);
+  pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>("/roller/rpm_value", 10);
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
     "/joy", 10, std::bind(&RollerControllerNode::joyCallback, this, std::placeholders::_1));
 

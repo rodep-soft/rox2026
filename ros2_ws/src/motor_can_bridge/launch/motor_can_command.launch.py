@@ -6,8 +6,8 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 NODE_NAMES = [
-    "mabuchi_can_command_node",
-    "mad_motor_can_command_node",
+    "roller_can_command_node",
+    "belt_can_command_node",
 ]
 
 

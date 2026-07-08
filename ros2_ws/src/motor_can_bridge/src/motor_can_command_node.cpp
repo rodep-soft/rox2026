@@ -25,7 +25,8 @@ constexpr char kExpectedCanTxTopicType[] = "can_msgs/msg/Frame";
 
 uint32_t DefaultCanIdForNodeName(const std::string & node_name)
 {
-  if (node_name.find("mad_motor") != std::string::npos) {
+  if (node_name.find("mad_motor") != std::string::npos ||
+    node_name.find("belt") != std::string::npos) {
     return 0x202;
   }
 

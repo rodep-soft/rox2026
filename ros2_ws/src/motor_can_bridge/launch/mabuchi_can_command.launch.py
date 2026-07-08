@@ -5,7 +5,7 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
-NODE_NAME = "mabuchi_can_command_node"
+NODE_NAME = "roller_can_command_node"
 
 
 def create_motor_can_command_node(config_file):

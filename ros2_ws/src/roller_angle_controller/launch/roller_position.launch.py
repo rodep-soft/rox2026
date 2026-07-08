@@ -7,8 +7,8 @@ from launch_ros.substitutions import FindPackageShare
 
 
 MOTOR_CAN_COMMAND_NODE_NAMES = [
-    "mabuchi_can_command_node",
-    "mad_motor_can_command_node",
+    "roller_can_command_node",
+    "belt_can_command_node",
 ]
 
 
@@ -53,13 +53,6 @@ def generate_launch_description():
             package="joy",
             executable="joy_node",
             name="joy_node",
-            output="screen",
-            parameters=[config_file],
-        ),
-        Node(
-            package="mad_motor",
-            executable="mad_motor_node",
-            name="mad_motor_node",
             output="screen",
             parameters=[config_file],
         ),
