@@ -14,7 +14,9 @@
 //                 [Bit23-8 : Data Area 2(16bit、用途はTypeごとに異なる)]
 //                 [Bit7-0  : 宛先CAN ID(8bit)]
 //
-//   Type 3  (Motor enabled to run) : Data Area2=host_can_id, data[0]=0, 他0
+//   Type 3  (Motor enabled to run) : Data Area2=host_can_id, data全byte=0
+//   Type 4  (Motor stop)           : Data Area2=host_can_id, data全byte=0
+//                                    (Type3と対になる無効化コマンド。ノード終了時に送る)
 //   Type 18 (Single parameter write): Data Area2=host_can_id
 //     data[0-1]=パラメータindex(リトルエンディアン), data[2-3]=0,
 //     data[4-7]=値(uint8の場合はdata[4]のみ、floatの場合はリトルエンディアン4byte)
@@ -28,30 +30,37 @@
 //     0x7018 limit_cur   (float): 電流制限[A] (0~11)
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <thread>
 
 namespace
 {
-constexpr uint8_t kCommTypeEnable = 3;
-constexpr uint8_t kCommTypeParamWrite = 18;
+// Communication Type番号 (CAN IDのBit28-24に載せる値)
+constexpr uint8_t CommTypeEnable = 3;       // モーター有効化
+constexpr uint8_t CommTypeStop = 4;         // モーター停止(無効化)
+constexpr uint8_t CommTypeParamWrite = 18;  // 単一パラメータ書き込み
 
-constexpr uint16_t kIndexRunMode = 0x7005;
-constexpr uint16_t kIndexSpdRef = 0x700A;
-constexpr uint16_t kIndexLimitTorque = 0x700B;
-constexpr uint16_t kIndexLocRef = 0x7016;
-constexpr uint16_t kIndexLimitSpd = 0x7017;
-constexpr uint16_t kIndexLimitCur = 0x7018;
+// Type18で書き込む対象パラメータのindex (data[0-1]にリトルエンディアンで載せる値)
+constexpr uint16_t IndexRunMode = 0x7005;      // 動作モード (uint8)
+constexpr uint16_t IndexSpdRef = 0x700A;       // 目標角速度[rad/s] (float)
+constexpr uint16_t IndexLimitTorque = 0x700B;  // トルク制限[N・m] (float)
+constexpr uint16_t IndexLocRef = 0x7016;       // 目標角度[rad] (float)
+constexpr uint16_t IndexLimitSpd = 0x7017;     // CSP位置モード速度制限[rad/s] (float)
+constexpr uint16_t IndexLimitCur = 0x7018;     // 電流制限[A] (float)
 
-constexpr uint8_t kRunModePosition = 1;
-constexpr uint8_t kRunModeVelocity = 2;
+// run_mode(IndexRunMode)に書き込む値
+constexpr uint8_t RunModePosition = 1;  // PP位置モード
+constexpr uint8_t RunModeVelocity = 2;  // 速度モード
 }  // namespace
 
 RobstrideCanNode::RobstrideCanNode()
 : Node("robstride_can_node"),
-  control_mode_(ControlMode::kVelocity),
+  control_mode_(ControlMode::Velocity),
   command_target_(0.0)
 {
   DeclareParameters();
@@ -67,20 +76,21 @@ RobstrideCanNode::RobstrideCanNode()
     "control_mode=%s, command_topic=%s",
     can_tx_topic_.c_str(),
     motor_can_id_,
-    control_mode_ == ControlMode::kPosition ? "position" : "velocity",
+    control_mode_ == ControlMode::Position ? "position" : "velocity",
     command_topic_.c_str());
 
   // run_modeの書き込みはノード起動時に一度だけでよい（モーター側は設定を保持する）。
   // publisherが確実に有効になってから送るため、1回だけの遅延timerにまとめて送る。
   // timerのcallback内でそのtimer自身をcancelしても安全（実行中のcallbackは最後まで走る）。
+  // マニュアルの推奨順序に合わせ、パラメータ設定(run_mode/limit)を済ませてから最後に有効化する。
   startup_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(100),
     [this]() {
+      SendRunMode(control_mode_ == ControlMode::Position ? RunModePosition : RunModeVelocity);
+      SendStartupLimits();
       if (enable_on_startup_) {
         SendEnable();
       }
-      SendRunMode(control_mode_ == ControlMode::kPosition ? kRunModePosition : kRunModeVelocity);
-      SendStartupLimits();
       startup_timer_->cancel();
     });
 }
@@ -151,10 +161,10 @@ void RobstrideCanNode::GetParameters()
 RobstrideCanNode::ControlMode RobstrideCanNode::ParseControlMode(const std::string & value) const
 {
   if (value == "position") {
-    return ControlMode::kPosition;
+    return ControlMode::Position;
   }
   if (value == "velocity") {
-    return ControlMode::kVelocity;
+    return ControlMode::Velocity;
   }
 
   // 設定ミスで動き出すのを避けるため、不明な値はvelocity(かつ後述の通り目標値0)側に倒す。
@@ -162,7 +172,7 @@ RobstrideCanNode::ControlMode RobstrideCanNode::ParseControlMode(const std::stri
     this->get_logger(),
     "Unknown control_mode '%s'. Falling back to 'velocity'.",
     value.c_str());
-  return ControlMode::kVelocity;
+  return ControlMode::Velocity;
 }
 
 void RobstrideCanNode::SetupRosInterfaces()
@@ -180,18 +190,21 @@ void RobstrideCanNode::SetupRosInterfaces()
 
 void RobstrideCanNode::CommandCallback(const std_msgs::msg::Float32::SharedPtr msg)
 {
-  command_target_ = control_mode_ == ControlMode::kPosition
-    ? Clamp(msg->data, position_min_rad_, position_max_rad_)
-    : Clamp(msg->data, velocity_min_rad_s_, velocity_max_rad_s_);
+  // control_modeに応じて、指令値を対応する範囲([rad] or [rad/s])でクランプする。
+  if (control_mode_ == ControlMode::Position) {
+    command_target_ = Clamp(msg->data, position_min_rad_, position_max_rad_);
+  } else {
+    command_target_ = Clamp(msg->data, velocity_min_rad_s_, velocity_max_rad_s_);
+  }
   last_command_time_ = this->now();
 }
 
 void RobstrideCanNode::TimerCallback()
 {
-  if (control_mode_ == ControlMode::kPosition) {
+  if (control_mode_ == ControlMode::Position) {
     // position modeでは指令が途切れても、最後に受け取った目標角度を送り続ける
     // (loc_refはPP modeとして目標位置に居座るだけなので、これ自体は安全)。
-    SendFloatParam(kIndexLocRef, static_cast<float>(command_target_));
+    SendFloatParam(IndexLocRef, static_cast<float>(command_target_));
     return;
   }
 
@@ -203,36 +216,53 @@ void RobstrideCanNode::TimerCallback()
   // velocity modeは指令が途切れたまま最後の速度を送り続けると回転し続けて危険なため、
   // timeoutしたらspd_ref=0を送って安全に停止させる。
   const double effective_velocity = timed_out ? 0.0 : command_target_;
-  SendFloatParam(kIndexSpdRef, static_cast<float>(effective_velocity));
+  SendFloatParam(IndexSpdRef, static_cast<float>(effective_velocity));
 }
 
 void RobstrideCanNode::SendEnable()
 {
   std::array<uint8_t, 8> data {};
-  PublishFrame(kCommTypeEnable, host_can_id_, data);
+  PublishFrame(CommTypeEnable, host_can_id_, data);
+}
+
+void RobstrideCanNode::SendDisable()
+{
+  std::array<uint8_t, 8> data {};
+  PublishFrame(CommTypeStop, host_can_id_, data);
+}
+
+void RobstrideCanNode::SendStop()
+{
+  // velocity modeは回転指令が残ると危険なので、まず速度0を明示的に送ってから無効化する。
+  // position modeは無効化のみ(loc_refは保持されても無効化でトルクが切れる)。
+  if (control_mode_ == ControlMode::Velocity) {
+    SendFloatParam(IndexSpdRef, 0.0f);
+  }
+  SendDisable();
+  RCLCPP_INFO(this->get_logger(), "RobstrideCanNode stopping: sent motor stop frame.");
 }
 
 void RobstrideCanNode::SendRunMode(uint8_t run_mode)
 {
   std::array<uint8_t, 8> data {};
   // index(0x7005)をリトルエンディアンでdata[0-1]に配置。run_modeはuint8なのでdata[4]のみ使う。
-  data[0] = static_cast<uint8_t>(kIndexRunMode & 0xFF);
-  data[1] = static_cast<uint8_t>((kIndexRunMode >> 8) & 0xFF);
+  data[0] = static_cast<uint8_t>(IndexRunMode & 0xFF);
+  data[1] = static_cast<uint8_t>((IndexRunMode >> 8) & 0xFF);
   data[4] = run_mode;
-  PublishFrame(kCommTypeParamWrite, host_can_id_, data);
+  PublishFrame(CommTypeParamWrite, host_can_id_, data);
 }
 
 void RobstrideCanNode::SendStartupLimits()
 {
   // 負値(デフォルト)は「未指定」を意味し、そのレジスタへの書き込みをスキップする。
   if (limit_torque_ >= 0.0) {
-    SendFloatParam(kIndexLimitTorque, static_cast<float>(limit_torque_));
+    SendFloatParam(IndexLimitTorque, static_cast<float>(limit_torque_));
   }
   if (limit_cur_ >= 0.0) {
-    SendFloatParam(kIndexLimitCur, static_cast<float>(limit_cur_));
+    SendFloatParam(IndexLimitCur, static_cast<float>(limit_cur_));
   }
   if (limit_spd_ >= 0.0) {
-    SendFloatParam(kIndexLimitSpd, static_cast<float>(limit_spd_));
+    SendFloatParam(IndexLimitSpd, static_cast<float>(limit_spd_));
   }
 }
 
@@ -251,7 +281,7 @@ void RobstrideCanNode::SendFloatParam(uint16_t index, float value)
   data[6] = static_cast<uint8_t>((raw >> 16) & 0xFF);
   data[7] = static_cast<uint8_t>((raw >> 24) & 0xFF);
 
-  PublishFrame(kCommTypeParamWrite, host_can_id_, data);
+  PublishFrame(CommTypeParamWrite, host_can_id_, data);
 }
 
 void RobstrideCanNode::PublishFrame(
@@ -285,10 +315,38 @@ double RobstrideCanNode::Clamp(double value, double min_value, double max_value)
   return std::clamp(value, min_value, max_value);
 }
 
+namespace
+{
+// SIGINT/SIGTERMを自前で捕まえてフラグだけ立てる。実際の停止処理はmainループで行う。
+// (rclcpp標準のsignal handlerは受信後すぐcontextを無効化してしまい、その後のpublishが
+//  失敗するため。contextが有効なうちに停止フレームを送りたい。)
+std::atomic<bool> g_stop_requested{false};
+void HandleSignal(int) { g_stop_requested = true; }
+}  // namespace
+
 int main(int argc, char * argv[])
 {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<RobstrideCanNode>());
+  // shutdown_on_signal=falseでrclcpp標準のsignal-driven shutdownを止め、停止送信の
+  // タイミングを自分で制御する。
+  rclcpp::InitOptions init_options;
+  init_options.shutdown_on_signal = false;
+  rclcpp::init(argc, argv, init_options);
+
+  std::signal(SIGINT, HandleSignal);
+  std::signal(SIGTERM, HandleSignal);
+
+  auto node = std::make_shared<RobstrideCanNode>();
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+
+  while (rclcpp::ok() && !g_stop_requested) {
+    executor.spin_some(std::chrono::milliseconds(10));
+  }
+
+  // contextがまだ有効なこの時点で停止フレームを送る。DDSが実際に送出しきる猶予を少し取る。
+  node->SendStop();
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   rclcpp::shutdown();
   return 0;
 }
