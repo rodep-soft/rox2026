@@ -12,6 +12,9 @@ class SprMot : public rclcpp::Node
     SprMot()
     : Node ("spr_mot")
     {
+        this->declare_parameter("max_speed",20.0);
+        max_speed_ =
+            this->get_parameter("max_speed").as_double();
         spr_sub_ = 
         this->create_subscription<std_msgs::msg::UInt8>(
             "/spring_cmd",
@@ -43,9 +46,11 @@ class SprMot : public rclcpp::Node
     };
 
     State state_ = LOAD; //state_→状態を表す
+    double max_speed_;
     bool fire_request_ = false; //発射命令がtrueかfalseか
     bool limit_on_ = false; //リミットスイッチが押されているかどうか 
     //limit_on_がtrue　→　発射準備完了
+    
     int fire_count_ = 0; //発射中にどれぐらい時間がたったか
     void spring_callback(const std_msgs::msg::UInt8::SharedPtr msg)
     {
@@ -69,42 +74,46 @@ class SprMot : public rclcpp::Node
 
         switch(state_){
         case LOAD:
-        if(limit_on_){ //リミットスイッチが押されている
-            speed.data = 0.0;
+            if(limit_on_){ //リミットスイッチが押されている
+                speed.data = 0.0;
         
-        if(fire_request_){ //発射命令がある
-            fire_request_ = false;
-            fire_count_ = 0;
-            state_ = FIRE;
-        }}
+            if(fire_request_){ //発射命令がある
+                fire_request_ = false;
+                fire_count_ = 0;
+                state_ = FIRE;
+            }
+            }
         else{ //リミットスイッチが押されていない
-            speed.data = 20.0;
+            speed.data = max_speed_;
         }
 
         break;
 
         case FIRE:
-        speed.data = 20.0;
-        fire_count_ ++;
+            speed.data = max_speed_;
+            fire_count_ ++;
 
-        if(fire_count_ > 10){
-            state_ = LOAD;
+            if(fire_count_ > 10){
+                state_ = LOAD;
         }
         break;
 
         default:
-        speed.data = 0.0;
-        break;
+            speed.data = 0.0;
+            break;
     }
+    
 
     spe_pub_ -> publish(speed);
-};
-rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr spr_sub_;
-rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_sub_;
+}
+    rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr spr_sub_;
+    rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_sub_;
 
-rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spe_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spe_pub_;
 
-rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr timer_;
+
+
 };
 
 int main(int argc,char *argv[])

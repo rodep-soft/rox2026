@@ -1,0 +1,8 @@
+joy_sub:
+  ros__parameters:
+    axis_fire: 5
+    button_fire: 10
+
+spr_mot:
+  ros__parameters:
+    max_speed: 20.0

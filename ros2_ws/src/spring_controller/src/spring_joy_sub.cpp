@@ -10,6 +10,12 @@ class JoySub : public rclcpp::Node
     JoySub()
     : Node("joy_sub")
     {
+        this->declare_parameter("axis_fire",5);
+        this->declare_parameter("button_fire",10);
+        axis_fire_ = 
+            this->get_parameter("axis_fire").as_int();
+        button_fire_ =
+            this->get_parameter("button_fire").as_int();
         subscription_ =
         this->create_subscription<sensor_msgs::msg::Joy>(
             "joy",
@@ -27,7 +33,7 @@ class JoySub : public rclcpp::Node
     {
         std_msgs::msg::UInt8 command;
         
-        if(msg -> axes[5] != 1 && msg -> buttons[10] == 1)
+        if(msg -> axes[axis_fire_] != 1 && msg -> buttons[button_fire_] == 1)
         {
             command.data = 1;
         }
@@ -41,6 +47,8 @@ class JoySub : public rclcpp::Node
     }
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr subscription_;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr publisher_;
+    int axis_fire_;
+    int button_fire_;
 
 };
 
