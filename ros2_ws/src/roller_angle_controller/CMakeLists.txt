@@ -22,9 +22,6 @@ ament_target_dependencies(
 # インストール設定
 install(TARGETS roller_angle_controller_node DESTINATION lib/${PROJECT_NAME})
 
-# launchとconfigの両方をインストール
-install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)

@@ -41,25 +41,14 @@ ROS 2標準のsignal handlerは受信直後にcontextを無効化してしまい
 
 ## control_modeによる動作の違い
 
-`control_mode`は起動時に固定するパラメータで、実行中の動的切り替えはしない。position用/velocity用にそれぞれ専用のlaunchファイルを用意し、モーターごとに使う方を起動する設計。
+`control_mode`は起動時に固定するパラメータで、実行中の動的切り替えはしない。position用/velocity用の起動構成は `robot_bringup` 側に置く設計。
 
 - **position mode**: 指令が途切れても、最後に受け取った目標角度(`loc_ref`)を送り続ける。PP modeとして目標位置に居座るだけなので安全。
 - **velocity mode**: 指令が`timeout_ms`より長く途切れた場合、`spd_ref=0`を送って安全停止させる(回転し続けると危険なため)。
 
-## Launch
+## 起動
 
-```bash
-# 位置制御用ノードを起動 (robstride_position_node)
-ros2 launch robstride_can_node robstride_position.launch.py
-
-# 速度制御用ノードを起動 (robstride_velocity_node)
-ros2 launch robstride_can_node robstride_velocity.launch.py
-
-# 両方まとめて起動
-ros2 launch robstride_can_node robstride_can_node.launch.py
-```
-
-いずれも `config_file` 引数(デフォルトは `config/config.yaml`)でパラメータファイルを差し替え可能。
+この package 内の launch file は削除済み。複数 node の起動構成は `robot_bringup` 側に集約する。
 
 ## 主要パラメータ (config/config.yaml)
 

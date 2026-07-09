@@ -3,8 +3,8 @@
 // RobStride (EduLite-05) モーターへ、位置指令 or 速度指令をCAN frameとして送るnode。
 //
 // control_modeは起動時に固定するパラメータで、実行中の動的切り替えはしない。
-// position用/velocity用にそれぞれ専用のlaunchファイル(robstride_position.launch.py /
-// robstride_velocity.launch.py)を用意し、モーターごとに使う方を起動する設計。
+// position用/velocity用の起動構成はrobot_bringup側に置き、
+// モーターごとに使う方を起動する設計。
 //
 // このnodeはSocketCANへ直接writeしない。出力はcan_msgs/msg/Frameのtopicなので、
 // ros2socketcan_bridgeがcan_tx_topicをsubscribeしてcan0/can1へ送信する想定。

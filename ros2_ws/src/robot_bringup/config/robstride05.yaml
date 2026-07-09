@@ -1,0 +1,43 @@
+joy_node:
+  ros__parameters:
+    dev: "/dev/input/js0"
+
+roller_position_controller:
+  ros__parameters:
+    # RobStride loc_ref is radian.
+    storage_angle: 0.0
+    intake_angle: 0.523599
+    shoot_angle: 1.047198
+
+    # roller_angle_controller currently reads enable_button as Joy.axes index.
+    enable_button: 6
+    storage_button: 1
+    intake_button: 0
+    shoot_button: 2
+
+robstride_position_node:
+  ros__parameters:
+    can_tx_topic: "/CAN/can0/transmit"
+    is_extended: true
+
+    motor_can_id: 1
+    host_can_id: 0xFD
+
+    control_mode: "position"
+    command_topic: "/robstride/position_cmd"
+
+    send_period_ms: 20
+    timeout_ms: 500
+
+    position_min_rad: -12.566370614
+    position_max_rad: 12.566370614
+
+    enable_on_startup: true
+
+    limit_torque: -1.0
+    limit_cur: -1.0
+    limit_spd: -1.0
+
+ros2socketcan:
+  ros__parameters:
+    CAN_INTERFACE: "can0"

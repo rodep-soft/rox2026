@@ -25,7 +25,7 @@ constexpr char ExpectedCanTxTopicType[] = "can_msgs/msg/Frame";
 
 uint32_t DefaultCanIdForNodeName(const std::string & node_name)
 {
-  if (node_name.find("mad_motor") != std::string::npos ||
+  if (node_name.find("belt_controller") != std::string::npos ||
     node_name.find("belt") != std::string::npos) {
     return 0x202;
   }
@@ -71,7 +71,7 @@ void MotorCanCommandNode::SetupRosInterfaces()
 
 void MotorCanCommandNode::DeclareParameters()
 {
-  // launch/configから上書きできる値をここで宣言する。
+  // configや起動時parameterから上書きできる値をここで宣言する。
   this->declare_parameter<std::string>("pwm_topic", "/motor/pwm_value");
   this->declare_parameter<std::string>("pwm_topic_type", ExpectedPwmTopicType);
   this->declare_parameter<std::string>("can_tx_topic", "/can_tx");

@@ -19,8 +19,8 @@ public:
   void SendStop();
 
 private:
-  // control_mode_はconfig/launchで固定する起動時パラメータ。実行中に切り替えることは想定せず、
-  // position用/velocity用それぞれの専用launchファイルでノードを起動し分ける設計。
+  // control_mode_は起動時パラメータ。実行中に切り替えることは想定せず、
+  // position用/velocity用それぞれの構成でノードを起動し分ける設計。
   enum class ControlMode
   {
     Position,

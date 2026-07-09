@@ -54,8 +54,8 @@ private:
   // コールバック関数
   void Joycallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
-    // 【修正】境界チェック：0未満（マイナス）の異常値も確実にはじく安全対策を追加
-    if (enable_btn_idx_ < 0 || static_cast<size_t>(enable_btn_idx_) >= msg->buttons.size() ||
+    // enable_btn_idx_ は Joy.axes の index、各 position button は Joy.buttons の index。
+    if (enable_btn_idx_ < 0 || static_cast<size_t>(enable_btn_idx_) >= msg->axes.size() ||
       storage_btn_idx_ < 0 || static_cast<size_t>(storage_btn_idx_) >= msg->buttons.size() ||
       intake_btn_idx_ < 0 || static_cast<size_t>(intake_btn_idx_) >= msg->buttons.size() ||
       shoot_btn_idx_ < 0 || static_cast<size_t>(shoot_btn_idx_) >= msg->buttons.size())
