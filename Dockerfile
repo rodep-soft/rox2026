@@ -1,4 +1,4 @@
-FROM ros:jazzy-ros-base
+FROM ros:humble-ros-base
 
 SHELL ["/bin/bash", "-c"]
 
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     nano \
     vim \
     curl \
+    ccache \
     #less \
     tree \
     tmux \
@@ -23,8 +24,8 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     iproute2 \
     usbutils \
-    ros-jazzy-joy \
-    ros-jazzy-teleop-twist-joy \
+    ros-humble-joy \
+    ros-humble-teleop-twist-joy \
     evtest \
     libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -38,10 +39,10 @@ RUN if [ "${TARGETARCH}" = "arm64" ]; then \
 
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
       apt-get update && apt-get install -y \
-      ros-jazzy-rqt \
-      ros-jazzy-rqt-graph \
-      ros-jazzy-rviz2 \
-      ros-jazzy-foxglove-bridge \
+      ros-humble-rqt \
+      ros-humble-rqt-graph \
+      ros-humble-rviz2 \
+      ros-humble-foxglove-bridge \
       ccache; \
     fi && rm -rf /var/lib/apt/lists/*
 
@@ -53,15 +54,16 @@ WORKDIR /root/ros2_ws
 COPY ./ros2_ws/src ./src
 
 # rosdep install
-RUN source /opt/ros/jazzy/setup.bash && \
+RUN apt-get update && \
+    source /opt/ros/humble/setup.bash && \
     rosdep install \
       --from-paths src \
       --ignore-src \
       -r \
       -y && \
-      colcon build --symlink-install
+    rm -rf /var/lib/apt/lists/*
 
-RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
 
 CMD ["bash"]
