@@ -26,7 +26,8 @@ class JoySub : public rclcpp::Node
     void topic_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     {
         std_msgs::msg::UInt8 command;
-        if(msg -> buttons[6] == 1 && msg -> buttons[5] == 1)
+        
+        if(msg -> axes[5] != 1 && msg -> buttons[10] == 1)
         {
             command.data = 1;
         }

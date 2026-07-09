@@ -65,6 +65,8 @@ class SprMot : public rclcpp::Node
     {
         std_msgs::msg::Float32 speed;
 
+        
+
         switch(state_){
         case LOAD:
         if(limit_on_){ //リミットスイッチが押されている
