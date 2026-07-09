@@ -33,7 +33,7 @@ class JoySub : public rclcpp::Node
     {
         std_msgs::msg::UInt8 command;
         
-        if(msg -> axes[axis_fire_] != 1 && msg -> buttons[button_fire_] == 1)
+        if(msg -> axes[axis_fire_] > 0.8 && msg -> buttons[button_fire_] == 1)
         {
             command.data = 1;
         }
