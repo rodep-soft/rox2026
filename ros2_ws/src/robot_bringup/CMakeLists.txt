@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
+
 project(spring_controller)
+
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,41 +13,9 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
 
-install(
-  DIRECTORY
-    launch
-    config
-  DESTINATION share/${PROJECT_NAME}
-)
-
-add_executable(spring_cal_motor_pub
-  src/spring_cal_motor_pub.cpp
-)
-
-ament_target_dependencies(spring_cal_motor_pub
-  rclcpp
-  std_msgs
-)
-
-add_executable(spring_joy_sub
-  src/spring_joy_sub.cpp
-)
-
-ament_target_dependencies(spring_joy_sub
-  rclcpp
-  sensor_msgs
-  std_msgs
-)
-
-install(TARGETS
-  spring_joy_sub
-  spring_cal_motor_pub
-  DESTINATION lib/${PROJECT_NAME}
-)
+# launch ディレクトリと config ディレクトリを share フォルダにインストールする
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
