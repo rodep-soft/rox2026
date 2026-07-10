@@ -85,6 +85,8 @@ private:
 
   void Joycallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
+    RCLCPP_INFO(this->get_logger(), "Received: %s", subscription_->get_topic_name());
+
     if (!IsJoyMessageValid(msg)) {
       return;
     }

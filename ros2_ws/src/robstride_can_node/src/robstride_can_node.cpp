@@ -160,6 +160,8 @@ void RobstrideCanNode::GetParameters()
 
 void RobstrideCanNode::CommandCallback(const std_msgs::msg::Float32::SharedPtr msg)
 {
+  RCLCPP_INFO(
+    this->get_logger(), "Received: %s", command_subscription_->get_topic_name());
   command_target_ = Clamp(msg->data, position_min_rad_, position_max_rad_);
 }
 

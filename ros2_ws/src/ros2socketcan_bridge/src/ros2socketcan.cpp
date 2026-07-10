@@ -93,13 +93,6 @@ void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
   for (int i = 0; i < (int)frame1.can_dlc; i++) {
     frame1.data[i] = msg.data[i];
   }
-  std::stringstream out;
-  out << std::string("S | ") << std::to_string(frame1.can_id) << std::string("| ");
-  for (int j = 0; j < (int)frame1.can_dlc; j++) {
-    out << std::to_string(frame1.data[j]) << std::string(" ");
-  }
-  out << std::endl;
-  RCLCPP_INFO(this->get_logger(), out.str().c_str());
   stream.async_write_some(
     boost::asio::buffer(&frame1, sizeof(frame1)),
     std::bind(&ros2socketcan::CanSendConfirm, this));
@@ -108,6 +101,8 @@ void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
 // Publish messages to the CAN bus
 void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "Received: %s", subscription_->get_topic_name());
+
   can_msgs::msg::Frame msg1;
   msg1.id = msg->id;
   msg1.dlc = msg->dlc;
@@ -131,24 +126,13 @@ void ros2socketcan::CanListener(
 {
   can_msgs::msg::Frame frame;
 
-  std::stringstream s;
-
   frame.id = rec_frame.can_id;
   frame.dlc = int(rec_frame.can_dlc);
 
-  s << std::string("R | ") << std::to_string(rec_frame.can_id) << std::string(" | ");
   for (int i = 0; i < rec_frame.can_dlc; i++) {
     frame.data[i] = rec_frame.data[i];
-    s << std::to_string(rec_frame.data[i]);
   }
   current_frame = frame;
-  s << " | ";
-
-  for (int j = 0; j < (int)rec_frame.can_dlc; j++) {
-    s << std::to_string(rec_frame.data[j]) << " ";
-  }
-  s << std::endl;
-  RCLCPP_INFO(this->get_logger(), s.str().c_str());
   publisher_->publish(frame);
 
   stream.async_read_some(
