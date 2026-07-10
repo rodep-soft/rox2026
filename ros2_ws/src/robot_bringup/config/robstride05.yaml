@@ -9,7 +9,7 @@ roller_position_controller:
     intake_angle: -1.7
     shoot_angle: 0.0
 
-    enable_axis: 3
+    enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 1
     intake_button: 2
     shoot_button: 6

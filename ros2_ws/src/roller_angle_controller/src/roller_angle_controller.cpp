@@ -45,7 +45,7 @@ private:
     this->declare_parameter<double>("intake_angle", 10.0);
     this->declare_parameter<double>("shoot_angle", 2.0);
 
-    this->declare_parameter<int>("enable_axis", 4);
+    this->declare_parameter<int>("enable_button", 4);
     this->declare_parameter<int>("storage_button", 1);
     this->declare_parameter<int>("intake_button", 0);
     this->declare_parameter<int>("shoot_button", 2);
@@ -57,27 +57,27 @@ private:
     intake_angle_ = this->get_parameter("intake_angle").as_double();
     shoot_angle_ = this->get_parameter("shoot_angle").as_double();
 
-    enable_btn_idx_ = this->get_parameter("enable_axis").as_int();
+    enable_button_idx_ = this->get_parameter("enable_button").as_int();
     storage_btn_idx_ = this->get_parameter("storage_button").as_int();
     intake_btn_idx_ = this->get_parameter("intake_button").as_int();
     shoot_btn_idx_ = this->get_parameter("shoot_button").as_int();
   }
 
-  // 設定されたJoy軸・ボタンが届いているかの確認
+  // 設定されたJoyボタンが届いているかの確認
   bool IsJoyMessageValid(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     if (!msg) {
       return false;
     }
 
-    if (enable_btn_idx_ < 0 || static_cast<size_t>(enable_btn_idx_) >= msg->axes.size() ||
+    if (enable_button_idx_ < 0 || static_cast<size_t>(enable_button_idx_) >= msg->buttons.size() ||
       storage_btn_idx_ < 0 || static_cast<size_t>(storage_btn_idx_) >= msg->buttons.size() ||
       intake_btn_idx_ < 0 || static_cast<size_t>(intake_btn_idx_) >= msg->buttons.size() ||
       shoot_btn_idx_ < 0 || static_cast<size_t>(shoot_btn_idx_) >= msg->buttons.size())
     {
       RCLCPP_WARN_THROTTLE(
         this->get_logger(),
-        *this->get_clock(), 1000, "設定された軸またはボタン番号が不正、またはJoyメッセージのサイズを超えています。");
+        *this->get_clock(), 1000, "設定されたボタン番号が不正、またはJoyメッセージのサイズを超えています。");
       return false;
     }
 
@@ -109,7 +109,7 @@ private:
     }
 
     // 角度の安全装置
-    if (msg->axes[enable_btn_idx_] <= -0.95) {
+    if (msg->buttons[enable_button_idx_] == 1) {
       // 一旦、strage < intake < shoot(絶対に変更する！！！)
       if (msg->buttons[storage_btn_idx_] == 1) {
         current_target_angle_ = storage_angle_;
@@ -138,7 +138,7 @@ private:
   double shoot_angle_;
   double current_target_angle_;
 
-  int enable_btn_idx_;
+  int enable_button_idx_;
   int storage_btn_idx_;
   int intake_btn_idx_;
   int shoot_btn_idx_;

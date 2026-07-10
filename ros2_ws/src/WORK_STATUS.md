@@ -21,8 +21,8 @@ joy_node (/joy)
 
 The YAML configuration is `robot_bringup/config/robstride05.yaml`.
 
-- `roller_position_controller` now reads `enable_axis` (not the old `enable_button` name).
-- The active configuration uses `enable_axis: 3`.
+- `roller_position_controller` reads `enable_button` and uses the corresponding Joy button.
+- The active configuration uses `enable_button: 4`.
 - `can_interface` must remain `can0` with the current YAML, because `can_tx_topic` is `/CAN/can0/transmit`.
 
 ## RDK hardware status
