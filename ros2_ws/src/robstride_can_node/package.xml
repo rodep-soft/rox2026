@@ -3,7 +3,7 @@
 <package format="3">
   <name>robstride_can_node</name>
   <version>0.0.0</version>
-  <description>Send position/velocity commands to RobStride motors over CAN</description>
+  <description>Send position commands to RobStride motors over CAN</description>
   <maintainer email="shuhei2.1129@gmail.com">ponqoo</maintainer>
   <license>TODO: License declaration</license>
 

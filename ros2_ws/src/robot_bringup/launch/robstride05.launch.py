@@ -62,7 +62,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "can_interface",
                 default_value="can0",
-                description="SocketCAN interface used for RobStride EduLite-05",
+                description="SocketCAN interface used for RobStride 05",
             ),
             joy_node,
             roller_position_controller,
