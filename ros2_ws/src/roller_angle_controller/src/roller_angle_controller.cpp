@@ -44,7 +44,7 @@ private:
     this->declare_parameter<double>("intake_angle", 10.0);
     this->declare_parameter<double>("shoot_angle", 2.0);
 
-    this->declare_parameter<int>("enable_button", 4);
+    this->declare_parameter<int>("enable_axis", 4);
     this->declare_parameter<int>("storage_button", 1);
     this->declare_parameter<int>("intake_button", 0);
     this->declare_parameter<int>("shoot_button", 2);
@@ -56,13 +56,13 @@ private:
     intake_angle_ = this->get_parameter("intake_angle").as_double();
     shoot_angle_ = this->get_parameter("shoot_angle").as_double();
 
-    enable_btn_idx_ = this->get_parameter("enable_button").as_int();
+    enable_btn_idx_ = this->get_parameter("enable_axis").as_int();
     storage_btn_idx_ = this->get_parameter("storage_button").as_int();
     intake_btn_idx_ = this->get_parameter("intake_button").as_int();
     shoot_btn_idx_ = this->get_parameter("shoot_button").as_int();
   }
 
-  // 正式なjoyボタンが届いているかの確認
+  // 設定されたJoy軸・ボタンが届いているかの確認
   bool IsJoyMessageValid(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     if (!msg) {
@@ -76,7 +76,7 @@ private:
     {
       RCLCPP_WARN_THROTTLE(
         this->get_logger(),
-        *this->get_clock(), 1000, "設定されたボタン番号が不正、またはJoyメッセージのサイズを超えています。");
+        *this->get_clock(), 1000, "設定された軸またはボタン番号が不正、またはJoyメッセージのサイズを超えています。");
       return false;
     }
 
