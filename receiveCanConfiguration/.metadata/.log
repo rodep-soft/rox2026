@@ -1,0 +1,31 @@
+!SESSION 2026-07-07 20:22:35.361 -----------------------------------------------
+eclipse.buildId=Version 2.1.1
+java.version=21.0.9
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=ja_JP
+Command-line arguments:  -os win32 -ws win32 -arch x86_64 -data \\wsl$\Ubuntu\home\user\rox2026\receiveCanConfiguration
+
+!ENTRY org.eclipse.ui.ide 4 4 2026-07-07 20:22:37.377
+!MESSAGE Could not obtain lock for workspace location
+
+!ENTRY org.eclipse.ui.ide 4 4 2026-07-07 20:22:37.379
+!MESSAGE Could not obtain lock for workspace location
+!STACK 0
+java.io.IOException: An error occurred while locking file "\\wsl$\Ubuntu\home\user\rox2026\receiveCanConfiguration\.metadata\.lock": "ファンクションが間違っています。". A common reason is that the file system or Runtime Environment does not support file locking for that location. Please choose a different location, or disable file locking by passing "-Dosgi.locking=none" as a VM argument.
+	at org.eclipse.osgi.internal.location.Locker_JavaNio.isLocked(Locker_JavaNio.java:105)
+	at org.eclipse.osgi.internal.location.BasicLocation.isLocked(BasicLocation.java:250)
+	at org.eclipse.osgi.internal.location.BasicLocation.isLocked(BasicLocation.java:206)
+	at org.eclipse.osgi.internal.location.BasicLocation.lock(BasicLocation.java:220)
+	at org.eclipse.osgi.internal.location.BasicLocation.lock(BasicLocation.java:199)
+	at org.eclipse.ui.internal.ide.application.IDEApplication.checkInstanceLocation(IDEApplication.java:226)
+	at org.eclipse.ui.internal.ide.application.IDEApplication.start(IDEApplication.java:142)
+	at org.eclipse.equinox.internal.app.EclipseAppHandle.run(EclipseAppHandle.java:208)
+	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.runApplication(EclipseAppLauncher.java:143)
+	at org.eclipse.core.runtime.internal.adaptor.EclipseAppLauncher.start(EclipseAppLauncher.java:109)
+	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:439)
+	at org.eclipse.core.runtime.adaptor.EclipseStarter.run(EclipseStarter.java:271)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.eclipse.equinox.launcher.Main.invokeFramework(Main.java:668)
+	at org.eclipse.equinox.launcher.Main.basicRun(Main.java:605)
+	at org.eclipse.equinox.launcher.Main.run(Main.java:1481)
