@@ -66,7 +66,7 @@ def generate_launch_description():
         output="screen",
     )
     delayed_wheel_to_can = TimerAction(
-        period=5.0, actions=[wheel_to_can]  # 遅延させる時間（秒、float型）
+        period=2.0, actions=[wheel_to_can]  # 遅延させる時間（秒、float型）
     )
     # 5. LaunchDescriptionに要素を詰め込んで返す
     return LaunchDescription(
