@@ -28,15 +28,19 @@ RobStride 05 モーターへ、位置指令をCAN frameとして送るnode。
 2. `enable_on_startup: true` ならモーター有効化コマンド(Communication Type 3)
 3. `position_speed` が0.0以上なら `vel_max` を書き込み
 4. `position_acceleration` が0.0以上なら `acc_set` を書き込み
-5. 起動時の初期 `loc_ref` を送信
+5. `home_position_rad`（既定`0.0 rad`）を起動時の初期 `loc_ref` として送信
 
 `run_mode`、`vel_max`、`acc_set`はモーター側が設定を保持するため、これらは起動時の1回だけで十分。Type 3(有効化)はType 18の書き込みを「反映」させるものではなく、モーターの制御ループ・出力そのものを有効にするスイッチ。
 
 ## 終了時の安全停止
 
-ノード終了時(Ctrl-C / SIGTERM)には、モーターが有効化されたまま放置されないよう停止フレームを送る:
+ノード終了時(Ctrl-C / SIGTERM)には、モーターを`home_position_rad`（既定`0.0 rad`）へ復帰させてからトルクを切る:
 
-1. モーター停止コマンド(Communication Type 4)を送信してトルク出力を切る
+1. `loc_ref=home_position_rad` を`send_period_ms`周期で送信する
+2. `shutdown_return_wait_ms`だけ待ち、モーターがhome位置へ移動する時間を確保する
+3. モーター停止コマンド(Communication Type 4)を送信してトルク出力を切る
+
+位置フィードバックは使用していないため、待機時間は実際の移動完了を検出するものではない。最大移動距離と`position_speed`、実機の負荷を考慮して設定する。現在のbringup設定では、`±4π`の範囲を`2 rad/s`で戻る最長約6.3秒に対して7秒を設定している。
 
 ROS 2標準のsignal handlerは受信直後にcontextを無効化してしまい、その後のpublishが失敗する。そのため`main`で`shutdown_on_signal=false`を指定し、自前のsignal handlerでフラグを立てて、**contextが有効なうちに停止フレームを送ってからshutdownする**構成にしている。
 
@@ -57,9 +61,11 @@ ROS 2標準のsignal handlerは受信直後にcontextを無効化してしまい
 | `command_topic` | 目標角度を受け取るtopic (`std_msgs/Float32`) |
 | `send_period_ms` | 指令フレームを送信する周期 |
 | `position_min_rad`/`max_rad` | 位置指令のclamp範囲 |
+| `home_position_rad` | 起動時の初期目標位置と、終了時に復帰する位置。既定は`0.0 rad` |
 | `enable_on_startup` | 起動時にモーター有効化コマンドを送るか |
 | `position_speed` | PP位置モード速度。負値(デフォルト)は未指定で変更せず、起動時にWARNを出す |
 | `position_acceleration` | PP位置モード加速度。負値(デフォルト)は未指定で変更せず、起動時にWARNを出す |
+| `shutdown_return_wait_ms` | 終了時にhome位置へ戻す待機時間[ms]。待機後にType 4でトルクを切る |
 
 ## RobStrideのCANプロトコル概要
 
