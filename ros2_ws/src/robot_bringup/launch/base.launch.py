@@ -21,7 +21,7 @@ def generate_launch_description():
     base_controller = Node(
         package="mecanum_controller",  # 実行したいバイナリが含まれるパッケージ名
         executable="base_controller_node",  # 実行ファイル名 (CMakeやsetup.pyで指定したもの)
-        name="base_contoller_node",  # ノード名 (リマップして上書きする場合)
+        name="base_controller_node",  # ノード名 (リマップして上書きする場合)
         output="screen",  # ログを標準出力（画面）に出す設定
         parameters=[
             os.path.join(

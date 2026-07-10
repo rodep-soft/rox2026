@@ -38,9 +38,9 @@ void MecanumControllerNode::velocityCallback(const geometry_msgs::msg::Twist::Sh
 
 void MecanumControllerNode::declare_parameters()
 {
-  this->declare_parameter<double>("wheel_radius", 0.1);
-  this->declare_parameter<double>("robot_length", 0.5);
-  this->declare_parameter<double>("robot_width", 0.3);
+  this->declare_parameter<double>("wheel_radius", 0.05);
+  this->declare_parameter<double>("robot_length", 0.4);
+  this->declare_parameter<double>("robot_width", 0.4);
 }
 
 void MecanumControllerNode::get_parameters()
