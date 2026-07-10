@@ -101,7 +101,19 @@ void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
 // Publish messages to the CAN bus
 void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
 {
-  RCLCPP_INFO(this->get_logger(), "Received: %s", subscription_->get_topic_name());
+  std::stringstream received;
+  received << "Received: " << subscription_->get_topic_name() << " id=0x" << std::hex <<
+    msg->id << std::dec << " dlc=" << static_cast<unsigned int>(msg->dlc) <<
+    " extended=" << msg->is_extended << " rtr=" << msg->is_rtr << " error=" <<
+    msg->is_error << " data=[";
+  for (size_t i = 0; i < msg->dlc; ++i) {
+    if (i > 0) {
+      received << ", ";
+    }
+    received << static_cast<unsigned int>(msg->data[i]);
+  }
+  received << "]";
+  RCLCPP_INFO(this->get_logger(), "%s", received.str().c_str());
 
   can_msgs::msg::Frame msg1;
   msg1.id = msg->id;

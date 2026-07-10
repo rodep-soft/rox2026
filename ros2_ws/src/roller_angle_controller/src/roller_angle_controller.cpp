@@ -1,5 +1,6 @@
 #include <functional>
 #include <memory>
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -85,7 +86,23 @@ private:
 
   void Joycallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
-    RCLCPP_INFO(this->get_logger(), "Received: %s", subscription_->get_topic_name());
+    std::ostringstream received;
+    received << "Received: " << subscription_->get_topic_name() << " axes=[";
+    for (size_t i = 0; i < msg->axes.size(); ++i) {
+      if (i > 0) {
+        received << ", ";
+      }
+      received << msg->axes[i];
+    }
+    received << "] buttons=[";
+    for (size_t i = 0; i < msg->buttons.size(); ++i) {
+      if (i > 0) {
+        received << ", ";
+      }
+      received << msg->buttons[i];
+    }
+    received << "]";
+    RCLCPP_INFO(this->get_logger(), "%s", received.str().c_str());
 
     if (!IsJoyMessageValid(msg)) {
       return;
