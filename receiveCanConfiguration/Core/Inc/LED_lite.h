@@ -7,7 +7,12 @@
 #define NUM_LEDS 30
 
 /* 関数プロトタイプ宣言 */
+void LED_SetAllZero(void);
 void LED_SetAllRed(void);
 void LED_Update(void);
+static void appendByte(uint8_t value,uint32_t *index);
+void setPixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b);
+void show(void);
+void clear(void);
 
 #endif /* LED_LITE_H */
