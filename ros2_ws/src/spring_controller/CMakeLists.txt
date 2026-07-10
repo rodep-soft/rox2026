@@ -7,44 +7,54 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-install(
-  DIRECTORY
-    launch
-    config
-  DESTINATION share/${PROJECT_NAME}
+include_directories(
+  include
 )
 
 add_executable(spring_cal_motor_pub
   src/spring_cal_motor_pub.cpp
 )
-
 ament_target_dependencies(spring_cal_motor_pub
   rclcpp
   std_msgs
+)
+target_include_directories(spring_cal_motor_pub
+  PRIVATE
+  include
 )
 
 add_executable(spring_joy_sub
   src/spring_joy_sub.cpp
 )
-
 ament_target_dependencies(spring_joy_sub
   rclcpp
   sensor_msgs
   std_msgs
+)
+target_include_directories(spring_joy_sub
+  PRIVATE
+  include
 )
 
 install(TARGETS
   spring_joy_sub
   spring_cal_motor_pub
   DESTINATION lib/${PROJECT_NAME}
+)
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+install(
+  DIRECTORY
+    launch
+    config
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

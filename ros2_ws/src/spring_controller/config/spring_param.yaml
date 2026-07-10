@@ -1,8 +1,14 @@
-joy_sub:
+spring_joy:
   ros__parameters:
-    axis_fire: 5
-    button_fire: 10
+    shoot_key: #発射キー
+      type: "button"
+      index: 5
+    lock_key: #安全装置キー
+      type: "axis"
+      index: 4
 
-spr_mot:
+spring_motor:
   ros__parameters:
     max_speed: 20.0
+    loading_speed: 5.0
+    limit_sw_index: 0
