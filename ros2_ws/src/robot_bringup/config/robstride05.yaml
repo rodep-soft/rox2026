@@ -1,0 +1,38 @@
+joy_node:
+  ros__parameters:
+    dev: "/dev/input/js0"
+
+roller_position_controller:
+  ros__parameters:
+    # RobStride loc_ref is radian.
+    storage_angle: 0.0
+    intake_angle: 0.523599
+    shoot_angle: 1.047198
+
+    enable_axis: 6
+    storage_button: 1
+    intake_button: 0
+    shoot_button: 2
+
+robstride_position_node:
+  ros__parameters:
+    can_tx_topic: "/CAN/can0/transmit"   # ros2socketcan_bridgeへ渡すCAN送信topic
+    motor_can_id: 0x33                   # 対象モーターのCAN ID (パラメータ0x200aのデフォルト値は1)
+    host_can_id: 0xFD                    # このノード(ホスト)側のCAN ID
+
+    command_topic: "/robstride/position_cmd"  # 目標角度[rad]を受け取るtopic (std_msgs/Float32)
+
+    send_period_ms: 20                   # loc_refを送信する周期
+
+    position_min_rad: -12.566370614      # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
+                                          # 位置フィードバックが-4π~4πで周期ループする仕様に合わせたソフト側の制限)
+    position_max_rad: 12.566370614       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
+
+    enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
+
+    position_speed: 2.0                  # PP位置モード速度 (0以上で書き込み、負値=未指定/変更しない)
+    position_acceleration: 100.0         # PP位置モード加速度 (0以上で書き込み、負値=未指定/変更しない)
+
+ros2socketcan:
+  ros__parameters:
+    CAN_INTERFACE: "can0"

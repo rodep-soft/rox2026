@@ -1,8 +1,8 @@
-# mad_motor
+# belt_controller
 
 ## 概要
 
-`belt_controller_node` は `/joy` のボタン入力から MAD モータ用の PWM 指令を作り、belt側入力の `/belt/rpm_value` に publish するノード。
+`belt_controller_node` は `/joy` のボタン入力から belt 用モータの PWM 指令を作り、belt側入力の `/belt/rpm_value` に publish するノード。
 
 ## 入出力
 

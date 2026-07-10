@@ -15,16 +15,7 @@
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>can_msgs</depend>
 
-  <exec_depend>joy</exec_depend>
-  <exec_depend>launch</exec_depend>
-  <exec_depend>launch_ros</exec_depend>
-  <exec_depend>angle_motor</exec_depend>
-  <exec_depend>motor_can_bridge</exec_depend>
-  <exec_depend>mad_motor</exec_depend>
-  <exec_depend>ros2socketcan_bridge</exec_depend>
-  
   <export>
     <build_type>ament_cmake</build_type>
   </export>

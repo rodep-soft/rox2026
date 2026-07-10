@@ -36,3 +36,6 @@ compile_commands.json
 
 # AI.md
 AGENT.md
+
+# Serena MCP project config
+.serena/

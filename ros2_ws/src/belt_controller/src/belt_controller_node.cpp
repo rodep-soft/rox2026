@@ -1,4 +1,4 @@
-#include "mad_motor/belt_controller_node.hpp"
+#include "belt_controller/belt_controller_node.hpp"
 
 #include <algorithm>
 #include <functional>
