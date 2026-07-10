@@ -9,13 +9,17 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "can.h"
+#include "dma.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "limit_switch.h"
+#include "LED_lite.h"
 
+#include <math.h>
 // --- PID制御用の構造体と変数 ---
 typedef struct {
     float Kp;
@@ -50,8 +54,11 @@ uint8_t is_timeout = 1;
 uint32_t debug_last_id = 0;       // 最後に受信したID
 uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
 uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
-uint32_t debug_rx_count = 0;
-uint32_t aa=0;
+volatile uint32_t debug_rx_count = 0;
+
+double count = 0;
+uint32_t lastTime=0;
+uint32_t j=0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -153,10 +160,22 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_CAN_Init();
   MX_TIM2_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
+  MX_TIM15_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  clear();
+  for(int i = 0; i < 30; i++) {
+	  setPixel(i, 255, 0, 0);
+  }
+//  setPixel(0, 255, 0, 0);
+//  setPixel(1, 0, 255, 0);
+
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 
   // エンコーダのカウント開始 (htim4を使用すると仮定)
@@ -189,7 +208,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      // 1. CAN通信のタイムアウト監視
+	  show();
+
+	  if(HAL_GetTick()-lastTime>10){
+		  count=count + 0.01;
+		  for(int i = 0; i < 30; i++ , j++) {
+			  float red  = fabsf(sin(count + 0 + i * 0.01f) + 1.0f) * 255.0f ;
+			  float green= fabsf(sin(count + (M_PI / 4) + i * 0.01f) + 1.0f) * 255.0f;
+			  float blue = fabsf(sin(count + (M_PI / 2 )+ i * 0.01f) + 1.0f) * 255.0f;
+			  setPixel(i,(int)red, (int)green,(int)blue);
+		  }
+		  lastTime = HAL_GetTick();
+	  }
+	  // 1. CAN通信のタイムアウト監視
       if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
           is_timeout = 1;
           target_rpm = 0.0f; // タイムアウト時は目標RPMを0にして安全停止
@@ -209,8 +240,11 @@ int main(void)
       LimitSwitch_UpdateAndSend(&hcan);
 
       // 6. PID周期を安定させるために10ms待機 (DT_SECと一致させること)
+      (void)debug_rx_count;
+
+      //LEDぴかぴか
       HAL_Delay(10);
-aa++;
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -234,7 +268,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -244,12 +280,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }

@@ -3,6 +3,9 @@
 // 最後にCAN送信した時刻を記録しておく
 static uint32_t last_send_time = 0;
 
+// ★追加: 送信回数を記録するデバッグ用変数（最適化で消されないよう volatile を付与）
+volatile uint32_t debug_tx_count = 0;
+
 void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
     // 現在の時刻を取得（ミリ秒）
@@ -34,6 +37,9 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
             TxData[0] = 0;
         }
 
-        HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox);
+        // ★追加: 送信をリクエストし、無事にバッファに入った(HAL_OK)場合のみカウントを増やす
+        if (HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox) == HAL_OK) {
+            debug_tx_count++;
+        }
     }
 }
