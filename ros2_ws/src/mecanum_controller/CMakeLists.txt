@@ -14,9 +14,9 @@ find_package(std_msgs REQUIRED)
 
 include_directories(include)
 
-add_executable(mecanum_controller_node src/main.cpp src/mecanum_controller_node.cpp)
+add_executable(mecanum_controller_node src/mecanum_controller_node.cpp)
 
-add_executable(base_controller_node src/base_controller.cpp)
+add_executable(base_controller_node src/base_controller_node.cpp)
 
 target_include_directories(
   mecanum_controller_node
