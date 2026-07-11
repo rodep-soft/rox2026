@@ -12,50 +12,25 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-include_directories(
-  include
-)
+include_directories(include)
 
-add_executable(spring_edulite_controller
-  src/spring_edulite_controller.cpp
-)
-ament_target_dependencies(spring_edulite_controller
-  rclcpp
-  std_msgs
-)
-target_include_directories(spring_edulite_controller
-  PRIVATE
-  include
-)
-
-add_executable(spring_joy_sub
-  src/spring_joy_sub.cpp
-)
-ament_target_dependencies(spring_joy_sub
-  rclcpp
-  sensor_msgs
-  std_msgs
-)
-target_include_directories(spring_joy_sub
-  PRIVATE
-  include
-)
-
-install(TARGETS
-  spring_joy_sub
+add_executable(spring_edulite_controller src/spring_edulite_controller.cpp)
+ament_target_dependencies(
+  spring_edulite_controller rclcpp std_msgs)
+target_include_directories(
   spring_edulite_controller
-  DESTINATION lib/${PROJECT_NAME}
-)
-install(
-  DIRECTORY include/
-  DESTINATION include
-)
-install(
-  DIRECTORY
-    launch
-    config
-  DESTINATION share/${PROJECT_NAME}
-)
+  PRIVATE include)
+
+add_executable(spring_joy_sub src/spring_joy_sub.cpp)
+ament_target_dependencies(
+  spring_joy_sub rclcpp sensor_msgs std_msgs)
+target_include_directories(
+  spring_joy_sub
+  PRIVATE include)
+
+install(TARGETS spring_joy_sub spring_edulite_controller DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
