@@ -11,7 +11,7 @@ class SpringJoySub : public rclcpp::Node
 {
 public:
     SpringJoySub()
-        : Node("spring_joy")
+        : Node("spring_joy_sub")
     {
         // デフォルト値設定
         this->declare_parameter("shoot_key.type", "button");
@@ -45,7 +45,7 @@ private:
         std::size_t index;
     };
     std::map<std::string, JoyInput> joy_inputs = {
-        {"shoot_key", {"button", 5}},
+        {"shoot_key", {"button", 10}},
         {"lock_key", {"axis", 4}}};
 
     void topic_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
@@ -62,7 +62,6 @@ private:
         }
         //非常停止の命令をここに書く
         //fire_command.data = static_cast<uint8_t>(State::STOP); // 停止命令
-
         spring_publisher->publish(fire_command);
     }
 
@@ -70,7 +69,7 @@ private:
     { // axisとbuttonの値を取得する関数
         if (input.type == "axis" && input.index < joy.axes.size())
         {
-            return joy.axes[input.index];
+            return -joy.axes[input.index];
         }
         else if (input.type == "button" && input.index < joy.buttons.size())
         {

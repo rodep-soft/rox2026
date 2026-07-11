@@ -16,16 +16,22 @@ def generate_launch_description():
         Node(
             package="spring_controller",
             executable="spring_joy_sub",
-            name="joy_sub",
+            name="spring_joy_sub",
             parameters=[config_file],
             output="screen",
         ),
 
         Node(
             package="spring_controller",
-            executable="spring_cal_motor_pub",
-            name="spr_mot",
+            executable="spring_edulite_controller",
+            name="spring_edulite_controller",
             parameters=[config_file],
             output="screen",
         ),
+        Node(
+            package="joy",
+            executable="joy_node",
+            name="joy",
+            output="screen",
+            ),
     ])

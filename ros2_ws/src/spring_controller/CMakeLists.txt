@@ -16,14 +16,14 @@ include_directories(
   include
 )
 
-add_executable(spring_cal_motor_pub
-  src/spring_cal_motor_pub.cpp
+add_executable(spring_edulite_controller
+  src/spring_edulite_controller.cpp
 )
-ament_target_dependencies(spring_cal_motor_pub
+ament_target_dependencies(spring_edulite_controller
   rclcpp
   std_msgs
 )
-target_include_directories(spring_cal_motor_pub
+target_include_directories(spring_edulite_controller
   PRIVATE
   include
 )
@@ -43,7 +43,7 @@ target_include_directories(spring_joy_sub
 
 install(TARGETS
   spring_joy_sub
-  spring_cal_motor_pub
+  spring_edulite_controller
   DESTINATION lib/${PROJECT_NAME}
 )
 install(
