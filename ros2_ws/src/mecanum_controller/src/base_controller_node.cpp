@@ -29,13 +29,16 @@ private:
   double angular_velocity_;    // rad/s
   double smoothing_factor_;      // 急激な速度指令に対抗する，目標速度の平滑化係数
   geometry_msgs::msg::Twist cmd_msg;
-  
+
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
 
-    cmd_msg.linear.x = smoothing_factor_ * msg->axes[1] * max_linear_velocity_ + (1 - smoothing_factor_) * cmd_msg.linear.x;  // 前後の移動;
-    cmd_msg.linear.y = smoothing_factor_ * msg->axes[0] * max_linear_velocity_ + (1 - smoothing_factor_) * cmd_msg.linear.y;  // 左右の移動;
-    cmd_msg.angular.z = smoothing_factor_ * msg->axes[2] * angular_velocity_ + (1 - smoothing_factor_) * cmd_msg.angular.z; // yawの回転
+    cmd_msg.linear.x = smoothing_factor_ * msg->axes[1] * max_linear_velocity_ +
+      (1 - smoothing_factor_) * cmd_msg.linear.x;                                                                             // 前後の移動;
+    cmd_msg.linear.y = smoothing_factor_ * msg->axes[0] * max_linear_velocity_ +
+      (1 - smoothing_factor_) * cmd_msg.linear.y;                                                                             // 左右の移動;
+    cmd_msg.angular.z = smoothing_factor_ * msg->axes[2] * angular_velocity_ +
+      (1 - smoothing_factor_) * cmd_msg.angular.z;                                                                          // yawの回転
     vel_pub_->publish(cmd_msg);
   }
 
