@@ -1,0 +1,37 @@
+services:
+  ros2_rox2026:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #image: osrf/ros:jazzy-base
+
+    container_name: rox2026_container
+    tty: true
+
+    privileged: true
+
+    network_mode: host
+    ipc: host
+    #pid: host
+
+    environment:
+      # ROS
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      #- ROS_LOCALHOST_ONLY=0
+      - DEBIAN_FRONTEND=noninteractive #for apt-get install without user interaction
+
+    volumes:
+      - ./ros2_ws:/root/ros2_ws
+      #- ~/.ccache:/root/.ccache #for buikding ros2 packages with ccache
+
+      #- /var/run/dbus:/var/run/dbus #bluetoothをROS2内で使用する場合
+      # udev
+      #- /run/udev:/run/udev:ro
+
+    devices:
+      - /dev:/dev
+
+    working_dir: /root/ros2_ws
+
+    command: /bin/bash

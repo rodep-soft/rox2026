@@ -1,0 +1,35 @@
+
+#ROS2 /about colcon build
+build/
+install/
+log/
+
+#colcon metadata
+.colcon/
+
+#python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+#ROS bag
+*.db3
+*.mcap
+rosbag2_*/
+
+#about vscode setting
+.vacode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# env
+.env
+.env.*
+
+#CMake
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+# local test dumps
+/tmp/
