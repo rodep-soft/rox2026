@@ -28,4 +28,10 @@ def generate_launch_description():
             parameters=[config_file],
             output="screen",
         ),
+        Node(
+            package="joy",
+            executable="joy_node",
+            name="joy",
+            output="screen",
+            ),
     ])
