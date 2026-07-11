@@ -24,10 +24,10 @@ private:
 
   enum WheelIndex
   {
-    FL = 3,
-    FR = 2,
-    RL = 1,
-    RR = 0,
+    FL = 0,
+    FR = 1,
+    RL = 2,
+    RR = 3,
   };
   std::array<double, 4> wheel_vels = {0.0, 0.0, 0.0, 0.0};
 
