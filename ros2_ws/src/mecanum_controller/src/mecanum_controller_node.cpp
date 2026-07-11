@@ -49,3 +49,11 @@ void MecanumControllerNode::get_parameters()
   this->get_parameter("robot_length", robot_length);
   this->get_parameter("robot_width", robot_width);
 }
+
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<MecanumControllerNode>());
+  rclcpp::shutdown();
+  return 0;
+}
