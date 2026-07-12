@@ -72,7 +72,7 @@ ros2socketcan::~ros2socketcan()
 
 void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
 {
-  struct can_frame frame1;
+  struct can_frame frame1 {};
 
   frame1.can_id = msg.id;
 
@@ -93,9 +93,23 @@ void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
   for (int i = 0; i < (int)frame1.can_dlc; i++) {
     frame1.data[i] = msg.data[i];
   }
-  stream.async_write_some(
-    boost::asio::buffer(&frame1, sizeof(frame1)),
-    std::bind(&ros2socketcan::CanSendConfirm, this));
+  boost::system::error_code error;
+  const std::size_t bytes_written = boost::asio::write(
+    stream, boost::asio::buffer(&frame1, sizeof(frame1)), error);
+  if (error) {
+    RCLCPP_ERROR(
+      this->get_logger(), "Failed to send CAN frame: %s", error.message().c_str());
+    return;
+  }
+
+  if (bytes_written != sizeof(frame1)) {
+    RCLCPP_ERROR(
+      this->get_logger(), "Incomplete CAN frame write: wrote %zu of %zu bytes.", bytes_written,
+      sizeof(frame1));
+    return;
+  }
+
+  RCLCPP_DEBUG(this->get_logger(), "Sent CAN frame (%zu bytes).", bytes_written);
 }
 
 // Publish messages to the CAN bus
@@ -124,11 +138,6 @@ void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
   msg1.data = msg->data;
 
   CanSend(msg1);
-}
-
-void ros2socketcan::CanSendConfirm(void)
-{
-  RCLCPP_DEBUG(this->get_logger(), "Message sent");
 }
 
 // Listen for CAN messages
