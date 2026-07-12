@@ -19,6 +19,7 @@
 #include "limit_switch.h"
 #include "LED_lite.h"
 
+#include <math.h>
 // --- PID制御用の構造体と変数 ---
 typedef struct {
     float Kp;
@@ -54,6 +55,10 @@ uint32_t debug_last_id = 0;       // 最後に受信したID
 uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
 uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
 volatile uint32_t debug_rx_count = 0;
+
+double count = 0;
+uint32_t lastTime=0;
+uint32_t j=0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -163,19 +168,13 @@ int main(void)
   MX_TIM15_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  //LED_SetAllZero();
-  //LED_SetAllRed();  // データを赤色にセット
-  //LED_Update();     // DMA転送でLEDに送信して点灯！
 
   clear();
-  show();
-  for(int i = 0; i < 10; i++) {
-	  setPixel(i, 0, 0, 0);
+  for(int i = 0; i < 30; i++) {
+	  setPixel(i, 255, 0, 0);
   }
-  show();
-
-
-
+//  setPixel(0, 255, 0, 0);
+//  setPixel(1, 0, 255, 0);
 
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 
@@ -209,7 +208,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      // 1. CAN通信のタイムアウト監視
+	  show();
+
+	  if(HAL_GetTick()-lastTime>10){
+		  count=count + 0.01;
+		  for(int i = 0; i < 30; i++ , j++) {
+			  float red  = fabsf(sin(count + 0 + i * 0.01f) + 1.0f) * 255.0f ;
+			  float green= fabsf(sin(count + (M_PI / 4) + i * 0.01f) + 1.0f) * 255.0f;
+			  float blue = fabsf(sin(count + (M_PI / 2 )+ i * 0.01f) + 1.0f) * 255.0f;
+			  setPixel(i,(int)red, (int)green,(int)blue);
+		  }
+		  lastTime = HAL_GetTick();
+	  }
+	  // 1. CAN通信のタイムアウト監視
       if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
           is_timeout = 1;
           target_rpm = 0.0f; // タイムアウト時は目標RPMを0にして安全停止

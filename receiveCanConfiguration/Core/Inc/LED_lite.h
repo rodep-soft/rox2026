@@ -4,13 +4,10 @@
 #include "main.h" // HALの定義を読み込むため
 
 /* 制御するLEDの数 */
-#define NUM_LEDS 30
+#define LED_NUM 30
 
 /* 関数プロトタイプ宣言 */
-void LED_SetAllZero(void);
-void LED_SetAllRed(void);
-void LED_Update(void);
-static void appendByte(uint8_t value,uint32_t *index);
+void appendByte(uint8_t value,uint32_t *index);
 void setPixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b);
 void show(void);
 void clear(void);
