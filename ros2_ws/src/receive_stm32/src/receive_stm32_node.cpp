@@ -3,7 +3,7 @@
 #include <functional>
 #include "rclcpp/rclcpp.hpp"
 #include "can_msgs/msg/frame.hpp"
-#include "std_msgs/msg/u_int8_multi_array.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 class LimitSwNode : public rclcpp::Node
 {
@@ -16,7 +16,7 @@ public:
             std::bind(&LimitSwNode::canCallback, this, std::placeholders::_1));
             
         // UIit8MultiArray -> UInt8MultiArray に修正
-        limit_sw_pub_ = this->create_publisher<std_msgs::msg::UInt8MultiArray>("/limit_sw", 10);
+        limit_sw_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/limit_sw", 10);
 
         // ログ出力のドット(.)をカンマ(,)に修正、末尾にセミコロン(;)を追加
         RCLCPP_INFO(this->get_logger(), "Limit Switch Node has been started.");
@@ -30,7 +30,7 @@ private:
             uint8_t limit_status = raw_data & 0x07;
 
             // 送信用メッセージの作成
-            auto output_msg = std_msgs::msg::UInt8MultiArray();
+            auto output_msg = std_msgs::msg::UInt8();
             output_msg.data.push_back(limit_status);
 
             // トピックへパブリッシュ
@@ -41,7 +41,7 @@ private:
     }
 
     rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-    rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_sw_pub_;
+    rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
 };
 
 int main(int argc, char * argv[])
