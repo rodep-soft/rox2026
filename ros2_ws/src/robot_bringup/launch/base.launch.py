@@ -14,7 +14,12 @@ def generate_launch_description():
         executable="joy_node",
         name="joy_node",
         output="screen",
-        parameters=[{"dev": "/dev/input/js0"}],
+        parameters=[
+            {
+              "dev": "/dev/input/js0",
+              "autorepeat_rate": 100.0,
+            }
+        ]
     )
 
     # joy -> twist 変換ノード
