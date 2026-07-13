@@ -19,7 +19,6 @@
 #include "limit_switch.h"
 #include "LED_lite.h"
 
-#include <math.h>
 // --- PID制御用の構造体と変数 ---
 typedef struct {
     float Kp;
@@ -55,10 +54,6 @@ uint32_t debug_last_id = 0;       // 最後に受信したID
 uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
 uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
 volatile uint32_t debug_rx_count = 0;
-
-double count = 0;
-uint32_t lastTime=0;
-uint32_t j=0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,7 +95,7 @@ float Calc_RPM(uint16_t now, uint16_t *prev_val)
     return (float)diff * RPM_CALC_FACTOR;
 }
 
-// PID計算関数 (inline展開で高速化)
+// PID計算関数
 float Compute_PID(PID_Controller *pid, float target, float current, float dt)
 {
     float error = target - current;
@@ -121,7 +116,7 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     if (output > pid->out_max) output = pid->out_max;
     if (output < pid->out_min) output = pid->out_min;
 
-    if (target <= 1000.0f) {
+    if (target < 0.0f) {
         output = pid->out_min;
         pid->integral = 0.0f;
     }
@@ -165,16 +160,17 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_USART2_UART_Init();
-  MX_TIM15_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-  clear();
+
+clear();
   for(int i = 0; i < 30; i++) {
 	  setPixel(i, 255, 0, 0);
   }
-//  setPixel(0, 255, 0, 0);
-//  setPixel(1, 0, 255, 0);
+
+
+
 
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 
@@ -185,9 +181,9 @@ int main(void)
   sFilterConfig.FilterBank = 0;
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
   sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = 0x0000;
+  sFilterConfig.FilterIdHigh = 0x201 << 5;
   sFilterConfig.FilterIdLow = 0x0000;
-  sFilterConfig.FilterMaskIdHigh = 0x0000;
+  sFilterConfig.FilterMaskIdHigh = 0x7FF << 5;
   sFilterConfig.FilterMaskIdLow = 0x0000;
   sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
   sFilterConfig.FilterActivation = ENABLE;
@@ -208,19 +204,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  show();
+      show();
 
-	  if(HAL_GetTick()-lastTime>10){
-		  count=count + 0.01;
-		  for(int i = 0; i < 30; i++ , j++) {
-			  float red  = fabsf(sin(count + 0 + i * 0.01f) + 1.0f) * 255.0f ;
-			  float green= fabsf(sin(count + (M_PI / 4) + i * 0.01f) + 1.0f) * 255.0f;
-			  float blue = fabsf(sin(count + (M_PI / 2 )+ i * 0.01f) + 1.0f) * 255.0f;
-			  setPixel(i,(int)red, (int)green,(int)blue);
-		  }
-		  lastTime = HAL_GetTick();
-	  }
-	  // 1. CAN通信のタイムアウト監視
+      // 1. CAN通信のタイムアウト監視
       if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
           is_timeout = 1;
           target_rpm = 0.0f; // タイムアウト時は目標RPMを0にして安全停止
@@ -330,8 +316,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         debug_rx_count++;                     // カウンターを増やす
         // -------------------------------------------------------------
 
-        // --- 従来の処理（ID: 0x202 専用の処理） ---
-        if(RxHeader.StdId == 0x202) {
+        // --- 従来の処理（ID: 0x201 専用の処理） ---
+        if(RxHeader.StdId == 0x201) {
             if(RxData[0] == 2) {
                 // RxData[1]と[2]の2バイトを使って、0〜65535のRPMを受信する
                 uint16_t received_rpm = (uint16_t)(RxData[1] | (RxData[2] << 8));
