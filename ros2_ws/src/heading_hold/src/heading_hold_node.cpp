@@ -12,13 +12,13 @@ constexpr int TIMER_PERIOD_MS = 20;
 
 double normalizeAngle(double angle)
 {
-   while (angle > M_PI){
-      angle -= 2 * M_PI;
-   }
-   while(angle < -M_PI){
-      angle += 2 * M_PI;
-   }
-   return angle;
+  while (angle > M_PI) {
+    angle -= 2 * M_PI;
+  }
+  while (angle < -M_PI) {
+    angle += 2 * M_PI;
+  }
+  return angle;
 }
 }
 
@@ -40,7 +40,7 @@ public:
     corrected_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(TIMER_PERIOD_MS),  
+      std::chrono::milliseconds(TIMER_PERIOD_MS),
       std::bind(&HeadingHoldNode::controlLoop, this));
 
     RCLCPP_INFO(this->get_logger(), "Heading Hold Node started.");
@@ -51,10 +51,10 @@ private:
   double target_yaw_ = 0.0;
   bool has_imu_ = false;
   geometry_msgs::msg::Twist latest_raw_vel_;
-  double kp_; 
-  double ki_; 
-  double kd_; 
-  double integral_ = 0.0; 
+  double kp_;
+  double ki_;
+  double kd_;
+  double integral_ = 0.0;
   double prev_error_ = 0.0;
   rclcpp::Time last_time_;
   rclcpp::TimerBase::SharedPtr timer_;
