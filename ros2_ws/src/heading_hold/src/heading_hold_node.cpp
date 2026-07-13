@@ -26,7 +26,7 @@ class HeadingHoldNode : public rclcpp::Node
 {
 public:
   HeadingHoldNode()
-  : Node("heading_hold_node") 
+  : Node("heading_hold_node")
   {
     last_time_ = this->now();
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
