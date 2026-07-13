@@ -2,7 +2,7 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Main program body (CAN + PID Integration)
+  * @brief          : Main program body (CAN + PID Integration + 3 Motors + LED)
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -31,6 +31,7 @@ typedef struct {
 } PID_Controller;
 
 PID_Controller pid1 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
+PID_Controller pid2 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
 
 // --- エンコーダとRPM計算用の変数 ---
 #define ENCODER_PPR 2048
@@ -38,22 +39,33 @@ PID_Controller pid1 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
 // 割り算をコンパイル時に終わらせる高速化マクロ
 #define RPM_CALC_FACTOR (60.0f / DT_SEC / ((float)ENCODER_PPR * 4.0f))
 
-uint16_t prev_pos = 0;
-float current_rpm = 0.0f;
-float target_rpm = 0.0f;  // CANから受け取る目標RPM
+volatile uint16_t prev_pos1 = 0;
+volatile uint16_t prev_pos2 = 0;
+volatile float current_rpm1 = 0.0f;
+volatile float current_rpm2 = 0.0f;
+
+// --- CANから受け取る指令値 ---
+volatile float target_rpm1 = 0.0f;  // モーター1用 (RPM)
+volatile float target_rpm2 = 0.0f;  // モーター2用 (RPM)
+volatile float target_rpm3 = 1000.0f; // モーター3用 (PWM値: 1000〜2000)
+
+volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
+volatile uint8_t led_r = 0;               // LED 赤色値 (0-255)
+volatile uint8_t led_g = 0;               // LED 緑色値 (0-255)
+volatile uint8_t led_b = 0;               // LED 青色値 (0-255)
 
 // --- CAN通信用の変数 ---
 CAN_RxHeaderTypeDef RxHeader;
-uint8_t RxData[8];
-uint8_t DataReadyFlag = 0;
+volatile uint8_t RxData[8];
+volatile uint8_t DataReadyFlag = 0;
 #define CAN_TIMEOUT_MS 500
-uint32_t last_can_rx_time = 0;
+volatile uint32_t last_can_rx_time = 0;
 uint8_t is_timeout = 1;
 
-uint32_t debug_last_id = 0;       // 最後に受信したID
-uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
-uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
-volatile uint32_t debug_rx_count = 0;
+volatile uint32_t debug_last_id = 0;       // 最後に受信したID
+volatile uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
+volatile uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
+volatile volatile uint32_t debug_rx_count = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,7 +93,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// RPM計算関数 (inline展開で高速化)
+// RPM計算関数
 float Calc_RPM(uint16_t now, uint16_t *prev_val)
 {
     int16_t diff = now - *prev_val;
@@ -116,7 +128,7 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     if (output > pid->out_max) output = pid->out_max;
     if (output < pid->out_min) output = pid->out_min;
 
-    if (target < 0.0f) {
+    if (target <= 0.0f) {
         output = pid->out_min;
         pid->integral = 0.0f;
     }
@@ -160,23 +172,28 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   MX_USART2_UART_Init();
+  MX_TIM15_Init();
   MX_TIM3_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
 
-
-clear();
+  // LEDの初期化
+  clear();
   for(int i = 0; i < 30; i++) {
-	  setPixel(i, 255, 0, 0);
+      setPixel(i, 0, 0, 0); // 最初は消灯
   }
+  show();
 
+  // PWMスタート
+  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_1); // モーター1 (MAD RPM制御)
+  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
+  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
 
-
-
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-
-  // エンコーダのカウント開始 (htim4を使用すると仮定)
+  // エンコーダのカウント開始
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
+  // CANフィルタ設定 (ID 0x201 のみ受信する設定)
   CAN_FilterTypeDef sFilterConfig;
   sFilterConfig.FilterBank = 0;
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
@@ -204,32 +221,60 @@ clear();
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      show();
+      uint32_t loop_start_time = HAL_GetTick();
 
-      // 1. CAN通信のタイムアウト監視
+      // --- 1. 通信のタイムアウト＆非常停止の監視 ---
       if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
           is_timeout = 1;
-          target_rpm = 0.0f; // タイムアウト時は目標RPMを0にして安全停止
       }
 
-      // 2. エンコーダから現在RPMを取得
-      uint16_t pos = __HAL_TIM_GET_COUNTER(&htim1);
-      current_rpm = Calc_RPM(pos, &prev_pos);
+      // タイムアウト、または非常停止フラグが立っている場合はモーターを強制停止
+      if (is_timeout || emergency_stop_flag != 0) {
+          target_rpm1 = 0.0f;
+          target_rpm2 = 0.0f;
+          target_rpm3 = 1000.0f; // ESC停止のPWM値
+      }
 
-      // 3. PIDを計算してPWM出力値を決定
-      float output_pwm = Compute_PID(&pid1, target_rpm, current_rpm, DT_SEC);
+      // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
+      uint16_t pos1 = __HAL_TIM_GET_COUNTER(&htim1);
+      current_rpm1 = Calc_RPM(pos1, &prev_pos1);
 
-      // 4. モーターへ出力
-      __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)output_pwm);
+      uint16_t pos2 = __HAL_TIM_GET_COUNTER(&htim2);
+      current_rpm2 = Calc_RPM(pos2, &prev_pos2);
 
-      // 5. リミットスイッチの状態を更新＆送信
+      // --- 3. 出力PWMの決定 ---
+      // モーター1, 2 はPIDで計算
+      float output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
+      float output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
+
+      // モーター3 は直接PWM値を使用 (1000〜2000の制限をかける)
+      float output_pwm3 = target_rpm3;
+      if (output_pwm3 > 2000.0f) output_pwm3 = 2000.0f;
+      if (output_pwm3 < 1000.0f) output_pwm3 = 1000.0f;
+
+      // --- 4. モーターへPWM出力 ---
+      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_2, (uint32_t)output_pwm2);
+      __HAL_TIM_SET_COMPARE(&htim17, TIM_CHANNEL_1, (uint32_t)output_pwm3);
+
+      // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
 
-      // 6. PID周期を安定させるために10ms待機 (DT_SECと一致させること)
-      (void)debug_rx_count;
+      // --- 6. LEDの点灯更新 ---
+      // 受信したRGB値を使ってLEDの色を更新する
+      clear();
+      for(int i = 0; i < 30; i++) {
+          setPixel(i, led_r, led_g, led_b);
+      }
+      show();
 
-      //LEDぴかぴか
-      HAL_Delay(10);
+      // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
+      // 処理にかかった時間を差し引いて正確に10msループを作る
+      while ((HAL_GetTick() - loop_start_time) < 10) {
+          // 待機
+      }
+
+      (void)debug_rx_count;
 
     /* USER CODE END WHILE */
 
@@ -284,49 +329,44 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-/*void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
-    if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK) {
-
-        if(RxHeader.StdId == 0x202) {
-            if(RxData[0] == 2) {
-                // 変更点: RxData[1]と[2]の2バイトを使って、0〜65535のRPMを受信する
-                // リトルエンディアン(下位バイトが先)で送られてくると仮定
-                uint16_t received_rpm = (uint16_t)(RxData[1] | (RxData[2] << 8));
-                target_rpm = (float)received_rpm;
-
-                last_can_rx_time = HAL_GetTick();
-                is_timeout = 0;
-                DataReadyFlag = 1;
-            }
-        }
-    }
-}
-
-*/
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     // CANの受信バッファ(FIFO0)からデータを読み出す
     if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK) {
 
-        // --- 【追加】デバッグ用：受信した全メッセージを無条件で記録 ---
-        debug_last_id = RxHeader.StdId;       // IDを記録
-        debug_last_dlc = RxHeader.DLC;        // データ長を記録
+        // --- デバッグ用：受信した全メッセージを無条件で記録 ---
+        debug_last_id = RxHeader.StdId;
+        debug_last_dlc = RxHeader.DLC;
         for(uint8_t i = 0; i < RxHeader.DLC; i++) {
-            debug_last_data[i] = RxData[i];   // データをコピー
+            debug_last_data[i] = RxData[i];
         }
-        debug_rx_count++;                     // カウンターを増やす
+        debug_rx_count++;
         // -------------------------------------------------------------
 
-        // --- 従来の処理（ID: 0x201 専用の処理） ---
-        if(RxHeader.StdId == 0x201) {
-            if(RxData[0] == 2) {
-                // RxData[1]と[2]の2バイトを使って、0〜65535のRPMを受信する
-                uint16_t received_rpm = (uint16_t)(RxData[1] | (RxData[2] << 8));
-                target_rpm = (float)received_rpm;
+        // --- 指定フォーマットの解析処理（ID: 0x201） ---
+        // 8バイトのデータが来ていることを前提として中身を取り出す
+        if(RxHeader.StdId == 0x201 && RxHeader.DLC == 8) {
 
-                last_can_rx_time = HAL_GetTick();
-                is_timeout = 0;
-                DataReadyFlag = 1;
-            }
+            // Byte [0],[1]: モーター1,2用 RPM
+            uint16_t received_rpm_1_2 = (uint16_t)(RxData[0] | (RxData[1] << 8));
+            target_rpm1 = (float)received_rpm_1_2;
+            target_rpm2 = (float)received_rpm_1_2;
+
+            // Byte [2],[3]: モーター3用 PWM (1000-2000)
+            uint16_t received_pwm_3 = (uint16_t)(RxData[2] | (RxData[3] << 8));
+            target_rpm3 = (float)received_pwm_3;
+
+            // Byte [4]: 遠隔非常停止フラグ (1:停止, 0:通常)
+            emergency_stop_flag = RxData[4];
+
+            // Byte [5],[6],[7]: LEDの RGB値
+            led_r = RxData[5];
+            led_g = RxData[6];
+            led_b = RxData[7];
+
+            // 通信成功の証としてタイムアウト時間をリセット
+            last_can_rx_time = HAL_GetTick();
+            is_timeout = 0;
+            DataReadyFlag = 1;
         }
     }
 }
@@ -349,7 +389,7 @@ void Error_Handler(void)
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
+  * where the assert_param error has occurred.
   * @param  file: pointer to the source file name
   * @param  line: assert_param error line source number
   * @retval None
