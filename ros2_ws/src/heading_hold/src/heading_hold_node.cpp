@@ -10,7 +10,7 @@ namespace
 {
 constexpr int TIMER_PERIOD_MS = 20;
 
-double normalizeAngle(double angle)   // ← ここは namespace の中でOK
+double normalizeAngle(double angle)
 {
    while (angle > M_PI){
       angle -= 2 * M_PI;
@@ -28,6 +28,7 @@ public:
   HeadingHoldNode()
   : Node("heading_hold_node") 
   {
+    last_time_ = this->now();
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
       "/cmd_vel_raw", 10,
       std::bind(&HeadingHoldNode::rawVelocityCallback, this, std::placeholders::_1));
@@ -75,7 +76,10 @@ private:
 
   void controlLoop()
   {
-    //PID
+    rclcpp::Time now = this->now();
+    double dt = (now - last_time_).seconds();
+    last_time_ = now;
+    double error = normalizeAngle(target_yaw_ - current_yaw_);
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr raw_vel_sub_;
