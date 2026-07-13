@@ -52,6 +52,7 @@ constexpr uint8_t RunModePosition = 1;  // PP位置モード
 RobstrideCanNode::RobstrideCanNode()
 : Node("robstride_can_node"),
   startup_completed_(false),
+  enable_requested_(false),
   command_target_(0.0)
 {
   // ros param
@@ -66,26 +67,45 @@ RobstrideCanNode::RobstrideCanNode()
     command_topic_, 10,
     std::bind(&RobstrideCanNode::CommandCallback, this, std::placeholders::_1));
 
+  // roller_angle_controller等、上位ノードから「起動シーケンスを送っていい」指示を受け取る。
+  // transient_localにしておくことで、こちらの起動がroller側より後になっても
+  // 直近にpublishされた値を後から受け取れる（discovery順序に依存しない）。
+  rclcpp::QoS enable_qos(1);
+  enable_qos.transient_local();
+  enable_subscription_ = this->create_subscription<std_msgs::msg::Bool>(
+    enable_topic_, enable_qos,
+    std::bind(&RobstrideCanNode::EnableCallback, this, std::placeholders::_1));
+
   timer_ = this->create_wall_timer(
     std::chrono::milliseconds(send_period_ms_),
     std::bind(&RobstrideCanNode::TimerCallback, this));
 
   RCLCPP_INFO(
     this->get_logger(),
-    "RobstrideCanNode started. can_tx_topic=%s, motor_can_id=0x%X, command_topic=%s",
+    "RobstrideCanNode started. can_tx_topic=%s, motor_can_id=0x%X, command_topic=%s, enable_topic=%s",
     can_tx_topic_.c_str(),
     motor_can_id_,
-    command_topic_.c_str());
+    command_topic_.c_str(),
+    enable_topic_.c_str());
 
   // run_modeの書き込みはノード起動時に一度だけでよい（モーター側は設定を保持する）。
-  // publisherが確実に有効になってから送るため、1回だけの遅延timerにまとめて送る。
+  // 「いつ送るか」はroller_angle_controller側の判断(enable_topic_)に委ね、
+  // このノードはCAN protocolの組み立てだけを担当する。
+  // enable_topic_受信後も、ros2socketcan側のsubscriptionとのDDS discoveryが
+  // 完了するまで時間が読めないため、subscriber数をポーリングしてから送る。
   // timerのcallback内でそのtimer自身をcancelしても安全（実行中のcallbackは最後まで走る）。
   // RobStride 05マニュアルのPP位置モード手順に合わせ、
   // run_mode -> enable -> vel_max -> acc_set -> loc_refの順に送る。
 
   startup_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(100),
+    std::chrono::milliseconds(50),
     [this]() {
+      if (!enable_requested_) {
+        return;         // roller_angle_controller等からのenable指示がまだ来ていない。
+      }
+      if (can_publisher_->get_subscription_count() == 0) {
+        return;         // ros2socketcanとまだ繋がっていない。次のtickで再確認する。
+      }
       SendRunMode(RunModePosition);
       if (enable_on_startup_) {
         SendEnable();               // motorのenableを送信
@@ -94,6 +114,7 @@ RobstrideCanNode::RobstrideCanNode()
       SendFloatParam(IndexLocRef, static_cast<float>(command_target_));
       startup_completed_ = true;
       startup_timer_->cancel();
+      RCLCPP_INFO(this->get_logger(), "Startup command sequence sent.");
     });
 }
 
@@ -104,6 +125,7 @@ void RobstrideCanNode::DeclareParameters()
   this->declare_parameter<int>("host_can_id", 0xFD);
 
   this->declare_parameter<std::string>("command_topic", "/robstride/command");
+  this->declare_parameter<std::string>("enable_topic", "/robstride/enable");
 
   this->declare_parameter<int>("send_period_ms", 20);
 
@@ -125,6 +147,7 @@ void RobstrideCanNode::GetParameters()
   host_can_id_ = static_cast<uint8_t>(this->get_parameter("host_can_id").as_int());
 
   command_topic_ = this->get_parameter("command_topic").as_string();
+  enable_topic_ = this->get_parameter("enable_topic").as_string();
 
   send_period_ms_ = std::max(1, static_cast<int>(this->get_parameter("send_period_ms").as_int()));
 
@@ -164,6 +187,13 @@ void RobstrideCanNode::CommandCallback(const std_msgs::msg::Float32::SharedPtr m
     this->get_logger(), "Received: %s data=%.6f rad", command_subscription_->get_topic_name(),
     msg->data);
   command_target_ = Clamp(msg->data, position_min_rad_, position_max_rad_);
+}
+
+void RobstrideCanNode::EnableCallback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data) {
+    enable_requested_ = true;
+  }
 }
 
 void RobstrideCanNode::TimerCallback()

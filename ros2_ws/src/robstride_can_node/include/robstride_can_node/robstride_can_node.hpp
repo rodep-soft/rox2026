@@ -6,6 +6,7 @@
 
 #include <can_msgs/msg/frame.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
 
 class RobstrideCanNode : public rclcpp::Node
@@ -22,6 +23,8 @@ private:
   void GetParameters();
 
   void CommandCallback(const std_msgs::msg::Float32::SharedPtr msg);
+  // roller_angle_controller等から「起動シーケンスを送っていいか」の指示を受け取る。
+  void EnableCallback(const std_msgs::msg::Bool::SharedPtr msg);
   // send_period_ms_ごとに呼ばれ、最後に受け取ったloc_refを送り続ける。
   void TimerCallback();
 
@@ -46,6 +49,7 @@ private:
   uint8_t host_can_id_;
 
   std::string command_topic_;
+  std::string enable_topic_;
 
   int send_period_ms_;
 
@@ -60,9 +64,11 @@ private:
   int shutdown_return_wait_ms_;
 
   bool startup_completed_;
+  bool enable_requested_;
   double command_target_;
 
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr command_subscription_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_subscription_;
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_publisher_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr startup_timer_;
