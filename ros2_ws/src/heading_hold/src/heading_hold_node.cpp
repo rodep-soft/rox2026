@@ -2,6 +2,13 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+namespace
+{
+constexpr int TIMER_PERIOD_MS = 20;
+}
 
 class HeadingHoldNode : public rclcpp::Node
 {
@@ -19,21 +26,44 @@ public:
 
     corrected_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
+    timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(TIMER_PERIOD_MS),  
+      std::bind(&HeadingHoldNode::controlLoop, this));
+
     RCLCPP_INFO(this->get_logger(), "Heading Hold Node started.");
   }
 
 private:
+  double current_yaw_ = 0.0;
+  double target_yaw_ = 0.0;
+  bool has_imu_ = false;
+  geometry_msgs::msg::Twist latest_raw_vel_;
+  double kp_; 
+  double ki_; 
+  double kd_; 
+  double integral_ = 0.0; 
+  double prev_error_ = 0.0;
+  rclcpp::Time last_time_;
+  rclcpp::TimerBase::SharedPtr timer_;
+
   void rawVelocityCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
   {
-    // ここに書く
-    auto output_msg = *msg;
-    corrected_vel_pub_->publish(output_msg);
+    latest_raw_vel_ = *msg;
   }
 
   void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
   {
-    // ここに書く
-    (void)msg; 
+    current_yaw_ = tf2::getYaw(msg->orientation);
+
+    if (!has_imu_) {
+      target_yaw_ = current_yaw_;
+      has_imu_ = true;
+    }
+  }
+
+  void controlLoop()
+  {
+    //PID
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr raw_vel_sub_;

@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 add_executable(heading_hold_node src/heading_hold_node.cpp)
 target_include_directories(heading_hold_node PUBLIC
@@ -21,6 +23,8 @@ ament_target_dependencies(
   "rclcpp"
   "geometry_msgs"
   "sensor_msgs"
+  "tf2"
+  "tf2_geometry_msgs"
 )
 
 install(TARGETS heading_hold_node
