@@ -1,0 +1,23 @@
+# ROS2 / ament_lint_cmake 向け
+
+line_width: 120
+tab_size: 2
+use_tabchars: false
+
+# 勝手な折り返し禁止
+dangle_parens: false
+dangle_align: child
+
+# 縦揃え禁止
+enable_markup: false
+
+# 自動折り返し禁止
+always_wrap: 
+  - target_include_directories
+  - target_compile_features
+  - target_link_libraries
+  - ament_target_dependencies
+
+# コマンド直後スペース禁止
+separate_ctrl_name_with_space: false
+separate_fn_name_with_space: false

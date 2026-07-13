@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     nano \
     vim \
     curl \
+    ccache \
     #less \
     tree \
     tmux \
@@ -53,13 +54,14 @@ WORKDIR /root/ros2_ws
 COPY ./ros2_ws/src ./src
 
 # rosdep install
-RUN source /opt/ros/humble/setup.bash && \
+RUN apt-get update && \
+    source /opt/ros/humble/setup.bash && \
     rosdep install \
       --from-paths src \
       --ignore-src \
       -r \
       -y && \
-      colcon build --symlink-install
+    rm -rf /var/lib/apt/lists/*
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc

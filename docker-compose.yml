@@ -23,7 +23,7 @@ services:
 
     volumes:
       - ./ros2_ws:/root/ros2_ws
-      #- ~/.ccache:/root/.ccache #for buikding ros2 packages with ccache
+      - ~/.ccache:/root/.ccache #for buikding ros2 packages with ccache
 
       #- /var/run/dbus:/var/run/dbus #bluetoothをROS2内で使用する場合
       # udev
