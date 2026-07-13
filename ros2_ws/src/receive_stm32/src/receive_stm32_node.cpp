@@ -31,7 +31,7 @@ private:
 
             // 送信用メッセージの作成
             auto output_msg = std_msgs::msg::UInt8();
-            output_msg.data.push_back(limit_status);
+            output_msg.data = msg->data[0];
 
             // トピックへパブリッシュ
             limit_sw_pub_->publish(output_msg);
