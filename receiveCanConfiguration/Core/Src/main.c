@@ -294,32 +294,54 @@ int main(void)
 
       // --- 6. LEDの点灯更新 ---
       // 受信したRGB値を使ってLEDの色を更新する
-      if(count_led <= 1000) {
-      	  for(int i = 0; i < 30; i++) {
-      		  if(g < 128) {
-      		  	  r -= 2;  g += 2;
-      		  }
-      		  setPixel(i, r, g, b);
-      	  }
+      for(int i = 0; i < 30; i++) {
+    	  // 隣のLEDとの色の違い
+    	  int i_count = count_led + (10 * i); // 0にしたら全部同じ色
+    	  i_count %= 256 * 6;
+    	  int phase = i_count / 256;
+    	  int step_val = i_count % 256;
+    	  switch (phase) {
+			  case 0: // 赤 → 黄 (緑が増える)
+				  r = 255;
+				  g = step_val; // 0 から 255 へ増加
+				  b = 0;
+				  break;
+
+			  case 1: // 黄 → 緑 (赤が減る)
+				  r = 255 - step_val; // 255 から 0 へ減少
+				  g = 255;
+				  b = 0;
+				  break;
+
+			  case 2: // 緑 → シアン (青が増える)
+				  r = 0;
+				  g = 255;
+				  b = step_val; // 0 から 255 へ増加
+				  break;
+
+			  case 3: // シアン → 青 (緑が減る)
+				  r = 0;
+				  g = 255 - step_val; // 255 から 0 へ減少
+				  b = 255;
+				  break;
+
+			  case 4: // 青 → マゼンタ (赤が増える)
+				  r = step_val; // 0 から 255 へ増加
+				  g = 0;
+				  b = 255;
+				  break;
+
+			  case 5: // マゼンタ → 赤 (青が減る)
+				  r = 255;
+				  g = 0;
+				  b = 255 - step_val; // 255 から 0 へ減少
+				  break;
+
+		  }
+    	  setPixel(i, r, g, b);
+
       }
-      if(1000 < count_led && count_led <= 2000) {
-           for(int i = 0; i < 30; i++) {
-       		  if(b < 128) {
-       			  g -= 2;  b += 2;
-       		  }
-        	   setPixel(i, r, g, b);
-           }
-      }
-      if(2000 < count_led && count_led <= 3000) {
-    	  for(int i = 0; i < 30; i++) {
-      		  if(r < 128) {
-      			  b -= 2;  r += 2;
-      		  }
-              setPixel(i, r, g, b);
-          }
-      }
-      if(count_led == 3000) count_led = 0;
-      count_led++;
+      count_led += 1; //色が変わる速さ
       show();
 
       // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
