@@ -22,15 +22,16 @@ RobStride 05 モーターへ、位置指令をCAN frameとして送るnode。
 
 ## 起動時の初期化
 
-ノード起動から100ms後、RobStride 05マニュアルのPP位置モード手順に合わせ、以下を一度だけ送る(`startup_timer_`):
+`enable_topic`で起動許可を受け、かつCAN送信topicのsubscriberが接続された後、RobStride 05マニュアルのPP位置モード手順に合わせて以下を一度だけ送る(`startup_timer_`):
 
 1. `run_mode=1` を書き込み(PP位置モード)
 2. `enable_on_startup: true` ならモーター有効化コマンド(Communication Type 3)
-3. `position_speed` が0.0以上なら `vel_max` を書き込み
-4. `position_acceleration` が0.0以上なら `acc_set` を書き込み
-5. `home_position_rad`（既定`0.0 rad`）を起動時の初期 `loc_ref` として送信
+3. `position_current_limit` が0.0以上なら `limit_cur` を書き込み
+4. `position_speed` が0.0以上なら `vel_max` を書き込み
+5. `position_acceleration` が0.0以上なら `acc_set` を書き込み
+6. `home_position_rad`（既定`0.0 rad`）を起動時の初期 `loc_ref` として送信
 
-`run_mode`、`vel_max`、`acc_set`はモーター側が設定を保持するため、これらは起動時の1回だけで十分。Type 3(有効化)はType 18の書き込みを「反映」させるものではなく、モーターの制御ループ・出力そのものを有効にするスイッチ。
+各初期化フレームの間には`startup_inter_frame_ms`だけ待機する。`run_mode`、`limit_cur`、`vel_max`、`acc_set`はモーター側が設定を保持するため、これらは起動時の1回だけで十分。Type 3(有効化)はType 18の書き込みを「反映」させるものではなく、モーターの制御ループ・出力そのものを有効にするスイッチ。
 
 ## 終了時の安全停止
 
@@ -60,11 +61,13 @@ ROS 2標準のsignal handlerは受信直後にcontextを無効化してしまい
 | `motor_can_id` / `host_can_id` | 対象モーターのCAN ID / このnode(ホスト)側のCAN ID |
 | `command_topic` | 目標角度を受け取るtopic (`std_msgs/Float32`) |
 | `send_period_ms` | 指令フレームを送信する周期 |
+| `startup_inter_frame_ms` | 起動時の各CANフレーム間の待機時間[ms] |
 | `position_min_rad`/`max_rad` | 位置指令のclamp範囲 |
 | `home_position_rad` | 起動時の初期目標位置と、終了時に復帰する位置。既定は`0.0 rad` |
 | `enable_on_startup` | 起動時にモーター有効化コマンドを送るか |
 | `position_speed` | PP位置モード速度。負値(デフォルト)は未指定で変更せず、起動時にWARNを出す |
 | `position_acceleration` | PP位置モード加速度。負値(デフォルト)は未指定で変更せず、起動時にWARNを出す |
+| `position_current_limit` | PP/速度モード電流上限[A]。負値(デフォルト)は未指定で変更しない。上限11 A |
 | `shutdown_return_wait_ms` | 終了時にhome位置へ戻す待機時間[ms]。待機後にType 4でトルクを切る |
 
 ## RobStrideのCANプロトコル概要

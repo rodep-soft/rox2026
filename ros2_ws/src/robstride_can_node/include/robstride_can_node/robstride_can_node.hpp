@@ -14,8 +14,7 @@ class RobstrideCanNode : public rclcpp::Node
 public:
   RobstrideCanNode();
 
-  // home_position_rad_へ復帰させた後に停止する。contextが有効なうち(shutdownの前)にmainから呼ぶ想定。
-  // on_shutdownからはcontext無効化済みでpublishが失敗するため呼ばない。
+  // home_position_rad_へ復帰させた後に停止する
   void SendStop();
 
 private:
@@ -23,22 +22,27 @@ private:
   void GetParameters();
 
   void CommandCallback(const std_msgs::msg::Float32::SharedPtr msg);
+
   // roller_angle_controller等から「起動シーケンスを送っていいか」の指示を受け取る。
   void EnableCallback(const std_msgs::msg::Bool::SharedPtr msg);
+
   // send_period_ms_ごとに呼ばれ、最後に受け取ったloc_refを送り続ける。
   void TimerCallback();
 
-  // Communication Type 3 (Motor enabled to run) を送信する。
+  // Type 3 Motor enabled to run
   void SendEnable();
-  // Communication Type 4 (Motor stop) を送信し、モーターを無効化(トルク出力オフ)する。
+  // Type 4 Motor stop
   void SendDisable();
-  // Communication Type 18でrun_mode(index 0x7005)を書き込む。
+  // Type 18 run_mode (index 0x7005)
   void SendRunMode(uint8_t run_mode);
-  // position mode用の起動時速度/加速度パラメータを書き込む。
+
+  // position mode用の起動時速度/加速度パラメータを書き込む
   void SendPositionStartupParameters();
-  // Communication Type 18で任意のfloatパラメータ(index指定)を書き込む共通ヘルパー。
+  // PP/速度モード用の電流上限を書き込み
+  void SendPositionCurrentLimit();
+  // Type 18で任意のfloatパラメータ
   void SendFloatParam(uint16_t index, float value);
-  // 29bit拡張CAN IDを組み立ててcan_publisher_へpublishする最終出力経路。
+  // 29bit拡張CAN IDを組み立ててcan_publisher_へpublishする
   void PublishFrame(uint8_t comm_type, uint16_t data_area2, const std::array<uint8_t, 8> & data);
 
   static double Clamp(double value, double min_value, double max_value);
@@ -52,6 +56,7 @@ private:
   std::string enable_topic_;
 
   int send_period_ms_;
+  int startup_inter_frame_ms_;
 
   double position_min_rad_;
   double position_max_rad_;
@@ -61,6 +66,7 @@ private:
 
   double position_speed_;
   double position_acceleration_;
+  double position_current_limit_;
   int shutdown_return_wait_ms_;
 
   bool startup_completed_;

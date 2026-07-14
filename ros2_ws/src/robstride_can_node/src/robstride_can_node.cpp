@@ -30,6 +30,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 namespace
@@ -44,10 +45,11 @@ constexpr uint16_t IndexRunMode = 0x7005;      // 動作モード (uint8)
 constexpr uint16_t IndexLocRef = 0x7016;       // 目標角度[rad] (float)
 constexpr uint16_t IndexVelMax = 0x7024;       // PP位置モード速度[rad/s] (float)
 constexpr uint16_t IndexAccSet = 0x7025;       // PP位置モード加速度[rad/s^2] (float)
+constexpr uint16_t IndexLimitCur = 0x7018;     // PP/速度モード電流上限[A] (float)
 
 // run_mode(IndexRunMode)に書き込む値
 constexpr uint8_t RunModePosition = 1;  // PP位置モード
-}  // namespace
+}
 
 RobstrideCanNode::RobstrideCanNode()
 : Node("robstride_can_node"),
@@ -88,28 +90,28 @@ RobstrideCanNode::RobstrideCanNode()
     command_topic_.c_str(),
     enable_topic_.c_str());
 
-  // run_modeの書き込みはノード起動時に一度だけでよい（モーター側は設定を保持する）。
-  // 「いつ送るか」はroller_angle_controller側の判断(enable_topic_)に委ね、
-  // このノードはCAN protocolの組み立てだけを担当する。
+  // run_modeの書き込みはノード起動時に一度だけ
+  // このノードはCAN protocolの組み立てだけを担当
   // enable_topic_受信後も、ros2socketcan側のsubscriptionとのDDS discoveryが
   // 完了するまで時間が読めないため、subscriber数をポーリングしてから送る。
   // timerのcallback内でそのtimer自身をcancelしても安全（実行中のcallbackは最後まで走る）。
   // RobStride 05マニュアルのPP位置モード手順に合わせ、
-  // run_mode -> enable -> vel_max -> acc_set -> loc_refの順に送る。
+  // run_mode -> enable -> limit_cur -> vel_max -> acc_set -> loc_refの順に送る。
 
   startup_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(50),
     [this]() {
       if (!enable_requested_) {
-        return;         // roller_angle_controller等からのenable指示がまだ来ていない。
+        return;         // roller_angle_controllerからのenable指示がない
       }
       if (can_publisher_->get_subscription_count() == 0) {
-        return;         // ros2socketcanとまだ繋がっていない。次のtickで再確認する。
+        return;         // ros2socketcanとまだ繋がっていない
       }
-      SendRunMode(RunModePosition);
+      SendRunMode(RunModePosition); // position modeを送信
       if (enable_on_startup_) {
         SendEnable();               // motorのenableを送信
       }
+      SendPositionCurrentLimit();   // 電流制限の送信
       SendPositionStartupParameters(); // vel_max/acc_setを送信
       SendFloatParam(IndexLocRef, static_cast<float>(command_target_));
       startup_completed_ = true;
@@ -128,6 +130,7 @@ void RobstrideCanNode::DeclareParameters()
   this->declare_parameter<std::string>("enable_topic", "/robstride/enable");
 
   this->declare_parameter<int>("send_period_ms", 20);
+  this->declare_parameter<int>("startup_inter_frame_ms", 10);
 
   this->declare_parameter<double>("position_min_rad", -12.566370614);
   this->declare_parameter<double>("position_max_rad", 12.566370614);
@@ -137,19 +140,30 @@ void RobstrideCanNode::DeclareParameters()
   this->declare_parameter<bool>("enable_on_startup", true);
   this->declare_parameter<double>("position_speed", -1.0);
   this->declare_parameter<double>("position_acceleration", -1.0);
+  this->declare_parameter<double>("position_current_limit", -1.0);
   this->declare_parameter<int>("shutdown_return_wait_ms", 7000);
 }
 
 void RobstrideCanNode::GetParameters()
 {
   can_tx_topic_ = this->get_parameter("can_tx_topic").as_string();
-  motor_can_id_ = static_cast<uint8_t>(this->get_parameter("motor_can_id").as_int());
-  host_can_id_ = static_cast<uint8_t>(this->get_parameter("host_can_id").as_int());
+  const int configured_motor_can_id = this->get_parameter("motor_can_id").as_int();
+  const int configured_host_can_id = this->get_parameter("host_can_id").as_int();
+  if (configured_motor_can_id < 1 || configured_motor_can_id > 0x7F) {
+    throw std::invalid_argument("motor_can_id must be in the range 1..127");
+  }
+  if (configured_host_can_id < 0 || configured_host_can_id > 0xFF) {
+    throw std::invalid_argument("host_can_id must be in the range 0..255");
+  }
+  motor_can_id_ = static_cast<uint8_t>(configured_motor_can_id);
+  host_can_id_ = static_cast<uint8_t>(configured_host_can_id);
 
   command_topic_ = this->get_parameter("command_topic").as_string();
   enable_topic_ = this->get_parameter("enable_topic").as_string();
 
   send_period_ms_ = std::max(1, static_cast<int>(this->get_parameter("send_period_ms").as_int()));
+  startup_inter_frame_ms_ = std::max(
+    0, static_cast<int>(this->get_parameter("startup_inter_frame_ms").as_int()));
 
   position_min_rad_ = this->get_parameter("position_min_rad").as_double();
   position_max_rad_ = this->get_parameter("position_max_rad").as_double();
@@ -158,6 +172,17 @@ void RobstrideCanNode::GetParameters()
 
   position_speed_ = this->get_parameter("position_speed").as_double();
   position_acceleration_ = this->get_parameter("position_acceleration").as_double();
+  position_current_limit_ = this->get_parameter("position_current_limit").as_double();
+
+  if (position_speed_ > 20.0) {
+    throw std::invalid_argument("position_speed must be at most 20 rad/s");
+  }
+  if (position_acceleration_ > 1000.0) {
+    throw std::invalid_argument("position_acceleration must be at most 1000 rad/s^2");
+  }
+  if (position_current_limit_ > 11.0) {
+    throw std::invalid_argument("position_current_limit must be at most 11 A");
+  }
 
   if (position_min_rad_ > position_max_rad_) {
     RCLCPP_WARN(this->get_logger(), "position_min_rad is greater than position_max_rad. Swapping.");
@@ -223,6 +248,15 @@ void RobstrideCanNode::SendStop()
 {
   // shutdown後にTimerCallbackが最後の指令を再送しないよう止める。
   timer_->cancel();
+
+  if (!startup_completed_) {
+    SendDisable();
+    RCLCPP_INFO(
+      this->get_logger(),
+      "RobstrideCanNode stopped before initialization completed; sent motor stop frame only.");
+    return;
+  }
+
   command_target_ = home_position_rad_;
 
   // 位置フィードバックを使っていないため、指定時間はhomeへの移動完了を待つ安全マージン。
@@ -259,6 +293,7 @@ void RobstrideCanNode::SendPositionStartupParameters()
 {
   if (position_speed_ >= 0.0) {
     SendFloatParam(IndexVelMax, static_cast<float>(position_speed_));
+    std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
   } else {
     RCLCPP_WARN(
       this->get_logger(),
@@ -267,11 +302,25 @@ void RobstrideCanNode::SendPositionStartupParameters()
   }
   if (position_acceleration_ >= 0.0) {
     SendFloatParam(IndexAccSet, static_cast<float>(position_acceleration_));
+    std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
   } else {
     RCLCPP_WARN(
       this->get_logger(),
       "position_acceleration is negative (%.3f); acc_set is not written and the motor's existing value is used.",
       position_acceleration_);
+  }
+}
+
+void RobstrideCanNode::SendPositionCurrentLimit()
+{
+  if (position_current_limit_ >= 0.0) {
+    SendFloatParam(IndexLimitCur, static_cast<float>(position_current_limit_));
+    std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
+  } else {
+    RCLCPP_INFO(
+      this->get_logger(),
+      "position_current_limit is negative (%.3f); limit_cur is not written and the motor's existing value is used.",
+      position_current_limit_);
   }
 }
 
