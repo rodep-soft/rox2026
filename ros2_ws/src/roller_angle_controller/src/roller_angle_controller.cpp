@@ -29,11 +29,6 @@ public:
       std::bind(&RollerPositionController::Joycallback, this, std::placeholders::_1)
     );
 
-    // 起動時の初期位置をPublishする
-    auto initial_msg = std_msgs::msg::Float32();
-    initial_msg.data = static_cast<float>(current_target_angle_);
-    publisher_->publish(initial_msg);
-
     RCLCPP_INFO(this->get_logger(), "roller_position_controller が起動しました。");
   }
 
