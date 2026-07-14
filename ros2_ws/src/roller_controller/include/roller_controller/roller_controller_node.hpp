@@ -1,23 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <std_msgs/msg/int16.hpp>
-
-// 回転状態を管理する列挙型 (正しく Positive に修正)
-enum class RotationMode
-{
-  Stop,
-  PositiveRotate,
-  NegativeRotate
-};
-
-struct RollerCommand
-{
-  RotationMode mode;
-  int16_t pwm_value;
-};
 
 class RollerControllerNode : public rclcpp::Node
 {
@@ -25,27 +13,21 @@ public:
   RollerControllerNode();
 
 private:
-  // メンバ変数のスペルを修正
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr pwm_publisher_;
+  void DeclareParameters();
+  void GetParameters();
+  void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
+  int16_t SelectRpm(const sensor_msgs::msg::Joy & msg);
 
-  // 関数名のスペルを修正 (JoycallBack -> joyCallback, Parametes -> Parameters)
-  void joyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg);
-  void declareParameters();
-  void getParameters();
-
-  bool isButtonPressed(const sensor_msgs::msg::Joy::SharedPtr joy_msg, int button_index) const;
-  int16_t getPwmValueFromMode(RotationMode mode) const;
-
-  // ボタン・PWM関連変数のタイポをすべて修正
-  int enable_button_;
-  int positive_button_;
-  int negative_button_;
+  std::string rpm_topic_;
+  int enable_axis_;
+  double enable_axis_threshold_;
   int stop_button_;
+  int high_button_;
+  int low_button_;
+  int16_t stop_rpm_;
+  int16_t high_rpm_;
+  int16_t low_rpm_;
 
-  int positive_pwm_;
-  int negative_pwm_;
-  int stop_pwm_;
-
-  RollerCommand current_command_;
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_publisher_;
 };

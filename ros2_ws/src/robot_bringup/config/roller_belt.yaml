@@ -7,28 +7,35 @@ roller_controller_node:
     rpm_topic: "/roller/rpm"
     enable_axis: 3                  # L2。axis値が0.5以上で操作を有効化
     enable_axis_threshold: 0.5
-    # ○(2), △(3), □(0) に順に0, 100, 200 RPMを割り当てる。
-    command_buttons: [2, 3, 0]
-    command_rpms: [0, 100, 200]
+    stop_button: 2                  # ○
+    stop_rpm: 0
+    high_button: 0                  # □
+    high_rpm: 200
+    low_button: 3                   # △
+    low_rpm: 100
 
 belt_controller_node:
   ros__parameters:
     rpm_topic: "/belt/rpm"
     enable_axis: 4                  # R2。axis値が0.5以上で操作を有効化
     enable_axis_threshold: 0.5
-    command_buttons: [2, 3, 0]
-    command_rpms: [0, 100, 200]
+    stop_button: 2                  # ○
+    stop_rpm: 0
+    high_button: 0                  # □
+    high_rpm: 200
+    low_button: 3                   # △
+    low_rpm: 100
 
-motor_can_packer_node:
+roller_belt_can_packer_node:
   ros__parameters:
-    can_tx_topic: "/CAN/can0/transmit"
-    can_id: 0x201
+    can_transmit_topic: "/CAN/can0/transmit"
+    stm_can_id: 0x201
     is_extended: false
-    roller_topic: "/roller/rpm"
-    belt_topic: "/belt/rpm"
+    roller_rpm_topic: "/roller/rpm"
+    belt_rpm_topic: "/belt/rpm"
     min_rpm: 0
     max_rpm: 300
-    send_period_ms: 20
+    publish_period_ms: 20
     timeout_ms: 500
 
 ros2socketcan:

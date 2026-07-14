@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(mad_motor)
+project(belt_controller)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,24 +10,15 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(mad_motor_node src/mad_motor_node.cpp)
-
+add_executable(belt_controller_node src/belt_controller_node.cpp)
 target_include_directories(
-  mad_motor_node
+  belt_controller_node
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_compile_features(belt_controller_node PUBLIC cxx_std_17)
+ament_target_dependencies(belt_controller_node rclcpp sensor_msgs std_msgs)
 
-target_compile_features(
-  mad_motor_node
-  PUBLIC cxx_std_17)
-
-ament_target_dependencies(
-  mad_motor_node rclcpp sensor_msgs std_msgs)
-
-install(TARGETS mad_motor_node DESTINATION lib/${PROJECT_NAME})
-
+install(TARGETS belt_controller_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
-
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

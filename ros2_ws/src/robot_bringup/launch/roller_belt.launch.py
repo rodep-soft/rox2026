@@ -31,22 +31,22 @@ def generate_launch_description():
     )
 
     belt_controller_node = Node(
-        package="roller_controller",
+        package="belt_controller",
         executable="belt_controller_node",
         name="belt_controller_node",
         output="screen",
         parameters=[config_file],
     )
 
-    motor_can_packer_node = Node(
-        package="motor_can_bridge",
-        executable="motor_can_packer_node",
-        name="motor_can_packer_node",
+    roller_belt_can_packer_node = Node(
+        package="roller_belt_can_packer",
+        executable="roller_belt_can_packer_node",
+        name="roller_belt_can_packer_node",
         output="screen",
         parameters=[
             config_file,
             {
-                "can_tx_topic": PathJoinSubstitution(
+                "can_transmit_topic": PathJoinSubstitution(
                     ["/CAN", can_interface, "transmit"]
                 )
             },
@@ -81,7 +81,7 @@ def generate_launch_description():
             joy_node,
             roller_controller_node,
             belt_controller_node,
-            motor_can_packer_node,
+            roller_belt_can_packer_node,
             socketcan_bridge,
         ]
     )

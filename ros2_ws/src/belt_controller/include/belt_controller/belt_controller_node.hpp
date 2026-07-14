@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
-#include <vector>
+#include <cstdint>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
@@ -22,8 +21,12 @@ private:
   std::string rpm_topic_;
   int enable_axis_;
   double enable_axis_threshold_;
-  std::vector<int> command_buttons_;
-  std::vector<int16_t> command_rpms_;
+  int stop_button_;
+  int high_button_;
+  int low_button_;
+  int16_t stop_rpm_;
+  int16_t high_rpm_;
+  int16_t low_rpm_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_publisher_;
