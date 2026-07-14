@@ -1,5 +1,5 @@
-#include "roller_controller/roller_controller_node.hpp"
-#include "roller_controller/joy_button.hpp"
+#include "belt_controller/belt_controller_node.hpp"
+#include "belt_controller/joy_button.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -11,8 +11,8 @@ constexpr int MinimumRpm = 0;
 constexpr int MaximumRpm = 300;
 }  // namespace
 
-RollerControllerNode::RollerControllerNode()
-: Node("roller_controller_node")
+BeltControllerNode::BeltControllerNode()
+: Node("belt_controller_node")
 {
   DeclareParameters();
   GetParameters();
@@ -20,16 +20,13 @@ RollerControllerNode::RollerControllerNode()
   rpm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(rpm_topic_, 10);
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
     "/joy", 10,
-    std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
-
-  RCLCPP_INFO(
-    this->get_logger(), "RPM controller started. rpm_topic=%s", rpm_topic_.c_str());
+    std::bind(&BeltControllerNode::JoyCallback, this, std::placeholders::_1));
 }
 
-void RollerControllerNode::DeclareParameters()
+void BeltControllerNode::DeclareParameters()
 {
-  this->declare_parameter<std::string>("rpm_topic", "/roller/rpm");
-  this->declare_parameter<int>("enable_axis", 3);
+  this->declare_parameter<std::string>("rpm_topic", "/belt/rpm");
+  this->declare_parameter<int>("enable_axis", 4);
   this->declare_parameter<double>("enable_axis_threshold", 0.5);
   this->declare_parameter<int>("stop_button", 2);
   this->declare_parameter<int>("high_button", 0);
@@ -39,7 +36,7 @@ void RollerControllerNode::DeclareParameters()
   this->declare_parameter<int>("low_rpm", 100);
 }
 
-void RollerControllerNode::GetParameters()
+void BeltControllerNode::GetParameters()
 {
   rpm_topic_ = this->get_parameter("rpm_topic").as_string();
   enable_axis_ = this->get_parameter("enable_axis").as_int();
@@ -56,7 +53,7 @@ void RollerControllerNode::GetParameters()
       static_cast<int>(this->get_parameter("low_rpm").as_int()), MinimumRpm, MaximumRpm));
 }
 
-void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
+void BeltControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
   if (!msg) {
     return;
@@ -67,31 +64,30 @@ void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr ms
   rpm_publisher_->publish(rpm_msg);
 }
 
-int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
+int16_t BeltControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
 {
   if (
-    !roller_controller::IsAxisPressed(*this, msg, enable_axis_, enable_axis_threshold_))
+    !belt_controller::IsAxisPressed(*this, msg, enable_axis_, enable_axis_threshold_))
   {
     return 0;
   }
 
-  if (roller_controller::IsButtonPressed(*this, msg, stop_button_)) {
+  if (belt_controller::IsButtonPressed(*this, msg, stop_button_)) {
     return stop_rpm_;
   }
-  if (roller_controller::IsButtonPressed(*this, msg, high_button_)) {
+  if (belt_controller::IsButtonPressed(*this, msg, high_button_)) {
     return high_rpm_;
   }
-  if (roller_controller::IsButtonPressed(*this, msg, low_button_)) {
+  if (belt_controller::IsButtonPressed(*this, msg, low_button_)) {
     return low_rpm_;
   }
-
   return 0;
 }
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<RollerControllerNode>());
+  rclcpp::spin(std::make_shared<BeltControllerNode>());
   rclcpp::shutdown();
   return 0;
 }

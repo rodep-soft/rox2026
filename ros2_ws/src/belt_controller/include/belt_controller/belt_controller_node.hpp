@@ -1,16 +1,16 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
+#include <cstdint>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <std_msgs/msg/int16.hpp>
 
-class RollerControllerNode : public rclcpp::Node
+class BeltControllerNode : public rclcpp::Node
 {
 public:
-  RollerControllerNode();
+  BeltControllerNode();
 
 private:
   void DeclareParameters();
