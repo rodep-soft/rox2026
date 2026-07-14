@@ -144,6 +144,25 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     return output;
 }
 
+void Wheel(uint8_t WheelPos, uint8_t *r, uint8_t *g, uint8_t *b) {
+    WheelPos = 255 - WheelPos;
+    if(WheelPos < 85) {
+        *r = 255 - WheelPos * 3;
+        *g = 0;
+        *b = WheelPos * 3;
+    } else if(WheelPos < 170) {
+        WheelPos -= 85;
+        *r = 0;
+        *g = WheelPos * 3;
+        *b = 255 - WheelPos * 3;
+    } else {
+        WheelPos -= 170;
+        *r = WheelPos * 3;
+        *g = 255 - WheelPos * 3;
+        *b = 0;
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -186,9 +205,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // LEDの初期化
+  int count_led = 0;
   clear();
   for(int i = 0; i < 30; i++) {
-      setPixel(i, 255, 0, 0); // 最初は消灯
+      setPixel(i, 0, 0, 0); // 最初は消灯
   }
   show();
 
@@ -274,10 +294,32 @@ int main(void)
 
       // --- 6. LEDの点灯更新 ---
       // 受信したRGB値を使ってLEDの色を更新する
-      clear();
-      for(int i = 0; i < 30; i++) {
-          setPixel(i, r, g, b); // 最初は消灯
+      if(count_led <= 1000) {
+      	  for(int i = 0; i < 30; i++) {
+      		  if(g < 128) {
+      		  	  r -= 2;  g += 2;
+      		  }
+      		  setPixel(i, r, g, b);
+      	  }
       }
+      if(1000 < count_led && count_led <= 2000) {
+           for(int i = 0; i < 30; i++) {
+       		  if(b < 128) {
+       			  g -= 2;  b += 2;
+       		  }
+        	   setPixel(i, r, g, b);
+           }
+      }
+      if(2000 < count_led && count_led <= 3000) {
+    	  for(int i = 0; i < 30; i++) {
+      		  if(r < 128) {
+      			  b -= 2;  r += 2;
+      		  }
+              setPixel(i, r, g, b);
+          }
+      }
+      if(count_led == 3000) count_led = 0;
+      count_led++;
       show();
 
       // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
@@ -360,12 +402,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         if(RxHeader.StdId == 0x201 && RxHeader.DLC == 8) {
 
             // Byte [0],[1]: モーター1,2用 RPM
-            uint16_t received_rpm_1_2 = (uint16_t)(RxData[0] | (RxData[1] << 8));
+            uint16_t received_rpm_1_2 = (uint16_t)(RxData[2] | (RxData[1] << 8));
             target_rpm1 = (float)received_rpm_1_2;
             target_rpm2 = (float)received_rpm_1_2;
 
             // Byte [2],[3]: モーター3用 PWM (1000-2000)
-            uint16_t received_pwm_3 = (uint16_t)(RxData[2] | (RxData[3] << 8));
+            uint16_t received_pwm_3 = (uint16_t)(RxData[0] | (RxData[3] << 8));
             target_rpm3 = (float)received_pwm_3;
 
             // Byte [4]: 遠隔非常停止フラグ (1:停止, 0:通常)
