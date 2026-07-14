@@ -18,12 +18,6 @@ def generate_launch_description():
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(bringup_dir, "launch", "roller_belt.launch.py")
-            )
-        ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
                 os.path.join(bringup_dir, "launch", "can.launch.py")
             )
         ),

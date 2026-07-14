@@ -12,4 +12,4 @@ edulite05_single _node:
 
     # ROS topics used by this node.
     can_tx_topic: "CAN/can0/transmit"
-    motor_vel_topic: "motor_vel"
+    motor_vel_topic: "spring_edulite_speed"
