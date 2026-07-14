@@ -24,14 +24,17 @@ RobStride 05 モーターへ、位置指令をCAN frameとして送るnode。
 
 `enable_topic`で起動許可を受け、かつCAN送信topicのsubscriberが接続された後、RobStride 05マニュアルのPP位置モード手順に合わせて以下を一度だけ送る(`startup_timer_`):
 
-1. `run_mode=1` を書き込み(PP位置モード)
-2. `enable_on_startup: true` ならモーター有効化コマンド(Communication Type 3)
-3. `position_current_limit` が0.0以上なら `limit_cur` を書き込み
-4. `position_speed` が0.0以上なら `vel_max` を書き込み
-5. `position_acceleration` が0.0以上なら `acc_set` を書き込み
-6. `home_position_rad`（既定`0.0 rad`）を起動時の初期 `loc_ref` として送信
+1. モーター停止コマンド(Communication Type 4)を送り、モード切替前に出力を止める
+2. `run_mode=3` を書き込み(Operation control mode)
+3. 現在の物理位置を機械ゼロにするコマンド(Communication Type 6、`data[0]=1`)を送る
+4. `run_mode=1` を書き込み(PP位置モード)
+5. `enable_on_startup: true` ならモーター有効化コマンド(Communication Type 3)
+6. `position_current_limit` が0.0以上なら `limit_cur` を書き込み
+7. `position_speed` が0.0以上なら `vel_max` を書き込み
+8. `position_acceleration` が0.0以上なら `acc_set` を書き込み
+9. `home_position_rad`（既定`0.0 rad`）を起動時の初期 `loc_ref` として送信
 
-各初期化フレームの間には`startup_inter_frame_ms`だけ待機する。`run_mode`、`limit_cur`、`vel_max`、`acc_set`はモーター側が設定を保持するため、これらは起動時の1回だけで十分。Type 3(有効化)はType 18の書き込みを「反映」させるものではなく、モーターの制御ループ・出力そのものを有効にするスイッチ。
+各初期化フレームの間には`startup_inter_frame_ms`だけ待機する。ゼロ校正はPPモードではブロックされるため、必ずPPモード設定前に送る。現在位置がロボット機構上の意図した基準位置であることを確認してから起動すること。`run_mode`、`limit_cur`、`vel_max`、`acc_set`はモーター側が設定を保持するため、これらは起動時の1回だけで十分。Type 3(有効化)はType 18の書き込みを「反映」させるものではなく、モーターの制御ループ・出力そのものを有効にするスイッチ。
 
 ## 終了時の安全停止
 
@@ -82,6 +85,7 @@ Bit7-0   (8bit) : 宛先CAN ID (motor_can_id)
 
 - **Type 3 (モーター有効化)**: dataは全byte 0。
 - **Type 4 (モーター停止)**: dataは全byte 0。
+- **Type 6 (機械ゼロ設定)**: `data[0]=1`。現在の物理位置を機械ゼロとして設定する。PPモード中は使用できない。
 - **Type 18 (単一パラメータ書き込み)**: 8byteのdata部分が独自フォーマットを持つ。
   - `data[0-1]`: パラメータのindex(リトルエンディアンuint16)
   - `data[2-3]`: 未使用(0)

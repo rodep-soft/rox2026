@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 
@@ -33,17 +32,19 @@ private:
   void SendEnable();
   // Type 4 Motor stop
   void SendDisable();
-  // Type 18 run_mode (index 0x7005)
+  // Type 6 Set motor mechanical zero: 01 00 00 00 00 00 00 00
+  void SendSetMechanicalZero();
+  // Type 18 run_mode (index 0x7005): 05 70 00 00 <mode> 00 00 00
   void SendRunMode(uint8_t run_mode);
 
-  // position mode用の起動時速度/加速度パラメータを書き込む
+  // Type 18のPP位置モード用パラメータを書き込む。
+  // 各関数でCAN IDと8 byte payloadを明示的に組み立てる。
   void SendPositionStartupParameters();
-  // PP/速度モード用の電流上限を書き込み
   void SendPositionCurrentLimit();
-  // Type 18で任意のfloatパラメータ
-  void SendFloatParam(uint16_t index, float value);
-  // 29bit拡張CAN IDを組み立ててcan_publisher_へpublishする
-  void PublishFrame(uint8_t comm_type, uint16_t data_area2, const std::array<uint8_t, 8> & data);
+  void SendPositionCurrentLimit(float current_limit);
+  void SendPositionSpeed(float speed);
+  void SendPositionAcceleration(float acceleration);
+  void SendPositionReference(float position);
 
   static double Clamp(double value, double min_value, double max_value);
 
