@@ -39,10 +39,10 @@ PID_Controller pid2 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
 // 割り算をコンパイル時に終わらせる高速化マクロ
 #define RPM_CALC_FACTOR (60.0f / DT_SEC / ((float)ENCODER_PPR * 4.0f))
 
-volatile uint16_t prev_pos1 = 0;
-volatile uint16_t prev_pos2 = 0;
-volatile float current_rpm1 = 0.0f;
-volatile float current_rpm2 = 0.0f;
+uint16_t prev_pos1 = 0;
+uint16_t prev_pos2 = 0;
+float current_rpm1 = 0.0f;
+float current_rpm2 = 0.0f;
 
 // --- CANから受け取る指令値 ---
 volatile float target_rpm1 = 0.0f;  // モーター1用 (RPM)
@@ -60,7 +60,7 @@ volatile uint8_t RxData[8];
 volatile uint8_t DataReadyFlag = 0;
 #define CAN_TIMEOUT_MS 500
 volatile uint32_t last_can_rx_time = 0;
-uint8_t is_timeout = 1;
+volatile uint8_t is_timeout = 1;
 
 volatile uint32_t debug_last_id = 0;       // 最後に受信したID
 volatile uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
@@ -196,7 +196,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
   HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_1); // モーター1 (MAD RPM制御)
-//  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
+  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
 
   // エンコーダのカウント開始
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
@@ -253,10 +253,10 @@ int main(void)
 
       // --- 3. 出力PWMの決定 ---
       // モーター1, 2 はPIDで計算
-//      output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
-//      float output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
+      output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
+      output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
       // モーター3 は直接PWM値を使用 (1000〜2000の制限をかける)
-      //output_pwm3 = target_rpm3;
+      output_pwm3 = target_rpm3;
       if (output_pwm3 > 2000.0f) output_pwm3 = 2000.0f;
       if (output_pwm3 < 1000.0f) output_pwm3 = 1000.0f;
 
@@ -274,10 +274,7 @@ int main(void)
 
       // --- 6. LEDの点灯更新 ---
       // 受信したRGB値を使ってLEDの色を更新する
-//      clear();
-//      for(int i = 0; i < 30; i++) {
-//          setPixel(i, led_r, led_g, led_b);
-//      }
+      clear();
       for(int i = 0; i < 30; i++) {
           setPixel(i, r, g, b); // 最初は消灯
       }
