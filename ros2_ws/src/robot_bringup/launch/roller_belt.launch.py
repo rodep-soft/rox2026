@@ -11,7 +11,7 @@ def generate_launch_description():
     can_interface = LaunchConfiguration("can_interface")
 
     default_config_file = PathJoinSubstitution(
-        [FindPackageShare("robot_bringup"), "config", "mad_motor.yaml"]
+        [FindPackageShare("robot_bringup"), "config", "roller_belt.yaml"]
     )
 
     joy_node = Node(
@@ -22,22 +22,34 @@ def generate_launch_description():
         parameters=[config_file, {"dev": joy_dev}],
     )
 
-    mad_motor_node = Node(
-        package="mad_motor",
-        executable="mad_motor_node",
-        name="mad_motor_node",
+    roller_controller_node = Node(
+        package="roller_controller",
+        executable="roller_controller_node",
+        name="roller_controller_node",
         output="screen",
         parameters=[config_file],
     )
 
-    mad_motor_can_command_node = Node(
+    belt_controller_node = Node(
+        package="roller_controller",
+        executable="belt_controller_node",
+        name="belt_controller_node",
+        output="screen",
+        parameters=[config_file],
+    )
+
+    motor_can_packer_node = Node(
         package="motor_can_bridge",
-        executable="motor_can_command_node",
-        name="mad_motor_can_command_node",
+        executable="motor_can_packer_node",
+        name="motor_can_packer_node",
         output="screen",
         parameters=[
             config_file,
-            {"can_tx_topic": PathJoinSubstitution(["/CAN", can_interface, "transmit"])},
+            {
+                "can_tx_topic": PathJoinSubstitution(
+                    ["/CAN", can_interface, "transmit"]
+                )
+            },
         ],
     )
 
@@ -54,7 +66,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "config_file",
                 default_value=default_config_file,
-                description="MAD motor bringup parameter yaml",
+                description="roller and belt RPM bringup parameter yaml",
             ),
             DeclareLaunchArgument(
                 "joy_dev",
@@ -64,11 +76,12 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "can_interface",
                 default_value="can0",
-                description="SocketCAN interface used for the MAD motor STM command path",
+                description="SocketCAN interface used for the roller and belt STM command path",
             ),
             joy_node,
-            mad_motor_node,
-            mad_motor_can_command_node,
+            roller_controller_node,
+            belt_controller_node,
+            motor_can_packer_node,
             socketcan_bridge,
         ]
     )
