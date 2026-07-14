@@ -5,7 +5,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 
 class RollerPositionController : public rclcpp::Node
@@ -24,16 +23,6 @@ public:
       10
     );
 
-    // robstride_can_nodeへ「起動シーケンス(run_mode/enable等)を送っていい」と指示するtopic。
-    // transient_localにしておくことで、robstride_can_node側の起動順序やdiscoveryの
-    // タイミングに関わらず、後から繋がっても直近にpublishされた値を受け取れる。
-    rclcpp::QoS enable_qos(1);
-    enable_qos.transient_local();
-    enable_publisher_ = this->create_publisher<std_msgs::msg::Bool>(
-      enable_topic_,
-      enable_qos
-    );
-
     subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
       "/joy",
       10,
@@ -44,11 +33,6 @@ public:
     auto initial_msg = std_msgs::msg::Float32();
     initial_msg.data = static_cast<float>(current_target_angle_);
     publisher_->publish(initial_msg);
-
-    // robstride_can_nodeに起動シーケンスの送信を指示する
-    auto enable_msg = std_msgs::msg::Bool();
-    enable_msg.data = true;
-    enable_publisher_->publish(enable_msg);
 
     RCLCPP_INFO(this->get_logger(), "roller_position_controller が起動しました。");
   }
@@ -65,7 +49,6 @@ private:
     this->declare_parameter<int>("intake_button", 0);
     this->declare_parameter<int>("shoot_button", 2);
 
-    this->declare_parameter<std::string>("enable_topic", "/robstride/enable");
   }
 
   void GetParameters()
@@ -79,7 +62,6 @@ private:
     intake_btn_idx_ = this->get_parameter("intake_button").as_int();
     shoot_btn_idx_ = this->get_parameter("shoot_button").as_int();
 
-    enable_topic_ = this->get_parameter("enable_topic").as_string();
   }
 
   // 設定されたJoyボタンが届いているかの確認
@@ -151,7 +133,6 @@ private:
   // メンバ変数（クラスの保管庫）
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr subscription_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr enable_publisher_;
 
   double storage_angle_;
   double intake_angle_;
@@ -163,7 +144,6 @@ private:
   int intake_btn_idx_;
   int shoot_btn_idx_;
 
-  std::string enable_topic_;
 };
 
 int main(int argc, char * argv[])
