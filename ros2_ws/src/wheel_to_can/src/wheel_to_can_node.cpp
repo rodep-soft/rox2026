@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
-#include <cstring>
+#include <utility>
 #include <functional>
 
 using namespace std::chrono_literals;
@@ -21,13 +21,13 @@ public:
          // パラメータ読み込み
         this->declare_parameter<double>("current_limit", 11.0);
         this->declare_parameter<double>("acceleration", 20.0);
-        this->declare_parameter<double>("max_acceleration", 100.0);
-        this->declare_parameter<double>("min_acceleration", 0.0);
+        this->declare_parameter<double>("max_velocity", 50.0);
+        this->declare_parameter<double>("min_velocity", -50.0);
 
         current_limit_ = this->get_parameter("current_limit").as_double();
         acceleration_ = this->get_parameter("acceleration").as_double();
-        max_acceleration_ = this->get_parameter("max_acceleration").as_double();
-        min_acceleration_ = this->get_parameter("min_acceleration").as_double();
+        max_velocity_ = this->get_parameter("max_velocity").as_double();
+        min_velocity_ = this->get_parameter("min_velocity").as_double();
         sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
             "motor_vel", 10, std::bind(&WheelToCanNode::callback, this, std::placeholders::_1));
         
@@ -51,6 +51,7 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         init_motors(); // モーターの有効化
+        is_initialized_ = true;
     }
 
     void stop_motors() {
@@ -81,10 +82,11 @@ private:
 
     double current_limit_;
     double acceleration_;
-    double max_acceleration_;
-    double min_acceleration_;
+    double max_velocity_;
+    double min_velocity_;
 
     bool is_timeout_; // タイムアウト状態を管理するフラグ
+    bool is_initialized_ = false; // 初期化が完了したかどうかを管理するフラグ
 
 
     void init_motors() {                     
@@ -151,11 +153,8 @@ private:
             frame_acc_rad.data[1] = 0x70; // Index上位
             frame_acc_rad.data[2] = 0x00;
             frame_acc_rad.data[3] = 0x00;
-            float acc = std::clamp(
-                static_cast<float>(acceleration_),
-                static_cast<float>(min_acceleration_),
-                static_cast<float>(max_acceleration_)
-            );
+
+            float acc = static_cast<float>(acceleration_);
 
             auto acc_bytes = std::bit_cast<std::array<uint8_t, 4>>(acc);
             for (int i = 0; i < 4; i++) {
@@ -167,19 +166,25 @@ private:
         }
     }
 
-    void can_receive_callback(
-        const can_msgs::msg::Frame::SharedPtr msg)
+    void can_receive_callback( const can_msgs::msg::Frame::SharedPtr msg)
     {
         for(int motor_id = 1; motor_id <= 4; motor_id++)
         {
             uint32_t target_id =
                 (motor_id << 16) | 0xFE;
 
-            if(msg->id == target_id)
+           if(msg->id == target_id)
             {
-                init_motor();   // モーターを有効化する関数を呼び出す
-                return;
-            }
+                RCLCPP_INFO(this->get_logger(), "Received CAN message from motor %d", motor_id);
+                if(!is_initialized_)
+                {
+                    RCLCPP_INFO(this->get_logger(), "Initializing motors after receiving first CAN message.");  
+                    init_motors();
+                    is_initialized_ = true;
+                }
+
+    return;
+}
         }
     }
 
@@ -201,7 +206,11 @@ private:
 
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
 
-            float value = msg->data[motor_id - 1];
+            float value = std::clamp(
+                msg->data[motor_id - 1],
+                static_cast<float>(min_velocity_),
+                static_cast<float>(max_velocity_)
+            );
 
             auto vel_bytes = std::bit_cast<std::array<uint8_t, 4>>(value);
 
