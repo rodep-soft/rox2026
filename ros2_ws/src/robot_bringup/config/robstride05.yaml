@@ -5,8 +5,8 @@ joy_node:
 roller_position_controller:
   ros__parameters:
     # RobStride loc_ref is radian.
-    storage_angle: 0.0
-    intake_angle: -1.7
+    storage_angle: 1.5
+    intake_angle: -1.3
     shoot_angle: 0.0
 
     enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
@@ -25,9 +25,9 @@ robstride_position_node:
     send_period_ms: 20                   # loc_refを送信する周期
     startup_inter_frame_ms: 10           # PP初期化フレーム間の待機時間[ms]
 
-    position_min_rad: -2.0     # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
+    position_min_rad: -1.6     # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
                                           # 位置フィードバックが-4π~4πで周期ループする仕様に合わせたソフト側の制限)
-    position_max_rad: 0.5       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
+    position_max_rad: 1.5       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
 
     home_position_rad: 0.0               # 起動時の初期目標、および終了時に復帰する位置[rad]
 
