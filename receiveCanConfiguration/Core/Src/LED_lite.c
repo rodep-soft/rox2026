@@ -23,7 +23,7 @@ typedef struct
 } RGB_t;
 
 RGB_t ledBuffer[LED_NUM];
-uint16_t pwmData[(LED_NUM * 24) + RESET_SLOTS];
+uint16_t pwmData[(LED_NUM * 24) + (RESET_SLOTS * 2)];
 bool ledChanged =true;
 
 //DMAが複数呼ばれたときに，競合しないように制御する変数
@@ -61,6 +61,11 @@ void setPixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b)
     }
 }
 
+RGB_t readPixel(uint16_t index)
+{
+	return ledBuffer[index];
+}
+
 void show(void)
 {
 	if(!ledChanged)
@@ -72,6 +77,10 @@ void show(void)
 	 memset(pwmData, 0, sizeof(pwmData));
 
     uint32_t pwmIndex = 0;
+
+    for (uint16_t i = 0; i < RESET_SLOTS; i++) {
+        pwmData[pwmIndex++] = 0;
+    }
 
     for(uint16_t led=0; led<LED_NUM; led++)
     {
