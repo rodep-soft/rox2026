@@ -17,7 +17,7 @@ roller_position_controller:
 robstride_position_node:
   ros__parameters:
     can_tx_topic: "/CAN/can0/transmit"   # ros2socketcan_bridgeへ渡すCAN送信topic
-    motor_can_id: 0x33                   # 対象モーターのCAN ID (パラメータ0x200aのデフォルト値は1)
+    motor_can_id: 0x38                   # 対象モーターのCAN ID (パラメータ0x200aのデフォルト値は1)
     host_can_id: 0xFD                    # このノード(ホスト)側のCAN ID
 
     command_topic: "/robstride/position_cmd"  # 目標角度[rad]を受け取るtopic (std_msgs/Float32)
