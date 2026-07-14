@@ -15,21 +15,14 @@ find_package(rclcpp REQUIRED)
 find_package(can_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-
 add_executable(limit_sw_node src/receive_stm32_node.cpp)
 
 # 3. 実行ファイルへの依存関係の紐付け (追加)
-ament_target_dependencies(limit_sw_node
-  rclcpp
-  can_msgs
-  std_msgs
-)
+ament_target_dependencies(
+  limit_sw_node rclcpp can_msgs std_msgs)
 
 # 4. ros2 run で動かせるようにするためのインストール設定 (追加)
-install(TARGETS
-  limit_sw_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS limit_sw_node DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -44,6 +37,4 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
-)
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
