@@ -2,7 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 class RollerPositionController : public rclcpp::Node
 {
@@ -29,9 +29,9 @@ public:
     // 初期目標角度を初期位置(storage_angle)に設定
     current_target_angle_ = this->get_parameter("storage_angle").as_double();
 
-    // 2. パブリッシャの作成 (std_msgs::msg::Float64型)
-    publisher_ = this->create_publisher<std_msgs::msg::Float64>(
-      "/roller/robostride/target_position",
+    // 2. パブリッシャの作成 (robstride_can_node(position node)に合わせてFloat32/命令topic)
+    publisher_ = this->create_publisher<std_msgs::msg::Float32>(
+      "/robstride/position_cmd",
       10
     );
 
@@ -43,8 +43,8 @@ public:
     );
 
     // 4. 起動時の初期位置をPublishする
-    auto initial_msg = std_msgs::msg::Float64();
-    initial_msg.data = current_target_angle_;
+    auto initial_msg = std_msgs::msg::Float32();
+    initial_msg.data = static_cast<float>(current_target_angle_);
     publisher_->publish(initial_msg);
 
     RCLCPP_INFO(this->get_logger(), "roller_position_controller が起動しました。");
@@ -80,14 +80,14 @@ private:
     }
 
     // --- 目標角度をPublishする ---
-    auto output_msg = std_msgs::msg::Float64();
-    output_msg.data = current_target_angle_;
+    auto output_msg = std_msgs::msg::Float32();
+    output_msg.data = static_cast<float>(current_target_angle_);
     publisher_->publish(output_msg);
   }
 
   // メンバ変数（クラスの保管庫）
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr subscription_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr publisher_;
   double current_target_angle_;   // 前回の目標角度を保持する変数
 
   int enable_btn_idx_;

@@ -13,13 +13,17 @@ ROX2026用レポジトリ
 
 | Package | 説明 |
 |---------|------|
+| joy_conversion | /joyより非常停止データと非常停止入りの/joy_secondを送信 |
 | mecanum_controller | 足回りのモーター速度の計算  |
 | wheel_to_can | 足回りeduliteのcanframe生成 |
 | roller_angle_controller | ベルト発射，ドリブル機構の動作決定 |
 | spring_launch_controller | ばね発射の動作決定 |
+| mad_motor | madのpwm?をキー入力より計算するノード |
 | motor_can_bridge | stm32向けにMAD用のcan frame生成とroller/belt frameの集約 |
 | *ros2socketcan_bridge* | canframeからcanデータ生成と送受信 |
 | angle_motor_node | ドリブル機構動作? |
+| robostride_can_node | 速度指令や位置指令より送信用のcanFrame作成 |
+| robot_bringup | ロボットの各機構のノードを起動するlaunchファイル一覧 |
 
 *斜体は外部パッケージ
 
