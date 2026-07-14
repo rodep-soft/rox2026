@@ -11,6 +11,10 @@
 
   <depend>launch</depend>
   <depend>launch_ros</depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>mad_motor</exec_depend>
+  <exec_depend>motor_can_bridge</exec_depend>
+  <exec_depend>ros2socketcan_bridge</exec_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
