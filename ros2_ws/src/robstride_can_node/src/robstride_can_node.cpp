@@ -28,7 +28,7 @@
 namespace
 {
 constexpr uint8_t RunModePosition = 1;  // PP位置モード
-constexpr uint8_t RunModeOperation = 3;  // Operation control mode (Type 6でのゼロ校正用)
+constexpr uint8_t RunModeOperation = 0;  // Operation control mode (Type 6でのゼロ校正用)
 }
 
 RobstrideCanNode::RobstrideCanNode()
