@@ -81,7 +81,7 @@ void show(void)
         appendByte(ledBuffer[led].b, &pwmIndex);
     }
     // Reset
-    while(pwmIndex < LED_NUM*24 + RESET_SLOTS)
+    while(pwmIndex < LED_NUM * 24 + RESET_SLOTS)
     {
         pwmData[pwmIndex++] = 0;
     }

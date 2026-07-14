@@ -7,6 +7,9 @@ static uint32_t last_send_time = 0;
 // 送信回数を記録するデバッグ用変数
 volatile uint32_t debug_tx_count = 0;
 uint8_t TxData[8] = {0};
+HAL_StatusTypeDef ret;
+uint32_t can_error;
+uint32_t mailbox_free;
 
 void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
@@ -46,8 +49,14 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         if (sw4 == GPIO_PIN_RESET) { TxData[0] |= (1 << 3); } // 3ビット目を立てる
 
         // 送信をリクエストし、無事にバッファに入った場合のみカウントを増やす
-        if (HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox) == HAL_OK) {
-            debug_tx_count++;
-        }
+//        if (HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox) == HAL_OK) {
+//            debug_tx_count++;
+//        }
+
+
+        ret = HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox);
+
+        can_error = HAL_CAN_GetError(hcan);
+        mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
     }
 }
