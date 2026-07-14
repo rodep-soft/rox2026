@@ -1,0 +1,15 @@
+edulite05_single _node:
+  ros__parameters:
+    # Motor ID stored in the lower 8 bits of the CAN ID (1 to 255).
+    motor_id: 10
+
+    # Maximum velocity command received on motor_vel [rad/s].
+    max_velocity_rad_s: 30.0
+
+    # Values written to EDULITE05 during initialization.
+    current_limit_a: 11.0
+    acceleration_rad_s2: 20.0
+
+    # ROS topics used by this node.
+    can_tx_topic: "CAN/can0/transmit"
+    motor_vel_topic: "motor_vel"
