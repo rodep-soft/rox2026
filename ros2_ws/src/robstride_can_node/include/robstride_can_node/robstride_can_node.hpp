@@ -37,13 +37,8 @@ private:
   // Type 18 run_mode (index 0x7005): 05 70 00 00 <mode> 00 00 00
   void SendRunMode(uint8_t run_mode);
 
-  // Type 18のPP位置モード用パラメータを書き込む。
-  // 各関数でCAN IDと8 byte payloadを明示的に組み立てる。
-  void SendPositionStartupParameters();
   void SendPositionCurrentLimit();
   void SendPositionCurrentLimit(float current_limit);
-  void SendPositionSpeed(float speed);
-  void SendPositionAcceleration(float acceleration);
   void SendPositionReference(float position);
 
   static double Clamp(double value, double min_value, double max_value);
@@ -65,8 +60,6 @@ private:
 
   bool enable_on_startup_;
 
-  double position_speed_;
-  double position_acceleration_;
   double position_current_limit_;
   int shutdown_return_wait_ms_;
 

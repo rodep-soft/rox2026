@@ -12,8 +12,6 @@
 //   Type 18 payloadのパラメータindex:
 //     05 70: run_mode (uint8), 1=位置モード(PP)
 //     16 70: loc_ref (float), 目標角度[rad]
-//     24 70: vel_max (float), PP位置モード速度[rad/s]
-//     25 70: acc_set (float), PP位置モード加速度[rad/s^2]
 
 #include <algorithm>
 #include <atomic>
@@ -76,7 +74,7 @@ RobstrideCanNode::RobstrideCanNode()
   // 完了するまで時間が読めないため、subscriber数をポーリングしてから送る。
   // timerのcallback内でそのtimer自身をcancelしても安全（実行中のcallbackは最後まで走る）。
   // Type 6によるゼロ校正はPPモードではブロックされるため、
-  // stop -> operation mode -> mechanical zero -> PP mode -> enable の順に送る。
+  // stop -> motion control -> enable -> mechanical zero -> stop -> PP mode -> enable の順に送る。
 
   startup_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(50),
@@ -92,7 +90,11 @@ RobstrideCanNode::RobstrideCanNode()
       std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       SendRunMode(RunModeOperation);
       std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
+      SendEnable();
+      std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       SendSetMechanicalZero();
+      std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
+      SendDisable();
       std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       SendRunMode(RunModePosition);
       std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
@@ -101,7 +103,6 @@ RobstrideCanNode::RobstrideCanNode()
         std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       }
       SendPositionCurrentLimit();   // 電流制限の送信
-      SendPositionStartupParameters(); // vel_max/acc_setを送信
       SendPositionReference(static_cast<float>(command_target_));
       startup_completed_ = true;
       startup_timer_->cancel();
@@ -127,8 +128,6 @@ void RobstrideCanNode::DeclareParameters()
 
 
   this->declare_parameter<bool>("enable_on_startup", true);
-  this->declare_parameter<double>("position_speed", -1.0);
-  this->declare_parameter<double>("position_acceleration", -1.0);
   this->declare_parameter<double>("position_current_limit", -1.0);
   this->declare_parameter<int>("shutdown_return_wait_ms", 7000);
 }
@@ -159,16 +158,8 @@ void RobstrideCanNode::GetParameters()
 
   enable_on_startup_ = this->get_parameter("enable_on_startup").as_bool();
 
-  position_speed_ = this->get_parameter("position_speed").as_double();
-  position_acceleration_ = this->get_parameter("position_acceleration").as_double();
   position_current_limit_ = this->get_parameter("position_current_limit").as_double();
 
-  if (position_speed_ > 20.0) {
-    throw std::invalid_argument("position_speed must be at most 20 rad/s");
-  }
-  if (position_acceleration_ > 1000.0) {
-    throw std::invalid_argument("position_acceleration must be at most 1000 rad/s^2");
-  }
   if (position_current_limit_ > 11.0) {
     throw std::invalid_argument("position_current_limit must be at most 11 A");
   }
@@ -318,28 +309,6 @@ void RobstrideCanNode::SendRunMode(uint8_t run_mode)
   can_publisher_->publish(frame);
 }
 
-void RobstrideCanNode::SendPositionStartupParameters()
-{
-  if (position_speed_ >= 0.0) {
-    SendPositionSpeed(static_cast<float>(position_speed_));
-    std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
-  } else {
-    RCLCPP_WARN(
-      this->get_logger(),
-      "position_speed is negative (%.3f); vel_max is not written and the motor's existing value is used.",
-      position_speed_);
-  }
-  if (position_acceleration_ >= 0.0) {
-    SendPositionAcceleration(static_cast<float>(position_acceleration_));
-    std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
-  } else {
-    RCLCPP_WARN(
-      this->get_logger(),
-      "position_acceleration is negative (%.3f); acc_set is not written and the motor's existing value is used.",
-      position_acceleration_);
-  }
-}
-
 void RobstrideCanNode::SendPositionCurrentLimit()
 {
   if (position_current_limit_ >= 0.0) {
@@ -373,54 +342,6 @@ void RobstrideCanNode::SendPositionCurrentLimit(float current_limit)
   frame.data[5] = static_cast<uint8_t>((raw >> 8) & 0xFF);
   frame.data[6] = static_cast<uint8_t>((raw >> 16) & 0xFF);
   frame.data[7] = static_cast<uint8_t>((raw >> 24) & 0xFF);
-  can_publisher_->publish(frame);
-}
-
-void RobstrideCanNode::SendPositionSpeed(float speed)
-{
-  uint32_t raw = 0;
-  std::memcpy(&raw, &speed, sizeof(raw));
-
-  can_msgs::msg::Frame frame;
-  frame.header.stamp = this->now();
-  frame.id = (0x12U << 24) | (static_cast<uint32_t>(host_can_id_) << 8) | motor_can_id_;
-  frame.is_rtr = false;
-  frame.is_extended = true;
-  frame.is_error = false;
-  frame.dlc = 8;
-  frame.data.fill(0);
-  // vel_max (0x7024): 24 70 00 00 <float little-endian>
-  frame.data[0] = 0x24;
-  frame.data[1] = 0x70;
-  frame.data[4] = static_cast<uint8_t>(raw & 0xFF);
-  frame.data[5] = static_cast<uint8_t>((raw >> 8) & 0xFF);
-  frame.data[6] = static_cast<uint8_t>((raw >> 16) & 0xFF);
-  frame.data[7] = static_cast<uint8_t>((raw >> 24) & 0xFF);
-
-  can_publisher_->publish(frame);
-}
-
-void RobstrideCanNode::SendPositionAcceleration(float acceleration)
-{
-  uint32_t raw = 0;
-  std::memcpy(&raw, &acceleration, sizeof(raw));
-
-  can_msgs::msg::Frame frame;
-  frame.header.stamp = this->now();
-  frame.id = (0x12U << 24) | (static_cast<uint32_t>(host_can_id_) << 8) | motor_can_id_;
-  frame.is_rtr = false;
-  frame.is_extended = true;
-  frame.is_error = false;
-  frame.dlc = 8;
-  frame.data.fill(0);
-  // acc_set (0x7025): 25 70 00 00 <float little-endian>
-  frame.data[0] = 0x25;
-  frame.data[1] = 0x70;
-  frame.data[4] = static_cast<uint8_t>(raw & 0xFF);
-  frame.data[5] = static_cast<uint8_t>((raw >> 8) & 0xFF);
-  frame.data[6] = static_cast<uint8_t>((raw >> 16) & 0xFF);
-  frame.data[7] = static_cast<uint8_t>((raw >> 24) & 0xFF);
-
   can_publisher_->publish(frame);
 }
 
