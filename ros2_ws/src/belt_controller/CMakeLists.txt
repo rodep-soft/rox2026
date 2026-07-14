@@ -14,8 +14,11 @@ add_executable(belt_controller_node src/belt_controller_node.cpp)
 target_include_directories(
   belt_controller_node
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-target_compile_features(belt_controller_node PUBLIC cxx_std_17)
-ament_target_dependencies(belt_controller_node rclcpp sensor_msgs std_msgs)
+target_compile_features(
+  belt_controller_node
+  PUBLIC cxx_std_17)
+ament_target_dependencies(
+  belt_controller_node rclcpp sensor_msgs std_msgs)
 
 install(TARGETS belt_controller_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
