@@ -37,11 +37,7 @@ def generate_launch_description():
         output="screen",
         parameters=[
             config_file,
-            {
-                "can_tx_topic": PathJoinSubstitution(
-                    ["/CAN", can_interface, "transmit"]
-                )
-            },
+            {"can_tx_topic": PathJoinSubstitution(["/CAN", can_interface, "transmit"])},
         ],
     )
 
