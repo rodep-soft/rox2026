@@ -3,13 +3,13 @@
 #include <string.h>
 
 /* main.c で定義されているTIM15のハンドルを外部参照 */
-extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim17;
 
 //LEDテープ制御用ファイル
 //sk6812用
 
 //送信間の間隔保持用バッファサイズ
-#define RESET_SLOTS 100
+#define RESET_SLOTS 200
 
 //bitの0,1を送るための時間管理のカウント
 #define LED_LOW  19
@@ -21,6 +21,7 @@ typedef struct
     uint8_t g;
     uint8_t b;
 } RGB_t;
+
 RGB_t ledBuffer[LED_NUM];
 uint16_t pwmData[(LED_NUM * 24) + RESET_SLOTS];
 bool ledChanged =true;
@@ -86,7 +87,7 @@ void show(void)
     }
 
     HAL_TIM_PWM_Start_DMA(
-        &htim3,
+        &htim17,
         TIM_CHANNEL_1,
         (uint32_t *)pwmData,
 		pwmIndex);
@@ -109,9 +110,9 @@ void clear(void)
  * 転送が終わったら自動的にPWM出力を停止して次の送信に備える
  */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == TIM3) {
-        HAL_TIM_PWM_Stop_DMA(&htim3, TIM_CHANNEL_1);
-        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+    if (htim->Instance == TIM17) {
+        __HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_1, 0);
+        HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_1);
         dmaBusy = false;
     }
 }

@@ -59,6 +59,7 @@ defined in linker script */
 	.weak	Reset_Handler
 	.type	Reset_Handler, %function
 Reset_Handler:
+
   ldr   sp, =_estack    /* Atollic update: set stack pointer */
   
 /* Call the clock system initialization function.*/

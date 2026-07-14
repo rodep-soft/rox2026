@@ -4,7 +4,7 @@
 #include "main.h" // HALの定義を読み込むため
 
 /* 制御するLEDの数 */
-#define LED_NUM 30
+#define LED_NUM 28
 
 /* 関数プロトタイプ宣言 */
 void appendByte(uint8_t value,uint32_t *index);

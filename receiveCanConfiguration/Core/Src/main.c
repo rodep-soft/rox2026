@@ -10,8 +10,8 @@
 #include "main.h"
 #include "can.h"
 #include "dma.h"
+#include "i2c.h"
 #include "tim.h"
-#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -65,7 +65,15 @@ uint8_t is_timeout = 1;
 volatile uint32_t debug_last_id = 0;       // 最後に受信したID
 volatile uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
 volatile uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
-volatile volatile uint32_t debug_rx_count = 0;
+volatile uint32_t debug_rx_count = 0;
+float output_pwm1=1000;
+float output_pwm2=1000;
+float output_pwm3 =1000;
+uint32_t pos1;
+uint32_t pos2;
+uint8_t r;
+uint8_t g;
+uint8_t b;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -169,25 +177,26 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_CAN_Init();
-  MX_TIM2_Init();
+  MX_I2C1_Init();
   MX_TIM1_Init();
-  MX_USART2_UART_Init();
-  MX_TIM15_Init();
+  MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM15_Init();
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
 
   // LEDの初期化
   clear();
   for(int i = 0; i < 30; i++) {
-      setPixel(i, 0, 0, 0); // 最初は消灯
+      setPixel(i, 255, 0, 0); // 最初は消灯
   }
   show();
 
   // PWMスタート
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
   HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_1); // モーター1 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
+//  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
 
   // エンコーダのカウント開始
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
@@ -236,35 +245,41 @@ int main(void)
       }
 
       // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
-      uint16_t pos1 = __HAL_TIM_GET_COUNTER(&htim1);
+      pos1 = __HAL_TIM_GET_COUNTER(&htim1);
       current_rpm1 = Calc_RPM(pos1, &prev_pos1);
 
-      uint16_t pos2 = __HAL_TIM_GET_COUNTER(&htim2);
+      pos2 = __HAL_TIM_GET_COUNTER(&htim2);
       current_rpm2 = Calc_RPM(pos2, &prev_pos2);
 
       // --- 3. 出力PWMの決定 ---
       // モーター1, 2 はPIDで計算
-      float output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
-      float output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
-
+//      output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
+//      float output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
       // モーター3 は直接PWM値を使用 (1000〜2000の制限をかける)
-      float output_pwm3 = target_rpm3;
+      //output_pwm3 = target_rpm3;
       if (output_pwm3 > 2000.0f) output_pwm3 = 2000.0f;
       if (output_pwm3 < 1000.0f) output_pwm3 = 1000.0f;
 
       // --- 4. モーターへPWM出力 ---
+      //TIM3 CH1  PA6
+      //TIM3 CH2  PA4
+      //TIM15 CH1 PA2
+      //TIN17 CH1 PA7 ←LEDにした
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm3);
       __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm1);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_2, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim17, TIM_CHANNEL_1, (uint32_t)output_pwm3);
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
 
       // --- 6. LEDの点灯更新 ---
       // 受信したRGB値を使ってLEDの色を更新する
-      clear();
+//      clear();
+//      for(int i = 0; i < 30; i++) {
+//          setPixel(i, led_r, led_g, led_b);
+//      }
       for(int i = 0; i < 30; i++) {
-          setPixel(i, led_r, led_g, led_b);
+          setPixel(i, r, g, b); // 最初は消灯
       }
       show();
 
@@ -320,7 +335,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1;
+  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
@@ -389,7 +405,7 @@ void Error_Handler(void)
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
-  * where the assert_param error has occurred.
+  *         where the assert_param error has occurred.
   * @param  file: pointer to the source file name
   * @param  line: assert_param error line source number
   * @retval None

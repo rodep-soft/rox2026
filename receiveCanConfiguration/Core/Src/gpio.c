@@ -49,23 +49,17 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pins : LIMIT_SW2_Pin LIMIT__SW4_Pin */
-  GPIO_InitStruct.Pin = LIMIT_SW2_Pin|LIMIT__SW4_Pin;
+  /*Configure GPIO pins : LIMIT_SW2_Pin LIMIT_SW4_Pin */
+  GPIO_InitStruct.Pin = LIMIT_SW2_Pin|LIMIT_SW4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LIMIT_SW1_Pin */
-  GPIO_InitStruct.Pin = LIMIT_SW1_Pin;
+  /*Configure GPIO pins : LIMIT_SW1_Pin LIMIT_SW3_Pin */
+  GPIO_InitStruct.Pin = LIMIT_SW1_Pin|LIMIT_SW3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(LIMIT_SW1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LIMIT_SW3_Pin */
-  GPIO_InitStruct.Pin = LIMIT_SW3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(LIMIT_SW3_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

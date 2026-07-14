@@ -59,8 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LIMIT_SW2_Pin GPIO_PIN_0
 #define LIMIT_SW2_GPIO_Port GPIOF
-#define LIMIT__SW4_Pin GPIO_PIN_1
-#define LIMIT__SW4_GPIO_Port GPIOF
+#define LIMIT_SW4_Pin GPIO_PIN_1
+#define LIMIT_SW4_GPIO_Port GPIOF
 #define LIMIT_SW1_Pin GPIO_PIN_0
 #define LIMIT_SW1_GPIO_Port GPIOB
 #define LIMIT_SW3_Pin GPIO_PIN_1
