@@ -2,7 +2,7 @@
 
 ## 概要
 
-`mad_motor_node` は `/joy` のボタン入力から MAD モータ用の PWM 指令を作り、`/mad_motor/pwm_value` に publish するノード。
+`mad_motor_node` は `/joy` のボタン入力から MAD モータ用の PWM 指令を作り、`/mad_motor/rpm` に publish するノード。
 
 ## 入出力
 
@@ -12,7 +12,7 @@
 
 ### Publish
 
-- `/mad_motor/pwm_value` (`std_msgs/msg/Int16`)
+- `/mad_motor/rpm` (`std_msgs/msg/Int16`)
 
 ## 現在の動作
 

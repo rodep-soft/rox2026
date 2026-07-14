@@ -8,7 +8,7 @@
 //
 // ROS 2では、node同士がtopicを通してmessageをやり取りする。
 // このnodeは /joy をsubscribeしてコントローラ入力を受け取り、
-// 決定したPWM値を /mad_motor/pwm_value にpublishする。
+// 決定したPWM値を /mad_motor/rpm にpublishする。
 //
 // 誤操作防止のため、enable_buttonと各mode_buttonが同時に押された時だけ
 // modeを更新する。それ以外のJoy入力では前回のmode/pwm_valueを継続する。
@@ -34,7 +34,7 @@ MadMotorNode::MadMotorNode()
   // MADモータ用のPWM値をpublishする。
   // このnodeはPWM値を出すだけで、CAN変換はmotor_can_bridge側が担当する。
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
-    "/mad_motor/pwm_value", 10);
+    "/mad_motor/rpm", 10);
 
   RCLCPP_INFO(this->get_logger(), "MadMotorNode started.");
 }
@@ -137,7 +137,7 @@ void MadMotorNode::JoyCallback(
   std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_pwm_value_;
 
-  // 他のnodeは /mad_motor/pwm_value をsubscribeすることで、このPWM値を受け取れる。
+  // 他のnodeは /mad_motor/rpm をsubscribeすることで、このPWM値を受け取れる。
   pwm_publisher_->publish(pwm_msg);
 }
 
