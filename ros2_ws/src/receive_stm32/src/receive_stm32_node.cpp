@@ -12,7 +12,7 @@ public:
     {
         // can_sub_ のアンダーバーを追加、canCallback の大文字小文字を修正
         can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-            "/CAN/CAN0/receive", 10,
+            "/CAN/can0/receive", 10,
             std::bind(&LimitSwNode::canCallback, this, std::placeholders::_1));
             
         // UIit8MultiArray -> UInt8MultiArray に修正
@@ -36,10 +36,10 @@ private:
             // トピックへパブリッシュ
             limit_sw_pub_->publish(output_msg);
             
-            RCLCPP_DEBUG(this->get_logger(), "Published limit switch state: %d", limit_status);
-        }
+            RCLCPP_INFO(this->get_logger(), "Published limit switch state: %d", limit_status);
+	}
+	
     }
-
     rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
 };

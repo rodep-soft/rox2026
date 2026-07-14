@@ -1,5 +1,0 @@
-mecanum_controller:
-  ros__parameters:
-    wheel_radius: 1.0
-    robot_length: 1.0
-    robot_width: 1.0
