@@ -1,8 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
-from launch.substitutions import LaunchConfiguration
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 
 
@@ -14,14 +13,19 @@ def generate_launch_description():
         executable="joy_node",
         name="joy_node",
         output="screen",
-        parameters=[{"dev": "/dev/input/js0"}],
+        parameters=[
+            {
+                "dev": "/dev/input/js0",
+                "autorepeat_rate": 100.0,
+            }
+        ],
     )
 
     # joy -> twist 変換ノード
     base_controller = Node(
         package="mecanum_controller",  # 実行したいバイナリが含まれるパッケージ名
         executable="base_controller_node",  # 実行ファイル名 (CMakeやsetup.pyで指定したもの)
-        name="base_contoller_node",  # ノード名 (リマップして上書きする場合)
+        name="base_controller_node",  # ノード名 (リマップして上書きする場合)
         output="screen",  # ログを標準出力（画面）に出す設定
         parameters=[
             os.path.join(

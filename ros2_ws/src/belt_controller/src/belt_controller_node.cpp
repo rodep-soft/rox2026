@@ -32,7 +32,7 @@ BeltControllerNode::BeltControllerNode()
     std::bind(&BeltControllerNode::JoyCallback, this, std::placeholders::_1));
 
   // MADモータ用のPWM値をpublishする。
-  // このnodeはPWM値を出すだけで、CAN変換はmotor_can_bridge側が担当する。
+  // このnodeはPWM値を出すだけで、CAN変換はCAN packer側が担当する。
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
     "/belt/rpm_value", 10);
 
@@ -137,7 +137,7 @@ void BeltControllerNode::JoyCallback(
   std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_pwm_value_;
 
-  // belt_can_command_node は /belt/rpm_value をsubscribeして、このPWM値を受け取る。
+  // roller_belt_can_packer_node は /belt/rpm_value をsubscribeして、このPWM値を受け取る。
   pwm_publisher_->publish(pwm_msg);
 }
 

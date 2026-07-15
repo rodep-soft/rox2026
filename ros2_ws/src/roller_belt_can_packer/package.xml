@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>motor_can_bridge</name>
+  <name>roller_belt_can_packer</name>
   <version>0.0.0</version>
-  <description>Bridge motor PWM commands to CAN frames</description>
+  <description>Packs roller and belt RPM commands into an STM CAN frame</description>
   <maintainer email="shuhei2.1129@gmail.com">ponqoo</maintainer>
   <license>TODO: License declaration</license>
 

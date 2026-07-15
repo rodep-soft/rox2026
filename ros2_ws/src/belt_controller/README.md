@@ -48,6 +48,10 @@ publish 前に `0` から `255` の範囲に丸める。
 
 `config/config.yaml` で設定する。
 
+`robot_bringup/launch/roller_belt.launch.py` と組み合わせる場合は、
+`roller_belt_can_packer_node` の `belt_rpm_topic` を `/belt/rpm_value` に設定して
+STM向けCANフレームへパックする。
+
 - `enable_button`
 - `stop_button`
 - `circle_button`
