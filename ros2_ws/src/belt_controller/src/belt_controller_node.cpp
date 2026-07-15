@@ -28,7 +28,7 @@ BeltControllerNode::BeltControllerNode()
   // /joy topicにmessageが届くたびにJoyCallbackが呼ばれる。
   // 第2引数の10はqueue sizeで、処理待ちmessageを最大10個まで保持する。
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-    "/joy", 10,
+    "/joy_second", 10,
     std::bind(&BeltControllerNode::JoyCallback, this, std::placeholders::_1));
 
   // MADモータ用のPWM値をpublishする。

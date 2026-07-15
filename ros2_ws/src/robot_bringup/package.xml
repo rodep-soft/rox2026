@@ -12,6 +12,7 @@
   <depend>launch</depend>
   <depend>launch_ros</depend>
   <exec_depend>joy</exec_depend>
+  <exec_depend>joy_conversion</exec_depend>
   <exec_depend>roller_angle_controller</exec_depend>
   <exec_depend>robstride_can_node</exec_depend>
   <exec_depend>belt_controller</exec_depend>
