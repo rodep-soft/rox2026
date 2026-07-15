@@ -3,10 +3,10 @@ spring_joy_sub:
     subscribed_joy: /joy_second
     shoot_key: #発射キー
       type: "button"
-      index: 10
+      index: 5
     lock_key: #安全装置キー
       type: "axis"
-      index: 4
+      index: 3
 
 spring_edulite_controller:
   ros__parameters:
