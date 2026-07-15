@@ -1,4 +1,5 @@
 #include <chrono>
+#include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -22,7 +23,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_pub_;
   rclcpp::TimerBase::SharedPtr joy_second_pub_timer_;
 
-  sensor_msgs::msg::Joy joy_msg;
+  sensor_msgs::msg::Joy::SharedPtr joy_msg;
   std_msgs::msg::Bool emergency_stop_msg;
   rclcpp::Time last_joy_time_;
   bool prev_button_state_ = false;
@@ -36,17 +37,19 @@ JoyConversion::JoyConversion()
   // パラメータ宣言
   this->declare_parameter<int>("emergency_button_index", 1);
   this->declare_parameter<int>("joy_timeout_ms", 500);
+  std::string subscribed_topic = this->declare_parameter<std::string>("subscribed_topic", "/joy");
+  std::string published_topic = this->declare_parameter<std::string>("published_topic", "/joy_second");
 
   emergency_button_index_ = this->get_parameter("emergency_button_index").as_int();
   joy_timeout_ms_ = this->get_parameter("joy_timeout_ms").as_int();
 
   // サブスクライバー生成
   joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
-      "/joy", 10,
+      subscribed_topic, 10,
       std::bind(&JoyConversion::joyCallback, this, std::placeholders::_1));
 
   // パブリッシャー生成
-  joy_second_pub_ = this->create_publisher<sensor_msgs::msg::Joy>("/joy_second", 10);
+  joy_second_pub_ = this->create_publisher<sensor_msgs::msg::Joy>(published_topic, 10);
   emergency_pub_ = this->create_publisher<std_msgs::msg::Bool>("/emergency_stop", 10);
 
   // 起動時は非常停止
@@ -62,12 +65,12 @@ JoyConversion::JoyConversion()
 void JoyConversion::joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
   last_joy_time_ = this->now();
-  joy_msg = *msg;
+  joy_msg = msg;
 }
 
 // joyの入力に間があったら停止
 void JoyConversion::checkJoyTimeout()
-{  // タイムアウト監視
+{ // タイムアウト監視
   // difference_ms
   auto diff_ms = (this->now() - last_joy_time_).nanoseconds() / 1'000'000;
 
@@ -92,7 +95,14 @@ void JoyConversion::setEmergencyStop(bool emergency_stop)
 
 void JoyConversion::joySecondPubTimerCallback()
 {
-  bool button_pressed = joy_msg.buttons[emergency_button_index_] == 1;
+
+  if (!joy_msg)
+  {
+    setEmergencyStop(true);
+    emergency_pub_->publish(emergency_stop_msg);
+    return;
+  }
+  bool button_pressed = joy_msg->buttons[emergency_button_index_] == 1;
 
   // トグル（立ち上がり検出）
   if (button_pressed && !prev_button_state_)
@@ -109,11 +119,11 @@ void JoyConversion::joySecondPubTimerCallback()
 
   if (emergency_stop_msg.data)
   {
-    joy_second_msg.header = joy_msg.header;
+    joy_second_msg.header = joy_msg->header;
     // axesをすべて0
-    joy_second_msg.axes.resize(joy_msg.axes.size(), 0.0f);
+    joy_second_msg.axes.resize(joy_msg->axes.size(), 0.0f);
     // buttonsをすべて0
-    joy_second_msg.buttons.resize(joy_msg.buttons.size(), 0);
+    joy_second_msg.buttons.resize(joy_msg->buttons.size(), 0);
   }
   else
   {
@@ -121,7 +131,7 @@ void JoyConversion::joySecondPubTimerCallback()
   }
 
   // /joy_secondへ送信
-  joy_second_pub_->publish(std::move(joy_second_msg));
+  joy_second_pub_->publish(joy_second_msg);
   emergency_pub_->publish(emergency_stop_msg);
 }
 

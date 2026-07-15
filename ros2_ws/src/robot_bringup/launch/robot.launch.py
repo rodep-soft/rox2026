@@ -11,13 +11,12 @@ def generate_launch_description():
     return LaunchDescription([
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(bringup_dir, "launch", "joy.launch.py")
+                os.path.join(bringup_dir, "launch", "interface.launch.py")
             )
         ),
-
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(bringup_dir, "launch", "can.launch.py")
+                os.path.join(bringup_dir, "launch", "spring.launch.py")
             )
         ),
     ])
