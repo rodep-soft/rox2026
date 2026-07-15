@@ -1,9 +1,0 @@
-/roller_position_controller:
-  ros__parameters:
-    storage_angle: 0.0
-    intake_angle: 30.0
-    shoot_angle: 60.0
-    enable_button: 6   # L2ボタン
-    storage_button: 1  # 〇ボタン
-    intake_button: 0   # ×ボタン
-    shoot_button: 2    # △ボタン
