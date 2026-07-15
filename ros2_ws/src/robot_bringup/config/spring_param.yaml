@@ -11,10 +11,10 @@ spring_joy_sub:
 spring_edulite_controller:
   ros__parameters:
     publish_edulite: /spring_edulite_speed
-    fire_speed_: -10.0     #発射時の回転速度[rad/s]
-    loading_speed: -2.0  #装填時の回転速度[rad/s]
+    fire_speed_: -40.0     #発射時の回転速度[rad/s]
+    loading_speed: -4.0  #装填時の回転速度[rad/s]
     limit_sw_index: 1   #limit_swのindex
-    fire_duration: 2.0  #発射時間の長さ[s]
+    fire_duration: 0.5  #発射時間の長さ[s]
 
 edulite05_single_velocity_node:
   ros__parameters:
@@ -22,11 +22,11 @@ edulite05_single_velocity_node:
     motor_id: 10
 
     # Maximum velocity command received on motor_vel [rad/s].
-    max_velocity_rad_s: 30.0
+    max_velocity_rad_s: 40.0
 
     # Values written to EDULITE05 during initialization.
     current_limit_a: 11.0
-    acceleration_rad_s2: 20.0
+    acceleration_rad_s2: 100.0
 
     # ROS topics used by this node.
     can_tx_topic: "CAN/can0/transmit"

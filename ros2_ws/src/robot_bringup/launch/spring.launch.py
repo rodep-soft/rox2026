@@ -20,7 +20,7 @@ def generate_launch_description():
                 output="screen",
             ),
             TimerAction(
-                period=2.0,
+                period=0.1,
                 actions=[
             Node(
                 package="spring_controller",
