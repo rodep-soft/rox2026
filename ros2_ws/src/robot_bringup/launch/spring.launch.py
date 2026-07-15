@@ -22,26 +22,26 @@ def generate_launch_description():
             TimerAction(
                 period=0.1,
                 actions=[
-            Node(
-                package="spring_controller",
-                executable="spring_edulite_controller",
-                name="spring_edulite_controller",
-                parameters=[config_file],
-                output="screen",
-                ),
-            ],
+                    Node(
+                        package="spring_controller",
+                        executable="spring_edulite_controller",
+                        name="spring_edulite_controller",
+                        parameters=[config_file],
+                        output="screen",
+                    ),
+                ],
             ),
             TimerAction(
                 period=4.0,
                 actions=[
-            Node(
-                package="edulite05_driver",
-                executable="edulite05_single_velocity_node",
-                name="edulite05_single_velocity_node",
-                output="screen",
-                parameters=[config_file],
-                )
-            ],
+                    Node(
+                        package="edulite05_driver",
+                        executable="edulite05_single_velocity_node",
+                        name="edulite05_single_velocity_node",
+                        output="screen",
+                        parameters=[config_file],
+                    )
+                ],
             ),
         ]
     )

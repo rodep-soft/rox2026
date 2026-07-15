@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     config_file = os.path.join(
-    get_package_share_directory("robot_bringup"), "config", "receive_stm32.yml"
+        get_package_share_directory("robot_bringup"), "config", "receive_stm32.yml"
     )
 
     return LaunchDescription(
@@ -23,6 +23,6 @@ def generate_launch_description():
                 name="limit_sw_node",
                 output="screen",
                 parameters=[config_file],
-            )
+            ),
         ]
     )

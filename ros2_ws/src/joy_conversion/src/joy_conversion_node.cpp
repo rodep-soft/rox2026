@@ -121,7 +121,7 @@ void JoyConversion::joySecondPubTimerCallback()
     joy_second_msg.axes.resize(joy_msg->axes.size(), 0.0f);
     // buttonsをすべて0
     joy_second_msg.buttons.resize(joy_msg->buttons.size(), 0);
-    RCLCPP_INFO(this->get_logger(),"%d",emergency_stop_msg.data);
+    RCLCPP_INFO(this->get_logger(), "%d", emergency_stop_msg.data);
   } else {
     joy_second_msg = *joy_msg;
   }
