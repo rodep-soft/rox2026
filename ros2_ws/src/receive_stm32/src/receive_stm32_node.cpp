@@ -51,16 +51,8 @@ private:
 
 int main(int argc, char * argv[])
 {
-<<<<<<< HEAD
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<LimitSwNode>());
   rclcpp::shutdown();
   return 0;
 }
-=======
-    rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<LimitSwNode>());
-    rclcpp::shutdown();
-    return 0;
-}
->>>>>>> 7a9b3ff (パラメーターの読み込みの追加とymlファイルの追加)
