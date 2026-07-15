@@ -1,4 +1,4 @@
-edulite05_single _node:
+edulite05_single_velocity_node:
   ros__parameters:
     # Motor ID stored in the lower 8 bits of the CAN ID (1 to 255).
     motor_id: 10
