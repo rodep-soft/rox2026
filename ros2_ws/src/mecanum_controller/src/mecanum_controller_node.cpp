@@ -2,7 +2,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
-#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/float32_multi_array.hpp"
 
 
 MecanumControllerNode::MecanumControllerNode()
@@ -13,7 +13,7 @@ MecanumControllerNode::MecanumControllerNode()
   vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
     "/cmd_vel", 10,
     std::bind(&MecanumControllerNode::velocityCallback, this, std::placeholders::_1));
-  motor_vel_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/motor_vel", 10);
+  motor_vel_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("/motor_vel", 10);
 }
 
 
@@ -24,12 +24,12 @@ void MecanumControllerNode::velocityCallback(const geometry_msgs::msg::Twist::Sh
   wz = msg->angular.z;
 
   // Mecanumホイールの速度計算
-  wheel_vels[FL] = (vx - vy - (robot_length + robot_width) / 2 * wz) / wheel_radius;
-  wheel_vels[FR] = (vx + vy + (robot_length + robot_width) / 2 * wz) / wheel_radius;
-  wheel_vels[RL] = (vx + vy - (robot_length + robot_width) / 2 * wz) / wheel_radius;
-  wheel_vels[RR] = (vx - vy + (robot_length + robot_width) / 2 * wz) / wheel_radius;
+  wheel_vels[FL] = -1 * (vx + vy - (robot_length + robot_width) / 2 * wz) / wheel_radius;
+  wheel_vels[FR] = (vx - vy + (robot_length + robot_width) / 2 * wz) / wheel_radius;
+  wheel_vels[RL] = -1 * (vx - vy - (robot_length + robot_width) / 2 * wz) / wheel_radius;
+  wheel_vels[RR] = (vx + vy + (robot_length + robot_width) / 2 * wz) / wheel_radius;
 
-  std_msgs::msg::Float64MultiArray cmd_msg;
+  std_msgs::msg::Float32MultiArray cmd_msg;
   for (const auto & vel : wheel_vels) {
     cmd_msg.data.push_back(vel);
   }
@@ -38,9 +38,9 @@ void MecanumControllerNode::velocityCallback(const geometry_msgs::msg::Twist::Sh
 
 void MecanumControllerNode::declare_parameters()
 {
-  this->declare_parameter<double>("wheel_radius", 0.1);
-  this->declare_parameter<double>("robot_length", 0.5);
-  this->declare_parameter<double>("robot_width", 0.3);
+  this->declare_parameter<double>("wheel_radius", 0.05);
+  this->declare_parameter<double>("robot_length", 0.4);
+  this->declare_parameter<double>("robot_width", 0.4);
 }
 
 void MecanumControllerNode::get_parameters()
@@ -50,8 +50,10 @@ void MecanumControllerNode::get_parameters()
   this->get_parameter("robot_width", robot_width);
 }
 
-void MecanumControllerNode::motor_init()
+int main(int argc, char ** argv)
 {
-  RCLCPP_INFO(this->get_logger(), "モーター初期化中...");
-  //モーター初期化のcan_msgs/msg/Frameを送信する処理をここに追加
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<MecanumControllerNode>());
+  rclcpp::shutdown();
+  return 0;
 }

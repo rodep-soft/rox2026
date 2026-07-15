@@ -40,10 +40,10 @@ public:
 
         pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN/can0/transmit", 10);
 
-        last_vel_received_time_ = this->now();  // 初期化時に現在の時刻を設定
+        last_vel_received_time_ = this->now();     // 初期化時に現在の時刻を設定
 
         timeout_timer_ = this->create_wall_timer(
-            100ms, std::bind(&WheelToCanNode::check_timeout, this)); // 100msごとにタイムアウトチェックを実行
+            100ms, std::bind(&WheelToCanNode::check_timeout, this));    // 100msごとにタイムアウトチェックを実行
 
         RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
@@ -58,13 +58,13 @@ public:
         for (int motor_id = 1; motor_id <= 4; motor_id++) {
             can_msgs::msg::Frame frame_vel_zero;
             frame_vel_zero.id = 0x1200FD00 + motor_id;          // 上位3ビットは0、そのままモーターid
-            frame_vel_zero.is_extended = true;   // 29bit 
-            frame_vel_zero.dlc = 8;               // データ長は 8 固定
+            frame_vel_zero.is_extended = true;           // 29bit 
+            frame_vel_zero.dlc = 8;                      // データ長は 8 固定
 
-            frame_vel_zero.data[0] = 0x0A; // 下位bit
-            frame_vel_zero.data[1] = 0x70; // 上位bit
+            frame_vel_zero.data[0] = 0x0A;       // 下位bit
+            frame_vel_zero.data[1] = 0x70;      // 上位bit
             for (int i = 2; i < 8; i++) {
-                frame_vel_zero.data[i] = 0x00; // 速度を０に
+                frame_vel_zero.data[i] = 0x00;      // 速度を０に
             }
 
             pub_->publish(std::move(frame_vel_zero));
@@ -85,7 +85,7 @@ private:
     double max_velocity_;
     double min_velocity_;
 
-    bool is_timeout_; // タイムアウト状態を管理するフラグ
+    bool is_timeout_;       // タイムアウト状態を管理するフラグ
     bool is_initialized_ = false; // 初期化が完了したかどうかを管理するフラグ
 
 
@@ -94,15 +94,15 @@ private:
             // 4.1.9 Communication type 18: Single parameter write
             can_msgs::msg::Frame frame_mode;
             frame_mode.id = 0x1200FD00 + motor_id;
-            frame_mode.is_extended = true; // 29bit
-            frame_mode.dlc = 8; // データ長は 8 固定
+            frame_mode.is_extended = true;      // 29bit
+            frame_mode.dlc = 8;         // データ長は 8 固定
 
             // 運転モードを表すインデックス 0x7005 (run_mode) に 2 (Velocity mode) を書き込む
-            frame_mode.data[0] = 0x05; // Index下位
-            frame_mode.data[1] = 0x70; // Index上位
+            frame_mode.data[0] = 0x05;      // Index下位
+            frame_mode.data[1] = 0x70;      // Index上位
             frame_mode.data[2] = 0x00;
             frame_mode.data[3] = 0x00;
-            frame_mode.data[4] = 0x02; // 2: 速度モード (Velocity Mode)
+            frame_mode.data[4] = 0x02;      // 2: 速度モード (Velocity Mode)
             frame_mode.data[5] = 0x00;
             frame_mode.data[6] = 0x00;
             frame_mode.data[7] = 0x00;
@@ -113,8 +113,8 @@ private:
             // 4.1.4 Communication Type 3: Motor enabled to run
             can_msgs::msg::Frame frame_enable;
             frame_enable.id = 0x0300FD00 + motor_id;
-            frame_enable.is_extended = true; // 29bit
-            frame_enable.dlc = 8;             // データ長は 8 固定
+            frame_enable.is_extended = true;        // 29bit
+            frame_enable.dlc = 8;                    // データ長は 8 固定
 
             for (int i = 0; i < 8; i++) {
                 frame_enable.data[i] = 0; 
@@ -126,14 +126,15 @@ private:
             // 4.1.9 Communication type 18: 電流制御
             can_msgs::msg::Frame frame_cur_max;
             frame_cur_max.id = 0x1200FD00 + motor_id;
-            frame_cur_max.is_extended = true; // 29bit
-            frame_cur_max.dlc = 8;             // データ長は 8 固定    
+            frame_cur_max.is_extended = true;       // 29bit
+            frame_cur_max.dlc = 8;                  // データ長は 8 固定    
 
-            frame_cur_max.data[0] = 0x06; // Index下位
-            frame_cur_max.data[1] = 0x70; // Index上位
+            frame_cur_max.data[0] = 0x06;        // Index下位
+            frame_cur_max.data[1] = 0x70;           // Index上位
             frame_cur_max.data[2] = 0x00;
             frame_cur_max.data[3] = 0x00;
             float current_limit = current_limit_; // yamlから取得
+
 
             auto cur_bytes = std::bit_cast<std::array<uint8_t, 4>>(current_limit);
             for (int i = 0; i < 4; i++) {
@@ -146,15 +147,15 @@ private:
              // 4.1.9 Communication type 18: 加速度設定
             can_msgs::msg::Frame frame_acc_rad;
             frame_acc_rad.id = 0x1200FD00 + motor_id;
-            frame_acc_rad.is_extended = true; // 29bit
-            frame_acc_rad.dlc = 8;             // データ長は 8 固定    
+            frame_acc_rad.is_extended = true;       // 29bit
+            frame_acc_rad.dlc = 8;                  // データ長は 8 固定    
 
-            frame_acc_rad.data[0] = 0x22; // Index下位
-            frame_acc_rad.data[1] = 0x70; // Index上位
+            frame_acc_rad.data[0] = 0x22;       // Index下位
+            frame_acc_rad.data[1] = 0x70;       // Index上位
             frame_acc_rad.data[2] = 0x00;
             frame_acc_rad.data[3] = 0x00;
-
             float acc = static_cast<float>(acceleration_);
+
 
             auto acc_bytes = std::bit_cast<std::array<uint8_t, 4>>(acc);
             for (int i = 0; i < 4; i++) {
@@ -204,7 +205,7 @@ private:
             is_timeout_ = false;
         }
 
-        for (int motor_id = 1; motor_id <= 4; motor_id++) {
+    for (int motor_id = 1; motor_id <= 4; motor_id++) {
 
             float value = std::clamp(
                 msg->data[motor_id - 1],
@@ -215,13 +216,13 @@ private:
             auto vel_bytes = std::bit_cast<std::array<uint8_t, 4>>(value);
 
             can_msgs::msg::Frame frame;
-            frame.id = 0x1200FD00 + motor_id;  // 速度制御 24~28 communication type  8~23 host id 1~8 motor id
-            frame.is_extended = true;     // 29bit
-            frame.dlc = 8;                // データ長は 8 固定
+            frame.id = 0x1200FD00 + motor_id;       // 速度制御 24~28 communication type  8~23 host id 1~8 motor id
+            frame.is_extended = true;           // 29bit
+            frame.dlc = 8;                      // データ長は 8 固定
 
             // データを詰める
-            frame.data[0] = 0x0A; // 下位bit
-            frame.data[1] = 0x70; // 上位bit
+            frame.data[0] = 0x0A;       // 下位bit
+            frame.data[1] = 0x70;       // 上位bit
             frame.data[2] = 0; 
             frame.data[3] = 0;
             for (int i = 0; i < 4; i++) {
@@ -240,7 +241,7 @@ private:
             
             stop_motors();
             
-            is_timeout_ = true; // フラグを立てて、連続で停止コマンドを送らないようにする
+            is_timeout_ = true;     // フラグを立てて、連続で停止コマンドを送らないようにする
             RCLCPP_INFO(this->get_logger(), "Timeout flag set.");
         }
     }
@@ -252,7 +253,7 @@ private:
     rclcpp::Time last_vel_received_time_;
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<WheelToCanNode>();

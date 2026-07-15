@@ -33,3 +33,9 @@ compile_commands.json
 
 # local test dumps
 /tmp/
+
+# AI.md
+AGENTS.md
+
+# Serena MCP project config
+.serena/
