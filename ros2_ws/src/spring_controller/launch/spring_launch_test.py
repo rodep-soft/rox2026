@@ -7,7 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
 
     config_file = PathJoinSubstitution(
-        [FindPackageShare("spring_controller"), "config", "spring_param.yaml"]
+        [FindPackageShare("spring_controller"), "config", "spring_param_test.yaml"]
     )
 
     return LaunchDescription(
