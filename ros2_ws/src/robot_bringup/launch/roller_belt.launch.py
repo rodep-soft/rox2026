@@ -13,6 +13,13 @@ def generate_launch_description():
     default_config_file = PathJoinSubstitution(
         [FindPackageShare("robot_bringup"), "config", "roller_belt.yaml"]
     )
+    joy_conversion_config_file = PathJoinSubstitution(
+        [
+            FindPackageShare("joy_conversion"),
+            "config",
+            "joy_conversion_node.yaml",
+        ]
+    )
 
     joy_node = Node(
         package="joy",
@@ -22,12 +29,12 @@ def generate_launch_description():
         parameters=[config_file, {"dev": joy_dev}],
     )
 
-    roller_controller_node = Node(
-        package="roller_controller",
-        executable="roller_controller_node",
-        name="roller_controller_node",
+    joy_conversion_node = Node(
+        package="joy_conversion",
+        executable="joy_conversion_node",
+        name="joy_conversion_node",
         output="screen",
-        parameters=[config_file],
+        parameters=[joy_conversion_config_file],
     )
 
     belt_controller_node = Node(
@@ -66,7 +73,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "config_file",
                 default_value=default_config_file,
-                description="roller and belt RPM bringup parameter yaml",
+                description="belt PWM and STM CAN packer parameter yaml",
             ),
             DeclareLaunchArgument(
                 "joy_dev",
@@ -79,7 +86,7 @@ def generate_launch_description():
                 description="SocketCAN interface used for the roller and belt STM command path",
             ),
             joy_node,
-            roller_controller_node,
+            joy_conversion_node,
             belt_controller_node,
             roller_belt_can_packer_node,
             socketcan_bridge,

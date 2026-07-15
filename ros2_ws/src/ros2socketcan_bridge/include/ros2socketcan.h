@@ -60,11 +60,6 @@ private:
   can_msgs::msg::Frame current_frame;
 
   /**
-       * @brief The CanSendConfirm function is needed by the .async_write_some function and is called as confirmation for a successfull send process.
-       */
-  void CanSendConfirm();
-
-  /**
        * @brief The CanPublisher is listening to a ROS 2 Topic and calls the CanSend Method.
        */
   void CanPublisher(const can_msgs::msg::Frame::SharedPtr msg);
