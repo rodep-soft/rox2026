@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.8)
-project(joy_conversion)
+project(edulite05_driver)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -13,7 +18,6 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(can_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -27,11 +31,16 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-add_executable(joy_conversion_node src/joy_conversion_node.cpp)
+add_executable(edulite05_single_velocity_node src/edulite05_single_velocity_node.cpp)
+target_include_directories(
+  edulite05_single_velocity_node
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(
-  joy_conversion_node rclcpp std_msgs can_msgs sensor_msgs)
+  edulite05_single_velocity_node rclcpp std_msgs can_msgs)
 
-install(TARGETS joy_conversion_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS edulite05_single_velocity_node DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY include/ DESTINATION include)
 
 install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
