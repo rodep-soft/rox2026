@@ -1,4 +1,5 @@
 from launch import LaunchDescription
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -19,12 +20,18 @@ def generate_launch_description():
                 parameters=[config_file],
                 output="screen",
             ),
-            Node(
-                package="spring_controller",
-                executable="spring_edulite_controller",
-                name="spring_edulite_controller",
-                parameters=[config_file],
-                output="screen",
+
+            TimerAction(
+                period=2.0,
+                actions=[
+                    Node(
+                        package="spring_controller",
+                        executable="spring_edulite_controller",
+                        name="spring_edulite_controller",
+                        parameters=[config_file],
+                        output="screen",
+                    )
+                ],
             ),
         ]
     )
