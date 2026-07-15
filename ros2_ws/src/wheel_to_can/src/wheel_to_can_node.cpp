@@ -245,7 +245,7 @@ private:
       stop_motors();
 
       is_timeout_ = true;           // フラグを立てて、連続で停止コマンドを送らないようにする
-      RCLCPP_INFO(this->get_logger(), "Timeout flag set.");
+      RCLCPP_INFO(this->get_logger(), "Timeout flag has been set.");
     }
   }
 
