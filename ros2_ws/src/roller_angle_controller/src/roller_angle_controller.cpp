@@ -37,7 +37,7 @@ public:
 
     // 3. サブスクライバの作成
     subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-      "/joy",
+      "/joy_second",
       10,
       std::bind(&RollerPositionController::Joycallback, this, std::placeholders::_1)
     );

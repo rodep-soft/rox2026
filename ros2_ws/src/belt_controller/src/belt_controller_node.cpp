@@ -19,7 +19,7 @@ BeltControllerNode::BeltControllerNode()
 
   rpm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(rpm_topic_, 10);
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-    "/joy", 10,
+    "/joy_second", 10,
     std::bind(&BeltControllerNode::JoyCallback, this, std::placeholders::_1));
 }
 
