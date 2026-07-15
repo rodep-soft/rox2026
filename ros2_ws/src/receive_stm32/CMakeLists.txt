@@ -37,4 +37,10 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+# launch フォルダと config フォルダをインストールする設定
+install(DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME}
+)
