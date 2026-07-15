@@ -18,7 +18,11 @@ robstride_position_node:
 
     enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
 
-    limit_torque: -1.0                   # トルク制限[N・m] (マニュアル上の範囲: 0~6, 負値=未指定/変更しない)
+    set_zero_on_startup: false           # position mode起動時に現在位置を機械ゼロに設定するか
+    position_speed: -1.0                 # PP位置モード速度 (0以上で書き込み、負値=未指定/変更しない)
+    position_acceleration: -1.0          # PP位置モード加速度 (0以上で書き込み、負値=未指定/変更しない)
+
+    limit_torque: -1.0                   # トルク制限[N・m] (マニュアル上の範囲: 0~5.5, 負値=未指定/変更しない)
     limit_cur: -1.0                      # 電流制限[A] (マニュアル上の範囲: 0~11, 負値=未指定/変更しない)
     limit_spd: -1.0                      # CSP位置モード速度制限[rad/s] (マニュアル上の範囲: 0~50, 負値=未指定/変更しない)
 
@@ -41,6 +45,6 @@ robstride_velocity_node:
 
     enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
 
-    limit_torque: -1.0                   # トルク制限[N・m] (マニュアル上の範囲: 0~6, 負値=未指定/変更しない)
+    limit_torque: -1.0                   # トルク制限[N・m] (マニュアル上の範囲: 0~5.5, 負値=未指定/変更しない)
     limit_cur: -1.0                      # 電流制限[A] (マニュアル上の範囲: 0~11, 負値=未指定/変更しない)
     limit_spd: -1.0                      # CSP位置モード速度制限[rad/s] (マニュアル上の範囲: 0~50, 負値=未指定/変更しない)

@@ -14,7 +14,7 @@ ROS 2 では、処理を小さな `node` に分け、node 同士を `topic` や 
 flowchart LR
   joy_node["joy node<br/>controller input"]
   roller["roller_controller_node"]
-  mad["mad_motor_node"]
+  mad["belt_controller_node"]
   bridge["motor_can_command_node"]
   can_driver["CAN driver node"]
   motor["motor / STM / Robstride"]
@@ -22,7 +22,7 @@ flowchart LR
   joy_node -->|"/joy<br/>sensor_msgs/msg/Joy"| roller
   joy_node -->|"/joy<br/>sensor_msgs/msg/Joy"| mad
   roller -->|"/mabuchi555/pwm_value<br/>std_msgs/msg/Int16"| bridge
-  mad -->|"/mad_motor/pwm_value<br/>std_msgs/msg/Int16"| bridge
+  mad -->|"/belt/rpm_value<br/>std_msgs/msg/Int16"| bridge
   bridge -->|"/can_tx<br/>can_msgs/msg/Frame"| can_driver
   can_driver --> motor
 ```
@@ -34,7 +34,7 @@ flowchart LR
 この workspace の例:
 
 - `roller_controller_node`: `/joy` を読んでローラー用 PWM を作る
-- `mad_motor_node`: `/joy` を読んで MAD motor 用 PWM を作る
+- `belt_controller_node`: `/joy` を読んで MAD motor 用 PWM を作る
 - `motor_can_command_node`: PWM を CAN frame に変換する
 - `robstride_velocity_node`: SocketCAN へ直接 write して Robstride を動かす
 
@@ -79,7 +79,7 @@ flowchart LR
 
 - `/joy`: コントローラ入力
 - `/mabuchi555/pwm_value`: Mabuchi 用 PWM
-- `/mad_motor/pwm_value`: MAD motor 用 PWM
+- `/belt/rpm_value`: MAD motor 用 PWM
 - `/can_tx`: CAN 送信用 frame
 - `/joint_states`: joint の位置、速度、トルク
 
@@ -130,7 +130,7 @@ ros2 interface show can_msgs/msg/Frame
 `std_msgs/msg/Int16` は中身が `data` だけなので、publish するときはこう書く。
 
 ```bash
-ros2 topic pub --once /mad_motor/pwm_value std_msgs/msg/Int16 "{data: 120}"
+ros2 topic pub --once /belt/rpm_value std_msgs/msg/Int16 "{data: 120}"
 ```
 
 ## parameter とは
