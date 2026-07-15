@@ -5,16 +5,16 @@
 
 int main()
 {
-    BNO055 imu("/dev/i2c-1", 0x28);
+  BNO055 imu("/dev/i2c-1", 0x28);
 
-    std::cout << "init start" << std::endl;
+  std::cout << "init start" << std::endl;
 
-    if (!imu.init()) {
-        std::cerr << "BNO055 init failed" << std::endl;
-        return 1;
-    }
+  if (!imu.init()) {
+    std::cerr << "BNO055 init failed" << std::endl;
+    return 1;
+  }
 
-    std::cout << "init success" << std::endl;
+  std::cout << "init success" << std::endl;
 
   std::array<float, 3> acc{};
   std::array<float, 3> gyr{};
@@ -42,5 +42,5 @@ int main()
               << quat[2] << ", "
               << quat[3] << std::endl;
   }
-    return 0;
-  }
+  return 0;
+}

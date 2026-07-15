@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <array>
 
-struct CalibrationData {
+struct CalibrationData
+{
 
   std::array<int16_t, 3> accOffset;
   std::array<int16_t, 3> gyrOffset;
