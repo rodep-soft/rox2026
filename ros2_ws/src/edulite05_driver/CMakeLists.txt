@@ -31,25 +31,17 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-
 add_executable(edulite05_single_velocity_node src/edulite05_single_velocity_node.cpp)
-target_include_directories(edulite05_single_velocity_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-)
-ament_target_dependencies(edulite05_single_velocity_node
-  rclcpp
-  std_msgs
-  can_msgs)
+target_include_directories(
+  edulite05_single_velocity_node
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(
+  edulite05_single_velocity_node rclcpp std_msgs can_msgs)
 
-install(TARGETS edulite05_single_velocity_node
-  DESTINATION lib/${PROJECT_NAME})
+install(TARGETS edulite05_single_velocity_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/ DESTINATION include)
 
-install(DIRECTORY 
-  config
-  launch
-  DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()

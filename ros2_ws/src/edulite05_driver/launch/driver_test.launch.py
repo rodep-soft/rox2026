@@ -13,17 +13,19 @@ def generate_launch_description():
         "edulite05_single_velocity.yaml",
     )
 
-    return LaunchDescription([
-        DeclareLaunchArgument(
-            "config_file",
-            default_value=default_config,
-            description="Path to the EDULITE05 parameter YAML file.",
-        ),
-        Node(
-            package="edulite05_driver",
-            executable="edulite05_single_velocity_node",
-            name="edulite05_single_velocity_node",
-            output="screen",
-            parameters=[LaunchConfiguration("config_file")],
-        ),
-    ])
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "config_file",
+                default_value=default_config,
+                description="Path to the EDULITE05 parameter YAML file.",
+            ),
+            Node(
+                package="edulite05_driver",
+                executable="edulite05_single_velocity_node",
+                name="edulite05_single_velocity_node",
+                output="screen",
+                parameters=[LaunchConfiguration("config_file")],
+            ),
+        ]
+    )

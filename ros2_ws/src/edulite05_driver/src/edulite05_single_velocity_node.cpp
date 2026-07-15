@@ -28,7 +28,8 @@ public:
       throw std::invalid_argument("motor_id must be in the range 1 to 255");
     }
     if (max_velocity_rad_s_ <= 0.0 || current_limit_a <= 0.0 || acceleration_rad_s2 <= 0.0) {
-      throw std::invalid_argument("max_velocity_rad_s, current_limit_a and acceleration_rad_s2 must be positive");
+      throw std::invalid_argument(
+              "max_velocity_rad_s, current_limit_a and acceleration_rad_s2 must be positive");
     }
 
     can_pub_ = create_publisher<can_msgs::msg::Frame>(can_tx_topic, 10);

@@ -15,7 +15,6 @@ find_package(std_msgs REQUIRED)
 find_package(can_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -28,25 +27,12 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-
 add_executable(joy_conversion_node src/joy_conversion_node.cpp)
-ament_target_dependencies(joy_conversion_node
-rclcpp
-std_msgs
-can_msgs
-sensor_msgs
-)
+ament_target_dependencies(
+  joy_conversion_node rclcpp std_msgs can_msgs sensor_msgs)
 
-install(TARGETS
-  joy_conversion_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS joy_conversion_node DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY
-  config
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
-
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()
