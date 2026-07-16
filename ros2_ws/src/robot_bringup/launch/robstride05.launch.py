@@ -8,9 +8,19 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     config_file = LaunchConfiguration("config_file")
+    joy_dev = LaunchConfiguration("joy_dev")
+    can_interface = LaunchConfiguration("can_interface")
 
     default_config_file = PathJoinSubstitution(
-        [FindPackageShare("robot_bringup"), "config", "roller_angle.yaml"]
+        [FindPackageShare("robot_bringup"), "config", "robstride05.yaml"]
+    )
+
+    joy_node = Node(
+        package="joy",
+        executable="joy_node",
+        name="joy_node",
+        output="screen",
+        parameters=[config_file, {"dev": joy_dev}],
     )
 
     roller_position_controller = Node(
@@ -29,14 +39,34 @@ def generate_launch_description():
         parameters=[config_file],
     )
 
+    socketcan_bridge = Node(
+        package="ros2socketcan_bridge",
+        executable="ros2socketcan",
+        name="ros2socketcan",
+        output="screen",
+        parameters=[config_file, {"CAN_INTERFACE": can_interface}],
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument(
                 "config_file",
                 default_value=default_config_file,
-                description="roller_angle_controller and robstride_can_node parameter yaml",
+                description="robstride05 bringup parameter yaml",
             ),
+            DeclareLaunchArgument(
+                "joy_dev",
+                default_value="/dev/input/js0",
+                description="RDK/gamepad joystick device path",
+            ),
+            DeclareLaunchArgument(
+                "can_interface",
+                default_value="can0",
+                description="SocketCAN interface used for RobStride 05",
+            ),
+            joy_node,
             roller_position_controller,
             robstride_position_node,
+            socketcan_bridge,
         ]
     )
