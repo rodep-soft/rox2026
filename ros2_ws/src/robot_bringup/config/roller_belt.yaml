@@ -34,7 +34,7 @@ roller_belt_can_packer_node:
     stm_can_id: 0x201
     is_extended: false
     roller_rpm_topic: "/roller/rpm"
-    belt_rpm_topic: "/belt/rpm_value"
+    belt_rpm_topic: "/belt/rpm"
     min_rpm: 0
     max_rpm: 300
     publish_period_ms: 20
