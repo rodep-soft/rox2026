@@ -49,7 +49,9 @@ public:
     RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
     // 少しだけ待ってから初期化を実行
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    while (pub_->get_subscription_count() == 0 && rclcpp::ok()) {
+      rclcpp::sleep_for(std::chrono::milliseconds(100));
+    }
 
     init_motors();     // モーターの有効化
     is_initialized_ = true;
@@ -245,7 +247,7 @@ private:
       stop_motors();
 
       is_timeout_ = true;           // フラグを立てて、連続で停止コマンドを送らないようにする
-      RCLCPP_INFO(this->get_logger(), "Timeout flag set.");
+      RCLCPP_INFO(this->get_logger(), "Timeout flag has been set.");
     }
   }
 

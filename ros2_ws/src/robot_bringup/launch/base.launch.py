@@ -16,7 +16,7 @@ def generate_launch_description():
         parameters=[
             {
                 "dev": "/dev/input/js0",
-                "autorepeat_rate": 100.0,
+                "coalesce_interval": 20,
             }
         ],
     )

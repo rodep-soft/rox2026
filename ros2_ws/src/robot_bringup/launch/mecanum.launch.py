@@ -46,7 +46,11 @@ def generate_launch_description():
         executable="wheel_to_can_node",
         name="wheel_to_can_node",
         output="screen",
-        # parameters=[os.path.join(get_package_share_directory('wheel_to_can'),'config','params.yaml'],
+        parameters=[
+            os.path.join(
+                get_package_share_directory("wheel_to_can"), "config", "params.yaml"
+            )
+        ],
     )
 
     delayed_wheel_to_can = TimerAction(

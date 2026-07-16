@@ -1,6 +1,6 @@
 wheel_to_can_node:
   ros__parameters:
     current_limit: 11.0
-    acceleration: 20.0
+    acceleration: 100.0
     max_velocity: 50.0
     min_velocity: -50.0
