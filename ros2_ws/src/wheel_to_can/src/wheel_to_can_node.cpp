@@ -49,7 +49,7 @@ public:
     RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
     // 少しだけ待ってから初期化を実行
-    while (can_pub_->get_subscription_count() == 0 && rclcpp::ok()) {
+    while (pub_->get_subscription_count() == 0 && rclcpp::ok()) {
       rclcpp::sleep_for(std::chrono::milliseconds(100));
     }
 
