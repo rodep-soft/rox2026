@@ -24,6 +24,7 @@ private:
   int stop_button_;
   int high_button_;
   int low_button_;
+  int16_t current_rpm_;
   int16_t stop_rpm_;
   int16_t high_rpm_;
   int16_t low_rpm_;
