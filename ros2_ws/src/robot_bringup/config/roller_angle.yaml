@@ -8,7 +8,7 @@ roller_position_controller:
     enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 1
     intake_button: 2
-    shoot_button: 6
+    shoot_button: 3
 
 robstride_position_node:
   ros__parameters:

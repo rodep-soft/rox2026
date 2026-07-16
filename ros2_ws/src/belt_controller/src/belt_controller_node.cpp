@@ -8,7 +8,7 @@
 //
 // ROS 2では、node同士がtopicを通してmessageをやり取りする。
 // このnodeは /joy をsubscribeしてコントローラ入力を受け取り、
-// 決定したPWM値を /belt/rpm_value にpublishする。
+// 決定したPWM値を /belt/rpm にpublishする。
 //
 // 誤操作防止のため、enable_buttonと各mode_buttonが同時に押された時だけ
 // modeを更新する。それ以外のJoy入力では前回のmode/pwm_valueを継続する。
@@ -34,7 +34,7 @@ BeltControllerNode::BeltControllerNode()
   // MADモータ用のPWM値をpublishする。
   // このnodeはPWM値を出すだけで、CAN変換はCAN packer側が担当する。
   pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
-    "/belt/rpm_value", 10);
+    "/belt/rpm", 10);
 
   RCLCPP_INFO(this->get_logger(), "BeltControllerNode started.");
 }
@@ -137,7 +137,7 @@ void BeltControllerNode::JoyCallback(
   std_msgs::msg::Int16 pwm_msg;
   pwm_msg.data = current_pwm_value_;
 
-  // roller_belt_can_packer_node は /belt/rpm_value をsubscribeして、このPWM値を受け取る。
+  // roller_belt_can_packer_node は /belt/rpm をsubscribeして、このPWM値を受け取る。
   pwm_publisher_->publish(pwm_msg);
 }
 

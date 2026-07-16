@@ -9,7 +9,7 @@
 // BeltControllerNode
 //
 // /joy のボタン入力を受け取り、MADモータ用のPWM値を
-// /belt/rpm_value に publish するノード。
+// /belt/rpm に publish するノード。
 //
 // 操作は誤入力を防ぐために enable_button + mode_button の同時押しで更新する。
 // 新しい更新ボタンの組み合わせが押されていない間は、

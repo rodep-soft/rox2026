@@ -2,7 +2,7 @@
 
 ## 概要
 
-`belt_controller_node` は `/joy` のボタン入力から belt 用モータの PWM 指令を作り、belt側入力の `/belt/rpm_value` に publish するノード。
+`belt_controller_node` は `/joy` のボタン入力から belt 用モータの PWM 指令を作り、belt側入力の `/belt/rpm` に publish するノード。
 
 ## 入出力
 
@@ -12,7 +12,7 @@
 
 ### Publish
 
-- `/belt/rpm_value` (`std_msgs/msg/Int16`)
+- `/belt/rpm` (`std_msgs/msg/Int16`)
 
 ## 現在の動作
 
@@ -49,7 +49,7 @@ publish 前に `0` から `255` の範囲に丸める。
 `config/config.yaml` で設定する。
 
 `robot_bringup/launch/roller_belt.launch.py` と組み合わせる場合は、
-`roller_belt_can_packer_node` の `belt_rpm_topic` を `/belt/rpm_value` に設定して
+`roller_belt_can_packer_node` の `belt_rpm_topic` を `/belt/rpm` に設定して
 STM向けCANフレームへパックする。
 
 - `enable_button`
