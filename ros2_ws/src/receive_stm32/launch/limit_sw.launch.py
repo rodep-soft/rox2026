@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     # config/parameter.yml の絶対パスを取得する
     config_file = os.path.join(
-        get_package_share_directory("receive_stm32"), "config", "parameter.yml"
+        get_package_share_directory("receive_stm32"), "config", "receive_stm32_test.yml"
     )
 
     return LaunchDescription(
