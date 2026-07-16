@@ -30,6 +30,8 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
+#include <stdbool.h>
+
 /* USER CODE END Includes */
 
 extern CAN_HandleTypeDef hcan;
@@ -41,6 +43,13 @@ extern CAN_HandleTypeDef hcan;
 void MX_CAN_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+typedef void (*RxCallback)(CAN_RxHeaderTypeDef *rxHeader, uint8_t rxData[]);
+
+HAL_StatusTypeDef canAddRxCallback(uint16_t canId, RxCallback rxCallback);
+HAL_StatusTypeDef CAN_HeartbeatInit(void);
+void CAN_HeartbeatProcess(void);
+bool CAN_HeartbeatIsTimedOut(void);
 
 /* USER CODE END Prototypes */
 

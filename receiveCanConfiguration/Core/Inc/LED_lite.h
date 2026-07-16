@@ -11,5 +11,7 @@ void appendByte(uint8_t value,uint32_t *index);
 void setPixel(uint16_t index, uint8_t r, uint8_t g, uint8_t b);
 void show(void);
 void clear(void);
+HAL_StatusTypeDef LED_CanInit(void);
+void LED_Process(void);
 
 #endif /* LED_LITE_H */

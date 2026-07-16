@@ -32,7 +32,7 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
         uint32_t TxMailbox;
 
-        TxHeader.StdId = 0x202;
+        TxHeader.StdId = 0x320;
         TxHeader.ExtId = 0;
         TxHeader.RTR = CAN_RTR_DATA;
         TxHeader.IDE = CAN_ID_STD;
