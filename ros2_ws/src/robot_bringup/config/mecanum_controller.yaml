@@ -1,0 +1,9 @@
+mecanum_controller_node:
+  ros__parameters:
+    wheel_radius: 0.05
+    robot_length: 0.47
+    robot_width: 0.41
+    motor_ids: [1, 2, 3, 4]
+    vx_sign: 1.0
+    vy_sign: 1.0
+    angular_z_sign: 1.0
