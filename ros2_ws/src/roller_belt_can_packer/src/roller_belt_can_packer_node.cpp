@@ -70,8 +70,6 @@ void RollerBeltCanPackerNode::GetParameters()
     RCLCPP_WARN(this->get_logger(), "min_rpm is greater than max_rpm. Swapping values.");
     std::swap(min_rpm_, max_rpm_);
   }
-  min_rpm_ = std::clamp(min_rpm_, 0, 5000);
-  max_rpm_ = std::clamp(max_rpm_, 0, 5000);
 }
 
 void RollerBeltCanPackerNode::RollerCallback(const std_msgs::msg::Int16::SharedPtr msg)

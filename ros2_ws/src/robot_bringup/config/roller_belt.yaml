@@ -22,11 +22,11 @@ belt_controller_node:
     cross_button: 0
     triangle_button: 3
     square_button: 2
-    stop_pwm: 0
-    circle_pwm: 3000
-    cross_pwm: 3000
-    triangle_pwm: 3000
-    square_pwm: 3000
+    stop_rpm: 0
+    circle_rpm: 3000
+    cross_rpm: 3000
+    triangle_rpm: 3000
+    square_rpm: 3000
 
 roller_belt_can_packer_node:
   ros__parameters:

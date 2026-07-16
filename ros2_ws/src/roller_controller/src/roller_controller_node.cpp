@@ -1,15 +1,8 @@
 #include "roller_controller/roller_controller_node.hpp"
 #include "roller_controller/joy_button.hpp"
 
-#include <algorithm>
 #include <functional>
 #include <memory>
-
-namespace
-{
-constexpr int MinimumRpm = 0;
-constexpr int MaximumRpm = 5000;
-}  // namespace
 
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
@@ -49,12 +42,9 @@ void RollerControllerNode::GetParameters()
   stop_button_ = this->get_parameter("stop_button").as_int();
   high_button_ = this->get_parameter("high_button").as_int();
   low_button_ = this->get_parameter("low_button").as_int();
-  stop_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("stop_rpm").as_int()), MinimumRpm, MaximumRpm));
-  high_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("high_rpm").as_int()), MinimumRpm, MaximumRpm));
-  low_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("low_rpm").as_int()), MinimumRpm, MaximumRpm));
+  stop_rpm_ = static_cast<int16_t>(this->get_parameter("stop_rpm").as_int());
+  high_rpm_ = static_cast<int16_t>(this->get_parameter("high_rpm").as_int());
+  low_rpm_ = static_cast<int16_t>(this->get_parameter("low_rpm").as_int());
 }
 
 void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
