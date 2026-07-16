@@ -17,10 +17,18 @@ public:
         this->declare_parameter<std::string>("can_sub_topic", "/CAN/can0/receive");
 
         this->declare_parameter<std::string>("limit_sw_topic", "/limit_sw");
-        this->declare_parameter<std::string>("MADmotor_topic", "/current");
+        this->declare_parameter<std::string>("brushless_pub_topic", "/rpm");
+
+        this->declare_parameter<int32_t>("keep_alive_period_ms", 50);
+
 
         std::string can_pub_topic_ = this->get_parameter("can_pub_topic").as_string();
         std::string can_sub_topic_ = this->get_parameter("can_sub_topic").as_string();
+
+        std::string limit_sw_topic_ = this->get_parameter("limit_sw_topic").as_string();
+        std::string brushless_pub_topic_ = this->get_parameter("brushless_pub_topic").as_string();
+
+        int32_t keep_alive_period_ms = this->get_parameter("keep_alive_period_ms").as_int();
 
         // ros2とstm32間で送受信するためのpublisherとsubscriber
         can_pub_ = this->create_publisher<can_msgs::msg::Frame>(
@@ -30,13 +38,17 @@ public:
             std::bind(&Stm32Node::canCallback, this, std::placeholders::_1));
 
         // stm32から来たリミットスイッチとモータの現在のrpmを取得
-        limit_sw_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/limit_sw", 10);
-        brushless_motor_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/limit_sw", 10);
+        limit_sw_pub_ = this->create_publisher<std_msgs::msg::UInt8>(limit_sw_topic_, 10);
+        brushless_motor_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>(brushless_pub_topic_, 10);
 
         // タイムアウトの検知とノードへのパブリッシュをするタイマー
-        timer_ = this->create_wall_timer(
+        alived_timer_ = this->create_wall_timer(
+            keep_alive_period_ms,
+            std::bind(&Stm32Node::alive_timer_callback, this));
+
+        publish_timer_ = this->create_wall_timer(
             10ms,
-            std::bind(&Stm32Node::timerCallback, this));
+            std::bind(&Stm32Node::publish_timer_callback, this));
 
         RCLCPP_INFO(this->get_logger(), "stm32_driver_node has been started.");
 
@@ -62,8 +74,8 @@ private:
     rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
     rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
 
-    rclcpp::Subscription<Float32MultiArray>::SharedPtr current_rpm_sub_;
-    rclcpp::Publisher<Float32MultiArray>::SharedPtr target_rpm_pub_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr current_rpm_sub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr target_rpm_pub_;
 
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr led_cmd_sub_;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub;
@@ -94,21 +106,18 @@ void Stm32Node::can_callback(const can_msgs::msg::Frame::SharedPtr msg)
 
 // タイムアウト時の処理をどうするか？
 
-void Stm32Node::motor_target_callback()
-{//三つ分受け取り，一つずつのIDに分割
-    for (size_t i = 0;i < msg.data.size() && i < protocol::MOTOR_NUM;i++)
+void Stm32Node::motor_target_callback(const std_msgs::msg::Float32MultiArray &msg)
+{ // 三つ分受け取り，一つずつのIDに分割
+    for (size_t i = 0; i < msg.data.size() && i < protocol::MOTOR_NUM; i++)
     {
-        auto frame =protocol::makeMotorTargetFrame(
-                    i,
-                    msg.data[i]);
-        can_pub_->publish(frame);
+        auto frame = protocol::make_motor_marget_frame(i, msg.data[i]);
+        can_pub_->publish(std::move(frame));
     }
 }
 
 void Stm32Node::led_callback()
 {
 }
-
 
 //
 void Stm32Node::alive_timer_callback()

@@ -1,10 +1,13 @@
 stm32_driver_node:
   ros__parameters:
+    
     can_interface: can0 #canのインターフェース指定
     can_pub_topic: "/CAN/can0/transmit"
     can_sub_topic: "/CAN/can0/receive"
     limit_sw_topic: "/limit_sw"
-    MADmotor_topic: "/current"
-    timeout_ms :500 #通信タイムアウト判定時間
+    brushless_pub_topic: "/current"
+
+
+    timeout_ms : 500 #通信タイムアウト判定時間
     keep_alive_period_ms: 100 #hurt_beatを送る間隔
     
