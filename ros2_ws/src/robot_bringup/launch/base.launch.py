@@ -15,8 +15,8 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
-              "dev": "/dev/input/js0",
-              "coalesce_interval": 20,
+                "dev": "/dev/input/js0",
+                "coalesce_interval": 20,
             }
         ],
     )

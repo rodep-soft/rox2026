@@ -39,12 +39,13 @@ private:
   int pub_interval_;
   bool is_received_joy = false;
   geometry_msgs::msg::Twist cmd_msg;
-  struct JoyInput {
+  struct JoyInput
+  {
     float x;
     float y;
     float yaw;
   };
-  
+
   JoyInput latest_joy_;
 
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
@@ -56,10 +57,10 @@ private:
     latest_joy_.yaw = msg->axes[2];
   }
 
-  void timer_callback() 
+  void timer_callback()
   {
     if (!is_received_joy) {
-        return;
+      return;
     }
     cmd_msg.linear.x = smoothing_factor_ * latest_joy_.x * max_linear_velocity_ +
       (1 - smoothing_factor_) * cmd_msg.linear.x;                                                                             // 前後の移動;
