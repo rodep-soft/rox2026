@@ -49,7 +49,9 @@ public:
     RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
     // 少しだけ待ってから初期化を実行
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    while (can_pub_->get_subscription_count() == 0 && rclcpp::ok()) {
+      rclcpp::sleep_for(std::chrono::milliseconds(100));
+    }
 
     init_motors();     // モーターの有効化
     is_initialized_ = true;
