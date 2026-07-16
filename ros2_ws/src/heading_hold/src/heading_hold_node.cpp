@@ -1,8 +1,6 @@
-#include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/imu.hpp>
-#include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cmath>
 
@@ -29,12 +27,21 @@ public:
   : Node("heading_hold_node")
   {
     last_time_ = this->now();
+
+    this->declare_parameter<double>("kp", 0.0);
+    this->declare_parameter<double>("ki", 0.0);
+    this->declare_parameter<double>("kd", 0.0);
+
+    kp_ = this->get_parameter("kp").as_double();
+    ki_ = this->get_parameter("ki").as_double();
+    kd_ = this->get_parameter("kd").as_double();
+
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
       "/cmd_vel_raw", 10,
       std::bind(&HeadingHoldNode::rawVelocityCallback, this, std::placeholders::_1));
 
     imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-      "/imu/data", 10,
+      "/imu/data", 1,
       std::bind(&HeadingHoldNode::imuCallback, this, std::placeholders::_1));
 
     corrected_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
