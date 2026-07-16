@@ -7,7 +7,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    config_file = LaunchConfiguration("config_file")
+    roller_angle_config_file = LaunchConfiguration("roller_angle_config_file")
 
     default_config_file = PathJoinSubstitution(
         [FindPackageShare("robot_bringup"), "config", "roller_angle.yaml"]
@@ -18,7 +18,7 @@ def generate_launch_description():
         executable="roller_angle_controller_node",
         name="roller_position_controller",
         output="screen",
-        parameters=[config_file],
+        parameters=[roller_angle_config_file],
     )
 
     robstride_position_node = Node(
@@ -26,13 +26,13 @@ def generate_launch_description():
         executable="robstride_can_node",
         name="robstride_position_node",
         output="screen",
-        parameters=[config_file],
+        parameters=[roller_angle_config_file],
     )
 
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "config_file",
+                "roller_angle_config_file",
                 default_value=default_config_file,
                 description="roller_angle_controller and robstride_can_node parameter yaml",
             ),

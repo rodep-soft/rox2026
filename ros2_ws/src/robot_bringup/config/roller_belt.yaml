@@ -2,14 +2,26 @@ joy_node:
   ros__parameters:
     dev: "/dev/input/js0"
 
+roller_controller_node:
+  ros__parameters:
+    rpm_topic: "/roller/rpm"
+    enable_axis: 4
+    enable_axis_threshold: 0.5
+    stop_button: 13
+    high_button: 2
+    low_button: 3
+    stop_rpm: 0
+    high_rpm: 200
+    low_rpm: 100
+
 belt_controller_node:
   ros__parameters:
-    enable_button: 7
-    stop_button: 4
+    enable_button: 6
+    stop_button: 13
     circle_button: 1
     cross_button: 0
-    triangle_button: 2
-    square_button: 3
+    triangle_button: 3
+    square_button: 2
     stop_pwm: 0
     circle_pwm: 30
     cross_pwm: 85
@@ -22,7 +34,7 @@ roller_belt_can_packer_node:
     stm_can_id: 0x201
     is_extended: false
     roller_rpm_topic: "/roller/rpm"
-    belt_rpm_topic: "/belt/rpm_value"
+    belt_rpm_topic: "/belt/rpm"
     min_rpm: 0
     max_rpm: 300
     publish_period_ms: 20

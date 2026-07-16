@@ -16,6 +16,7 @@ RollerControllerNode::RollerControllerNode()
 {
   DeclareParameters();
   GetParameters();
+  current_rpm_ = stop_rpm_;
 
   rpm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(rpm_topic_, 10);
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
@@ -63,7 +64,8 @@ void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr ms
   }
 
   std_msgs::msg::Int16 rpm_msg;
-  rpm_msg.data = SelectRpm(*msg);
+  current_rpm_ = SelectRpm(*msg);
+  rpm_msg.data = current_rpm_;
   rpm_publisher_->publish(rpm_msg);
 }
 
@@ -72,7 +74,7 @@ int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
   if (
     !roller_controller::IsAxisPressed(*this, msg, enable_axis_, enable_axis_threshold_))
   {
-    return 0;
+    return current_rpm_;
   }
 
   if (roller_controller::IsButtonPressed(*this, msg, stop_button_)) {
@@ -85,7 +87,7 @@ int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
     return low_rpm_;
   }
 
-  return 0;
+  return current_rpm_;
 }
 
 int main(int argc, char * argv[])
