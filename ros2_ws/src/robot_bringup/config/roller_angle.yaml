@@ -8,7 +8,7 @@ roller_position_controller:
     enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 1
     intake_button: 2
-    shoot_button: 6
+    shoot_button: 3
 
 robstride_position_node:
   ros__parameters:
@@ -23,11 +23,11 @@ robstride_position_node:
 
     position_min_rad: -1.6     # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
                                           # 位置フィードバックが-4π~4πで周期ループする仕様に合わせたソフト側の制限)
-    position_max_rad: 1.5       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
+    position_max_rad: 1.7       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
 
     home_position_rad: 0.0               # 起動時の初期目標、および終了時に復帰する位置[rad]
 
     enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
 
     position_current_limit: -1.0         # PP/速度モード電流上限[A] (0以上で0x7018へ書き込み、負値=未指定/変更しない)
-    shutdown_return_wait_ms: 7000        # home_position_radへ戻す待機時間[ms]。±4πから2rad/sで戻る時間(約6.3秒)に余裕を加えた値
+    shutdown_return_wait_ms: 2000        # home_position_radへ戻す待機時間[ms]。±4πから2rad/sで戻る時間(約6.3秒)に余裕を加えた値

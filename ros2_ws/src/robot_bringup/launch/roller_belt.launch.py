@@ -41,7 +41,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "config_file",
                 default_value=default_config_file,
-                description="belt PWM and STM CAN packer parameter yaml",
+                description="belt RPM and STM CAN packer parameter yaml",
             ),
             roller_controller_node,
             belt_controller_node,

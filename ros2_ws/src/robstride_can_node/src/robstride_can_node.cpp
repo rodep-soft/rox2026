@@ -105,14 +105,14 @@ void RobstrideCanNode::DeclareParameters()
   this->declare_parameter<int>("send_period_ms", 20);
   this->declare_parameter<int>("startup_inter_frame_ms", 10);
 
-  this->declare_parameter<double>("position_min_rad", -12.566370614);
-  this->declare_parameter<double>("position_max_rad", 12.566370614);
+  this->declare_parameter<double>("position_min_rad", -1.6);
+  this->declare_parameter<double>("position_max_rad", 1.7);
   this->declare_parameter<double>("home_position_rad", 0.0);
 
 
   this->declare_parameter<bool>("enable_on_startup", true);
   this->declare_parameter<double>("position_current_limit", -1.0);
-  this->declare_parameter<int>("shutdown_return_wait_ms", 7000);
+  this->declare_parameter<int>("shutdown_return_wait_ms", 1000);
 }
 
 void RobstrideCanNode::GetParameters()

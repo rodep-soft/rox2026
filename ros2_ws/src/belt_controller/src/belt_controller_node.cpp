@@ -1,17 +1,16 @@
 #include "belt_controller/belt_controller_node.hpp"
 
-#include <algorithm>
 #include <functional>
 #include <memory>
 
-// /joy の入力からbelt用MADモータのPWM値を決めるnode。
+// /joy の入力からbelt用モータのRPM値を決めるnode。
 //
 // ROS 2では、node同士がtopicを通してmessageをやり取りする。
-// このnodeは /joy をsubscribeしてコントローラ入力を受け取り、
-// 決定したPWM値を /belt/rpm_value にpublishする。
+// このnodeは /joy_second をsubscribeしてコントローラ入力を受け取り、
+// 決定したRPM値を /belt/rpm にpublishする。
 //
 // 誤操作防止のため、enable_buttonと各mode_buttonが同時に押された時だけ
-// modeを更新する。それ以外のJoy入力では前回のmode/pwm_valueを継続する。
+// modeを更新する。それ以外のJoy入力では前回のmode/rpm_valueを継続する。
 
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
@@ -23,18 +22,17 @@ BeltControllerNode::BeltControllerNode()
 
   // 起動直後は安全側として停止状態から始める。
   current_mode_ = BeltControllerMode::Stop;
-  current_pwm_value_ = GetPwmValueFromMode(current_mode_);
+  current_rpm_value_ = GetRpmValueFromMode(current_mode_);
 
-  // /joy topicにmessageが届くたびにJoyCallbackが呼ばれる。
+  // /joy_second topicにmessageが届くたびにJoyCallbackが呼ばれる。
   // 第2引数の10はqueue sizeで、処理待ちmessageを最大10個まで保持する。
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
     "/joy_second", 10,
     std::bind(&BeltControllerNode::JoyCallback, this, std::placeholders::_1));
 
-  // MADモータ用のPWM値をpublishする。
-  // このnodeはPWM値を出すだけで、CAN変換はCAN packer側が担当する。
-  pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
-    "/belt/rpm_value", 10);
+  // belt用のRPM値をpublishする。CAN変換はCAN packer側が担当する。
+  rpm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(
+    "/belt/rpm", 10);
 
   RCLCPP_INFO(this->get_logger(), "BeltControllerNode started.");
 }
@@ -50,12 +48,12 @@ void BeltControllerNode::DeclareParameters()
   this->declare_parameter<int>("triangle_button", 2);
   this->declare_parameter<int>("square_button", 3);
 
-  // 各modeに対応するPWM値。MADモータでは0~255の範囲に丸めて使う。
-  this->declare_parameter<int>("stop_pwm", 0);
-  this->declare_parameter<int>("circle_pwm", 0);
-  this->declare_parameter<int>("cross_pwm", 85);
-  this->declare_parameter<int>("triangle_pwm", 170);
-  this->declare_parameter<int>("square_pwm", 255);
+  // 各modeに対応するRPM値。
+  this->declare_parameter<int>("stop_rpm", 0);
+  this->declare_parameter<int>("circle_rpm", 0);
+  this->declare_parameter<int>("cross_rpm", 3000);
+  this->declare_parameter<int>("triangle_rpm", 4000);
+  this->declare_parameter<int>("square_rpm", 5000);
 }
 
 void BeltControllerNode::GetParameters()
@@ -69,11 +67,11 @@ void BeltControllerNode::GetParameters()
   triangle_button_ = this->get_parameter("triangle_button").as_int();
   square_button_ = this->get_parameter("square_button").as_int();
 
-  stop_pwm_ = this->get_parameter("stop_pwm").as_int();
-  circle_pwm_ = this->get_parameter("circle_pwm").as_int();
-  cross_pwm_ = this->get_parameter("cross_pwm").as_int();
-  triangle_pwm_ = this->get_parameter("triangle_pwm").as_int();
-  square_pwm_ = this->get_parameter("square_pwm").as_int();
+  stop_rpm_ = this->get_parameter("stop_rpm").as_int();
+  circle_rpm_ = this->get_parameter("circle_rpm").as_int();
+  cross_rpm_ = this->get_parameter("cross_rpm").as_int();
+  triangle_rpm_ = this->get_parameter("triangle_rpm").as_int();
+  square_rpm_ = this->get_parameter("square_rpm").as_int();
 }
 
 bool BeltControllerNode::IsButtonPressed(
@@ -92,7 +90,7 @@ bool BeltControllerNode::IsButtonPressed(
 void BeltControllerNode::JoyCallback(
   const sensor_msgs::msg::Joy::SharedPtr msg)
 {
-  // callbackは /joy が届くたびに1回実行される。
+  // callbackは /joy_second が届くたびに1回実行される。
   // ここで「今回の入力から新しいmodeを決めるか」を判断する。
 
   // 初期値を現在値にしておくことで、新しい更新入力がない場合は前回値を維持する。
@@ -127,51 +125,48 @@ void BeltControllerNode::JoyCallback(
     }
   }
 
-  // 新しいコマンドが確定した時だけ、保持しているmode/pwm_valueを書き換える。
+  // 新しいコマンドが確定した時だけ、保持しているmode/rpm_valueを書き換える。
   if (has_new_command) {
     current_mode_ = next_mode;
-    current_pwm_value_ = GetPwmValueFromMode(next_mode);
+    current_rpm_value_ = GetRpmValueFromMode(next_mode);
   }
 
   // publishするmessageを作る。std_msgs::msg::Int16はdataフィールドだけを持つ単純な型。
-  std_msgs::msg::Int16 pwm_msg;
-  pwm_msg.data = current_pwm_value_;
+  std_msgs::msg::Int16 rpm_msg;
+  rpm_msg.data = current_rpm_value_;
 
-  // roller_belt_can_packer_node は /belt/rpm_value をsubscribeして、このPWM値を受け取る。
-  pwm_publisher_->publish(pwm_msg);
+  // roller_belt_can_packer_node は /belt/rpm をsubscribeして、このRPM値を受け取る。
+  rpm_publisher_->publish(rpm_msg);
 }
 
-int16_t BeltControllerNode::GetPwmValueFromMode(BeltControllerMode mode) const
+int16_t BeltControllerNode::GetRpmValueFromMode(BeltControllerMode mode) const
 {
-  int pwm_value = stop_pwm_;
+  int rpm_value = stop_rpm_;
 
   switch (mode) {
     case BeltControllerMode::Angle1High:
-      pwm_value = circle_pwm_;
+      rpm_value = circle_rpm_;
       break;
 
     case BeltControllerMode::Angle1Low:
-      pwm_value = cross_pwm_;
+      rpm_value = cross_rpm_;
       break;
 
     case BeltControllerMode::Angle2JHigh:
-      pwm_value = triangle_pwm_;
+      rpm_value = triangle_rpm_;
       break;
 
     case BeltControllerMode::Angle2Low:
-      pwm_value = square_pwm_;
+      rpm_value = square_rpm_;
       break;
 
     case BeltControllerMode::Stop:
     default:
-      pwm_value = stop_pwm_;
+      rpm_value = stop_rpm_;
       break;
   }
 
-  // MADモータは逆回転を使わないため、範囲外の設定値は0~255に丸める。
-  pwm_value = std::clamp(pwm_value, 0, 255);
-
-  return static_cast<int16_t>(pwm_value);
+  return static_cast<int16_t>(rpm_value);
 }
 
 int main(int argc, char * argv[])

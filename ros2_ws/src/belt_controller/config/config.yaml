@@ -7,8 +7,8 @@ belt_controller_node:
     triangle_button: 2
     square_button: 3
 
-    stop_pwm: 0
-    circle_pwm: 30
-    cross_pwm: 85
-    triangle_pwm: 170
-    square_pwm: 255
+    stop_rpm: 0
+    circle_rpm: 30
+    cross_rpm: 85
+    triangle_rpm: 170
+    square_rpm: 255

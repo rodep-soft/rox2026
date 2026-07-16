@@ -1,15 +1,8 @@
 #include "roller_controller/roller_controller_node.hpp"
 #include "roller_controller/joy_button.hpp"
 
-#include <algorithm>
 #include <functional>
 #include <memory>
-
-namespace
-{
-constexpr int MinimumRpm = 0;
-constexpr int MaximumRpm = 300;
-}  // namespace
 
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
@@ -30,31 +23,26 @@ RollerControllerNode::RollerControllerNode()
 void RollerControllerNode::DeclareParameters()
 {
   this->declare_parameter<std::string>("rpm_topic", "/roller/rpm");
-  this->declare_parameter<int>("enable_axis", 3);
-  this->declare_parameter<double>("enable_axis_threshold", 0.5);
+  this->declare_parameter<int>("enable_button", 7);
   this->declare_parameter<int>("stop_button", 2);
   this->declare_parameter<int>("high_button", 0);
   this->declare_parameter<int>("low_button", 3);
   this->declare_parameter<int>("stop_rpm", 0);
-  this->declare_parameter<int>("high_rpm", 200);
-  this->declare_parameter<int>("low_rpm", 100);
+  this->declare_parameter<int>("high_rpm", 4000);
+  this->declare_parameter<int>("low_rpm", 3000);
 }
 
 void RollerControllerNode::GetParameters()
 {
   rpm_topic_ = this->get_parameter("rpm_topic").as_string();
-  enable_axis_ = this->get_parameter("enable_axis").as_int();
-  enable_axis_threshold_ = this->get_parameter("enable_axis_threshold").as_double();
+  enable_button_ = this->get_parameter("enable_button").as_int();
 
   stop_button_ = this->get_parameter("stop_button").as_int();
   high_button_ = this->get_parameter("high_button").as_int();
   low_button_ = this->get_parameter("low_button").as_int();
-  stop_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("stop_rpm").as_int()), MinimumRpm, MaximumRpm));
-  high_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("high_rpm").as_int()), MinimumRpm, MaximumRpm));
-  low_rpm_ = static_cast<int16_t>(std::clamp(
-      static_cast<int>(this->get_parameter("low_rpm").as_int()), MinimumRpm, MaximumRpm));
+  stop_rpm_ = static_cast<int16_t>(this->get_parameter("stop_rpm").as_int());
+  high_rpm_ = static_cast<int16_t>(this->get_parameter("high_rpm").as_int());
+  low_rpm_ = static_cast<int16_t>(this->get_parameter("low_rpm").as_int());
 }
 
 void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
@@ -71,9 +59,7 @@ void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr ms
 
 int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
 {
-  if (
-    !roller_controller::IsAxisPressed(*this, msg, enable_axis_, enable_axis_threshold_))
-  {
+  if (!roller_controller::IsButtonPressed(*this, msg, enable_button_)) {
     return current_rpm_;
   }
 
