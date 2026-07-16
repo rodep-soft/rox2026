@@ -359,8 +359,8 @@ void motor_loop(void) {
 	//TIM15 CH1 PA2
 	//TIM17 CH1 PA7 はLED用
 	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t )output_pwm2);
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t )output_pwm3);
-	__HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t )output_pwm1);
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t )output_pwm1);
+	__HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t )output_pwm3);
 
 	MotorSendFeedback();
 }
