@@ -26,5 +26,15 @@ def generate_launch_description():
                     os.path.join(bringup_dir, "launch", "mecanum.launch.py")
                 )
             ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_dir, "launch", "roller_belt.launch.py")
+                )
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_dir, "launch", "roller_angle.launch.py")
+                )
+            ),
         ]
     )
