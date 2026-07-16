@@ -194,25 +194,28 @@ static void MotorSendFeedback(void) {
 
 	txHeader.RTR = CAN_RTR_DATA;
 	txHeader.IDE = CAN_ID_STD;
-	txHeader.DLC = 2U;
 
 	switch (feedback_index) {
 	case 0U:
 		txHeader.StdId = 0x330U;
+		txHeader.DLC = 2U;
 		value = (uint16_t) ClampRpmForCan(current_rpm1);
+		txData[0] = (uint8_t) (value & 0xFFU);
+		txData[1] = (uint8_t) (value >> 8);
 		break;
 	case 1U:
 		txHeader.StdId = 0x331U;
+		txHeader.DLC = 2U;
 		value = (uint16_t) ClampRpmForCan(current_rpm2);
+		txData[0] = (uint8_t) (value & 0xFFU);
+		txData[1] = (uint8_t) (value >> 8);
 		break;
 	default:
 		txHeader.StdId = 0x332U;
-		value = (uint16_t) output_pwm3;
+		txHeader.DLC = 1U;
+		txData[0] = (uint8_t) ((output_pwm3 - PWM_MIN) / 10.0f);
 		break;
 	}
-
-	txData[0] = (uint8_t) (value & 0xFFU);
-	txData[1] = (uint8_t) (value >> 8);
 
 	if (HAL_CAN_AddTxMessage(&hcan, &txHeader, txData, &txMailbox) == HAL_OK) {
 		feedback_index = (uint8_t) ((feedback_index + 1U) % 3U);
