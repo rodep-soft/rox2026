@@ -23,8 +23,8 @@ typedef struct {
 	float out_max; // PWM最大値
 } PID_Controller;
 
-static PID_Controller pid1 = { 0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f };
-static PID_Controller pid2 = { 0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f };
+static PID_Controller pid1 = { 0.005f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f };
+static PID_Controller pid2 = { 0.005f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f };
 
 // --- エンコーダとRPM計算用の変数 ---
 #define ENCODER_PPR 2048U
@@ -246,19 +246,9 @@ static float Compute_PID(PID_Controller *pid, float target, float current,
 	float derivative = (error - pid->prev_error) * (1.0f / dt);
 	pid->prev_error = error;
 
-	float output = 1000.0f + (pid->Kp * error) + (pid->Ki * pid->integral)
+	float output = (pid->Kp * error) + (pid->Ki * pid->integral)
 			+ (pid->Kd * derivative);
 
-	// 出力制限
-	if (output > pid->out_max)
-		output = pid->out_max;
-	if (output < pid->out_min)
-		output = pid->out_min;
-
-	if (target <= 0.0f) {
-		output = pid->out_min;
-		pid->integral = 0.0f;
-	}
 
 	return output;
 }
@@ -333,7 +323,7 @@ void motor_loop(void) {
 	float target3 = target_rpm3;
 	bool safety_stop = motor_safety_stop;
 
-	if (safety_stop) {
+	if (!safety_stop) {
 		target1 = 0.0f;
 		target2 = 0.0f;
 		target3 = PWM_MIN;
@@ -344,10 +334,18 @@ void motor_loop(void) {
 
 	// --- 3. 出力PWMの決定 ---
 	// モーター1, 2 はPIDで計算
-	output_pwm1 = Compute_PID(&pid1, target1, current_rpm1, DT_SEC);
-	output_pwm2 = Compute_PID(&pid2, target2, current_rpm2, DT_SEC);
+	output_pwm1 += Compute_PID(&pid1, target1, current_rpm1, DT_SEC);
+	output_pwm2 += Compute_PID(&pid2, target2, current_rpm2, DT_SEC);
 	// モーター3 は直接PWM値を使用 (1000〜2000の制限をかける)
 	output_pwm3 = target3;
+	if (output_pwm1 > PWM_MAX)
+		output_pwm1 = PWM_MAX;
+	if (output_pwm1 < PWM_MIN)
+		output_pwm1 = PWM_MIN;
+	if (output_pwm2 > PWM_MAX)
+		output_pwm2 = PWM_MAX;
+	if (output_pwm2 < PWM_MIN)
+		output_pwm2 = PWM_MIN;
 	if (output_pwm3 > PWM_MAX)
 		output_pwm3 = PWM_MAX;
 	if (output_pwm3 < PWM_MIN)
