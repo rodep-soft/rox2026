@@ -43,6 +43,7 @@ uint16_t prev_pos1 = 0;
 uint16_t prev_pos2 = 0;
 float current_rpm1 = 0.0f;
 float current_rpm2 = 0.0f;
+volatile int is_called_PID = 0;
 
 // --- CANから受け取る指令値 ---
 volatile float target_rpm1 = 0.0f;  // モーター1用 (RPM)
@@ -55,6 +56,7 @@ volatile uint8_t led_g = 0;               // LED 緑色値 (0-255)
 volatile uint8_t led_b = 0;               // LED 青色値 (0-255)
 
 // --- CAN通信用の変数 ---
+volatile uint16_t received_rpm_1_2;
 CAN_RxHeaderTypeDef RxHeader;
 volatile uint8_t RxData[8];
 volatile uint8_t DataReadyFlag = 0;
@@ -74,6 +76,7 @@ uint32_t pos2;
 uint8_t r;
 uint8_t g;
 uint8_t b;
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -118,6 +121,7 @@ float Calc_RPM(uint16_t now, uint16_t *prev_val)
 // PID計算関数
 float Compute_PID(PID_Controller *pid, float target, float current, float dt)
 {
+	is_called_PID = 1;
     float error = target - current;
     pid->integral += error * dt;
 
@@ -244,6 +248,14 @@ int main(void)
   if(HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
       Error_Handler();
   }
+
+
+  __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, 1000.0f);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000.0f);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 1000.0f);
+
+  HAL_Delay(4000);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -252,17 +264,24 @@ int main(void)
   {
       uint32_t loop_start_time = HAL_GetTick();
 
+      // ==========================================
+      // 【デバッグ用】CAN通信を無視して目標値を強制設定
+      // ==========================================
+      //target_rpm1 = 5000.0f; // モーター1: 2000 RPM
+      //target_rpm2 = 5000.0f; // モーター2: 2000 RPM
+      //target_rpm3 = 1100.0f;
+
       // --- 1. 通信のタイムアウト＆非常停止の監視 ---
       if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
           is_timeout = 1;
       }
 
       // タイムアウト、または非常停止フラグが立っている場合はモーターを強制停止
-      if (is_timeout || emergency_stop_flag != 0) {
-          target_rpm1 = 0.0f;
-          target_rpm2 = 0.0f;
-          target_rpm3 = 1000.0f; // ESC停止のPWM値
-      }
+//      if (is_timeout || emergency_stop_flag != 0) {
+//          target_rpm1 = 0.0f;
+//          target_rpm2 = 0.0f;
+//          target_rpm3 = 1000.0f; // ESC停止のPWM値
+//      }
 
       // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
       pos1 = __HAL_TIM_GET_COUNTER(&htim1);
@@ -424,7 +443,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         if(RxHeader.StdId == 0x201 && RxHeader.DLC == 8) {
 
             // Byte [0],[1]: モーター1,2用 RPM
-            uint16_t received_rpm_1_2 = (uint16_t)(RxData[2] | (RxData[1] << 8));
+            received_rpm_1_2 = (uint16_t)(RxData[2] | (RxData[1] << 8));
             target_rpm1 = (float)received_rpm_1_2;
             target_rpm2 = (float)received_rpm_1_2;
 
