@@ -21,18 +21,4 @@ inline bool IsButtonPressed(
   return msg.buttons[button_index] == 1;
 }
 
-inline bool IsAxisPressed(
-  rclcpp::Node & node,
-  const sensor_msgs::msg::Joy & msg,
-  int axis_index,
-  double threshold)
-{
-  if (axis_index < 0 || static_cast<size_t>(axis_index) >= msg.axes.size()) {
-    RCLCPP_WARN_THROTTLE(
-      node.get_logger(), *node.get_clock(), 1000,
-      "Axis index %d is outside the received Joy message.", axis_index);
-    return false;
-  }
-  return msg.axes[axis_index] >= threshold;
-}
 }  // namespace roller_controller

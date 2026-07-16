@@ -23,8 +23,7 @@ RollerControllerNode::RollerControllerNode()
 void RollerControllerNode::DeclareParameters()
 {
   this->declare_parameter<std::string>("rpm_topic", "/roller/rpm");
-  this->declare_parameter<int>("enable_axis", 3);
-  this->declare_parameter<double>("enable_axis_threshold", 0.5);
+  this->declare_parameter<int>("enable_button", 7);
   this->declare_parameter<int>("stop_button", 2);
   this->declare_parameter<int>("high_button", 0);
   this->declare_parameter<int>("low_button", 3);
@@ -36,8 +35,7 @@ void RollerControllerNode::DeclareParameters()
 void RollerControllerNode::GetParameters()
 {
   rpm_topic_ = this->get_parameter("rpm_topic").as_string();
-  enable_axis_ = this->get_parameter("enable_axis").as_int();
-  enable_axis_threshold_ = this->get_parameter("enable_axis_threshold").as_double();
+  enable_button_ = this->get_parameter("enable_button").as_int();
 
   stop_button_ = this->get_parameter("stop_button").as_int();
   high_button_ = this->get_parameter("high_button").as_int();
@@ -61,9 +59,7 @@ void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr ms
 
 int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
 {
-  if (
-    !roller_controller::IsAxisPressed(*this, msg, enable_axis_, enable_axis_threshold_))
-  {
+  if (!roller_controller::IsButtonPressed(*this, msg, enable_button_)) {
     return current_rpm_;
   }
 

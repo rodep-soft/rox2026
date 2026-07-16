@@ -19,8 +19,7 @@ private:
   int16_t SelectRpm(const sensor_msgs::msg::Joy & msg);
 
   std::string rpm_topic_;
-  int enable_axis_;
-  double enable_axis_threshold_;
+  int enable_button_;
   int stop_button_;
   int high_button_;
   int low_button_;

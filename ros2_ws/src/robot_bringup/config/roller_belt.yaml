@@ -5,13 +5,12 @@ joy_node:
 roller_controller_node:
   ros__parameters:
     rpm_topic: "/roller/rpm"
-    enable_axis: 4
-    enable_axis_threshold: 0.5
+    enable_button: 7
     stop_button: 13
     high_button: 2
     low_button: 3
     stop_rpm: 0
-    high_rpm: 4000
+    high_rpm: 3000
     low_rpm: 4000
 
 belt_controller_node:
