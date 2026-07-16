@@ -1,5 +1,0 @@
-/**:
-  limit_sw_node:
-    ros__parameters:
-      can_receive_topic: "/CAN/can0/receive"
-      target_can_id: 0x202
