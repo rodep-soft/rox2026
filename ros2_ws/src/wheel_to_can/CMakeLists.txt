@@ -19,6 +19,7 @@ add_executable(wheel_to_can_node src/wheel_to_can_node.cpp)
 ament_target_dependencies(
   wheel_to_can_node rclcpp std_msgs can_msgs)
 
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(TARGETS wheel_to_can_node DESTINATION lib/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
