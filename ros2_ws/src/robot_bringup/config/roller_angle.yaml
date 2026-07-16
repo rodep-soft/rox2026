@@ -1,7 +1,3 @@
-joy_node:
-  ros__parameters:
-    dev: "/dev/input/js0"
-
 roller_position_controller:
   ros__parameters:
     # RobStride loc_ref is radian.
@@ -35,7 +31,3 @@ robstride_position_node:
 
     position_current_limit: -1.0         # PP/速度モード電流上限[A] (0以上で0x7018へ書き込み、負値=未指定/変更しない)
     shutdown_return_wait_ms: 7000        # home_position_radへ戻す待機時間[ms]。±4πから2rad/sで戻る時間(約6.3秒)に余裕を加えた値
-
-ros2socketcan:
-  ros__parameters:
-    CAN_INTERFACE: "can0"
