@@ -47,7 +47,7 @@ public:
           static_cast<float>(max_velocity_rad_s_));
         motor_->set_velocity(velocity);
       });
-    while (can_pub_->get_subscription_count() == 0) {
+    while (can_pub_->get_subscription_count() == 0 && rclcpp::ok()) {
       rclcpp::sleep_for(std::chrono::milliseconds(100));
     }
     motor_->initialize();
