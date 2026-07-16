@@ -8,7 +8,7 @@
 namespace
 {
 constexpr int MinimumRpm = 0;
-constexpr int MaximumRpm = 300;
+constexpr int MaximumRpm = 5000;
 }  // namespace
 
 RollerControllerNode::RollerControllerNode()

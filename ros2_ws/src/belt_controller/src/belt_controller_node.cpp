@@ -53,9 +53,9 @@ void BeltControllerNode::DeclareParameters()
   // 各modeに対応するPWM値。MADモータでは0~255の範囲に丸めて使う。
   this->declare_parameter<int>("stop_pwm", 0);
   this->declare_parameter<int>("circle_pwm", 0);
-  this->declare_parameter<int>("cross_pwm", 85);
-  this->declare_parameter<int>("triangle_pwm", 170);
-  this->declare_parameter<int>("square_pwm", 255);
+  this->declare_parameter<int>("cross_pwm", 3000);
+  this->declare_parameter<int>("triangle_pwm", 4000);
+  this->declare_parameter<int>("square_pwm", 5000);
 }
 
 void BeltControllerNode::GetParameters()
@@ -169,7 +169,7 @@ int16_t BeltControllerNode::GetPwmValueFromMode(BeltControllerMode mode) const
   }
 
   // MADモータは逆回転を使わないため、範囲外の設定値は0~255に丸める。
-  pwm_value = std::clamp(pwm_value, 0, 255);
+  pwm_value = std::clamp(pwm_value, 0, 5000);
 
   return static_cast<int16_t>(pwm_value);
 }

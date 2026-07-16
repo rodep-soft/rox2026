@@ -48,7 +48,7 @@ void RollerBeltCanPackerNode::DeclareParameters()
   this->declare_parameter<std::string>("roller_rpm_topic", "/roller/rpm");
   this->declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm");
   this->declare_parameter<int>("min_rpm", 0);
-  this->declare_parameter<int>("max_rpm", 300);
+  this->declare_parameter<int>("max_rpm", 5000);
   this->declare_parameter<int>("publish_period_ms", 20);
   this->declare_parameter<int>("timeout_ms", 500);
 }
@@ -70,8 +70,8 @@ void RollerBeltCanPackerNode::GetParameters()
     RCLCPP_WARN(this->get_logger(), "min_rpm is greater than max_rpm. Swapping values.");
     std::swap(min_rpm_, max_rpm_);
   }
-  min_rpm_ = std::clamp(min_rpm_, 0, 300);
-  max_rpm_ = std::clamp(max_rpm_, 0, 300);
+  min_rpm_ = std::clamp(min_rpm_, 0, 5000);
+  max_rpm_ = std::clamp(max_rpm_, 0, 5000);
 }
 
 void RollerBeltCanPackerNode::RollerCallback(const std_msgs::msg::Int16::SharedPtr msg)
