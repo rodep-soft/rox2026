@@ -39,3 +39,5 @@ AGENTS.md
 
 # Serena MCP project config
 .serena/
+.vscode/
+ros2_ws/.vscode/
