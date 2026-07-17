@@ -9,7 +9,7 @@ MecanumControllerNode::MecanumControllerNode()
   declare_parameters();
   get_parameters();
 
-  robot_command_sub_ = create_subscription<robot_interfaces::msg::RobotCommand>(
+  robot_command_sub_ = create_subscription<robot_controller::msg::RobotCommand>(
     "/robot_command", 10,
     std::bind(&MecanumControllerNode::robot_command_callback, this, std::placeholders::_1));
   motor_vel_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>("/motor_vel", 10);
@@ -44,7 +44,7 @@ void MecanumControllerNode::get_parameters()
 }
 
 void MecanumControllerNode::robot_command_callback(
-  const robot_interfaces::msg::RobotCommand::SharedPtr msg)
+  const robot_controller::msg::RobotCommand::SharedPtr msg)
 {
   vx_ = msg->cmd_vel.linear.x * vx_sign_;
   vy_ = msg->cmd_vel.linear.y * vy_sign_;

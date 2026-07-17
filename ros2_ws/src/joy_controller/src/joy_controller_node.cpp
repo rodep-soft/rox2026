@@ -30,7 +30,7 @@ JoyControllerNode::JoyControllerNode()
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
     joy_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
-  command_publisher_ = create_publisher<robot_interfaces::msg::RobotCommand>(
+  command_publisher_ = create_publisher<robot_controller::msg::RobotCommand>(
     command_topic_, rclcpp::QoS(qos_depth_));
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
 

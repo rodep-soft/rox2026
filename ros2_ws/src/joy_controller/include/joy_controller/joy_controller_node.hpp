@@ -6,7 +6,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_interfaces/msg/robot_command.hpp"
+#include "robot_controller/msg/robot_command.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_srvs/srv/trigger.hpp"
 
@@ -76,7 +76,7 @@ private:
   int right_stick_x_axis_;
   int dpad_y_axis_;
 
-  robot_interfaces::msg::RobotCommand command_;
+  robot_controller::msg::RobotCommand command_;
   bool pre_intake_button_on_;
   bool pre_spring_fire_button_on_;
   bool pre_belt_fire_button_on_;
@@ -85,7 +85,7 @@ private:
   bool pre_emergency_stop_button_on_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<robot_interfaces::msg::RobotCommand>::SharedPtr command_publisher_;
+  rclcpp::Publisher<robot_controller::msg::RobotCommand>::SharedPtr command_publisher_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr emergency_stop_client_;
 };
 

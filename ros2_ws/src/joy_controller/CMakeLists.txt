@@ -8,7 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(robot_interfaces REQUIRED)
+find_package(robot_controller REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
@@ -19,7 +19,7 @@ add_executable(joy_controller_node
 target_include_directories(joy_controller_node PRIVATE include)
 ament_target_dependencies(joy_controller_node
   rclcpp
-  robot_interfaces
+  robot_controller
   sensor_msgs
   std_srvs
 )

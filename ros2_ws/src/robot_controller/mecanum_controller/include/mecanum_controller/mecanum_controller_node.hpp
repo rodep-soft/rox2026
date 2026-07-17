@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_interfaces/msg/robot_command.hpp"
+#include "robot_controller/msg/robot_command.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
 
 class MecanumControllerNode : public rclcpp::Node
@@ -25,9 +25,9 @@ private:
 
   void declare_parameters();
   void get_parameters();
-  void robot_command_callback(const robot_interfaces::msg::RobotCommand::SharedPtr msg);
+  void robot_command_callback(const robot_controller::msg::RobotCommand::SharedPtr msg);
 
-  rclcpp::Subscription<robot_interfaces::msg::RobotCommand>::SharedPtr robot_command_sub_;
+  rclcpp::Subscription<robot_controller::msg::RobotCommand>::SharedPtr robot_command_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr motor_vel_pub_;
 
   std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
