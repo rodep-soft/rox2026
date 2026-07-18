@@ -29,7 +29,7 @@ private:
   bool prev_button_state_ = false;
   int emergency_button_index_;
   int joy_timeout_ms_;
-  int ready_start_joy_;
+  rclcpp::Time ready_start_joy_;
 };
 
 JoyConversion::JoyConversion()
