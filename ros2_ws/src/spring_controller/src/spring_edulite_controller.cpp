@@ -110,7 +110,7 @@ private:
         break;
     }
 
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       this->get_logger(), "now_state: %d, target_state: %d, speed: %f, limit_sw: %d", now_state_, target_state_, speed.data,
       limit_sw_);
     speed_pub_->publish(speed);

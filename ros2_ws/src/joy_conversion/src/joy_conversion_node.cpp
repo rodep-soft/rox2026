@@ -101,7 +101,7 @@ void JoyConversion::joySecondPubTimerCallback()
 
 // 100ms
   if (!joy_msg &&
-    ((this->now() - ready_start_joy_).nanoseconds() / 1'000'000) > 100) {
+    ((this->now() - ready_start_joy_).nanoseconds() / 1'000'000) > 200) {
     setEmergencyStop(true);
     emergency_pub_->publish(emergency_stop_msg);
     return;

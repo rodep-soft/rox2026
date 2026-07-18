@@ -43,7 +43,7 @@ private:
 
       limit_sw_pub_->publish(output_msg);
 
-      RCLCPP_INFO(this->get_logger(), "Published limit switch state: %d", limit_status);
+      RCLCPP_DEBUG(this->get_logger(), "Published limit switch state: %d", limit_status);
     }
   }
 

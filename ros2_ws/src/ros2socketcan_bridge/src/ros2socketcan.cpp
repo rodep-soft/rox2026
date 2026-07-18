@@ -58,7 +58,7 @@ ros2socketcan::ros2socketcan()
 }
 void ros2socketcan::stop()
 {
-  RCLCPP_INFO(
+  RCLCPP_DEBUG(
     this->get_logger(),
     "End of Listener Thread. Please press strg+c again to stop the whole program.\n");
   ios.stop();
@@ -67,7 +67,7 @@ void ros2socketcan::stop()
 
 ros2socketcan::~ros2socketcan()
 {
-  RCLCPP_INFO(this->get_logger(), "End of Publisher Thread. \n");
+  RCLCPP_DEBUG(this->get_logger(), "End of Publisher Thread. \n");
 }
 
 void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
@@ -127,15 +127,7 @@ void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
     received << static_cast<unsigned int>(msg->data[i]);
   }
   received << "]";
-  RCLCPP_INFO(this->get_logger(), "%s", received.str().c_str());
-
-  can_msgs::msg::Frame msg1;
-  msg1.id = msg->id;
-  msg1.dlc = msg->dlc;
-  msg1.is_extended = msg->is_extended;
-  msg1.is_rtr = msg->is_rtr;
-  msg1.is_error = msg->is_error;
-  msg1.data = msg->data;
+  RCLCPP_DEBUG(this->get_logger(), "%s", received.str().c_str()); can_msgs::msg::Frame msg1; msg1.id = msg->id; msg1.dlc = msg->dlc; msg1.is_extended = msg->is_extended; msg1.is_rtr = msg->is_rtr; msg1.is_error = msg->is_error; msg1.data = msg->data;
 
   CanSend(msg1);
 }
