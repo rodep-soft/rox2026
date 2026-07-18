@@ -30,8 +30,8 @@ typedef struct {
     float out_max; // PWM最大値
 } PID_Controller;
 
-PID_Controller pid1 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
-PID_Controller pid2 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
+PID_Controller pid1 = {0.05f, 0.3f, 0.005f, 0.0f, 0.0f, 1000.0f, 2000.0f};
+PID_Controller pid2 = {0.05f, 0.3f, 0.005f, 0.0f, 0.0f, 1000.0f, 2000.0f};
 
 // --- エンコーダとRPM計算用の変数 ---
 #define ENCODER_PPR 2048
@@ -126,7 +126,7 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     pid->integral += error * dt;
 
     // 積分項の発散防止
-    float max_integral = 500.0f;
+    float max_integral = 900.0 / pid->Ki;
     if (pid->integral > max_integral) pid->integral = max_integral;
     if (pid->integral < -max_integral) pid->integral = -max_integral;
 
@@ -199,8 +199,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -283,8 +282,8 @@ int main(void)
       // ==========================================
       // 【デバッグ用】CAN通信を無視して目標値を強制設定
       // ==========================================
-      //target_rpm1 = 10000.0f; // モーター1: 2000 RPM
-      //target_rpm2 = 10000.0f; // モーター2: 2000 RPM
+      target_rpm1 = 3000.0f; // モーター1: 2000 RPM
+      target_rpm2 = 3000.0f; // モーター2: 2000 RPM
       //target_rpm3 = 1100.0f;
 
       // --- 1. 通信のタイムアウト＆非常停止の監視 ---
@@ -320,9 +319,9 @@ int main(void)
       //TIM3 CH2  PA4
       //TIM15 CH1 PA2
       //TIN17 CH1 PA7 ←LEDにした
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm1);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm1);
+      //__HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
