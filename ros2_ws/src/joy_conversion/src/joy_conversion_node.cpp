@@ -106,7 +106,9 @@ void JoyConversion::joySecondPubTimerCallback()
     emergency_pub_->publish(emergency_stop_msg);
     return;
   }
-  bool button_pressed = joy_msg->buttons[emergency_button_index_] == 1;
+ 
+  //いったんずっとfalse
+  bool button_pressed = joy_msg->buttons[emergency_button_index_] == 999;
 
   // トグル（立ち上がり検出）
   if (button_pressed && !prev_button_state_) {

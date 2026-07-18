@@ -8,7 +8,22 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     # joy_node（コントローラー入力を /joy トピックに変換するノード）
+    
+
     joy_node = Node(
+        package="joy",
+        executable="joy_node",
+        name="joy_node",
+        output="screen",
+        parameters=[
+            {
+                "dev": "/dev/input/js0",
+                "coalesce_interval": 20,
+            }
+        ],
+    )
+
+    joy_conversion_node = Node(
         package="joy_conversion",
         executable="joy_conversion_node",
         name="/joy_conversion_node",
@@ -20,7 +35,6 @@ def generate_launch_description():
             }
         ],
     )
-
     # joy -> twist 変換ノード
     base_controller = Node(
         package="mecanum_controller",  # 実行したいバイナリが含まれるパッケージ名
