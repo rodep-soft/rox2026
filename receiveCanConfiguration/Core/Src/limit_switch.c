@@ -17,7 +17,7 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
     uint32_t current_time = HAL_GetTick();
 
     // 前回送信した時刻から10ms以上経過しているかチェック
-    if ((current_time - last_send_time) >= 10) {
+    if ((current_time - last_send_time) >= 100) {
 
         // 送信時刻を更新
         last_send_time = current_time;
