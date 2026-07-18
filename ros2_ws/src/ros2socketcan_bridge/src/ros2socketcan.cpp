@@ -127,7 +127,9 @@ void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
     received << static_cast<unsigned int>(msg->data[i]);
   }
   received << "]";
-  RCLCPP_DEBUG(this->get_logger(), "%s", received.str().c_str()); can_msgs::msg::Frame msg1; msg1.id = msg->id; msg1.dlc = msg->dlc; msg1.is_extended = msg->is_extended; msg1.is_rtr = msg->is_rtr; msg1.is_error = msg->is_error; msg1.data = msg->data;
+  RCLCPP_DEBUG(this->get_logger(), "%s", received.str().c_str()); can_msgs::msg::Frame msg1;
+  msg1.id = msg->id; msg1.dlc = msg->dlc; msg1.is_extended = msg->is_extended;
+  msg1.is_rtr = msg->is_rtr; msg1.is_error = msg->is_error; msg1.data = msg->data;
 
   CanSend(msg1);
 }

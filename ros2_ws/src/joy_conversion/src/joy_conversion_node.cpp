@@ -63,7 +63,7 @@ JoyConversion::JoyConversion()
     std::bind(&JoyConversion::joySecondPubTimerCallback, this));
 
   ready_start_joy_ = this->now();
-  
+
   last_joy_time_ = this->now();
 }
 
@@ -101,12 +101,13 @@ void JoyConversion::joySecondPubTimerCallback()
 
 // 100ms
   if (!joy_msg &&
-    ((this->now() - ready_start_joy_).nanoseconds() / 1'000'000) > 200) {
+    ((this->now() - ready_start_joy_).nanoseconds() / 1'000'000) > 200)
+  {
     setEmergencyStop(true);
     emergency_pub_->publish(emergency_stop_msg);
     return;
   }
- 
+
   //いったんずっとfalse
   bool button_pressed = joy_msg->buttons[emergency_button_index_] == 999;
 

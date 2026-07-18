@@ -8,7 +8,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     # joy_node（コントローラー入力を /joy トピックに変換するノード）
-    
 
     joy_node = Node(
         package="joy",

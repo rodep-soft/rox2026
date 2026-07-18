@@ -181,7 +181,9 @@ private:
       if (msg->id == target_id) {
         RCLCPP_DEBUG(this->get_logger(), "Received CAN message from motor %d", motor_id);
         if (!is_initialized_) {
-          RCLCPP_DEBUG(this->get_logger(), "Initializing motors after receiving first CAN message.");
+          RCLCPP_DEBUG(
+            this->get_logger(),
+            "Initializing motors after receiving first CAN message.");
           init_motors();
           is_initialized_ = true;
         }
