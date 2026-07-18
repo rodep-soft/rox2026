@@ -183,7 +183,8 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+
+	HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -267,8 +268,8 @@ int main(void)
       // ==========================================
       // 【デバッグ用】CAN通信を無視して目標値を強制設定
       // ==========================================
-      //target_rpm1 = 5000.0f; // モーター1: 2000 RPM
-      //target_rpm2 = 5000.0f; // モーター2: 2000 RPM
+      //target_rpm1 = 10000.0f; // モーター1: 2000 RPM
+      //target_rpm2 = 10000.0f; // モーター2: 2000 RPM
       //target_rpm3 = 1100.0f;
 
       // --- 1. 通信のタイムアウト＆非常停止の監視 ---
@@ -304,9 +305,9 @@ int main(void)
       //TIM3 CH2  PA4
       //TIM15 CH1 PA2
       //TIN17 CH1 PA7 ←LEDにした
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm3);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm2);
+      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
