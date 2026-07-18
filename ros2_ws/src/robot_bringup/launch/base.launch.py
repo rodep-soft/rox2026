@@ -9,9 +9,9 @@ def generate_launch_description():
 
     # joy_node（コントローラー入力を /joy トピックに変換するノード）
     joy_node = Node(
-        package="joy",
-        executable="joy_node",
-        name="joy_node",
+        package="joy_conversion",
+        executable="joy_conversion_node",
+        name="/joy_conversion_node",
         output="screen",
         parameters=[
             {
