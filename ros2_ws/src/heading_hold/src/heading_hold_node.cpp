@@ -1,7 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/imu.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2/utils.hpp>
 #include <cmath>
 
 namespace
@@ -31,10 +31,12 @@ public:
     this->declare_parameter<double>("kp", 0.0);
     this->declare_parameter<double>("ki", 0.0);
     this->declare_parameter<double>("kd", 0.0);
+    this->declare_parameter<double>("integral_limit", 0.5);
 
     kp_ = this->get_parameter("kp").as_double();
     ki_ = this->get_parameter("ki").as_double();
     kd_ = this->get_parameter("kd").as_double();
+    integral_limit_ = this->get_parameter("integral_limit").as_double();
 
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
       "/cmd_vel_raw", 1,
@@ -62,6 +64,7 @@ private:
   double ki_;
   double kd_;
   double integral_ = 0.0;
+  double integral_limit_;
   double prev_error_ = 0.0;
   rclcpp::Time last_time_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -104,7 +107,15 @@ private:
   double error = normalizeAngle(target_yaw_ - current_yaw_);
 
   integral_ += error * dt;
+
+  if (integral_ > integral_limit_) {
+    integral_ = integral_limit_;
+  } else if (integral_ < -integral_limit_) {
+    integral_ = -integral_limit_;
+  }
+
   double derivative = (dt > 0.0) ? (error - prev_error_) / dt : 0.0;
+
   prev_error_ = error;
 
   double correction = kp_ * error + ki_ * integral_ + kd_ * derivative;
