@@ -14,7 +14,8 @@ SpringEduliteController::SpringEduliteController()
   const auto limit_switch_topic = declare_parameter<std::string>(
     "limit_switch_topic", "/limit_switches");
   const auto spring_velocity_command_topic = declare_parameter<std::string>(
-    "spring_velocity_command_topic", "/spring_edulite_speed");
+    "spring_velocity_command_topic", "/spring_velocity_command");
+
   limit_switch_index_ = declare_parameter<int>("limit_switch_index", 0);
   loading_velocity_rad_s_ = declare_parameter<double>("loading_velocity_rad_s", -5.0);
   fire_velocity_rad_s_ = declare_parameter<double>("fire_velocity_rad_s", -20.0);

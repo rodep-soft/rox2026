@@ -8,8 +8,8 @@ spring_controller_node:
     limit_switch_topic: /limit_switches
     limit_switch_index: 0
 
-    # hardware_driverへ送るEduLite 05の速度指令topic。単位はrad/s。
-    spring_velocity_command_topic: /spring_edulite_speed
+    # hardware_driverへ送るEduLite 05の速度指令topic。std_msgs/msg/Float32、単位はrad/s。
+    spring_velocity_command_topic: /spring_velocity_command
 
     # 正負の向きは機構の実装に合わせて調整する。
     loading_velocity_rad_s: -5.0
