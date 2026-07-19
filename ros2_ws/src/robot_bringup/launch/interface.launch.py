@@ -19,7 +19,7 @@ def generate_launch_description():
             Node(
                 package="ros2socketcan_bridge",
                 executable="ros2socketcan",
-                output="screen",
+                #output="screen",
             ),
             Node(
                 package="receive_stm32",

@@ -84,7 +84,7 @@ private:
 
   static void wait_after_command()
   {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   float current_limit_a_;

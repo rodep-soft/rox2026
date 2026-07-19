@@ -1,9 +1,9 @@
 roller_position_controller:
   ros__parameters:
     # RobStride loc_ref is radian.
-    storage_angle: 1.5
-    intake_angle: -1.3
-    shoot_angle: 0.0
+    storage_angle: 1.45 
+    intake_angle: 0.2  
+    shoot_angle: -1.3
 
     enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 1
@@ -25,7 +25,7 @@ robstride_position_node:
                                           # 位置フィードバックが-4π~4πで周期ループする仕様に合わせたソフト側の制限)
     position_max_rad: 1.7       # 目標角度[rad]の上限 (4π。理由はposition_min_radのコメント参照)
 
-    home_position_rad: 0.0               # 起動時の初期目標、および終了時に復帰する位置[rad]
+    home_position_rad: 0.2              # 起動時の初期目標、および終了時に復帰する位置[rad]
 
     enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
 

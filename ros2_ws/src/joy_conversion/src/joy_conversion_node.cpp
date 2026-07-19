@@ -35,7 +35,7 @@ JoyConversion::JoyConversion()
 : Node("joy_conversion_node")
 {
   // パラメータ宣言
-  this->declare_parameter<int>("emergency_button_index", 1);
+  this->declare_parameter<int>("emergency_button_index", 99);
   this->declare_parameter<int>("joy_timeout_ms", 500);
   std::string subscribed_topic = this->declare_parameter<std::string>("subscribed_topic", "/joy");
   std::string published_topic = this->declare_parameter<std::string>(
@@ -58,7 +58,7 @@ JoyConversion::JoyConversion()
   setEmergencyStop(true);
 
   joy_second_pub_timer_ = this->create_wall_timer(
-    10ms,
+    50ms,
     std::bind(&JoyConversion::joySecondPubTimerCallback, this));
 
   last_joy_time_ = this->now();
@@ -79,7 +79,8 @@ void JoyConversion::checkJoyTimeout()
   if (diff_ms > joy_timeout_ms_) {
     if (!emergency_stop_msg.data) {
       setEmergencyStop(true);
-      RCLCPP_WARN(this->get_logger(), "/joy timeout → emergency_stop ON");
+      // RCLCPP_WARN(this->get_logger(), "/joy timeout → emergency_stop ON");
+      RCLCPP_INFO(this->get_logger(), "EMERGENCY!!!!!");
     }
   }
 }
@@ -88,16 +89,16 @@ void JoyConversion::checkJoyTimeout()
 void JoyConversion::setEmergencyStop(bool emergency_stop)
 {
   emergency_stop_msg.data = emergency_stop;
-  RCLCPP_INFO(
+  /*RCLCPP_INFO(
     this->get_logger(),
-    emergency_stop ? "EMERGENCY STOP: ON" : "EMERGENCY STOP: OFF");
+    emergency_stop ? "EMERGENCY STOP: ON" : "EMERGENCY STOP: OFF"); */
 }
 
 void JoyConversion::joySecondPubTimerCallback()
 {
 
   if (!joy_msg) {
-    setEmergencyStop(true);
+    setEmergencyStop(false);
     emergency_pub_->publish(emergency_stop_msg);
     return;
   }
@@ -121,7 +122,7 @@ void JoyConversion::joySecondPubTimerCallback()
     joy_second_msg.axes.resize(joy_msg->axes.size(), 0.0f);
     // buttonsをすべて0
     joy_second_msg.buttons.resize(joy_msg->buttons.size(), 0);
-    RCLCPP_INFO(this->get_logger(), "%d", emergency_stop_msg.data);
+    //RCLCPP_INFO(this->get_logger(), "%d", emergency_stop_msg.data);
   } else {
     joy_second_msg = *joy_msg;
   }

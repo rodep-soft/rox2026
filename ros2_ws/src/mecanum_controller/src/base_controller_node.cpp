@@ -20,9 +20,9 @@ public:
     pub_interval_ = this->get_parameter("pub_interval").as_int();
 
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
-      "joy", 1, std::bind(&BaseController::joy_callback, this, std::placeholders::_1));
+      "/joy_second", 1, std::bind(&BaseController::joy_callback, this, std::placeholders::_1));
 
-    vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+    vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(pub_interval_),

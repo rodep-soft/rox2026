@@ -10,8 +10,8 @@ roller_controller_node:
     high_button: 2
     low_button: 3
     stop_rpm: 0
-    high_rpm: 3000
-    low_rpm: 4000
+    high_rpm: 1150
+    low_rpm: 1000
 
 belt_controller_node:
   ros__parameters:

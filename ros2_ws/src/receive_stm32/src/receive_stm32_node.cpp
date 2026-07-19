@@ -25,15 +25,19 @@ public:
 
     limit_sw_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/limit_sw", 10);
 
-    RCLCPP_INFO(this->get_logger(), "Limit Switch Node has been started.");
-    RCLCPP_INFO(
+    // RCLCPP_INFO(this->get_logger(), "Limit Switch Node has been started.");
+    /*RCLCPP_INFO(
       this->get_logger(), "Listening on Topic: %s, Target CAN ID: 0x%X",
-      topic_name.c_str(), target_can_id_);
+      topic_name.c_str(), target_can_id_); */
   }
 
 private:
   void canCallback(const can_msgs::msg::Frame::SharedPtr msg)
   {
+
+    // For debugging
+    static int kokura = 0;
+
     if (msg->id == target_can_id_) {
       uint8_t raw_data = msg->data[0];
       uint8_t limit_status = raw_data & 0x07;
@@ -43,8 +47,18 @@ private:
 
       limit_sw_pub_->publish(output_msg);
 
-      RCLCPP_INFO(this->get_logger(), "Published limit switch state: %d", limit_status);
+      if (kokura != 5) {
+	kokura++; 
+        RCLCPP_INFO(this->get_logger(), "Published limit switch state: %d", limit_status);
+      }
+      
     }
+
+    if (kokura != 5) {
+    	kokura++;
+	RCLCPP_INFO(this->get_logger(), "KOKURA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    }
+    
   }
 
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;

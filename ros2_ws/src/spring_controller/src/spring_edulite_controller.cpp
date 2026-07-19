@@ -38,9 +38,10 @@ public:
       publish_edulite_,
       10);
 
+    now_state_ = State::LOAD;//デバック用
     // 10msごとにモーター制御管理コールバックを呼び出す
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(10),
+      std::chrono::milliseconds(50),
       std::bind(&SpringEduliteController::timer_callback, this));
   }
 
@@ -110,9 +111,9 @@ private:
         break;
     }
 
-    RCLCPP_INFO(
-      this->get_logger(), "now_state: %d, target_state: %d, speed: %f, limit_sw: %d", now_state_, target_state_, speed.data,
-      limit_sw_);
+//    RCLCPP_INFO(
+//     this->get_logger(), "now_state: %d, target_state: %d, speed: %f, limit_sw: %d", now_state_, target_state_, speed.data,
+//      limit_sw_);
     speed_pub_->publish(speed);
   }
 };

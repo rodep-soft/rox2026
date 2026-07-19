@@ -15,7 +15,6 @@ ros2socketcan::ros2socketcan()
   this->declare_parameter("CAN_INTERFACE", "can0");
   std::string can_socket = this->get_parameter("CAN_INTERFACE").as_string();
 
-  RCLCPP_INFO(this->get_logger(), "CAN_INTERFACE: %s", can_socket.c_str());
   topicname_receive << "CAN/" << can_socket << "/"
                     << "receive";
   topicname_transmit << "CAN/" << can_socket << "/"
@@ -39,6 +38,7 @@ ros2socketcan::ros2socketcan()
 
   stream.assign(natsock);
 
+  /*
   RCLCPP_INFO(
     this->get_logger(),
     (std::string("ROS 2 to CAN-Bus topic:") + subscription_->get_topic_name()).c_str());
@@ -46,6 +46,7 @@ ros2socketcan::ros2socketcan()
     this->get_logger(),
     (std::string("CAN-Bus to ROS 2 topic:") + publisher_->get_topic_name()).c_str());
 
+    */
   stream.async_read_some(
     boost::asio::buffer(&rec_frame, sizeof(rec_frame)),
     std::bind(&ros2socketcan::CanListener, this, std::ref(rec_frame), std::ref(stream)));
@@ -58,16 +59,17 @@ ros2socketcan::ros2socketcan()
 }
 void ros2socketcan::stop()
 {
+	/*
   RCLCPP_INFO(
     this->get_logger(),
-    "End of Listener Thread. Please press strg+c again to stop the whole program.\n");
+    "End of Listener Thread. Please press strg+c again to stop the whole program.\n"); */
   ios.stop();
   signals.clear();
 }
 
 ros2socketcan::~ros2socketcan()
 {
-  RCLCPP_INFO(this->get_logger(), "End of Publisher Thread. \n");
+ // RCLCPP_INFO(this->get_logger(), "End of Publisher Thread. \n");
 }
 
 void ros2socketcan::CanSend(const can_msgs::msg::Frame msg)
@@ -127,7 +129,7 @@ void ros2socketcan::CanPublisher(const can_msgs::msg::Frame::SharedPtr msg)
     received << static_cast<unsigned int>(msg->data[i]);
   }
   received << "]";
-  RCLCPP_INFO(this->get_logger(), "%s", received.str().c_str());
+ // RCLCPP_INFO(this->get_logger(), "%s", received.str().c_str());
 
   can_msgs::msg::Frame msg1;
   msg1.id = msg->id;

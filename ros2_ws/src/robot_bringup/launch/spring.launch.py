@@ -18,6 +18,7 @@ def generate_launch_description():
                 name="spring_joy_sub",
                 parameters=[config_file],
                 output="screen",
+                prefix=["gdb -ex run --args "],
             ),
             TimerAction(
                 period=0.1,

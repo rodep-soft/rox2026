@@ -28,8 +28,8 @@ void RollerControllerNode::DeclareParameters()
   this->declare_parameter<int>("high_button", 0);
   this->declare_parameter<int>("low_button", 3);
   this->declare_parameter<int>("stop_rpm", 0);
-  this->declare_parameter<int>("high_rpm", 4000);
-  this->declare_parameter<int>("low_rpm", 3000);
+  this->declare_parameter<int>("high_rpm", 1200);
+  this->declare_parameter<int>("low_rpm", 1000);
 }
 
 void RollerControllerNode::GetParameters()

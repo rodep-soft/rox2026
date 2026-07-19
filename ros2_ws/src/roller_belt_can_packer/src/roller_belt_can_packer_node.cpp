@@ -48,8 +48,8 @@ void RollerBeltCanPackerNode::DeclareParameters()
   this->declare_parameter<std::string>("roller_rpm_topic", "/roller/rpm");
   this->declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm");
   this->declare_parameter<int>("min_rpm", 0);
-  this->declare_parameter<int>("max_rpm", 5000);
-  this->declare_parameter<int>("publish_period_ms", 20);
+  this->declare_parameter<int>("max_rpm", 2000);
+  this->declare_parameter<int>("publish_period_ms", 50);
   this->declare_parameter<int>("timeout_ms", 500);
 }
 

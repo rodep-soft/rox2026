@@ -11,9 +11,12 @@ RUN apt-get update && apt-get install -y \
     vim \
     curl \
     ccache \
-    #less \
+    less \
     tree \
     tmux \
+    gdb \
+    neovim \
+    htop \
     lsof \
     build-essential \
     python3-pip \

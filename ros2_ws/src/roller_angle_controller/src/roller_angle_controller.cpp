@@ -14,7 +14,7 @@ public:
     DeclareParameters();
     GetParameters();
 
-    current_target_angle_ = storage_angle_;
+    current_target_angle_ = intake_angle_;
     publisher_ = this->create_publisher<std_msgs::msg::Float32>(
       "/robstride/position_cmd", 10);
     subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(

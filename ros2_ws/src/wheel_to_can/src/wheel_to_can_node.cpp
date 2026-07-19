@@ -44,7 +44,7 @@ public:
     last_vel_received_time_ = this->now();         // 初期化時に現在の時刻を設定
 
     timeout_timer_ = this->create_wall_timer(
-      100ms, std::bind(&WheelToCanNode::check_timeout, this));          // 100msごとにタイムアウトチェックを実行
+      300ms, std::bind(&WheelToCanNode::check_timeout, this));          // 100msごとにタイムアウトチェックを実行
 
     RCLCPP_INFO(this->get_logger(), "WheelToCanNode started");
 
