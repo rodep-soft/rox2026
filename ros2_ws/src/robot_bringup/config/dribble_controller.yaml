@@ -1,0 +1,18 @@
+dribble_controller_node:
+  ros__parameters:
+    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
+    robot_command_topic: /robot_command
+    # hardware_driverへ送る目標角速度topic。std_msgs/msg/Float32、単位はrad/s。
+    dribble_velocity_command_topic: /dribble_velocity_command
+    # spring_controllerから受ける停止要求topic。std_msgs/msg/Bool。
+    dribble_stop_request_topic: /dribble_stop_request
+    # spring_controllerへ返す停止完了topic。std_msgs/msg/Bool。
+    dribble_is_stopped_topic: /dribble_is_stopped
+
+    # dribble_modeがLOW(1)、HIGH(2)のときの目標角速度[rad/s]。
+    low_velocity_rad_s: 30.0
+    high_velocity_rad_s: 60.0
+    # 停止要求時の減速度[rad/s^2]。
+    stop_deceleration_rad_s2: 20.0
+    # 速度指令をpublishする周期[ms]。
+    command_period_ms: 10
