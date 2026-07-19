@@ -179,9 +179,11 @@ private:
         (motor_id << 16) | 0xFE;
 
       if (msg->id == target_id) {
-        RCLCPP_INFO(this->get_logger(), "Received CAN message from motor %d", motor_id);
+        RCLCPP_DEBUG(this->get_logger(), "Received CAN message from motor %d", motor_id);
         if (!is_initialized_) {
-          RCLCPP_INFO(this->get_logger(), "Initializing motors after receiving first CAN message.");
+          RCLCPP_DEBUG(
+            this->get_logger(),
+            "Initializing motors after receiving first CAN message.");
           init_motors();
           is_initialized_ = true;
         }
@@ -205,7 +207,7 @@ private:
 
     // タイムアウトから復帰した場合、フラグを下ろす
     if (is_timeout_) {
-      RCLCPP_INFO(this->get_logger(), "Recovered from timeout. Resuming motors.");
+      RCLCPP_DEBUG(this->get_logger(), "Recovered from timeout. Resuming motors.");
       is_timeout_ = false;
     }
 
@@ -247,7 +249,7 @@ private:
       stop_motors();
 
       is_timeout_ = true;           // フラグを立てて、連続で停止コマンドを送らないようにする
-      RCLCPP_INFO(this->get_logger(), "Timeout flag has been set.");
+      RCLCPP_DEBUG(this->get_logger(), "Timeout flag has been set.");
     }
   }
 

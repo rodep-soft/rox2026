@@ -168,7 +168,7 @@ void RobstrideCanNode::GetParameters()
 
 void RobstrideCanNode::CommandCallback(const std_msgs::msg::Float32::SharedPtr msg)
 {
-  RCLCPP_INFO(
+  RCLCPP_DEBUG(
     this->get_logger(), "Received: %s data=%.6f rad", command_subscription_->get_topic_name(),
     msg->data);
   command_target_ = Clamp(msg->data, position_min_rad_, position_max_rad_);
@@ -236,7 +236,7 @@ void RobstrideCanNode::SendStop()
 
   if (!startup_completed_) {
     SendDisable();
-    RCLCPP_INFO(
+    RCLCPP_DEBUG(
       this->get_logger(),
       "RobstrideCanNode stopped before initialization completed; sent motor stop frame only.");
     return;
@@ -257,7 +257,7 @@ void RobstrideCanNode::SendStop()
   } while (std::chrono::steady_clock::now() < deadline);
 
   SendDisable();
-  RCLCPP_INFO(
+  RCLCPP_DEBUG(
     this->get_logger(),
     "RobstrideCanNode stopping: returned to %.3f rad for %d ms, then sent motor stop frame.",
     home_position_rad_,

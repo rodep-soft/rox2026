@@ -1,7 +1,7 @@
 joy_conversion_node:
   ros__parameters:
   #Xボタンの番号
-    emergency_button_index: 1
+    emergency_button_index: 999
   #タイムアウトまでの時間
     joy_timeout_ms: 500
     subscribed_topic: /joy

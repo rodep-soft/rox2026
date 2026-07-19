@@ -33,6 +33,4 @@ ament_target_dependencies(
 
 install(TARGETS joy_conversion_node DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
-
 ament_package()
