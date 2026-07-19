@@ -11,15 +11,18 @@ public:
   SpringEduliteController()
   : Node("spring_edulite_controller")
   {
-    this->declare_parameter("max_speed", 20.0);
-    this->declare_parameter("loading_speed", 5.0);
-    this->declare_parameter("limit_sw_index", 0);
+    this->declare_parameter("fire_speed_", -20.0);
+    this->declare_parameter("loading_speed", -5.0);
+    this->declare_parameter("limit_sw_index", 1);
     this->declare_parameter("fire_duration", 5.0);
+    this->declare_parameter("publish_edulite", "/spring_edulite_speed");
 
-    max_speed_ = this->get_parameter("max_speed").as_double();
+    fire_speed_ = this->get_parameter("fire_speed_").as_double();
     loading_speed_ = this->get_parameter("loading_speed").as_double();
     limit_sw_index_ = this->get_parameter("limit_sw_index").as_int();
     fire_duration_ = this->get_parameter("fire_duration").as_double();
+    std::string publish_edulite_ = this->get_parameter("publish_edulite").as_string();
+
 
     spr_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
       "/spring_cmd",
@@ -32,7 +35,7 @@ public:
       std::bind(&SpringEduliteController::limit_callback, this, std::placeholders::_1));
 
     speed_pub_ = this->create_publisher<std_msgs::msg::Float32>(
-      "/edulite_speed",
+      publish_edulite_,
       10);
 
     // 10msごとにモーター制御管理コールバックを呼び出す
@@ -45,7 +48,7 @@ private:
   State now_state_ = State::STOP;      // 制御状態を表す
   State target_state_ = State::STOP;   // 目標状態
 
-  double max_speed_;       // 発射時のモーター回転速度
+  double fire_speed_;       // 発射時のモーター回転速度
   double loading_speed_;   // 装填時のモーター回転速度
   int limit_sw_index_;     // limit_swのインデックス番号
   bool limit_sw_ = false;       // limit_swの状態
@@ -67,6 +70,7 @@ private:
       now_state_ = State::LOAD;
     }
   }
+
   void limit_callback(const std_msgs::msg::UInt8::SharedPtr msg)
   {   // limit_swのnbit目のデータを受け取る
     if (limit_sw_index_ < 8) {   // indexが有効な範囲内か確認
@@ -92,11 +96,11 @@ private:
           }
         } else { // limit_swが押されていない
           // 装填中は発射の命令を無視
-          speed.data = loading_speed_ + 5.0;
+          speed.data = loading_speed_;
         }
         break;
       case State::FIRE:   // 発射中
-        speed.data = max_speed_;
+        speed.data = fire_speed_;
         if ((this->now() - fire_start).seconds() >= fire_duration_) {
           now_state_ = State::LOAD;
         }

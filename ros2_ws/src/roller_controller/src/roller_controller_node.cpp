@@ -1,117 +1,79 @@
-#include <memory>
-#include <functional>
-
-#include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/joy.hpp"
-#include "std_msgs/msg/int16.hpp"
-
 #include "roller_controller/roller_controller_node.hpp"
+#include "roller_controller/joy_button.hpp"
+
+#include <functional>
+#include <memory>
 
 RollerControllerNode::RollerControllerNode()
 : Node("roller_controller_node")
 {
-  declareParameters();
-  getParameters();
+  DeclareParameters();
+  GetParameters();
+  current_rpm_ = stop_rpm_;
 
-  current_command_.mode = RotationMode::Stop;
-  current_command_.pwm_value = stop_pwm_;
-
-  pwm_publisher_ = this->create_publisher<std_msgs::msg::Int16>("/mabuchi555/pwm_value", 10);
+  rpm_publisher_ = this->create_publisher<std_msgs::msg::Int16>(rpm_topic_, 10);
   joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-    "/joy", 10, std::bind(&RollerControllerNode::joyCallback, this, std::placeholders::_1));
+    "/joy_second", 10,
+    std::bind(&RollerControllerNode::JoyCallback, this, std::placeholders::_1));
 
-  RCLCPP_INFO(this->get_logger(), "RollerControllerNode has been initialized with Mabuchi specs.");
+  RCLCPP_INFO(
+    this->get_logger(), "RPM controller started. rpm_topic=%s", rpm_topic_.c_str());
 }
 
-void RollerControllerNode::joyCallback(const sensor_msgs::msg::Joy::SharedPtr joy_msg)
+void RollerControllerNode::DeclareParameters()
 {
-  // ヌルポインタチェック（防御的プログラミング）
-  if (!joy_msg) {
+  this->declare_parameter<std::string>("rpm_topic", "/roller/rpm");
+  this->declare_parameter<int>("enable_button", 7);
+  this->declare_parameter<int>("stop_button", 2);
+  this->declare_parameter<int>("high_button", 0);
+  this->declare_parameter<int>("low_button", 3);
+  this->declare_parameter<int>("stop_rpm", 0);
+  this->declare_parameter<int>("high_rpm", 4000);
+  this->declare_parameter<int>("low_rpm", 3000);
+}
+
+void RollerControllerNode::GetParameters()
+{
+  rpm_topic_ = this->get_parameter("rpm_topic").as_string();
+  enable_button_ = this->get_parameter("enable_button").as_int();
+
+  stop_button_ = this->get_parameter("stop_button").as_int();
+  high_button_ = this->get_parameter("high_button").as_int();
+  low_button_ = this->get_parameter("low_button").as_int();
+  stop_rpm_ = static_cast<int16_t>(this->get_parameter("stop_rpm").as_int());
+  high_rpm_ = static_cast<int16_t>(this->get_parameter("high_rpm").as_int());
+  low_rpm_ = static_cast<int16_t>(this->get_parameter("low_rpm").as_int());
+}
+
+void RollerControllerNode::JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
+{
+  if (!msg) {
     return;
   }
 
-  // 1. 判定ロジックの呼び出し (SharedPtrではなく実体の参照を渡す。引数から前回状態を削除)
-  current_command_.mode = determineRotationMode(*joy_msg);
-
-  // 2. モードからPWM値を計算
-  current_command_.pwm_value = getPwmValueFromMode(current_command_.mode);
-
-  // 3. PWM値をパブリッシュ
-  auto pwm_msg = std_msgs::msg::Int16();
-  pwm_msg.data = current_command_.pwm_value;
-  pwm_publisher_->publish(pwm_msg);
+  std_msgs::msg::Int16 rpm_msg;
+  current_rpm_ = SelectRpm(*msg);
+  rpm_msg.data = current_rpm_;
+  rpm_publisher_->publish(rpm_msg);
 }
 
-// ボタン入力から次のモードを判定する関数（優先順位: Stop > Negative > Positive）
-// enableが押されていない場合は安全のため一律Stopを返す
-RotationMode RollerControllerNode::determineRotationMode(const sensor_msgs::msg::Joy & joy_msg)
-const
+int16_t RollerControllerNode::SelectRpm(const sensor_msgs::msg::Joy & msg)
 {
-
-  // 【指摘対応】早期リターンにより、Stop > Negative > Positive の優先順位をロジカルに保証
-  if (isButtonPressed(joy_msg, stop_button_)) {
-    return RotationMode::Stop;
+  if (!roller_controller::IsButtonPressed(*this, msg, enable_button_)) {
+    return current_rpm_;
   }
 
-  if (isButtonPressed(joy_msg, negative_button_)) {
-    return RotationMode::NegativeRotate;
+  if (roller_controller::IsButtonPressed(*this, msg, stop_button_)) {
+    return stop_rpm_;
+  }
+  if (roller_controller::IsButtonPressed(*this, msg, high_button_)) {
+    return high_rpm_;
+  }
+  if (roller_controller::IsButtonPressed(*this, msg, low_button_)) {
+    return low_rpm_;
   }
 
-  if (isButtonPressed(joy_msg, positive_button_)) {
-    return RotationMode::PositiveRotate;
-  }
-
-  // どのボタンも押されていない場合は現在のモードを維持（クラスメンバから直接参照）
-  return current_command_.mode;
-}
-
-// モードに対応するPWM値を返す関数
-int16_t RollerControllerNode::getPwmValueFromMode(RotationMode mode) const
-{
-  switch (mode) {
-    case RotationMode::PositiveRotate: return positive_pwm_;
-    case RotationMode::NegativeRotate: return negative_pwm_;
-    default:                           return stop_pwm_;
-  }
-}
-
-// 安全にボタン状態をチェックする関数 (SharedPtrではなく参照を受けるように変更)
-bool RollerControllerNode::isButtonPressed(
-  const sensor_msgs::msg::Joy & joy_msg,
-  int button_index) const
-{
-  // 【指摘対応】範囲チェックはここだけで完全に保証する
-  if (button_index < 0 || static_cast<size_t>(button_index) >= joy_msg.buttons.size()) {
-    RCLCPP_WARN_THROTTLE(
-      this->get_logger(),
-      *this->get_clock(), 1000, "Button index %d out of bounds!", button_index);
-    return false;
-  }
-  return joy_msg.buttons[button_index] == 1;
-}
-
-// パラメータ宣言
-void RollerControllerNode::declareParameters()
-{
-  this->declare_parameter<int>("enable_button", 6);
-  this->declare_parameter<int>("positive_button", 2);
-  this->declare_parameter<int>("negative_button", 0);
-  this->declare_parameter<int>("stop_button", 1);
-  this->declare_parameter<int>("positive_pwm", 200);
-  this->declare_parameter<int>("negative_pwm", -200);
-  this->declare_parameter<int>("stop_pwm", 0);
-}
-
-// パラメータ取得
-void RollerControllerNode::getParameters()
-{
-  this->get_parameter("enable_button", enable_button_);
-  this->get_parameter("positive_button", positive_button_);
-  this->get_parameter("negative_button", negative_button_);
-  this->get_parameter("stop_button", stop_button_);
-  this->get_parameter("positive_pwm", positive_pwm_);
-  this->get_parameter("negative_pwm", negative_pwm_);
-  this->get_parameter("stop_pwm", stop_pwm_);
+  return current_rpm_;
 }
 
 int main(int argc, char * argv[])

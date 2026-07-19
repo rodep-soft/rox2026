@@ -1,8 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
-from launch.substitutions import LaunchConfiguration
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 
 
@@ -17,7 +16,7 @@ def generate_launch_description():
         parameters=[
             {
                 "dev": "/dev/input/js0",
-                "autorepeat_rate": 100.0,
+                "coalesce_interval": 20,
             }
         ],
     )
@@ -61,7 +60,11 @@ def generate_launch_description():
         executable="wheel_to_can_node",
         name="wheel_to_can_node",
         output="screen",
-        # parameters=[os.path.join(get_package_share_directory('wheel_to_can'),'config','params.yaml'],
+        parameters=[
+            os.path.join(
+                get_package_share_directory("wheel_to_can"), "config", "params.yaml"
+            )
+        ],
     )
 
     # ros2とcan の橋渡し

@@ -1,3 +1,14 @@
 # STM32CubeIDE Build Folders
 Debug/
 Release/
+
+*.launch
+
+.metadata/
+
+*.o
+*.d
+*.elf
+*.map
+
+.setting/language.setting.xml
