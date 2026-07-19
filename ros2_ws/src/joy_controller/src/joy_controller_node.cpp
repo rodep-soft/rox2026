@@ -11,8 +11,8 @@ JoyControllerNode::JoyControllerNode()
   pre_intake_button_on_(false),
   pre_spring_fire_button_on_(false),
   pre_belt_fire_button_on_(false),
-  pre_dpad_is_up_(false),
-  pre_dpad_is_down_(false),
+  pre_mode_up_(false),
+  pre_mode_down_(false),
   pre_emergency_stop_button_on_(false)
 {
   declare_parameters();
@@ -69,7 +69,7 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<int>("left_stick_x_axis", 0);
   declare_parameter<int>("left_stick_y_axis", 1);
   declare_parameter<int>("right_stick_x_axis", 2);
-  declare_parameter<int>("dpad_y_axis", 7);
+  declare_parameter<int>("mode_change_axis", 7);
 }
 
 void JoyControllerNode::get_parameters()
@@ -102,7 +102,7 @@ void JoyControllerNode::get_parameters()
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
-  get_parameter("dpad_y_axis", dpad_y_axis_);
+  get_parameter("mode_change_axis", mode_change_axis_);
 }
 
 bool JoyControllerNode::button_pressed(const sensor_msgs::msg::Joy & msg, int index)
@@ -134,7 +134,7 @@ uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode)
 
 uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
 {
-  return mode > 1 ? static_cast<uint8_t>(mode - 1) : 1;
+  return mode > 0 ? static_cast<uint8_t>(mode - 1) : 0;
 }
 
 void JoyControllerNode::call_emergency_stop()
@@ -165,11 +165,28 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool emergency_stop_is_enable_button =
     button_pressed(joy_msg, emergency_stop_is_enable_button_);
   const bool emergency_stop_button_on = button_pressed(joy_msg, emergency_stop_button_on_);
-  const double dpad_y = axis_value(joy_msg, dpad_y_axis_);
-  const bool is_belt_mode_up = dpad_y >= axis_on_threshold_;
-  const bool is_belt_mode_down = dpad_y <= -axis_on_threshold_;
-  const bool is_dribble_mode_up = dpad_y >= axis_on_threshold_;
-  const bool is_dribble_mode_down = dpad_y <= -axis_on_threshold_;
+  const double mode_change_value = axis_value(joy_msg, mode_change_axis_);
+  const bool is_mode_up = mode_change_value >= axis_on_threshold_;
+  const bool is_mode_down = mode_change_value <= -axis_on_threshold_;
+
+  const bool is_emergency_stop =
+    emergency_stop_is_enable_button && emergency_stop_button_on;
+  if (is_emergency_stop) {
+    command_ = robot_controller::msg::RobotCommand{};
+    command_publisher_->publish(command_);
+
+    if (!pre_emergency_stop_button_on_) {
+      call_emergency_stop();
+    }
+
+    pre_intake_button_on_ = intake_button_on;
+    pre_spring_fire_button_on_ = spring_fire_button_on;
+    pre_belt_fire_button_on_ = belt_fire_button_on;
+    pre_mode_up_ = is_mode_up;
+    pre_mode_down_ = is_mode_down;
+    pre_emergency_stop_button_on_ = emergency_stop_button_on;
+    return;
+  }
 
   if (intake_is_enable_button && intake_button_on && !pre_intake_button_on_) {
     command_.is_intake = !command_.is_intake;
@@ -181,44 +198,40 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   if (belt_fire_is_enable_button && belt_fire_button_on && !pre_belt_fire_button_on_) {
     command_.belt_is_fire = !command_.belt_is_fire;
   }
-  if (belt_mode_is_enable_button && is_belt_mode_up && !pre_dpad_is_up_) {
+  if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
     command_.belt_mode = increment_mode(
-      command_.belt_mode, static_cast<uint8_t>(BeltMode::HIGH));
+      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_4));
   }
-  if (belt_mode_is_enable_button && is_belt_mode_down && !pre_dpad_is_down_) {
+  if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.belt_mode = decrement_mode(command_.belt_mode);
   }
-  if (dribble_mode_is_enable_button && is_dribble_mode_up && !pre_dpad_is_up_) {
+  if (dribble_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
     command_.dribble_mode = increment_mode(
-      command_.dribble_mode, static_cast<uint8_t>(DribbleMode::MAX));
+      command_.dribble_mode, static_cast<uint8_t>(DribbleMode::HIGH));
   }
-  if (dribble_mode_is_enable_button && is_dribble_mode_down && !pre_dpad_is_down_) {
+  if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.dribble_mode = decrement_mode(command_.dribble_mode);
   }
 
   const double linear_x = apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
   const double linear_y = apply_axis_deadzone(axis_value(joy_msg, left_stick_x_axis_));
   const double angular_z = apply_axis_deadzone(axis_value(joy_msg, right_stick_x_axis_));
+
   command_.cmd_vel.linear.x =
     apply_axis_limits(linear_x, min_linear_x_, max_linear_x_) * linear_x_scale_;
   command_.cmd_vel.linear.y =
     apply_axis_limits(linear_y, min_linear_y_, max_linear_y_) * linear_y_scale_;
   command_.cmd_vel.angular.z =
     apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) * angular_z_scale_;
-  command_publisher_->publish(command_);
 
-  if (emergency_stop_is_enable_button && emergency_stop_button_on &&
-    !pre_emergency_stop_button_on_)
-  {
-    call_emergency_stop();
-  }
+  command_publisher_->publish(command_);
 
   pre_intake_button_on_ = intake_button_on;
   pre_spring_fire_button_on_ = spring_fire_button_on;
   pre_belt_fire_button_on_ = belt_fire_button_on;
-  pre_dpad_is_up_ = is_belt_mode_up;
-  pre_dpad_is_down_ = is_belt_mode_down;
+  pre_mode_up_ = is_mode_up;
+  pre_mode_down_ = is_mode_down;
   pre_emergency_stop_button_on_ = emergency_stop_button_on;
 }
 
-}  // namespace joy_controller
+} // namespace joy_controller
