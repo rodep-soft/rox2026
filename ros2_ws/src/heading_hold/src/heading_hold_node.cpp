@@ -37,7 +37,7 @@ public:
     kd_ = this->get_parameter("kd").as_double();
 
     raw_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-      "/cmd_vel_raw", 10,
+      "/cmd_vel_raw", 1,
       std::bind(&HeadingHoldNode::rawVelocityCallback, this, std::placeholders::_1));
 
     imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
@@ -82,12 +82,38 @@ private:
   }
 
   void controlLoop()
-  {
-    rclcpp::Time now = this->now();
-    double dt = (now - last_time_).seconds();
-    last_time_ = now;
-    double error = normalizeAngle(target_yaw_ - current_yaw_);
+{
+  if (!has_imu_) {
+      last_time_ = this->now();
+      corrected_vel_pub_->publish(latest_raw_vel_);
+      return;
   }
+  rclcpp::Time now = this->now();
+  double dt = (now - last_time_).seconds();
+  last_time_ = now;
+
+  if (std::abs(latest_raw_vel_.angular.z) > 0.01) {
+      target_yaw_ = current_yaw_;
+      integral_ = 0.0;
+      prev_error_ = 0.0;
+
+      corrected_vel_pub_->publish(latest_raw_vel_);
+      return;
+  }
+
+  double error = normalizeAngle(target_yaw_ - current_yaw_);
+
+  integral_ += error * dt;
+  double derivative = (dt > 0.0) ? (error - prev_error_) / dt : 0.0;
+  prev_error_ = error;
+
+  double correction = kp_ * error + ki_ * integral_ + kd_ * derivative;
+
+  geometry_msgs::msg::Twist out = latest_raw_vel_;
+  out.angular.z += correction;
+
+  corrected_vel_pub_->publish(out);
+}
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr raw_vel_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
