@@ -1,10 +1,11 @@
 #include <stdint.h>
 
-struct can_frame
+struct Canframe
 {
     id;
-    dlc;
+    dlc;  //dlc 8bit固定だけど，やっぱこっちで書いたほうがいいかな？ 
     data;
+    //extendedのほうも書いたほうがいい？
 };
 
 /*
@@ -25,30 +26,32 @@ enum class Runmode
 
 class Ed05CanframeCreater
 {
+    
     public:
-        Ed05CanframeCreater(uint32_t motor_id);
+        Ed05CanframeCreater(uint8_t motor_id) : motor_id_(motor_id);
         ~Ed05CanframeCreater();
 
-        virtual can_frame create_init_frame() = 0;
-        can_frame create_update_mainparam_frame(float data);
+        std::vector<Canframe> create_init_frame();
+        Canframe create_control_frame(float value);
 
-        set_param_value(char param_name, float value); //加速度制限とか変更したかったらこれ使ってがんば
+        //set_param_value(char[8] param_name, float value); //加速度制限とか変更したかったらこれ使ってがんば;
 
     private:
-        int motor_id_;
-        //int run_mode_;
-
+        uint8_t motor_id_;
         int dlc_ = 8;
         uint8_t host_id_ = 0xFD;
+        runmode = 0; //runmodeを設定するコマンドで使用．vel:
 
-        //int Index //commtype18で使うindex pair使うつもり いやでも，index data name３つを同時に管理したいな
+        /*
         enum class ControlTarget
         {
             main,
         };
+        */
         struct ControlTargetInfo
         {
-            uint8_t[2] index; //commtype18で使用
+            char[8] name;
+            uint16_t index; //commtype18で使用
             float value;
             float max_value;
             float min_value;
@@ -56,13 +59,13 @@ class Ed05CanframeCreater
         std::unordered_map<ControlTarget, ControlTargetInfo> control_info;
 
 
-        void set_motor_data(uint32_t motor_id, ); //motor_id, runmode, main_param_indexを設定  dlcやhost_idもここでやってもいいけど必要ないからいいや
+        //void set_motor_data(uint32_t motor_id, ); //motor_id, runmode, main_param_indexを設定  dlcやhost_idもここでやってもいいけど必要ないからいいや
         //void gen_runmode_frame(int mode);  //comm type 18 : operation mode
         //void gen_enable_frame(uint32_t* canid, uint8_t* data);  //comm type 3 : enable
         //void gen_disable_frame();
         
-        uint32_t encode_can_id(int commtype_index);
-        uint8_t[8] encode_commtype18_data(float value);  //comm type 18
+        uint32_t encode_can_id(uint8_t commtype_index);
+        uint8_t[8] encode_commtype18_data(ControlTargetInfo target_info);  //comm type 18
 
         //int encode_data(uint8_t* data);
 
@@ -72,31 +75,15 @@ class Ed05CanframeCreater
 class Velocity : public Ed05CanframeCreater
 {
     public:
-    can_frame create_init_frame(); //オーバーライド 
-    //canframe create_update_mainparam_frame();
 
     private:
-    Index   //index, data, 項目名の３つをどう管理するか？
-    vel = 0;
-    int acc_ = 100;
-    int cur_ = 11;//?
-    enum class ControlTarget
-    {
-        main,
-        acc,
-        cur,//?
-    };
-    
-    std::unordered_map<ControlTarget, ControlTargetInfo> control_info = {
-        {ControlTarget::main, {0x700A, 0.0, 50.0, -50.0}},
-        {ControlTarget::acc, {0x0, 100, 1000, 0}},
-        {ControlTarget::cur,{, , 11, 0}}
-    }
 
-    
-
-
-    
+    std::array<ControlTargetInfo, 4> targets_info = {
+        {"runmode", 0x7005, 2.0, 10, 0}, //これここにいれるのキモくはある
+        {"vel", 0x700A, 0.0, 50.0, -50.0},
+        {"acc",,,,},
+        {"cur",,,,}
+    }    
 }
 
 class Position : public Ed05CanframeCreater

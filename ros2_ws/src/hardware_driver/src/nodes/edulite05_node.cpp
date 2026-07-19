@@ -11,18 +11,18 @@ class Ed05DriverNode : public rclcpp::Node
 {
     
     public:
-        Ed05Driverger( "Edulite05Node has been started."
+        Ed05Driverger() {
+            RCLCPP_INFO(this->get_logger(), "Edulite05Node has been started.");
 
             declare_parameters();
             get_parameters();
 
             cmd_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-            sub_topic_name_, 1, std::bind(&Ed05Node::cmd_callback, this, std::placeholders::_1));
+            sub_topic_name_, 1, std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
             frame_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_topic_name)//-----????-----
 
             // Ed05のクラスからインスタンス化を6回 <- これノードの外かも 
             // このときget parameterにより値を取得？？？？
-        );
 
         }
 
@@ -35,7 +35,8 @@ class Ed05DriverNode : public rclcpp::Node
     private:
         std::string sub_topic_name_;  // Subscription topic name
         std::string pub_topic_name_;
-
+        int count_motor = 0;
+        std::vector<Ed05CanframeCreater> motors;
 
         rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_sub_;  
         rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr frame_pub_;  // Publisher for command messages
@@ -67,7 +68,7 @@ class Ed05DriverNode : public rclcpp::Node
 
 int main (int argc, char **argv)
 {
-    init_motor();//(名は仮) モーターのインスタンス化
+    init_motor();//(名は仮) モーターもといCanframeCreaterのインスタンス化
     rclcpp::init(argc, argv);
     auto node = std::make_shared<Edulite05CanframeGeneratorNode>();
     rclcpp::spin(node);
