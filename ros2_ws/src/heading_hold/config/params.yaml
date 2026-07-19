@@ -3,3 +3,4 @@ heading_hold_node:
     kp: 1.0
     ki: 1.0
     kd: 1.0
+    integral_limit: 0.5
