@@ -10,6 +10,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>geometry_msgs</depend>
   <depend>robot_controller</depend>
   <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>

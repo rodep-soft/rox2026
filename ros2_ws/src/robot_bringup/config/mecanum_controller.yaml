@@ -1,10 +1,12 @@
 mecanum_controller_node:
   ros__parameters:
-    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
-    robot_command_topic: /robot_command
-    # publishするホイール角速度topic。std_msgs/msg/Float32MultiArray。
-    # 配列順序は[front_left, front_right, rear_left, rear_right]、単位はrad/s。
-    wheel_velocity_command_topic: /mecanum_wheel_velocity_command
+    # subscribeする操作指令topic。geometry_msgs/msg/Twist。
+    cmd_vel_topic: /mecanum/cmd_vel
+    # 各ホイールへpublishする角速度topic。std_msgs/msg/Float32、単位はrad/s。
+    front_left_velocity_topic: /mecanum/front_left/velocity
+    front_right_velocity_topic: /mecanum/front_right/velocity
+    rear_left_velocity_topic: /mecanum/rear_left/velocity
+    rear_right_velocity_topic: /mecanum/rear_right/velocity
 
     wheel_radius: 0.05
     robot_length: 0.47

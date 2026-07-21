@@ -10,8 +10,7 @@
 DribbleController::DribbleController()
 : Node("dribble_controller_node")
 {
-  const auto robot_command_topic = declare_parameter<std::string>(
-    "robot_command_topic", "/robot_command");
+  const auto dribble_mode_topic = declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
   const auto dribble_rpm_topic = declare_parameter<std::string>(
     "dribble_rpm_topic", "/dribble/rpm");
   const auto dribble_stop_request_topic = declare_parameter<std::string>(
@@ -33,9 +32,9 @@ DribbleController::DribbleController()
     is_configuration_valid_ = false;
   }
 
-  robot_command_sub_ = create_subscription<robot_controller::msg::RobotCommand>(
-    robot_command_topic, 10,
-    std::bind(&DribbleController::robot_command_callback, this, std::placeholders::_1));
+  dribble_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    dribble_mode_topic, 10,
+    std::bind(&DribbleController::dribble_mode_callback, this, std::placeholders::_1));
   stop_request_sub_ = create_subscription<std_msgs::msg::Bool>(
     dribble_stop_request_topic, 10,
     std::bind(&DribbleController::stop_request_callback, this, std::placeholders::_1));
@@ -47,10 +46,9 @@ DribbleController::DribbleController()
     std::bind(&DribbleController::timer_callback, this));
 }
 
-void DribbleController::robot_command_callback(
-  const robot_controller::msg::RobotCommand::SharedPtr msg)
+void DribbleController::dribble_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  dribble_mode_ = msg->dribble_mode;
+  dribble_mode_ = msg->data;
 }
 
 void DribbleController::stop_request_callback(const std_msgs::msg::Bool::SharedPtr msg)

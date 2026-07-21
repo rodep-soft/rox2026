@@ -1,6 +1,7 @@
 #include "joy_controller/joy_controller_node.hpp"
 
 #include <cmath>
+#include <chrono>
 #include <functional>
 #include <memory>
 namespace joy_controller
@@ -13,7 +14,9 @@ JoyControllerNode::JoyControllerNode()
   pre_belt_fire_button_on_(false),
   pre_mode_up_(false),
   pre_mode_down_(false),
-  pre_emergency_stop_button_on_(false)
+  pre_emergency_stop_button_on_(false),
+  pre_dribble_position_dribble_button_on_(false),
+  pre_dribble_position_shoot_button_on_(false)
 {
   declare_parameters();
   get_parameters();
@@ -32,7 +35,14 @@ JoyControllerNode::JoyControllerNode()
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
   command_publisher_ = create_publisher<robot_controller::msg::RobotCommand>(
     command_topic_, rclcpp::QoS(qos_depth_));
+  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(mecanum_cmd_vel_topic_, rclcpp::QoS(qos_depth_));
+  spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(spring_fire_request_topic_, rclcpp::QoS(qos_depth_));
+  belt_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(qos_depth_));
+  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(qos_depth_));
+  dribble_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(qos_depth_));
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
+  dribble_position_action_client_ = rclcpp_action::create_client<
+    robot_controller::action::DribblePosition>(this, dribble_position_action_);
 
   RCLCPP_INFO(
     get_logger(), "Subscribing to %s and publishing commands on %s",
@@ -43,7 +53,13 @@ void JoyControllerNode::declare_parameters()
 {
   declare_parameter<std::string>("joy_topic", "/joy");
   declare_parameter<std::string>("command_topic", "/robot_command");
+  declare_parameter<std::string>("mecanum_cmd_vel_topic", "/mecanum/cmd_vel");
+  declare_parameter<std::string>("spring_fire_request_topic", "/spring/fire_request");
+  declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
+  declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
+  declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
   declare_parameter<std::string>("emergency_stop_service", "/emergency_stop");
+  declare_parameter<std::string>("dribble_position_action", "/dribble/position");
   declare_parameter<int>("qos_depth", 10);
   declare_parameter<double>("linear_x_scale", 1.0);
   declare_parameter<double>("linear_y_scale", 1.0);
@@ -66,6 +82,9 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<int>("dribble_mode_is_enable_button", 7);
   declare_parameter<int>("emergency_stop_is_enable_button", 8);
   declare_parameter<int>("emergency_stop_button_on", 13);
+  declare_parameter<int>("dribble_position_is_enable_button", 4);
+  declare_parameter<int>("dribble_position_dribble_button", 1);
+  declare_parameter<int>("dribble_position_shoot_button", 2);
   declare_parameter<int>("left_stick_x_axis", 0);
   declare_parameter<int>("left_stick_y_axis", 1);
   declare_parameter<int>("right_stick_x_axis", 2);
@@ -76,7 +95,13 @@ void JoyControllerNode::get_parameters()
 {
   get_parameter("joy_topic", joy_topic_);
   get_parameter("command_topic", command_topic_);
+  get_parameter("mecanum_cmd_vel_topic", mecanum_cmd_vel_topic_);
+  get_parameter("spring_fire_request_topic", spring_fire_request_topic_);
+  get_parameter("belt_fire_topic", belt_fire_topic_);
+  get_parameter("belt_mode_topic", belt_mode_topic_);
+  get_parameter("dribble_mode_topic", dribble_mode_topic_);
   get_parameter("emergency_stop_service", emergency_stop_service_);
+  get_parameter("dribble_position_action", dribble_position_action_);
   get_parameter("qos_depth", qos_depth_);
   get_parameter("linear_x_scale", linear_x_scale_);
   get_parameter("linear_y_scale", linear_y_scale_);
@@ -99,6 +124,9 @@ void JoyControllerNode::get_parameters()
   get_parameter("dribble_mode_is_enable_button", dribble_mode_is_enable_button_);
   get_parameter("emergency_stop_is_enable_button", emergency_stop_is_enable_button_);
   get_parameter("emergency_stop_button_on", emergency_stop_button_on_);
+  get_parameter("dribble_position_is_enable_button", dribble_position_is_enable_button_);
+  get_parameter("dribble_position_dribble_button", dribble_position_dribble_button_);
+  get_parameter("dribble_position_shoot_button", dribble_position_shoot_button_);
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
@@ -151,6 +179,17 @@ void JoyControllerNode::call_emergency_stop()
   RCLCPP_WARN(get_logger(), "Emergency-stop service request sent");
 }
 
+void JoyControllerNode::send_dribble_position_goal(uint8_t command)
+{
+  if (!dribble_position_action_client_->wait_for_action_server(std::chrono::seconds(0))) {
+    RCLCPP_WARN(get_logger(), "Dribble position action server is not available");
+    return;
+  }
+  robot_controller::action::DribblePosition::Goal goal;
+  goal.command = command;
+  dribble_position_action_client_->async_send_goal(goal);
+}
+
 void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
   const auto & joy_msg = *msg;
@@ -166,6 +205,12 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool emergency_stop_is_enable_button =
     button_pressed(joy_msg, emergency_stop_is_enable_button_);
   const bool emergency_stop_button_on = button_pressed(joy_msg, emergency_stop_button_on_);
+  const bool dribble_position_is_enable_button =
+    button_pressed(joy_msg, dribble_position_is_enable_button_);
+  const bool dribble_position_dribble_button_on =
+    button_pressed(joy_msg, dribble_position_dribble_button_);
+  const bool dribble_position_shoot_button_on =
+    button_pressed(joy_msg, dribble_position_shoot_button_);
   const double mode_change_value = axis_value(joy_msg, mode_change_axis_);
   const bool is_mode_up = mode_change_value >= axis_on_threshold_;
   const bool is_mode_down = mode_change_value <= -axis_on_threshold_;
@@ -174,10 +219,15 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     emergency_stop_is_enable_button && emergency_stop_button_on;
   if (is_emergency_stop) {
     command_ = robot_controller::msg::RobotCommand{};
-    command_publisher_->publish(command_);
+    mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
+    std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire; spring_fire_publisher_->publish(spring);
+    std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire; belt_fire_publisher_->publish(belt);
+    std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode; belt_mode_publisher_->publish(belt_mode);
+    std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode; dribble_mode_publisher_->publish(dribble_mode);
 
     if (!pre_emergency_stop_button_on_) {
       call_emergency_stop();
+      send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
     }
 
     pre_intake_button_on_ = intake_button_on;
@@ -186,6 +236,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     pre_mode_up_ = is_mode_up;
     pre_mode_down_ = is_mode_down;
     pre_emergency_stop_button_on_ = emergency_stop_button_on;
+    pre_dribble_position_dribble_button_on_ = dribble_position_dribble_button_on;
+    pre_dribble_position_shoot_button_on_ = dribble_position_shoot_button_on;
     return;
   }
 
@@ -200,7 +252,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
   if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
     command_.belt_mode = increment_mode(
-      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_4));
+      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_3));
   }
   if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.belt_mode = decrement_mode(command_.belt_mode);
@@ -211,6 +263,16 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
   if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.dribble_mode = decrement_mode(command_.dribble_mode);
+  }
+  if (dribble_position_is_enable_button && dribble_position_dribble_button_on &&
+    !pre_dribble_position_dribble_button_on_)
+  {
+    send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
+  }
+  if (dribble_position_is_enable_button && dribble_position_shoot_button_on &&
+    !pre_dribble_position_shoot_button_on_)
+  {
+    send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::SHOOT);
   }
 
   const double linear_x = apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
@@ -224,7 +286,11 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   command_.cmd_vel.angular.z =
     apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) * angular_z_scale_;
 
-  command_publisher_->publish(command_);
+  mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
+  std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire; spring_fire_publisher_->publish(spring);
+  std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire; belt_fire_publisher_->publish(belt);
+  std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode; belt_mode_publisher_->publish(belt_mode);
+  std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode; dribble_mode_publisher_->publish(dribble_mode);
 
   pre_intake_button_on_ = intake_button_on;
   pre_spring_fire_button_on_ = spring_fire_button_on;
@@ -232,6 +298,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   pre_mode_up_ = is_mode_up;
   pre_mode_down_ = is_mode_down;
   pre_emergency_stop_button_on_ = emergency_stop_button_on;
+  pre_dribble_position_dribble_button_on_ = dribble_position_dribble_button_on;
+  pre_dribble_position_shoot_button_on_ = dribble_position_shoot_button_on;
 }
 
 } // namespace joy_controller
