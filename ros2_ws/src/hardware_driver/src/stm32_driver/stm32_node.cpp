@@ -84,7 +84,7 @@ namespace stm32_driver
         {
             if (protocol::is_heartbeat_response(*frame))
             {
-                last_heartbeat_rx_ = std::chrono::steady_clock::now();
+                last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
                 heartbeat_timed_out_ = false;
                 return;
             }
