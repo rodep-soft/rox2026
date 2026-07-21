@@ -29,13 +29,10 @@ public:
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now()),
     heartbeat_timed_out_(false)
   {
-    const auto can_pub_topic =
-      declare_parameter<std::string>("can_pub_topic", "/CAN/can0/transmit");
-    const auto can_sub_topic = declare_parameter<std::string>("can_sub_topic", "/CAN/can0/receive");
+    const auto can_pub_topic = declare_parameter<std::string>("can_pub_topic", "/socketcan_bridge/tx");
+    const auto can_sub_topic = declare_parameter<std::string>("can_sub_topic", "/socketcan_bridge/rx");
     const auto target_rpm_topic = declare_parameter<std::string>("target_rpm_topic", "/target/rpm");
-    const auto current_rpm_topic = declare_parameter<std::string>(
-      "current_rpm_topic",
-      "/current/rpm");
+    const auto current_rpm_topic = declare_parameter<std::string>("current_rpm_topic","/current/rpm");
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
