@@ -7,9 +7,30 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(robot_controller REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+
+add_executable(joy_controller_node
+  src/joy_controller_node.cpp
+  src/main.cpp
+)
+target_include_directories(joy_controller_node PRIVATE include)
+ament_target_dependencies(joy_controller_node
+  rclcpp
+  robot_controller
+  sensor_msgs
+  std_srvs
+)
+
+install(TARGETS joy_controller_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

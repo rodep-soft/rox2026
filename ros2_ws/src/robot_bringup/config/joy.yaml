@@ -1,0 +1,55 @@
+joy_controller:
+  ros__parameters:
+    # subscribeする操作入力topic。sensor_msgs/msg/Joy。
+    joy_topic: /joy
+    # publishする操作指令topic。robot_controller/msg/RobotCommand。
+    command_topic: /robot_command
+    # 非常停止要求を送るservice。std_srvs/srv/Trigger。
+    emergency_stop_service: /emergency_stop
+
+    # 吸気操作のボタン番号。
+    intake_is_enable_button: 6
+    intake_button_on: 3
+
+    # ばね射出操作のボタン番号。
+    spring_fire_is_enable_button: 7
+    spring_fire_button_on: 2
+
+    # ベルト射出操作のボタン番号。
+    belt_fire_is_enable_button: 6
+    belt_fire_button_on: 2
+
+    # ベルトモード変更を有効化するボタン番号。
+    belt_mode_is_enable_button: 6
+    # ドリブルモード変更を有効化するボタン番号。
+    dribble_mode_is_enable_button: 7
+
+    # 緊急停止操作のボタン番号。
+    emergency_stop_is_enable_button: 8
+    emergency_stop_button_on: 13
+
+    # 左スティック x 軸。
+    left_stick_x_axis: 0
+    # 左スティック y 軸。
+    left_stick_y_axis: 1
+    # 右スティック x 軸。
+    right_stick_x_axis: 2
+    # 十字キー上下軸。cpp 側では is_mode_up/down を判定する。
+    mode_change_axis: 7
+    # スティックの中心ずれを無効化する axis のデッドゾーン。
+    axis_deadzone: 0.05
+    # DPAD などの軸を ON とみなすしきい値。
+    axis_on_threshold: 0.7
+
+    # 前進方向の最大速度 [m/s]。
+    max_linear_x: 2.0
+    # 後退方向の最小速度 [m/s]。
+    min_linear_x: -2.0
+    # 左右方向の最大速度 [m/s]。
+    max_linear_y: 2.0
+    # 左右方向の最小速度 [m/s]。
+    min_linear_y: -2.0
+    # 反時計回り方向の最大角速度 [rad/s]。
+    max_angular_z: 2.0
+    # 時計回り方向の最小角速度 [rad/s]。
+    min_angular_z: -2.0
