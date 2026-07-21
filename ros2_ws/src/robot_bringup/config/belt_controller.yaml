@@ -1,0 +1,15 @@
+belt_controller_node:
+  ros__parameters:
+    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
+    robot_command_topic: /robot_command
+    # hardware_driverへ送る目標回転数topic。std_msgs/msg/Int16、単位はRPM。
+    belt_rpm_topic: /belt/rpm
+
+    # belt_modeがSTOP(0)のときの目標回転数[RPM]。安全のため0固定。
+    stop_rpm: 0
+    # belt_modeがLEVEL_1(1)〜LEVEL_3(3)のときの目標回転数[RPM]。
+    level_1_rpm: 3000
+    level_2_rpm: 4000
+    level_3_rpm: 5000
+    # RPM指令をpublishする周期[ms]。
+    command_period_ms: 10

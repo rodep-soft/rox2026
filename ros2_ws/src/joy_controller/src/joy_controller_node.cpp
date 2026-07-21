@@ -200,7 +200,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
   if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
     command_.belt_mode = increment_mode(
-      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_4));
+      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_3));
   }
   if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.belt_mode = decrement_mode(command_.belt_mode);
