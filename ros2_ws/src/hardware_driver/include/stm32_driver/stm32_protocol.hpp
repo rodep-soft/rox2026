@@ -31,9 +31,9 @@ constexpr uint32_t PID_ACK_BASE = 0x340;
 constexpr std::size_t MOTOR_NUM = 3;
 
 /// @brief ブラシレスモーター用のcanFrameの生成
-/// @param motor　ブラシレスモーターのインデックス 
+/// @param motor　ブラシレスモーターのインデックス
 /// @param rpm 目標回転速度
-/// @return canFrame 
+/// @return canFrame
 can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm);
 
 /// @brief 自身の生存報告用のcanFrame生成

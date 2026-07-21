@@ -161,7 +161,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool belt_fire_is_enable_button = button_pressed(joy_msg, belt_fire_is_enable_button_);
   const bool belt_fire_button_on = button_pressed(joy_msg, belt_fire_button_on_);
   const bool belt_mode_is_enable_button = button_pressed(joy_msg, belt_mode_is_enable_button_);
-  const bool dribble_mode_is_enable_button = button_pressed(joy_msg, dribble_mode_is_enable_button_);
+  const bool dribble_mode_is_enable_button =
+    button_pressed(joy_msg, dribble_mode_is_enable_button_);
   const bool emergency_stop_is_enable_button =
     button_pressed(joy_msg, emergency_stop_is_enable_button_);
   const bool emergency_stop_button_on = button_pressed(joy_msg, emergency_stop_button_on_);
@@ -191,8 +192,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   if (intake_is_enable_button && intake_button_on && !pre_intake_button_on_) {
     command_.is_intake = !command_.is_intake;
   }
-  if (spring_fire_is_enable_button && spring_fire_button_on && !pre_spring_fire_button_on_)
-  {
+  if (spring_fire_is_enable_button && spring_fire_button_on && !pre_spring_fire_button_on_) {
     command_.spring_is_fire = !command_.spring_is_fire;
   }
   if (belt_fire_is_enable_button && belt_fire_button_on && !pre_belt_fire_button_on_) {

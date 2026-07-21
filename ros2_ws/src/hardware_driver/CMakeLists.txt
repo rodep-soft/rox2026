@@ -11,18 +11,26 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 
 add_library(stm32_protocol src/stm32_driver/stm32_protocol.cpp)
-target_compile_features(stm32_protocol PUBLIC cxx_std_17)
-target_include_directories(stm32_protocol PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(stm32_protocol can_msgs)
+target_compile_features(
+  stm32_protocol
+  PUBLIC cxx_std_17)
+target_include_directories(
+  stm32_protocol
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(
+  stm32_protocol can_msgs)
 
 add_executable(stm32_node src/stm32_driver/stm32_node.cpp)
-target_compile_features(stm32_node PUBLIC cxx_std_17)
-target_link_libraries(stm32_node stm32_protocol)
-ament_target_dependencies(stm32_node can_msgs rclcpp std_msgs)
+target_compile_features(
+  stm32_node
+  PUBLIC cxx_std_17)
+target_link_libraries(
+  stm32_node stm32_protocol)
+ament_target_dependencies(
+  stm32_node can_msgs rclcpp std_msgs)
 
-install(TARGETS stm32_protocol stm32_node
+install(
+  TARGETS stm32_protocol stm32_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME})
