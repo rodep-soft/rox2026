@@ -47,12 +47,12 @@ flowchart LR
 ## `mecanum_controller_node`
 
 - node名: `mecanum_controller_node`
-- 処理: `RobotCommand.cmd_vel`の並進・角速度から、4輪メカナムのホイール角速度を計算します。出力配列の順序は`[front_left, front_right, rear_left, rear_right]`です。
+- 処理: `/mecanum/cmd_vel`の並進・角速度から、4輪メカナムのホイール角速度を計算します。
 
 | 種別 | topic名 | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `cmd_vel`から機体速度を受信 |
-| publish | `/mecanum_wheel_velocity_command` | `std_msgs/msg/Float32MultiArray` | 4輪のホイール角速度ベクトル `[rad/s]` |
+| subscribe | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度を受信 |
+| publish | `/mecanum/*/velocity` | `std_msgs/msg/Float32` | 各輪のホイール角速度 `[rad/s]` |
 
 主なパラメータは`wheel_radius`、`robot_length`、`robot_width`、`velocity_corrections`、`vx_sign`、`vy_sign`、`angular_z_sign`です。`velocity_corrections`は出力配列と同じ順序の4要素ベクトルで、各ホイール速度に掛けます。motor IDとCAN仕様は保持せず、hardware_driver側で管理します。
 
@@ -63,7 +63,7 @@ flowchart LR
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `spring_is_fire`の発射操作を受信 |
+| subscribe | `/spring/fire_request` | `std_msgs/msg/Bool` | 発射操作を受信 |
 | subscribe | `/limit_switches` | `std_msgs/msg/UInt8MultiArray` | リミットスイッチ配列。`data`は`std::vector<uint8_t>`として扱い、`0=false`、非0を`true`と判定 |
 | publish | `/spring_velocity_command` | `std_msgs/msg/Float32` | EduLite 05の目標速度 `[rad/s]` |
 
@@ -83,11 +83,12 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `belt_controller_node`
 
 - node名: `belt_controller_node`
-- 処理: `RobotCommand.belt_mode`をベルトの目標回転数へ変換します。`belt_is_fire`が`true`の間だけ、選択中の目標回転数をhardware_driverへpublishします。
+- 処理: `/belt/mode`をベルトの目標回転数へ変換します。`/belt/fire_enabled`が`true`の間だけ、選択中の目標回転数をpublishします。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `belt_is_fire`と`belt_mode`を受信 |
+| subscribe | `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出状態を受信 |
+| subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
 | publish | `/stm/send/belt_rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 
 `belt_mode`は`STOP (0)`、`LEVEL_1 (1)`、`LEVEL_2 (2)`、`LEVEL_3 (3)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
@@ -118,11 +119,11 @@ DRIBBLE → DRIBBLE + intake_offset_rad → INTAKE → SHOOT
 ## `dribble_controller_node`
 
 - node名: `dribble_controller_node`
-- 処理: `RobotCommand.dribble_mode`をドリブルの目標回転数へ変換します。ばね射出前の停止要求を受けた場合は、設定した減速度で`0 RPM`まで減速します。
+- 処理: `/dribble/mode`をドリブルの目標回転数へ変換します。ばね射出前の停止要求を受けた場合は、設定した減速度で`0 RPM`まで減速します。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `dribble_mode`を受信 |
+| subscribe | `/dribble/mode` | `std_msgs/msg/UInt8` | ドリブル速度モードを受信 |
 | subscribe | `/dribble_stop_request` | `std_msgs/msg/Bool` | ばねcontrollerからの停止要求 |
 | publish | `/stm/send/dribble_rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 | publish | `/dribble_is_stopped` | `std_msgs/msg/Bool` | 停止完了状態 |

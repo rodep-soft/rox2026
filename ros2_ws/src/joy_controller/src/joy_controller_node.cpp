@@ -27,14 +27,9 @@ JoyControllerNode::JoyControllerNode()
     qos_depth_ = 10;
   }
 
-  command_.belt_mode = static_cast<uint8_t>(BeltMode::STOP);
-  command_.dribble_mode = static_cast<uint8_t>(DribbleMode::STOP);
-
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
     joy_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
-  command_publisher_ = create_publisher<robot_controller::msg::RobotCommand>(
-    command_topic_, rclcpp::QoS(qos_depth_));
   mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
     mecanum_cmd_vel_topic_, rclcpp::QoS(
       qos_depth_));
@@ -52,14 +47,12 @@ JoyControllerNode::JoyControllerNode()
     robot_controller::action::DribblePosition>(this, dribble_position_action_);
 
   RCLCPP_INFO(
-    get_logger(), "Subscribing to %s and publishing commands on %s",
-    joy_topic_.c_str(), command_topic_.c_str());
+    get_logger(), "Subscribing to %s and publishing mechanism commands", joy_topic_.c_str());
 }
 
 void JoyControllerNode::declare_parameters()
 {
   declare_parameter<std::string>("joy_topic", "/joy");
-  declare_parameter<std::string>("command_topic", "/robot_command");
   declare_parameter<std::string>("mecanum_cmd_vel_topic", "/mecanum/cmd_vel");
   declare_parameter<std::string>("spring_fire_request_topic", "/spring/fire_request");
   declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
@@ -101,7 +94,6 @@ void JoyControllerNode::declare_parameters()
 void JoyControllerNode::get_parameters()
 {
   get_parameter("joy_topic", joy_topic_);
-  get_parameter("command_topic", command_topic_);
   get_parameter("mecanum_cmd_vel_topic", mecanum_cmd_vel_topic_);
   get_parameter("spring_fire_request_topic", spring_fire_request_topic_);
   get_parameter("belt_fire_topic", belt_fire_topic_);
@@ -225,16 +217,21 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool is_emergency_stop =
     emergency_stop_is_enable_button && emergency_stop_button_on;
   if (is_emergency_stop) {
-    command_ = robot_controller::msg::RobotCommand{};
-    mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
-    std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire;
+    cmd_vel_ = geometry_msgs::msg::Twist{};
+    intake_enabled_ = false;
+    spring_fire_enabled_ = false;
+    belt_fire_enabled_ = false;
+    belt_mode_ = static_cast<uint8_t>(BeltMode::STOP);
+    dribble_mode_ = static_cast<uint8_t>(DribbleMode::STOP);
+    mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+    std_msgs::msg::Bool spring; spring.data = spring_fire_enabled_;
     spring_fire_publisher_->publish(spring);
-    std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire;
+    std_msgs::msg::Bool belt; belt.data = belt_fire_enabled_;
     belt_fire_publisher_->publish(belt);
-    std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode;
-    belt_mode_publisher_->publish(belt_mode);
-    std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode;
-    dribble_mode_publisher_->publish(dribble_mode);
+    std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_mode_;
+    belt_mode_publisher_->publish(belt_mode_msg);
+    std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_mode_;
+    dribble_mode_publisher_->publish(dribble_mode_msg);
 
     if (!pre_emergency_stop_button_on_) {
       call_emergency_stop();
@@ -253,27 +250,25 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
 
   if (intake_is_enable_button && intake_button_on && !pre_intake_button_on_) {
-    command_.is_intake = !command_.is_intake;
+    intake_enabled_ = !intake_enabled_;
   }
   if (spring_fire_is_enable_button && spring_fire_button_on && !pre_spring_fire_button_on_) {
-    command_.spring_is_fire = !command_.spring_is_fire;
+    spring_fire_enabled_ = !spring_fire_enabled_;
   }
   if (belt_fire_is_enable_button && belt_fire_button_on && !pre_belt_fire_button_on_) {
-    command_.belt_is_fire = !command_.belt_is_fire;
+    belt_fire_enabled_ = !belt_fire_enabled_;
   }
   if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
-    command_.belt_mode = increment_mode(
-      command_.belt_mode, static_cast<uint8_t>(BeltMode::LEVEL_3));
+    belt_mode_ = increment_mode(belt_mode_, static_cast<uint8_t>(BeltMode::LEVEL_3));
   }
   if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
-    command_.belt_mode = decrement_mode(command_.belt_mode);
+    belt_mode_ = decrement_mode(belt_mode_);
   }
   if (dribble_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
-    command_.dribble_mode = increment_mode(
-      command_.dribble_mode, static_cast<uint8_t>(DribbleMode::LOW));
+    dribble_mode_ = increment_mode(dribble_mode_, static_cast<uint8_t>(DribbleMode::LOW));
   }
   if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
-    command_.dribble_mode = decrement_mode(command_.dribble_mode);
+    dribble_mode_ = decrement_mode(dribble_mode_);
   }
   if (dribble_position_is_enable_button && dribble_position_dribble_button_on &&
     !pre_dribble_position_dribble_button_on_)
@@ -290,21 +285,21 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const double linear_y = apply_axis_deadzone(axis_value(joy_msg, left_stick_x_axis_));
   const double angular_z = apply_axis_deadzone(axis_value(joy_msg, right_stick_x_axis_));
 
-  command_.cmd_vel.linear.x =
+  cmd_vel_.linear.x =
     apply_axis_limits(linear_x, min_linear_x_, max_linear_x_) * linear_x_scale_;
-  command_.cmd_vel.linear.y =
+  cmd_vel_.linear.y =
     apply_axis_limits(linear_y, min_linear_y_, max_linear_y_) * linear_y_scale_;
-  command_.cmd_vel.angular.z =
+  cmd_vel_.angular.z =
     apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) * angular_z_scale_;
 
-  mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
-  std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire;
+  mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+  std_msgs::msg::Bool spring; spring.data = spring_fire_enabled_;
   spring_fire_publisher_->publish(spring);
-  std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire; belt_fire_publisher_->publish(belt);
-  std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode;
-  belt_mode_publisher_->publish(belt_mode);
-  std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode;
-  dribble_mode_publisher_->publish(dribble_mode);
+  std_msgs::msg::Bool belt; belt.data = belt_fire_enabled_; belt_fire_publisher_->publish(belt);
+  std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_mode_;
+  belt_mode_publisher_->publish(belt_mode_msg);
+  std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_mode_;
+  dribble_mode_publisher_->publish(dribble_mode_msg);
 
   pre_intake_button_on_ = intake_button_on;
   pre_spring_fire_button_on_ = spring_fire_button_on;

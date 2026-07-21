@@ -1,6 +1,6 @@
 dribble_controller_node:
   ros__parameters:
-    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
+    # ドリブルモードtopic。std_msgs/msg/UInt8。
     dribble_mode_topic: /dribble/mode
     # hardware_driverへ送る目標回転数topic。std_msgs/msg/Int16、単位はRPM。
     dribble_rpm_topic: /stm/send/dribble_rpm

@@ -2,8 +2,6 @@ joy_controller:
   ros__parameters:
     # subscribeする操作入力topic。sensor_msgs/msg/Joy。
     joy_topic: /joy
-    # publishする操作指令topic。robot_controller/msg/RobotCommand。
-    command_topic: /robot_command
     mecanum_cmd_vel_topic: /mecanum/cmd_vel
     spring_fire_request_topic: /spring/fire_request
     belt_fire_topic: /belt/fire_enabled

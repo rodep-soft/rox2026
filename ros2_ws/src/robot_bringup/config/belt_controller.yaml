@@ -1,6 +1,6 @@
 belt_controller_node:
   ros__parameters:
-    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
+    # ベルト射出状態topic。std_msgs/msg/Bool。
     belt_fire_topic: /belt/fire_enabled
     belt_mode_topic: /belt/mode
     # hardware_driverへ送る目標回転数topic。std_msgs/msg/Int16、単位はRPM。

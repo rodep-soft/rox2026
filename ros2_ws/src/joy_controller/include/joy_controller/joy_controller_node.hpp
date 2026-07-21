@@ -8,7 +8,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "robot_controller/action/dribble_position.hpp"
-#include "robot_controller/msg/robot_command.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -56,7 +55,6 @@ private:
   void send_dribble_position_goal(uint8_t command);
 
   std::string joy_topic_;
-  std::string command_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
     belt_mode_topic_, dribble_mode_topic_;
   std::string emergency_stop_service_;
@@ -101,7 +99,12 @@ private:
 
   int mode_change_axis_;
 
-  robot_controller::msg::RobotCommand command_;
+  geometry_msgs::msg::Twist cmd_vel_;
+  bool intake_enabled_{false};
+  bool spring_fire_enabled_{false};
+  bool belt_fire_enabled_{false};
+  uint8_t belt_mode_{static_cast<uint8_t>(BeltMode::STOP)};
+  uint8_t dribble_mode_{static_cast<uint8_t>(DribbleMode::STOP)};
 
   bool pre_intake_button_on_;
   bool pre_spring_fire_button_on_;
@@ -113,7 +116,6 @@ private:
   bool pre_dribble_position_shoot_button_on_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<robot_controller::msg::RobotCommand>::SharedPtr command_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_, dribble_mode_publisher_;
