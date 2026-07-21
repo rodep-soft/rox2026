@@ -5,10 +5,10 @@ roller_position_controller:
     intake_angle: 0.2  
     shoot_angle: -1.3
 
-    enable_button: 4  # buttons[4]を押している間だけプリセット操作を有効化
-    storage_button: 1
-    intake_button: 2
-    shoot_button: 3
+    enable_button: 9  # buttons[4]を押している間だけプリセット操作を有効化
+    storage_button: 11
+    intake_button: 12
+    shoot_button: 13
 
 robstride_position_node:
   ros__parameters:
