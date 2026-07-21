@@ -19,10 +19,17 @@ DribblePositionController::DribblePositionController()
   shoot_position_rad_ = declare_parameter<double>("shoot_position_rad", 2.0);
   intake_offset_rad_ = declare_parameter<double>("intake_offset_rad", 1.0);
   position_tolerance_rad_ = declare_parameter<double>("position_tolerance_rad", 0.02);
+  qos_depth_ = declare_parameter<int>("qos_depth", 1);
 
-  position_command_pub_ = create_publisher<std_msgs::msg::Float32>(command_topic, 10);
+  if (qos_depth_ <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
+    qos_depth_ = 1;
+  }
+
+  position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
+    command_topic, rclcpp::QoS(qos_depth_));
   position_feedback_sub_ = create_subscription<std_msgs::msg::Float32>(
-    feedback_topic, 10,
+    feedback_topic, rclcpp::QoS(qos_depth_),
     std::bind(&DribblePositionController::position_feedback_callback, this, std::placeholders::_1));
   action_server_ = rclcpp_action::create_server<DribblePosition>(
     this, action_name,

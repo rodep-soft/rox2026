@@ -32,6 +32,7 @@ private:
   int level_2_rpm_{4000};
   int level_3_rpm_{5000};
   int command_period_ms_{10};
+  int qos_depth_{1};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr belt_fire_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;

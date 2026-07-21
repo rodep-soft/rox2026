@@ -35,6 +35,7 @@ private:
   double position_tolerance_rad_{0.02};
   double current_position_rad_{0.0};
   double target_position_rad_{0.0};
+  int qos_depth_{1};
   State state_{State::DRIBBLE};
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;

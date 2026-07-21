@@ -32,6 +32,7 @@ private:
   double high_rpm_{600.0};
   double stop_deceleration_rpm_s_{200.0};
   int command_period_ms_{10};
+  int qos_depth_{1};
 
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr dribble_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_request_sub_;
