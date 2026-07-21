@@ -8,6 +8,7 @@ struct Canframe
     //extendedのほうも書いたほうがいい？
 };
 
+
 /*
 struct motor 
 {
@@ -31,7 +32,7 @@ class Ed05CanframeCreater
         Ed05CanframeCreater(uint8_t motor_id) : motor_id_(motor_id);
         ~Ed05CanframeCreater();
 
-        std::vector<Canframe> create_init_frame();
+        virtual std::vector<Canframe> create_init_frame() = 0;
         Canframe create_control_frame(float value);
 
         //set_param_value(char[8] param_name, float value); //加速度制限とか変更したかったらこれ使ってがんば;
@@ -48,15 +49,15 @@ class Ed05CanframeCreater
             main,
         };
         */
-        struct ControlTargetInfo
+        struct ControlTargetInfo  
         {
-            char[8] name;
+            char[12] name;
             uint16_t index; //commtype18で使用
             float value;
-            float max_value;
+            float max_value;   //maxとmin消すべきかも．vel/posだけ処理中でやるべきかも
             float min_value;
         };
-        std::unordered_map<ControlTarget, ControlTargetInfo> control_info;
+        //std::unordered_map<ControlTarget, ControlTargetInfo> control_info;
 
 
         //void set_motor_data(uint32_t motor_id, ); //motor_id, runmode, main_param_indexを設定  dlcやhost_idもここでやってもいいけど必要ないからいいや
@@ -66,7 +67,13 @@ class Ed05CanframeCreater
         
         uint32_t encode_can_id(uint8_t commtype_index);
         uint8_t[8] encode_commtype18_data(ControlTargetInfo target_info);  //comm type 18
+        void encode_data(uint8_t array[], uint32_t data, int byte_num); //リトルエンディアン
 
+        Canframe set_runmode(int value);  //setするわけじゃないから名前変えるべき
+        Canframe set_enable();            // でもcanframeCreaterだから自明っちゃ自明なんよな
+        Canframe set_target_value(ControlTargetInfo target_info);
+        Canframe set_disable();
+        Canframe set_mechanicalzero();
         //int encode_data(uint8_t* data);
 
 
@@ -78,15 +85,29 @@ class Velocity : public Ed05CanframeCreater
 
     private:
 
-    std::array<ControlTargetInfo, 4> targets_info = {
-        {"runmode", 0x7005, 2.0, 10, 0}, //これここにいれるのキモくはある
-        {"vel", 0x700A, 0.0, 50.0, -50.0},
-        {"acc",,,,},
-        {"cur",,,,}
+    std::vector<Canframe> create_init_frame();
+
+    std::array<ControlTargetInfo, 3> targets_info = {
+        //{"runmode", 0x7005, 2.0, 6, 0}, //これここにいれるのキモくはある
+        {"vel", 0x700A, 0.0, 50.0, -50.0}, //ここにはメインのtarget  後を文字列で検索のがきれいではあるんよな
+        {"acc", 0x7022, 100, 1000, 0},
+        {"limit_cur", 0x7018, 5, 11, 0},
     }    
 }
 
 class Position : public Ed05CanframeCreater
 {
+    private:
+    std::vector<Canframe> create_init_frame();
 
+    std::array<ControlTargetInfo, 5> targets_info = {
+        //{"runmode", 0x7005, 1.0, 6, 0},
+        {"limit_cur", 0x7018, , 11, 0},
+        {"zero_sta", 0x7029, 1, 0, 1},
+        {"loc_ref", 0x7016, },
+
+        {"vel_max"},
+        {"acc_set"},
+        {"zero_sta"}, //operation mode???
+    }
 }
