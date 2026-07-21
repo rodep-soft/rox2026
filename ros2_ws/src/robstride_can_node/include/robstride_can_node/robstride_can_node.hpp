@@ -35,7 +35,12 @@ private:
 
   void SendPositionCurrentLimit();
   void SendPositionCurrentLimit(float current_limit);
+  void SendPositionMaxVelocity();
+  void SendPositionMaxVelocity(float velocity);
+  void SendPositionAcceleration();
+  void SendPositionAcceleration(float acceleration);
   void SendZeroPositionFlag();
+  void SendFloatParameter(uint16_t index, float value);
   void SendPositionReference(float position);
 
   static double Clamp(double value, double min_value, double max_value);
@@ -56,6 +61,8 @@ private:
   bool enable_on_startup_;
 
   double position_current_limit_;
+  double position_velocity_rad_s_;
+  double position_acceleration_rad_s2_;
   int shutdown_return_wait_ms_;
 
   bool startup_completed_;
