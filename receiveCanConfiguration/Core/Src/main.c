@@ -319,9 +319,9 @@ int main(void)
       //TIM3 CH2  PA4
       //TIM15 CH1 PA2
       //TIN17 CH1 PA7 ←LEDにした
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm1);
-      //__HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);//上側
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm1);//下側
+      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
@@ -406,15 +406,15 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
         // --- 指定フォーマットの解析処理（ID: 0x201） ---
         // 8バイトのデータが来ていることを前提として中身を取り出す
-        if(RxHeader.StdId == 0x201 && RxHeader.DLC == 8) {
+        if(RxHeader.StdId == 0x201 && RxHeader.DLC == 4) {
 
             // Byte [0],[1]: モーター1,2用 RPM
-            received_rpm_1_2 = (uint16_t)(RxData[2] | (RxData[1] << 8));
+            received_rpm_1_2 = (uint16_t)(RxData[0] | (RxData[1] << 8));
             target_rpm1 = (float)received_rpm_1_2;
             target_rpm2 = (float)received_rpm_1_2;
 
             // Byte [2],[3]: モーター3用 PWM (1000-2000)
-            uint16_t received_pwm_3 = (uint16_t)(RxData[0] | (RxData[3] << 8));
+            uint16_t received_pwm_3 = (uint16_t)(RxData[2] | (RxData[3] << 8));
             target_rpm3 = (float)received_pwm_3;
 
             // Byte [4]: 遠隔非常停止フラグ (1:停止, 0:通常)
