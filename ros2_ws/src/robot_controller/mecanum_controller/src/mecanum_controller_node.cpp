@@ -28,11 +28,11 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<double>("vy_sign", 1.0);
   declare_parameter<double>("angular_z_sign", 1.0);
   declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
-  declare_parameter<std::string>("front_left_velocity_topic", "/mecanum/front_left/velocity");
-  declare_parameter<std::string>("front_right_velocity_topic", "/mecanum/front_right/velocity");
-  declare_parameter<std::string>("rear_left_velocity_topic", "/mecanum/rear_left/velocity");
-  declare_parameter<std::string>("rear_right_velocity_topic", "/mecanum/rear_right/velocity");
-  declare_parameter<int>("qos_depth", 10);
+  declare_parameter<std::string>("front_left_velocity_topic", "/mecanum/front_left/vel_command");
+  declare_parameter<std::string>("front_right_velocity_topic", "/mecanum/front_right/vel_command");
+  declare_parameter<std::string>("rear_left_velocity_topic", "/mecanum/rear_left/vel_command");
+  declare_parameter<std::string>("rear_right_velocity_topic", "/mecanum/rear_right/vel_command");
+  declare_parameter<int>("qos_depth", 1);
 }
 
 void MecanumControllerNode::get_parameters()
@@ -58,8 +58,8 @@ void MecanumControllerNode::get_parameters()
     velocity_corrections_.assign(wheel_vels_.size(), 1.0);
   }
   if (qos_depth_ <= 0) {
-    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 10.");
-    qos_depth_ = 10;
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
+    qos_depth_ = 1;
   }
 }
 

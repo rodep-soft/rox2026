@@ -21,27 +21,32 @@ JoyControllerNode::JoyControllerNode()
   declare_parameters();
   get_parameters();
 
-  if (qos_depth_ <= 0) {
+  if (joy_qos_depth_ <= 0) {
     RCLCPP_WARN(
-      get_logger(), "qos_depth must be positive. Using the default value of 10.");
-    qos_depth_ = 10;
+      get_logger(), "joy_qos_depth must be positive. Using the default value of 1.");
+    joy_qos_depth_ = 1;
+  }
+  if (command_qos_depth_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(), "command_qos_depth must be positive. Using the default value of 1.");
+    command_qos_depth_ = 1;
   }
 
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
-    joy_topic_, rclcpp::QoS(qos_depth_),
+    joy_topic_, rclcpp::QoS(rclcpp::KeepLast(joy_qos_depth_)).best_effort(),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
   mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
     mecanum_cmd_vel_topic_, rclcpp::QoS(
-      qos_depth_));
+      command_qos_depth_));
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
     spring_fire_request_topic_, rclcpp::QoS(
-      qos_depth_));
+      command_qos_depth_));
   belt_fire_publisher_ =
-    create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(qos_depth_));
+    create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(command_qos_depth_));
   belt_mode_publisher_ =
-    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(qos_depth_));
+    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
   dribble_mode_publisher_ =
-    create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(qos_depth_));
+    create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(command_qos_depth_));
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
   dribble_position_action_client_ = rclcpp_action::create_client<
     robot_controller::action::DribblePosition>(this, dribble_position_action_);
@@ -60,7 +65,8 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
   declare_parameter<std::string>("emergency_stop_service", "/emergency_stop");
   declare_parameter<std::string>("dribble_position_action", "/dribble/position");
-  declare_parameter<int>("qos_depth", 10);
+  declare_parameter<int>("joy_qos_depth", 1);
+  declare_parameter<int>("command_qos_depth", 1);
   declare_parameter<double>("linear_x_scale", 1.0);
   declare_parameter<double>("linear_y_scale", 1.0);
   declare_parameter<double>("angular_z_scale", 1.0);
@@ -101,7 +107,8 @@ void JoyControllerNode::get_parameters()
   get_parameter("dribble_mode_topic", dribble_mode_topic_);
   get_parameter("emergency_stop_service", emergency_stop_service_);
   get_parameter("dribble_position_action", dribble_position_action_);
-  get_parameter("qos_depth", qos_depth_);
+  get_parameter("joy_qos_depth", joy_qos_depth_);
+  get_parameter("command_qos_depth", command_qos_depth_);
   get_parameter("linear_x_scale", linear_x_scale_);
   get_parameter("linear_y_scale", linear_y_scale_);
   get_parameter("angular_z_scale", angular_z_scale_);

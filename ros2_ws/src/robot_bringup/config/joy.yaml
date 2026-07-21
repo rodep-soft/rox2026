@@ -11,6 +11,8 @@ joy_controller:
     emergency_stop_service: /emergency_stop
     # ドリブル位置移動Action。robot_controller/action/DribblePosition。
     dribble_position_action: /dribble/position
+    joy_qos_depth: 1
+    command_qos_depth: 1
 
     # 吸気操作のボタン番号。
     intake_is_enable_button: 6

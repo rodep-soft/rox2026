@@ -14,7 +14,7 @@ SpringEduliteController::SpringEduliteController()
   const auto limit_switch_topic = declare_parameter<std::string>(
     "limit_switch_topic", "/limit_switches");
   const auto spring_velocity_command_topic = declare_parameter<std::string>(
-    "spring_velocity_command_topic", "/spring_velocity_command");
+    "spring_velocity_command_topic", "/spring/vel_command");
   const auto dribble_stop_request_topic = declare_parameter<std::string>(
     "dribble_stop_request_topic", "/dribble_stop_request");
   const auto dribble_is_stopped_topic = declare_parameter<std::string>(
@@ -25,6 +25,7 @@ SpringEduliteController::SpringEduliteController()
   loading_velocity_rad_s_ = declare_parameter<double>("loading_velocity_rad_s", -5.0);
   fire_velocity_rad_s_ = declare_parameter<double>("fire_velocity_rad_s", -20.0);
   fire_duration_sec_ = declare_parameter<double>("fire_duration_sec", 5.0);
+  qos_depth_ = declare_parameter<int>("qos_depth", 1);
 
   if (limit_switch_index_ < 0) {
     RCLCPP_ERROR(get_logger(), "limit_switch_index must be zero or greater");
@@ -34,21 +35,25 @@ SpringEduliteController::SpringEduliteController()
     RCLCPP_ERROR(get_logger(), "fire_duration_sec must be greater than zero");
     is_configuration_valid_ = false;
   }
+  if (qos_depth_ <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
+    qos_depth_ = 1;
+  }
 
   fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
-    fire_request_topic, 10,
+    fire_request_topic, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
-    limit_switch_topic, 10,
+    limit_switch_topic, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
   dribble_is_stopped_sub_ = create_subscription<std_msgs::msg::Bool>(
-    dribble_is_stopped_topic, 10,
+    dribble_is_stopped_topic, rclcpp::QoS(qos_depth_),
     std::bind(
       &SpringEduliteController::dribble_is_stopped_callback, this, std::placeholders::_1));
   spring_velocity_pub_ = create_publisher<std_msgs::msg::Float32>(
-    spring_velocity_command_topic, 10);
+    spring_velocity_command_topic, rclcpp::QoS(qos_depth_));
   dribble_stop_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    dribble_stop_request_topic, 10);
+    dribble_stop_request_topic, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(10),

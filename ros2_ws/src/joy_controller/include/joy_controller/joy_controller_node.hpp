@@ -59,7 +59,8 @@ private:
     belt_mode_topic_, dribble_mode_topic_;
   std::string emergency_stop_service_;
   std::string dribble_position_action_;
-  int qos_depth_;
+  int joy_qos_depth_;
+  int command_qos_depth_;
 
   double linear_x_scale_;
   double linear_y_scale_;

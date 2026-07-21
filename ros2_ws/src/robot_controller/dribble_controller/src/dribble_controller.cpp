@@ -14,7 +14,7 @@ DribbleController::DribbleController()
     "dribble_mode_topic",
     "/dribble/mode");
   const auto dribble_rpm_topic = declare_parameter<std::string>(
-    "dribble_rpm_topic", "/dribble/rpm");
+    "dribble_rpm_topic", "/dribble/rpm_command");
   const auto dribble_stop_request_topic = declare_parameter<std::string>(
     "dribble_stop_request_topic", "/dribble_stop_request");
   const auto dribble_is_stopped_topic = declare_parameter<std::string>(
@@ -24,6 +24,7 @@ DribbleController::DribbleController()
   high_rpm_ = declare_parameter<double>("high_rpm", 600.0);
   stop_deceleration_rpm_s_ = declare_parameter<double>("stop_deceleration_rpm_s", 200.0);
   command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
+  qos_depth_ = declare_parameter<int>("qos_depth", 1);
 
   if (stop_deceleration_rpm_s_ <= 0.0) {
     RCLCPP_ERROR(get_logger(), "stop_deceleration_rpm_s must be greater than zero");
@@ -33,15 +34,20 @@ DribbleController::DribbleController()
     RCLCPP_ERROR(get_logger(), "command_period_ms must be greater than zero");
     is_configuration_valid_ = false;
   }
+  if (qos_depth_ <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
+    qos_depth_ = 1;
+  }
 
   dribble_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    dribble_mode_topic, 10,
+    dribble_mode_topic, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::dribble_mode_callback, this, std::placeholders::_1));
   stop_request_sub_ = create_subscription<std_msgs::msg::Bool>(
-    dribble_stop_request_topic, 10,
+    dribble_stop_request_topic, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::stop_request_callback, this, std::placeholders::_1));
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(dribble_rpm_topic, 10);
-  is_stopped_pub_ = create_publisher<std_msgs::msg::Bool>(dribble_is_stopped_topic, 10);
+  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(dribble_rpm_topic, rclcpp::QoS(qos_depth_));
+  is_stopped_pub_ = create_publisher<std_msgs::msg::Bool>(
+    dribble_is_stopped_topic, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
