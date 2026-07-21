@@ -5,9 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace stm32_driver
-{
-namespace protocol
+namespace stm32_driver::protocol
 {
 
 static_assert(sizeof(float) == 4, "The CAN protocol requires 32-bit float");
@@ -15,6 +13,10 @@ static_assert(
   std::numeric_limits<float>::is_iec559,
   "The CAN protocol requires IEEE-754 float");
 
+/// @brief IDとデータ長よりcanFrameの根幹を作る
+/// @param id ID
+/// @param dlc データ長
+/// @return 送信用のcanFrame
 can_msgs::msg::Frame make_data_frame(uint32_t id, uint8_t dlc)
 {
   can_msgs::msg::Frame frame{};
@@ -26,6 +28,9 @@ can_msgs::msg::Frame make_data_frame(uint32_t id, uint8_t dlc)
   return frame;
 }
 
+/// @brief float型の数値をuint8_tの配列に変換するお互いにリトルエンディアンのためバイト順は変えずそのまま
+/// @param value float型の数値
+/// @param data uint8_tの配列
 void encode_float_le(float value, std::array<uint8_t, 8> & data)
 {
   uint32_t raw = 0;
@@ -34,7 +39,9 @@ void encode_float_le(float value, std::array<uint8_t, 8> & data)
     data[i] = static_cast<uint8_t>((raw >> (i * 8U)) & 0xffU);
   }
 }
-
+/// @brief uint8_tの配列よりfloat型の数値をデコードする
+/// @param data uint8_t型の配列
+/// @return float型の値
 float decode_float_le(const std::array<uint8_t, 8> & data)
 {
   uint32_t raw = 0;
@@ -47,13 +54,18 @@ float decode_float_le(const std::array<uint8_t, 8> & data)
   return value;
 }
 
+/// @brief 
+/// @param frame 
+/// @return 
 bool is_standard_data_frame(const can_msgs::msg::Frame & frame)
 {
   return !frame.is_extended && !frame.is_rtr && !frame.is_error;
 }
 
-}  // namespace
-
+/// @brief 
+/// @param motor 
+/// @param rpm 
+/// @return 
 can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm)
 {
   if (motor >= MOTOR_NUM) {
@@ -65,7 +77,8 @@ can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm)
   encode_float_le(rpm, frame.data);
   return frame;
 }
-
+/// @brief 
+/// @return 
 can_msgs::msg::Frame make_alive_frame()
 {
   return make_data_frame(HEARTBEAT_TX, 0);

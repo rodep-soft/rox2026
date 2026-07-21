@@ -10,7 +10,6 @@
 
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
@@ -52,7 +51,7 @@ public:
       target_rpm_topic, 10,
       std::bind(&Stm32Node::motor_target_callback, this, std::placeholders::_1));
 
-    led_cmd_sub_ = create_subscription<std_msgs::msg::Bool>(
+    led_cmd_sub_ = create_subscription<std_msgs::msg::UInt8>(
       led_cmd_topic, 10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
 
@@ -73,6 +72,8 @@ public:
   }
 
 private:
+  /// @brief canよりデータが流れたときにIDに応じてデコードを行う
+  /// @param frame 受け取ったcanFrame
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     if (protocol::is_heartbeat_response(*frame)) {
@@ -96,6 +97,8 @@ private:
     }
   }
 
+  /// @brief 制御nodeから送られてきた目標rpmをstm32に送信
+  /// @param msg モータID = MOTOR_TARGET_BASE + モータインデックス
   void motor_target_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
   {
     if (msg->data.size() != protocol::MOTOR_NUM) {
@@ -110,11 +113,14 @@ private:
     }
   }
 
-  void led_callback(const std_msgs::msg::Bool::SharedPtr msg)
+  /// @brief LEDのコマンドをstm32へ送信
+  /// @param msg 
+  void led_callback(const std_msgs::msg::UInt8::SharedPtr msg)
   {
     can_pub_->publish(protocol::make_led_frame(msg->data));
   }
 
+  /// @brief stm32へ空のフレームを送り，生存報告
   void alive_timer_callback()
   {
     can_pub_->publish(protocol::make_alive_frame());
@@ -130,6 +136,7 @@ private:
     }
   }
 
+  /// @brief 受け取っている現在のrpmを一定周期でtopicに送信する
   void publish_timer_callback()
   {
     std_msgs::msg::Float32MultiArray msg;
