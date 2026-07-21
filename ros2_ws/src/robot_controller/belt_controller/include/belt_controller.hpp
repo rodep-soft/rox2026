@@ -3,8 +3,9 @@
 #include <cstdint>
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_controller/msg/robot_command.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/int16.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 class BeltControllerNode : public rclcpp::Node
 {
@@ -17,7 +18,8 @@ private:
   static constexpr uint8_t level_2_mode_{2};
   static constexpr uint8_t level_3_mode_{3};
 
-  void robot_command_callback(const robot_controller::msg::RobotCommand::SharedPtr msg);
+  void belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void timer_callback();
   int target_rpm_from_mode(uint8_t mode);
   bool is_rpm_valid(int rpm) const;
@@ -31,7 +33,8 @@ private:
   int level_3_rpm_{5000};
   int command_period_ms_{10};
 
-  rclcpp::Subscription<robot_controller::msg::RobotCommand>::SharedPtr robot_command_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr belt_fire_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

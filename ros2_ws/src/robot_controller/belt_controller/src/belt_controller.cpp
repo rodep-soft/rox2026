@@ -10,8 +10,8 @@
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
 {
-  const auto robot_command_topic = declare_parameter<std::string>(
-    "robot_command_topic", "/robot_command");
+  const auto belt_fire_topic = declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
+  const auto belt_mode_topic = declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
   const auto belt_rpm_topic = declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm");
 
   stop_rpm_ = declare_parameter<int>("stop_rpm", 0);
@@ -34,20 +34,24 @@ BeltControllerNode::BeltControllerNode()
     command_period_ms_ = 10;
   }
 
-  robot_command_sub_ = create_subscription<robot_controller::msg::RobotCommand>(
-    robot_command_topic, 10,
-    std::bind(&BeltControllerNode::robot_command_callback, this, std::placeholders::_1));
+  belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
+    belt_fire_topic, 10, std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
+  belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    belt_mode_topic, 10, std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
   rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic, 10);
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&BeltControllerNode::timer_callback, this));
 }
 
-void BeltControllerNode::robot_command_callback(
-  const robot_controller::msg::RobotCommand::SharedPtr msg)
+void BeltControllerNode::belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  belt_is_fire_ = msg->belt_is_fire;
-  belt_mode_ = msg->belt_mode;
+  belt_is_fire_ = msg->data;
+}
+
+void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
+{
+  belt_mode_ = msg->data;
 }
 
 void BeltControllerNode::timer_callback()

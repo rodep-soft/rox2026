@@ -9,8 +9,8 @@
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
-  const auto robot_command_topic = declare_parameter<std::string>(
-    "robot_command_topic", "/robot_command");
+  const auto fire_request_topic = declare_parameter<std::string>(
+    "fire_request_topic", "/spring/fire_request");
   const auto limit_switch_topic = declare_parameter<std::string>(
     "limit_switch_topic", "/limit_switches");
   const auto spring_velocity_command_topic = declare_parameter<std::string>(
@@ -35,9 +35,9 @@ SpringEduliteController::SpringEduliteController()
     is_configuration_valid_ = false;
   }
 
-  robot_command_sub_ = create_subscription<robot_controller::msg::RobotCommand>(
-    robot_command_topic, 10,
-    std::bind(&SpringEduliteController::robot_command_callback, this, std::placeholders::_1));
+  fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+    fire_request_topic, 10,
+    std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
     limit_switch_topic, 10,
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
@@ -55,17 +55,16 @@ SpringEduliteController::SpringEduliteController()
     std::bind(&SpringEduliteController::timer_callback, this));
 }
 
-void SpringEduliteController::robot_command_callback(
-  const robot_controller::msg::RobotCommand::SharedPtr msg)
+void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (
     now_state_ == State::READY && is_loaded_ &&
-    msg->spring_is_fire && !previous_fire_request_)
+    msg->data && !previous_fire_request_)
   {
     fire_pending_ = true;
     dribble_is_stopped_ = false;
   }
-  previous_fire_request_ = msg->spring_is_fire;
+  previous_fire_request_ = msg->data;
 }
 
 void SpringEduliteController::dribble_is_stopped_callback(

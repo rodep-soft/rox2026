@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_controller/msg/robot_command.hpp"
-#include "std_msgs/msg/float32_multi_array.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 class MecanumControllerNode : public rclcpp::Node
 {
@@ -26,10 +26,10 @@ private:
 
   void declare_parameters();
   void get_parameters();
-  void robot_command_callback(const robot_controller::msg::RobotCommand::SharedPtr msg);
+  void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
-  rclcpp::Subscription<robot_controller::msg::RobotCommand>::SharedPtr robot_command_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr wheel_velocity_pub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
+  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
 
   std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
   double vx_{0.0};
@@ -42,8 +42,8 @@ private:
   double vx_sign_{1.0};
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};
-  std::string robot_command_topic_;
-  std::string wheel_velocity_command_topic_;
+  std::string cmd_vel_topic_;
+  std::array<std::string, 4> wheel_velocity_topics_;
   int qos_depth_{10};
 };
 

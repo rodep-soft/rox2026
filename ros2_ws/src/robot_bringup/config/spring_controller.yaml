@@ -1,7 +1,7 @@
 spring_controller_node:
   ros__parameters:
     # 操作指令を受信するtopic。
-    robot_command_topic: /robot_command
+    fire_request_topic: /spring/fire_request
 
     # hardware_driverがpublishするリミットスイッチ配列topic。
     # UInt8MultiArrayのdataをvectorとして扱い、0をfalse、1をtrueとする。

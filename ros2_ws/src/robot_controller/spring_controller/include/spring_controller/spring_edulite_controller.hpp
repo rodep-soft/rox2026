@@ -2,7 +2,6 @@
 #define SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 
 #include "rclcpp/rclcpp.hpp"
-#include "robot_controller/msg/robot_command.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8_multi_array.hpp"
@@ -33,14 +32,14 @@ private:
   double fire_duration_sec_{0.0};  // FIRE状態を継続する時間[s]。
   rclcpp::Time fire_start_time_;  // FIRE状態へ遷移した時刻。
 
-  rclcpp::Subscription<robot_controller::msg::RobotCommand>::SharedPtr robot_command_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_switch_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_is_stopped_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_stop_request_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
-  void robot_command_callback(const robot_controller::msg::RobotCommand::SharedPtr msg);
+  void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
   void dribble_is_stopped_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_fire();

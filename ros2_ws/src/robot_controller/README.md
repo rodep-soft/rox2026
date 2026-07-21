@@ -10,39 +10,39 @@ flowchart LR
   mecanum[mecanum_controller_node]
   spring[spring_controller_node]
   dribble[dribble_controller_node]
-  driver[hardware_driver]
-  stm[STM32]
+  position[dribble_position_controller]
+  belt[belt_controller_node]
+  stm_driver[stm_driver_node]
+  robstride_driver[robstride_driver_node]
+  bridge[ros2socketcan_bridge]
 
-  joy -->|/robot_command\nrobot_controller/msg/RobotCommand| mecanum
-  joy -->|/robot_command\nrobot_controller/msg/RobotCommand| spring
-  joy -->|/robot_command\nrobot_controller/msg/RobotCommand| dribble
+  joy -->|/mecanum/cmd_vel| mecanum
+  joy -->|/spring/fire_request| spring
+  joy -->|/dribble/mode| dribble
+  joy -->|/belt/fire_enabled, /belt/mode| belt
+  joy -->|/dribble/position\nDribblePosition Action| position
 
-  mecanum -->|/mecanum_wheel_velocity_command\nstd_msgs/msg/Float32MultiArray| driver
-  spring -->|/spring_velocity_command\nstd_msgs/msg/Float32| driver
-  dribble -->|/dribble/rpm\nstd_msgs/msg/Int16| driver
-  driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
+  mecanum -->|/mecanum/*/velocity\nstd_msgs/msg/Float32| robstride_driver
+  spring -->|/spring_velocity_command\nstd_msgs/msg/Float32| robstride_driver
+  dribble -->|/stm/send/dribble_rpm\nstd_msgs/msg/Int16| stm_driver
+  belt -->|/stm/send/belt_rpm\nstd_msgs/msg/Int16| stm_driver
+  position -->|/dribble/position_command\nstd_msgs/msg/Float32| robstride_driver
+  robstride_driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
   spring -->|/dribble_stop_request\nstd_msgs/msg/Bool| dribble
   dribble -->|/dribble_is_stopped\nstd_msgs/msg/Bool| spring
+  robstride_driver -->|/dribble/position_feedback\nstd_msgs/msg/Float32| position
 
-  driver <-->|CAN| stm
+  stm_driver --> bridge
+  robstride_driver --> bridge
 ```
 
-`robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様は`hardware_driver`が担当します。
+`robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様はdriver nodeが担当します。
 
-## カスタムメッセージ: `RobotCommand`
+`stm_driver_node`は`/stm/send/belt_rpm`と`/stm/send/dribble_rpm`をsubscribeし、STM32向けCANフレームへ変換して送信します。`robstride_driver_node`はメカナム各輪の速度指令、ばね速度指令、ドリブル位置指令を担当し、ドリブルの実位置を`/dribble/position_feedback`へpublishします。いずれも`robot_controller`にはCAN送受信処理を書きません。
 
-`robot_controller/msg/RobotCommand`は、`joy_controller`が`/robot_command`へpublishする操作指令です。各controller nodeは、必要なフィールドだけを使用します。
+## 操作指令topic
 
-| フィールド | 型 | 用途 | 利用node |
-| --- | --- | --- | --- |
-| `is_intake` | `bool` | 吸気機構の操作状態 | 今後の吸気controller |
-| `spring_is_fire` | `bool` | ばね射出の操作状態 | `spring_controller_node` |
-| `belt_is_fire` | `bool` | ベルト射出の操作状態 | 今後のベルトcontroller |
-| `belt_mode` | `uint8` | ベルトの動作モード | 今後のベルトcontroller |
-| `dribble_mode` | `uint8` | ドリブルの動作モード | 今後のドリブルcontroller |
-| `cmd_vel` | `geometry_msgs/Twist` | 機体の並進・角速度指令 | `mecanum_controller_node` |
-
-`spring_controller_node`は、引き切り済みの`READY`状態で受けた`spring_is_fire`の`false → true`だけを発射要求として扱います。
+`joy_controller`は機構ごとに指令topicをpublishし、各controllerは必要なtopicだけをsubscribeします。topic名はYAMLパラメータで変更できます。
 
 ## `mecanum_controller_node`
 
@@ -80,6 +80,41 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 `spring_controller_node`は`/dribble_stop_request`へ`true`をpublishします。
 `dribble_controller_node`が減速して`/dribble_is_stopped`を`true`にするまで、`FIRE`へ遷移しません。
 
+## `belt_controller_node`
+
+- node名: `belt_controller_node`
+- 処理: `RobotCommand.belt_mode`をベルトの目標回転数へ変換します。`belt_is_fire`が`true`の間だけ、選択中の目標回転数をhardware_driverへpublishします。
+
+| 種別 | topic名（既定値） | 型 | 内容 |
+| --- | --- | --- | --- |
+| subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `belt_is_fire`と`belt_mode`を受信 |
+| publish | `/stm/send/belt_rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
+
+`belt_mode`は`STOP (0)`、`LEVEL_1 (1)`、`LEVEL_2 (2)`、`LEVEL_3 (3)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
+
+`stop_rpm`、`level_1_rpm`〜`level_3_rpm`、指令周期は`robot_bringup/config/belt_controller.yaml`で設定できます。`stop_rpm`は安全のため`0 RPM`固定です。起動には`robot_bringup/launch/belt_controller.launch.py`を使います。
+
+## `dribble_position_controller`
+
+- node名: `dribble_position_controller`
+- 処理: RobStrideの実位置feedbackを確認しながら、ドリブル機構を指定位置へ移動する`DribblePosition` Action serverです。
+
+| 種別 | 名前（既定値） | 型 | 内容 |
+| --- | --- | --- | --- |
+| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`または`SHOOT`の位置移動を受け付ける |
+| publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
+| subscribe | `/dribble/position_feedback` | `std_msgs/msg/Float32` | hardware_driverから受ける実位置 `[rad]` |
+
+ActionはGoal、Feedback、ResultをまとめたROS 2の通信方式です。Goalで移動を依頼し、移動中は現在位置と目標位置をFeedbackで返します。`DRIBBLE` Actionはドリブル位置に到達すると成功します。`SHOOT` Actionは次の順で移動し、SHOOT位置で保持します。
+
+```text
+DRIBBLE → DRIBBLE + intake_offset_rad → INTAKE → SHOOT
+```
+
+各段階は、実位置が`position_tolerance_rad`以内に到達したことを確認してから次へ進みます。SHOOT位置からは、L1+×のDRIBBLE Actionまたは緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT Actionを開始します。
+
+`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`intake_offset_rad`、`position_tolerance_rad`と、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+
 ## `dribble_controller_node`
 
 - node名: `dribble_controller_node`
@@ -89,7 +124,7 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 | --- | --- | --- | --- |
 | subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `dribble_mode`を受信 |
 | subscribe | `/dribble_stop_request` | `std_msgs/msg/Bool` | ばねcontrollerからの停止要求 |
-| publish | `/dribble/rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
+| publish | `/stm/send/dribble_rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 | publish | `/dribble_is_stopped` | `std_msgs/msg/Bool` | 停止完了状態 |
 
 `dribble_mode`は`STOP (0)`、`HIGH (1)`、`LOW (2)`の3段階です。`LOW`と`HIGH`の目標回転数、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
