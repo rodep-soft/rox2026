@@ -10,7 +10,9 @@
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
 {
-  const auto belt_fire_topic = declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
+  const auto belt_fire_topic = declare_parameter<std::string>(
+    "belt_fire_topic",
+    "/belt/fire_enabled");
   const auto belt_mode_topic = declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
   const auto belt_rpm_topic = declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm");
 
@@ -35,9 +37,11 @@ BeltControllerNode::BeltControllerNode()
   }
 
   belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
-    belt_fire_topic, 10, std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
+    belt_fire_topic, 10,
+    std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
   belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    belt_mode_topic, 10, std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
+    belt_mode_topic, 10,
+    std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
   rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic, 10);
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),

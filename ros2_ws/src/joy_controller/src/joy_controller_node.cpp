@@ -35,11 +35,18 @@ JoyControllerNode::JoyControllerNode()
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
   command_publisher_ = create_publisher<robot_controller::msg::RobotCommand>(
     command_topic_, rclcpp::QoS(qos_depth_));
-  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(mecanum_cmd_vel_topic_, rclcpp::QoS(qos_depth_));
-  spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(spring_fire_request_topic_, rclcpp::QoS(qos_depth_));
-  belt_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(qos_depth_));
-  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(qos_depth_));
-  dribble_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(qos_depth_));
+  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
+    mecanum_cmd_vel_topic_, rclcpp::QoS(
+      qos_depth_));
+  spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
+    spring_fire_request_topic_, rclcpp::QoS(
+      qos_depth_));
+  belt_fire_publisher_ =
+    create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(qos_depth_));
+  belt_mode_publisher_ =
+    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(qos_depth_));
+  dribble_mode_publisher_ =
+    create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(qos_depth_));
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
   dribble_position_action_client_ = rclcpp_action::create_client<
     robot_controller::action::DribblePosition>(this, dribble_position_action_);
@@ -220,10 +227,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   if (is_emergency_stop) {
     command_ = robot_controller::msg::RobotCommand{};
     mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
-    std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire; spring_fire_publisher_->publish(spring);
-    std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire; belt_fire_publisher_->publish(belt);
-    std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode; belt_mode_publisher_->publish(belt_mode);
-    std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode; dribble_mode_publisher_->publish(dribble_mode);
+    std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire;
+    spring_fire_publisher_->publish(spring);
+    std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire;
+    belt_fire_publisher_->publish(belt);
+    std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode;
+    belt_mode_publisher_->publish(belt_mode);
+    std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode;
+    dribble_mode_publisher_->publish(dribble_mode);
 
     if (!pre_emergency_stop_button_on_) {
       call_emergency_stop();
@@ -287,10 +298,13 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) * angular_z_scale_;
 
   mecanum_cmd_vel_publisher_->publish(command_.cmd_vel);
-  std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire; spring_fire_publisher_->publish(spring);
+  std_msgs::msg::Bool spring; spring.data = command_.spring_is_fire;
+  spring_fire_publisher_->publish(spring);
   std_msgs::msg::Bool belt; belt.data = command_.belt_is_fire; belt_fire_publisher_->publish(belt);
-  std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode; belt_mode_publisher_->publish(belt_mode);
-  std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode; dribble_mode_publisher_->publish(dribble_mode);
+  std_msgs::msg::UInt8 belt_mode; belt_mode.data = command_.belt_mode;
+  belt_mode_publisher_->publish(belt_mode);
+  std_msgs::msg::UInt8 dribble_mode; dribble_mode.data = command_.dribble_mode;
+  dribble_mode_publisher_->publish(dribble_mode);
 
   pre_intake_button_on_ = intake_button_on;
   pre_spring_fire_button_on_ = spring_fire_button_on;

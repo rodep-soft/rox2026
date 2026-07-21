@@ -12,11 +12,8 @@ find_package(rclcpp_action REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/RobotCommand.msg"
-  "action/DribblePosition.action"
-  DEPENDENCIES geometry_msgs
-)
+rosidl_generate_interfaces(${PROJECT_NAME} "msg/RobotCommand.msg" "action/DribblePosition.action" DEPENDENCIES
+                           geometry_msgs)
 
 add_executable(mecanum_controller_node mecanum_controller/src/mecanum_controller_node.cpp)
 target_include_directories(
@@ -39,36 +36,34 @@ target_include_directories(
 ament_target_dependencies(
   dribble_controller_node rclcpp std_msgs)
 
-add_executable(belt_controller_node
-  belt_controller/src/belt_controller.cpp
-)
+add_executable(belt_controller_node belt_controller/src/belt_controller.cpp)
 
-add_executable(dribble_position_controller_node
-  dribble_position_controller/src/dribble_position_controller.cpp
-)
-target_include_directories(dribble_position_controller_node PRIVATE dribble_position_controller/include)
-ament_target_dependencies(dribble_position_controller_node
-  rclcpp
-  rclcpp_action
-  std_msgs
-)
-target_include_directories(belt_controller_node PRIVATE belt_controller/include)
-ament_target_dependencies(belt_controller_node
-  rclcpp
-  std_msgs
-)
+add_executable(dribble_position_controller_node dribble_position_controller/src/dribble_position_controller.cpp)
+target_include_directories(
+  dribble_position_controller_node
+  PRIVATE dribble_position_controller/include)
+ament_target_dependencies(
+  dribble_position_controller_node rclcpp rclcpp_action std_msgs)
+target_include_directories(
+  belt_controller_node
+  PRIVATE belt_controller/include)
+ament_target_dependencies(
+  belt_controller_node rclcpp std_msgs)
 
-rosidl_get_typesupport_target(cpp_typesupport_target
-  ${PROJECT_NAME} "rosidl_typesupport_cpp")
-target_link_libraries(mecanum_controller_node "${cpp_typesupport_target}")
-target_link_libraries(spring_controller_node "${cpp_typesupport_target}")
-target_link_libraries(dribble_controller_node "${cpp_typesupport_target}")
-target_link_libraries(belt_controller_node "${cpp_typesupport_target}")
-target_link_libraries(dribble_position_controller_node "${cpp_typesupport_target}")
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(
+  mecanum_controller_node "${cpp_typesupport_target}")
+target_link_libraries(
+  spring_controller_node "${cpp_typesupport_target}")
+target_link_libraries(
+  dribble_controller_node "${cpp_typesupport_target}")
+target_link_libraries(
+  belt_controller_node "${cpp_typesupport_target}")
+target_link_libraries(
+  dribble_position_controller_node "${cpp_typesupport_target}")
 
-install(TARGETS mecanum_controller_node spring_controller_node dribble_controller_node belt_controller_node dribble_position_controller_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS mecanum_controller_node spring_controller_node dribble_controller_node belt_controller_node
+                dribble_position_controller_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
 
@@ -76,13 +71,9 @@ install(DIRECTORY spring_controller/include/ DESTINATION include)
 
 install(DIRECTORY dribble_controller/include/ DESTINATION include)
 
-install(DIRECTORY belt_controller/include/
-  DESTINATION include
-)
+install(DIRECTORY belt_controller/include/ DESTINATION include)
 
-install(DIRECTORY dribble_position_controller/include/
-  DESTINATION include
-)
+install(DIRECTORY dribble_position_controller/include/ DESTINATION include)
 
 ament_export_dependencies(rosidl_default_runtime)
 

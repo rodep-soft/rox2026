@@ -57,7 +57,8 @@ private:
 
   std::string joy_topic_;
   std::string command_topic_;
-  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_, belt_mode_topic_, dribble_mode_topic_;
+  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
+    belt_mode_topic_, dribble_mode_topic_;
   std::string emergency_stop_service_;
   std::string dribble_position_action_;
   int qos_depth_;
