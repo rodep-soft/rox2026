@@ -30,6 +30,6 @@ robstride_position_node:
     enable_on_startup: true              # 起動時にモーター有効化コマンド(Communication Type 3)を送るか
 
     position_current_limit: -1.0         # PP/速度モード電流上限[A] (0以上で0x7018へ書き込み、負値=未指定/変更しない)
-    position_velocity_rad_s: -1.0        # PP位置モードの移動速度[rad/s] (0以上で0x7024 vel_maxへ書き込み、負値=未指定/変更しない)
-    position_acceleration_rad_s2: -1.0   # PP位置モードの加速度[rad/s^2] (0以上で0x7025 acc_setへ書き込み、負値=未指定/変更しない)
+    position_velocity_rad_s: -1.0        # PP位置モードの移動速度[rad/s]デフォは10rad/s (0以上で0x7024 vel_maxへ書き込み、負値=未指定/変更しない)
+    position_acceleration_rad_s2: -1.0   # PP位置モードの加速度[rad/s^2]デフォは10rad/s^2 (0以上で0x7025 acc_setへ書き込み、負値=未指定/変更しない)
     shutdown_return_wait_ms: 2000        # home_position_radへ戻す待機時間[ms]。±4πから2rad/sで戻る時間(約6.3秒)に余裕を加えた値
