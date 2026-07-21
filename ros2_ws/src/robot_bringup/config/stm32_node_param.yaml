@@ -1,0 +1,11 @@
+stm32_driver_node:
+  ros__parameters:
+    can_pub_topic: "/CAN/can0/transmit"
+    can_sub_topic: "/CAN/can0/receive"
+    target_rpm_topic: "/target_rpm"
+    current_rpm_topic: "/current_rpm"
+    led_cmd_topic: "/led_cmd"
+    limit_sw_topic: "/limit_sw"
+    timeout_ms: 500
+    keep_alive_period_ms: 100
+    publish_period_ms: 10
