@@ -30,8 +30,8 @@ typedef struct {
     float out_max; // PWM最大値
 } PID_Controller;
 
-PID_Controller pid1 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
-PID_Controller pid2 = {0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f, 2000.0f};
+PID_Controller pid1 = {0.05f, 0.3f, 0.005f, 0.0f, 0.0f, 1000.0f, 2000.0f};
+PID_Controller pid2 = {0.05f, 0.3f, 0.005f, 0.0f, 0.0f, 1000.0f, 2000.0f};
 
 // --- エンコーダとRPM計算用の変数 ---
 #define ENCODER_PPR 2048
@@ -126,7 +126,7 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     pid->integral += error * dt;
 
     // 積分項の発散防止
-    float max_integral = 500.0f;
+    float max_integral = 900.0 / pid->Ki;
     if (pid->integral > max_integral) pid->integral = max_integral;
     if (pid->integral < -max_integral) pid->integral = -max_integral;
 
@@ -148,23 +148,39 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     return output;
 }
 
-void Wheel(uint8_t WheelPos, uint8_t *r, uint8_t *g, uint8_t *b) {
-    WheelPos = 255 - WheelPos;
-    if(WheelPos < 85) {
-        *r = 255 - WheelPos * 3;
-        *g = 0;
-        *b = WheelPos * 3;
-    } else if(WheelPos < 170) {
-        WheelPos -= 85;
-        *r = 0;
-        *g = WheelPos * 3;
-        *b = 255 - WheelPos * 3;
-    } else {
-        WheelPos -= 170;
-        *r = WheelPos * 3;
-        *g = 255 - WheelPos * 3;
-        *b = 0;
-    }
+void shining_led(void) {
+	static int count_led = 0;
+
+	for(int i= 0; i < 30; i++) {
+		int i_count = count_led + (10 * i);
+		i_count %= 256 * 6;
+		int phase = i_count / 256;
+		int step_val = i_count % 256;
+
+		switch (phase) {
+		case 0:
+			r = 255; g = step_val; b = 0;
+			break;
+		case 1:
+			r = 255 - step_val; g = 255; b = 0;
+			break;
+		case 2:
+			r = 0; g = 255; b = step_val;
+			break;
+		case 3:
+			r = 0; g = 255 - step_val; b = 255;
+			break;
+		case 4:
+			r = step_val; g = 0; b = 255;
+			break;
+		case 5:
+			r = 255; g = 0; b = 255 - step_val;
+			break;
+		}
+		setPixel(i, r, g, b);
+	}
+	count_led += 1;
+	show();
 }
 
 /* USER CODE END 0 */
@@ -209,7 +225,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // LEDの初期化
-  int count_led = 0;
   clear();
   for(int i = 0; i < 30; i++) {
       setPixel(i, 0, 0, 0); // 最初は消灯
@@ -267,8 +282,8 @@ int main(void)
       // ==========================================
       // 【デバッグ用】CAN通信を無視して目標値を強制設定
       // ==========================================
-      //target_rpm1 = 5000.0f; // モーター1: 2000 RPM
-      //target_rpm2 = 5000.0f; // モーター2: 2000 RPM
+      //target_rpm1 = 3000.0f; // モーター1: 2000 RPM
+      //target_rpm2 = 3000.0f; // モーター2: 2000 RPM
       //target_rpm3 = 1100.0f;
 
       // --- 1. 通信のタイムアウト＆非常停止の監視 ---
@@ -305,63 +320,14 @@ int main(void)
       //TIM15 CH1 PA2
       //TIN17 CH1 PA7 ←LEDにした
       __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm3);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm1);
+      //__HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm3);
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
 
       // --- 6. LEDの点灯更新 ---
-      // 受信したRGB値を使ってLEDの色を更新する
-      for(int i = 0; i < 30; i++) {
-    	  // 隣のLEDとの色の違い
-    	  int i_count = count_led + (10 * i); // 0にしたら全部同じ色
-    	  i_count %= 256 * 6;
-    	  int phase = i_count / 256;
-    	  int step_val = i_count % 256;
-    	  switch (phase) {
-			  case 0: // 赤 → 黄 (緑が増える)
-				  r = 255;
-				  g = step_val; // 0 から 255 へ増加
-				  b = 0;
-				  break;
-
-			  case 1: // 黄 → 緑 (赤が減る)
-				  r = 255 - step_val; // 255 から 0 へ減少
-				  g = 255;
-				  b = 0;
-				  break;
-
-			  case 2: // 緑 → シアン (青が増える)
-				  r = 0;
-				  g = 255;
-				  b = step_val; // 0 から 255 へ増加
-				  break;
-
-			  case 3: // シアン → 青 (緑が減る)
-				  r = 0;
-				  g = 255 - step_val; // 255 から 0 へ減少
-				  b = 255;
-				  break;
-
-			  case 4: // 青 → マゼンタ (赤が増える)
-				  r = step_val; // 0 から 255 へ増加
-				  g = 0;
-				  b = 255;
-				  break;
-
-			  case 5: // マゼンタ → 赤 (青が減る)
-				  r = 255;
-				  g = 0;
-				  b = 255 - step_val; // 255 から 0 へ減少
-				  break;
-
-		  }
-    	  setPixel(i, r, g, b);
-
-      }
-      count_led += 1; //色が変わる速さ
-      show();
+      shining_led();
 
       // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
       // 処理にかかった時間を差し引いて正確に10msループを作る
