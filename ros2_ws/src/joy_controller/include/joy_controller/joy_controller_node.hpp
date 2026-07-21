@@ -14,9 +14,6 @@
 #include "std_msgs/msg/u_int8.hpp"
 #include "std_srvs/srv/trigger.hpp"
 
-namespace joy_controller
-{
-
 class JoyControllerNode : public rclcpp::Node
 {
 public:
@@ -124,7 +121,5 @@ private:
   rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
     dribble_position_action_client_;
 };
-
-}  // namespace joy_controller
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

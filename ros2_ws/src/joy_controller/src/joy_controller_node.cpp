@@ -4,8 +4,6 @@
 #include <chrono>
 #include <functional>
 #include <memory>
-namespace joy_controller
-{
 
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller"),
@@ -317,5 +315,3 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   pre_dribble_position_dribble_button_on_ = dribble_position_dribble_button_on;
   pre_dribble_position_shoot_button_on_ = dribble_position_shoot_button_on;
 }
-
-} // namespace joy_controller
