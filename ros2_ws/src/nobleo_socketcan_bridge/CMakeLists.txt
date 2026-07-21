@@ -23,35 +23,28 @@ find_package(fmt REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 
-add_library(socketcan_bridge_component
-  src/socketcan_bridge.cpp
-  src/socketcan_bridge_node.cpp
-)
-target_include_directories(socketcan_bridge_component PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_link_libraries(socketcan_bridge_component
+add_library(socketcan_bridge_component src/socketcan_bridge.cpp src/socketcan_bridge_node.cpp)
+target_include_directories(
+  socketcan_bridge_component
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_link_libraries(
+  socketcan_bridge_component
   ${can_msgs_TARGETS}
   ${diagnostic_msgs_TARGETS}
   diagnostic_updater::diagnostic_updater
   fmt::fmt
   rclcpp::rclcpp
-  rclcpp_components::component
-)
+  rclcpp_components::component)
 
-rclcpp_components_register_node(
-    socketcan_bridge_component
-    PLUGIN "nobleo_socketcan_bridge::SocketCanBridgeNode"
-    EXECUTABLE socketcan_bridge
-)
+rclcpp_components_register_node(socketcan_bridge_component PLUGIN "nobleo_socketcan_bridge::SocketCanBridgeNode"
+                                EXECUTABLE socketcan_bridge)
 
 install(
   TARGETS socketcan_bridge_component
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+  RUNTIME DESTINATION bin)
 
 # EventsExecutor is supported from rclcpp version 21 or greater (iron)
 if(rclcpp_VERSION_MAJOR GREATER_EQUAL 21)
@@ -59,9 +52,7 @@ if(rclcpp_VERSION_MAJOR GREATER_EQUAL 21)
   add_executable(socketcan_bridge_ee src/socketcan_bridge_ee.cpp)
   target_link_libraries(socketcan_bridge_ee socketcan_bridge_component)
 
-  install(TARGETS socketcan_bridge_ee
-    DESTINATION lib/${PROJECT_NAME}
-  )
+  install(TARGETS socketcan_bridge_ee DESTINATION lib/${PROJECT_NAME})
 else()
   message(STATUS "EventsExecutor support disabled")
 endif()
@@ -76,14 +67,8 @@ if(BUILD_TESTING)
   target_link_libraries(unittests socketcan_bridge_component)
 endif()
 
-ament_export_include_directories(
-  include
-)
-ament_export_libraries(
-  socketcan_bridge_component
-)
-ament_export_targets(
-  export_${PROJECT_NAME}
-)
+ament_export_include_directories(include)
+ament_export_libraries(socketcan_bridge_component)
+ament_export_targets(export_${PROJECT_NAME})
 
 ament_package()

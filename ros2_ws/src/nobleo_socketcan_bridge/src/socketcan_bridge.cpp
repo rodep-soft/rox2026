@@ -194,26 +194,26 @@ CanStateDetailed handle_error_frame(const can_frame & frame)
   CanStateDetailed state;
   // 1. Determine Error Class from CAN ID
   uint32_t err_class = frame.can_id & CAN_ERR_MASK;
-  if (err_class & CAN_ERR_TX_TIMEOUT) state.error_class += " TX_TIMEOUT |";
-  if (err_class & CAN_ERR_LOSTARB) state.error_class += " LOST_ARBITRATION |";
-  if (err_class & CAN_ERR_CRTL) state.error_class += " CONTROLLER_ERROR |";
-  if (err_class & CAN_ERR_PROT) state.error_class += " PROTOCOL_VIOLATION |";
-  if (err_class & CAN_ERR_TRX) state.error_class += " TRANSCEIVER_ERROR |";
-  if (err_class & CAN_ERR_ACK) state.error_class += " NO_ACK |";
-  if (err_class & CAN_ERR_BUSOFF) state.error_class += " BUS_OFF |";
-  if (err_class & CAN_ERR_BUSERROR) state.error_class += " BUS_ERROR |";
-  if (err_class & CAN_ERR_RESTARTED) state.error_class += " CONTROLLER_RESTARTED |";
+  if (err_class & CAN_ERR_TX_TIMEOUT) {state.error_class += " TX_TIMEOUT |";}
+  if (err_class & CAN_ERR_LOSTARB) {state.error_class += " LOST_ARBITRATION |";}
+  if (err_class & CAN_ERR_CRTL) {state.error_class += " CONTROLLER_ERROR |";}
+  if (err_class & CAN_ERR_PROT) {state.error_class += " PROTOCOL_VIOLATION |";}
+  if (err_class & CAN_ERR_TRX) {state.error_class += " TRANSCEIVER_ERROR |";}
+  if (err_class & CAN_ERR_ACK) {state.error_class += " NO_ACK |";}
+  if (err_class & CAN_ERR_BUSOFF) {state.error_class += " BUS_OFF |";}
+  if (err_class & CAN_ERR_BUSERROR) {state.error_class += " BUS_ERROR |";}
+  if (err_class & CAN_ERR_RESTARTED) {state.error_class += " CONTROLLER_RESTARTED |";}
 
   // 2. Decode Specific Details from Data Bytes
   // Byte 1: Controller problems
   if (err_class & CAN_ERR_CRTL) {
     uint8_t ctrl = frame.data[1];
-    if (ctrl & CAN_ERR_CRTL_RX_OVERFLOW) state.controller_error += " RX Buffer Overflow |";
-    if (ctrl & CAN_ERR_CRTL_TX_OVERFLOW) state.controller_error += " TX Buffer Overflow |";
-    if (ctrl & CAN_ERR_CRTL_RX_WARNING) state.controller_error += " RX Error Warning |";
-    if (ctrl & CAN_ERR_CRTL_TX_WARNING) state.controller_error += " TX Error Warning |";
-    if (ctrl & CAN_ERR_CRTL_RX_PASSIVE) state.controller_error += " RX Error Passive |";
-    if (ctrl & CAN_ERR_CRTL_TX_PASSIVE) state.controller_error += " TX Error Passive |";
+    if (ctrl & CAN_ERR_CRTL_RX_OVERFLOW) {state.controller_error += " RX Buffer Overflow |";}
+    if (ctrl & CAN_ERR_CRTL_TX_OVERFLOW) {state.controller_error += " TX Buffer Overflow |";}
+    if (ctrl & CAN_ERR_CRTL_RX_WARNING) {state.controller_error += " RX Error Warning |";}
+    if (ctrl & CAN_ERR_CRTL_TX_WARNING) {state.controller_error += " TX Error Warning |";}
+    if (ctrl & CAN_ERR_CRTL_RX_PASSIVE) {state.controller_error += " RX Error Passive |";}
+    if (ctrl & CAN_ERR_CRTL_TX_PASSIVE) {state.controller_error += " TX Error Passive |";}
 
     // Set diagnostics level based on this
     if ((ctrl & (CAN_ERR_CRTL_RX_WARNING | CAN_ERR_CRTL_TX_WARNING)) != 0) {
@@ -226,15 +226,16 @@ CanStateDetailed handle_error_frame(const can_frame & frame)
   // Byte 2: Protocol violation type
   if (err_class & CAN_ERR_PROT) {
     uint8_t prot = frame.data[2];
-    if (prot & CAN_ERR_PROT_BIT) state.protocol_error += " Type: Bit Error |";
-    if (prot & CAN_ERR_PROT_FORM) state.protocol_error += " Type: Form Error |";
-    if (prot & CAN_ERR_PROT_STUFF) state.protocol_error += " Type: Stuff Error |";
-    if (prot & CAN_ERR_PROT_BIT0) state.protocol_error += " Type: Bit0 Error (Sent 1, saw 0) |";
-    if (prot & CAN_ERR_PROT_BIT1) state.protocol_error += " Type: Bit1 Error (Sent 0, saw 1) |";
-    if (prot & CAN_ERR_PROT_TX)
+    if (prot & CAN_ERR_PROT_BIT) {state.protocol_error += " Type: Bit Error |";}
+    if (prot & CAN_ERR_PROT_FORM) {state.protocol_error += " Type: Form Error |";}
+    if (prot & CAN_ERR_PROT_STUFF) {state.protocol_error += " Type: Stuff Error |";}
+    if (prot & CAN_ERR_PROT_BIT0) {state.protocol_error += " Type: Bit0 Error (Sent 1, saw 0) |";}
+    if (prot & CAN_ERR_PROT_BIT1) {state.protocol_error += " Type: Bit1 Error (Sent 0, saw 1) |";}
+    if (prot & CAN_ERR_PROT_TX) {
       state.protocol_error += " Direction: Transmit |";
-    else
+    } else {
       state.protocol_error += " Direction: Receive |";
+    }
   }
 
   // 3. Hardware Error Counters
@@ -248,9 +249,9 @@ can_frame from_msg(const can_msgs::msg::Frame & msg)
 {
   canid_t id = msg.id;
 
-  if (msg.is_rtr) id |= CAN_RTR_FLAG;
-  if (msg.is_extended) id |= CAN_EFF_FLAG;
-  if (msg.is_error) id |= CAN_ERR_FLAG;
+  if (msg.is_rtr) {id |= CAN_RTR_FLAG;}
+  if (msg.is_extended) {id |= CAN_EFF_FLAG;}
+  if (msg.is_error) {id |= CAN_ERR_FLAG;}
 
   can_frame frame;
   frame.can_id = id;

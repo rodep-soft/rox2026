@@ -17,12 +17,13 @@ SocketCanBridgeNode::SocketCanBridgeNode(const rclcpp::NodeOptions & options)
   bridge(
     this->get_logger(), this->get_clock(), this->declare_parameter("interface", "can0"),
     this->declare_parameter("read_timeout", 1.0), this->declare_parameter("reconnect_timeout", 5.0),
-    [this](const can_msgs::msg::Frame & msg) { can_pub->publish(msg); }),
-  can_sub(this->create_subscription<can_msgs::msg::Frame>(
-    "~/tx", 100, [this](can_msgs::msg::Frame::ConstSharedPtr msg) { bridge.send(*msg); }))
+    [this](const can_msgs::msg::Frame & msg) {can_pub->publish(msg);}),
+  can_sub(
+    this->create_subscription<can_msgs::msg::Frame>(
+      "~/tx", 100, [this](can_msgs::msg::Frame::ConstSharedPtr msg) {bridge.send(*msg);}))
 {
   updater_.setHardwareID("SocketCan");
-  updater_.add("SocketCan", [this](auto & stat) { this->produceDiagnostics(stat); });
+  updater_.add("SocketCan", [this](auto & stat) {this->produceDiagnostics(stat);});
 }
 
 void SocketCanBridgeNode::produceDiagnostics(diagnostic_updater::DiagnosticStatusWrapper & status)

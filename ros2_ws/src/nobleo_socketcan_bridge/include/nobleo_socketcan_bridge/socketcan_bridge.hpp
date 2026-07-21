@@ -43,7 +43,7 @@ struct CanStateDetailed
 class SocketCanBridge
 {
 public:
-  using CanCallback = std::function<void(const can_msgs::msg::Frame &)>;
+  using CanCallback = std::function<void (const can_msgs::msg::Frame &)>;
 
   SocketCanBridge(
     const rclcpp::Logger & logger, rclcpp::Clock::SharedPtr clock, const std::string & interface,
