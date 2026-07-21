@@ -10,7 +10,9 @@
 DribbleController::DribbleController()
 : Node("dribble_controller_node")
 {
-  const auto dribble_mode_topic = declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
+  const auto dribble_mode_topic = declare_parameter<std::string>(
+    "dribble_mode_topic",
+    "/dribble/mode");
   const auto dribble_rpm_topic = declare_parameter<std::string>(
     "dribble_rpm_topic", "/dribble/rpm");
   const auto dribble_stop_request_topic = declare_parameter<std::string>(

@@ -7,16 +7,17 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     parameter_file = os.path.join(
-        get_package_share_directory('robot_bringup'),
-        'config',
-        'belt_controller.yaml')
+        get_package_share_directory("robot_bringup"), "config", "belt_controller.yaml"
+    )
 
-    return LaunchDescription([
-        Node(
-            package='robot_controller',
-            executable='belt_controller_node',
-            name='belt_controller_node',
-            output='screen',
-            parameters=[parameter_file],
-        ),
-    ])
+    return LaunchDescription(
+        [
+            Node(
+                package="robot_controller",
+                executable="belt_controller_node",
+                name="belt_controller_node",
+                output="screen",
+                parameters=[parameter_file],
+            ),
+        ]
+    )

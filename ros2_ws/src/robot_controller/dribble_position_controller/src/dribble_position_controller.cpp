@@ -26,7 +26,9 @@ DribblePositionController::DribblePositionController()
     std::bind(&DribblePositionController::position_feedback_callback, this, std::placeholders::_1));
   action_server_ = rclcpp_action::create_server<DribblePosition>(
     this, action_name,
-    std::bind(&DribblePositionController::handle_goal, this, std::placeholders::_1, std::placeholders::_2),
+    std::bind(
+      &DribblePositionController::handle_goal, this, std::placeholders::_1,
+      std::placeholders::_2),
     std::bind(&DribblePositionController::handle_cancel, this, std::placeholders::_1),
     std::bind(&DribblePositionController::handle_accepted, this, std::placeholders::_1));
 
@@ -69,7 +71,8 @@ void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle
   }
 }
 
-void DribblePositionController::position_feedback_callback(const std_msgs::msg::Float32::SharedPtr msg)
+void DribblePositionController::position_feedback_callback(
+  const std_msgs::msg::Float32::SharedPtr msg)
 {
   current_position_rad_ = msg->data;
   if (!active_goal_) {
