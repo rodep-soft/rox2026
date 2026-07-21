@@ -19,7 +19,7 @@ flowchart LR
 
   mecanum -->|/mecanum_wheel_velocity_command\nstd_msgs/msg/Float32MultiArray| driver
   spring -->|/spring_velocity_command\nstd_msgs/msg/Float32| driver
-  dribble -->|/dribble_velocity_command\nstd_msgs/msg/Float32| driver
+  dribble -->|/dribble/rpm\nstd_msgs/msg/Int16| driver
   driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
   spring -->|/dribble_stop_request\nstd_msgs/msg/Bool| dribble
   dribble -->|/dribble_is_stopped\nstd_msgs/msg/Bool| spring
@@ -83,15 +83,15 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `dribble_controller_node`
 
 - node名: `dribble_controller_node`
-- 処理: `RobotCommand.dribble_mode`をドリブルの目標角速度へ変換します。ばね射出前の停止要求を受けた場合は、設定した減速度で`0 rad/s`まで減速します。
+- 処理: `RobotCommand.dribble_mode`をドリブルの目標回転数へ変換します。ばね射出前の停止要求を受けた場合は、設定した減速度で`0 RPM`まで減速します。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
 | subscribe | `/robot_command` | `robot_controller/msg/RobotCommand` | `dribble_mode`を受信 |
 | subscribe | `/dribble_stop_request` | `std_msgs/msg/Bool` | ばねcontrollerからの停止要求 |
-| publish | `/dribble_velocity_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標速度 `[rad/s]` |
+| publish | `/dribble/rpm` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 | publish | `/dribble_is_stopped` | `std_msgs/msg/Bool` | 停止完了状態 |
 
-`dribble_mode`は`STOP (0)`、`LOW (1)`、`HIGH (2)`の3段階です。`LOW`と`HIGH`の目標速度、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
+`dribble_mode`は`STOP (0)`、`HIGH (1)`、`LOW (2)`の3段階です。`LOW`と`HIGH`の目標回転数、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
 
-停止完了は、今回の実装では減速後の目標速度が`0 rad/s`へ到達した時点で通知します。実速度のCANフィードバックが追加されたら、実測速度が0付近であることを確認する方式へ変更します。
+停止完了は、今回の実装では減速後の目標回転数が`0 RPM`へ到達した時点で通知します。実速度のCANフィードバックが追加されたら、実測速度が0付近であることを確認する方式へ変更します。

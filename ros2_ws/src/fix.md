@@ -17,7 +17,7 @@
 | --- | --- | --- | --- |
 | mecanum | `/mecanum_wheel_velocity_command` | `std_msgs/msg/Float32MultiArray` | ホイール角速度ベクトル `[rad/s]`。順序は`[front_left, front_right, rear_left, rear_right]`で固定 |
 | spring | `/spring_velocity_command` | `std_msgs/msg/Float32` | ばねを引き切るベルト用EduLiteの目標角速度 `[rad/s]` |
-| dribble | `/dribble_velocity_command` | `std_msgs/msg/Float32` | dribble用EduLiteの目標角速度 `[rad/s]` |
+| dribble | `/dribble/rpm` | `std_msgs/msg/Int16` | dribble用の目標回転数 `[RPM]` |
 
 ### edulite_driverの設定案
 
@@ -35,7 +35,7 @@ spring:
   velocity_sign: 1.0
 
 dribble:
-  topic: /dribble_velocity_command
+  topic: /dribble/rpm
   motor_id: 6
   control_type: velocity
   velocity_sign: -1.0

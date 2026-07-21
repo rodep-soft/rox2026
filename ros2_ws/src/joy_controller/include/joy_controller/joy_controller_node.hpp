@@ -31,8 +31,8 @@ private:
   enum class DribbleMode : uint8_t
   {
     STOP = 0,
-    LOW = 1,
-    HIGH = 2,
+    HIGH = 1,
+    LOW = 2,
   };
 
   void declare_parameters();

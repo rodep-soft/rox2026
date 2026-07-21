@@ -207,7 +207,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
   if (dribble_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
     command_.dribble_mode = increment_mode(
-      command_.dribble_mode, static_cast<uint8_t>(DribbleMode::HIGH));
+      command_.dribble_mode, static_cast<uint8_t>(DribbleMode::LOW));
   }
   if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
     command_.dribble_mode = decrement_mode(command_.dribble_mode);
