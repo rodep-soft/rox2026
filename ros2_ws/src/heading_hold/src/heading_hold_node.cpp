@@ -86,46 +86,46 @@ private:
   }
 
   void controlLoop()
-{
-  if (!has_imu_) {
+  {
+    if (!has_imu_) {
       last_time_ = this->now();
       corrected_vel_pub_->publish(latest_raw_vel_);
       return;
-  }
-  rclcpp::Time now = this->now();
-  double dt = (now - last_time_).seconds();
-  last_time_ = now;
+    }
+    rclcpp::Time now = this->now();
+    double dt = (now - last_time_).seconds();
+    last_time_ = now;
 
-  if (std::abs(latest_raw_vel_.angular.z) > 0.01) {
+    if (std::abs(latest_raw_vel_.angular.z) > 0.01) {
       target_yaw_ = current_yaw_;
       integral_ = 0.0;
       prev_error_ = 0.0;
 
       corrected_vel_pub_->publish(latest_raw_vel_);
       return;
+    }
+
+    double error = normalizeAngle(target_yaw_ - current_yaw_);
+
+    integral_ += error * dt;
+
+    if (integral_ > integral_limit_) {
+      integral_ = integral_limit_;
+    } else if (integral_ < -integral_limit_) {
+      integral_ = -integral_limit_;
+    }
+
+    double derivative = (dt > 0.0) ? (error - prev_error_) / dt : 0.0;
+
+    prev_error_ = error;
+
+    double correction = kp_ * error + ki_ * integral_ + kd_ * derivative;
+
+    geometry_msgs::msg::Twist out = latest_raw_vel_;
+    out.angular.z += correction;
+
+    corrected_vel_pub_->publish(out);
   }
-
-  double error = normalizeAngle(target_yaw_ - current_yaw_);
-
-  integral_ += error * dt;
-
-  if (integral_ > integral_limit_) {
-    integral_ = integral_limit_;
-  } else if (integral_ < -integral_limit_) {
-    integral_ = -integral_limit_;
-  }
-
-  double derivative = (dt > 0.0) ? (error - prev_error_) / dt : 0.0;
-
-  prev_error_ = error;
-
-  double correction = kp_ * error + ki_ * integral_ + kd_ * derivative;
-
-  geometry_msgs::msg::Twist out = latest_raw_vel_;
-  out.angular.z += correction;
-
-  corrected_vel_pub_->publish(out);
-}
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr raw_vel_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;

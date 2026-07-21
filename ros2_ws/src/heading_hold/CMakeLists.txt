@@ -14,26 +14,17 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
 add_executable(heading_hold_node src/heading_hold_node.cpp)
-target_include_directories(heading_hold_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(heading_hold_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-ament_target_dependencies(
+target_include_directories(
   heading_hold_node
-  "rclcpp"
-  "geometry_msgs"
-  "sensor_msgs"
-  "tf2"
-  "tf2_geometry_msgs"
-)
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+target_compile_features(
+  heading_hold_node
+  PUBLIC c_std_99 cxx_std_17) # Require C99 and C++17
+ament_target_dependencies(
+  heading_hold_node "rclcpp" "geometry_msgs" "sensor_msgs" "tf2" "tf2_geometry_msgs")
 
-install(TARGETS heading_hold_node
-  DESTINATION lib/${PROJECT_NAME}
-)
-install(DIRECTORY
-  config
-  DESTINATION share/${PROJECT_NAME}
-)
+install(TARGETS heading_hold_node DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
