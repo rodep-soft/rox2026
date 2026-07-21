@@ -33,21 +33,22 @@ JoyControllerNode::JoyControllerNode()
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
     joy_topic_, rclcpp::QoS(rclcpp::KeepLast(joy_qos_depth_)).best_effort(),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
-  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
-    mecanum_cmd_vel_topic_, rclcpp::QoS(
-      command_qos_depth_));
+
+  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(mecanum_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    spring_fire_request_topic_, rclcpp::QoS(
-      command_qos_depth_));
-  belt_fire_publisher_ =
-    create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(command_qos_depth_));
-  belt_mode_publisher_ =
-    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
-  dribble_mode_publisher_ =
-    create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(command_qos_depth_));
+    spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
+
+  belt_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(command_qos_depth_));
+
+  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
+
+  dribble_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(command_qos_depth_));
+
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
-  dribble_position_action_client_ = rclcpp_action::create_client<
-    robot_controller::action::DribblePosition>(this, dribble_position_action_);
+
+  dribble_position_action_client_ = 
+    rclcpp_action::create_client<robot_controller::action::DribblePosition>(this, dribble_position_action_);
 
   RCLCPP_INFO(
     get_logger(), "Subscribing to %s and publishing mechanism commands", joy_topic_.c_str());
@@ -55,6 +56,7 @@ JoyControllerNode::JoyControllerNode()
 
 void JoyControllerNode::declare_parameters()
 {
+  // Topic名の宣言
   declare_parameter<std::string>("joy_topic", "/joy");
   declare_parameter<std::string>("mecanum_cmd_vel_topic", "/mecanum/cmd_vel");
   declare_parameter<std::string>("spring_fire_request_topic", "/spring/fire_request");
@@ -63,8 +65,12 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
   declare_parameter<std::string>("emergency_stop_service", "/emergency_stop");
   declare_parameter<std::string>("dribble_position_action", "/dribble/position");
+
+  // Qos設定
   declare_parameter<int>("joy_qos_depth", 1);
   declare_parameter<int>("command_qos_depth", 1);
+
+  // Mecanum制御のスケールと制限値
   declare_parameter<double>("linear_x_scale", 1.0);
   declare_parameter<double>("linear_y_scale", 1.0);
   declare_parameter<double>("angular_z_scale", 1.0);
@@ -74,8 +80,12 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<double>("min_linear_y", -2.0);
   declare_parameter<double>("max_angular_z", 2.0);
   declare_parameter<double>("min_angular_z", -2.0);
+
+  // ジョイスティックのデッドゾーンと有効閾値
   declare_parameter<double>("axis_deadzone", 0.05);
   declare_parameter<double>("axis_on_threshold", 0.7);
+
+  // joyのボタン
   declare_parameter<int>("intake_is_enable_button", 6);
   declare_parameter<int>("intake_button_on", 3);
   declare_parameter<int>("spring_fire_is_enable_button", 7);
