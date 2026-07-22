@@ -10,19 +10,8 @@
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
 {
-  const auto belt_fire_topic = declare_parameter<std::string>(
-    "belt_fire_topic",
-    "/belt/fire_enabled");
-  const auto belt_mode_topic = declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
-  const auto belt_rpm_topic = declare_parameter<std::string>(
-    "belt_rpm_topic", "/belt/rpm_command");
-
-  stop_rpm_ = declare_parameter<int>("stop_rpm", 0);
-  level_1_rpm_ = declare_parameter<int>("level_1_rpm", 3000);
-  level_2_rpm_ = declare_parameter<int>("level_2_rpm", 4000);
-  level_3_rpm_ = declare_parameter<int>("level_3_rpm", 5000);
-  command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
-  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+  declare_parameters();
+  get_parameters();
 
   if (stop_rpm_ != 0) {
     RCLCPP_ERROR(get_logger(), "stop_rpm must be zero");
@@ -43,15 +32,41 @@ BeltControllerNode::BeltControllerNode()
   }
 
   belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
-    belt_fire_topic, rclcpp::QoS(qos_depth_),
+    belt_fire_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
   belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    belt_mode_topic, rclcpp::QoS(qos_depth_),
+    belt_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic, rclcpp::QoS(qos_depth_));
+  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic_, rclcpp::QoS(qos_depth_));
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&BeltControllerNode::timer_callback, this));
+}
+
+void BeltControllerNode::declare_parameters()
+{
+  declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
+  declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
+  declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm_command");
+  declare_parameter<int>("stop_rpm", 0);
+  declare_parameter<int>("level_1_rpm", 3000);
+  declare_parameter<int>("level_2_rpm", 4000);
+  declare_parameter<int>("level_3_rpm", 5000);
+  declare_parameter<int>("command_period_ms", 10);
+  declare_parameter<int>("qos_depth", 1);
+}
+
+void BeltControllerNode::get_parameters()
+{
+  get_parameter("belt_fire_topic", belt_fire_topic_);
+  get_parameter("belt_mode_topic", belt_mode_topic_);
+  get_parameter("belt_rpm_topic", belt_rpm_topic_);
+  get_parameter("stop_rpm", stop_rpm_);
+  get_parameter("level_1_rpm", level_1_rpm_);
+  get_parameter("level_2_rpm", level_2_rpm_);
+  get_parameter("level_3_rpm", level_3_rpm_);
+  get_parameter("command_period_ms", command_period_ms_);
+  get_parameter("qos_depth", qos_depth_);
 }
 
 void BeltControllerNode::belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg)

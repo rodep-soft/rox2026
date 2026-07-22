@@ -10,21 +10,8 @@
 DribbleController::DribbleController()
 : Node("dribble_controller_node")
 {
-  const auto dribble_mode_topic = declare_parameter<std::string>(
-    "dribble_mode_topic",
-    "/dribble/mode");
-  const auto dribble_rpm_topic = declare_parameter<std::string>(
-    "dribble_rpm_topic", "/dribble/rpm_command");
-  const auto dribble_stop_request_topic = declare_parameter<std::string>(
-    "dribble_stop_request_topic", "/dribble_stop_request");
-  const auto dribble_is_stopped_topic = declare_parameter<std::string>(
-    "dribble_is_stopped_topic", "/dribble_is_stopped");
-
-  low_rpm_ = declare_parameter<double>("low_rpm", 300.0);
-  high_rpm_ = declare_parameter<double>("high_rpm", 600.0);
-  stop_deceleration_rpm_s_ = declare_parameter<double>("stop_deceleration_rpm_s", 200.0);
-  command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
-  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+  declare_parameters();
+  get_parameters();
 
   if (stop_deceleration_rpm_s_ <= 0.0) {
     RCLCPP_ERROR(get_logger(), "stop_deceleration_rpm_s must be greater than zero");
@@ -40,18 +27,44 @@ DribbleController::DribbleController()
   }
 
   dribble_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    dribble_mode_topic, rclcpp::QoS(qos_depth_),
+    dribble_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::dribble_mode_callback, this, std::placeholders::_1));
   stop_request_sub_ = create_subscription<std_msgs::msg::Bool>(
-    dribble_stop_request_topic, rclcpp::QoS(qos_depth_),
+    dribble_stop_request_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::stop_request_callback, this, std::placeholders::_1));
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(dribble_rpm_topic, rclcpp::QoS(qos_depth_));
+  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(dribble_rpm_topic_, rclcpp::QoS(qos_depth_));
   is_stopped_pub_ = create_publisher<std_msgs::msg::Bool>(
-    dribble_is_stopped_topic, rclcpp::QoS(qos_depth_));
+    dribble_is_stopped_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&DribbleController::timer_callback, this));
+}
+
+void DribbleController::declare_parameters()
+{
+  declare_parameter<std::string>("dribble_mode_topic", "/dribble/mode");
+  declare_parameter<std::string>("dribble_rpm_topic", "/dribble/rpm_command");
+  declare_parameter<std::string>("dribble_stop_request_topic", "/dribble_stop_request");
+  declare_parameter<std::string>("dribble_is_stopped_topic", "/dribble_is_stopped");
+  declare_parameter<double>("low_rpm", 300.0);
+  declare_parameter<double>("high_rpm", 600.0);
+  declare_parameter<double>("stop_deceleration_rpm_s", 200.0);
+  declare_parameter<int>("command_period_ms", 10);
+  declare_parameter<int>("qos_depth", 1);
+}
+
+void DribbleController::get_parameters()
+{
+  get_parameter("dribble_mode_topic", dribble_mode_topic_);
+  get_parameter("dribble_rpm_topic", dribble_rpm_topic_);
+  get_parameter("dribble_stop_request_topic", dribble_stop_request_topic_);
+  get_parameter("dribble_is_stopped_topic", dribble_is_stopped_topic_);
+  get_parameter("low_rpm", low_rpm_);
+  get_parameter("high_rpm", high_rpm_);
+  get_parameter("stop_deceleration_rpm_s", stop_deceleration_rpm_s_);
+  get_parameter("command_period_ms", command_period_ms_);
+  get_parameter("qos_depth", qos_depth_);
 }
 
 void DribbleController::dribble_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)

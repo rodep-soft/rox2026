@@ -9,23 +9,8 @@
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
-  const auto fire_request_topic = declare_parameter<std::string>(
-    "fire_request_topic", "/spring/fire_request");
-  const auto limit_switch_topic = declare_parameter<std::string>(
-    "limit_switch_topic", "/limit_switches");
-  const auto spring_velocity_command_topic = declare_parameter<std::string>(
-    "spring_velocity_command_topic", "/spring/vel_command");
-  const auto dribble_stop_request_topic = declare_parameter<std::string>(
-    "dribble_stop_request_topic", "/dribble_stop_request");
-  const auto dribble_is_stopped_topic = declare_parameter<std::string>(
-    "dribble_is_stopped_topic", "/dribble_is_stopped");
-
-  limit_switch_index_ = declare_parameter<int>("limit_switch_index", 0);
-  stop_dribble_on_fire_ = declare_parameter<bool>("stop_dribble_on_fire", true);
-  loading_velocity_rad_s_ = declare_parameter<double>("loading_velocity_rad_s", -5.0);
-  fire_velocity_rad_s_ = declare_parameter<double>("fire_velocity_rad_s", -20.0);
-  fire_duration_sec_ = declare_parameter<double>("fire_duration_sec", 5.0);
-  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+  declare_parameters();
+  get_parameters();
 
   if (limit_switch_index_ < 0) {
     RCLCPP_ERROR(get_logger(), "limit_switch_index must be zero or greater");
@@ -41,23 +26,53 @@ SpringEduliteController::SpringEduliteController()
   }
 
   fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
-    fire_request_topic, rclcpp::QoS(qos_depth_),
+    fire_request_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
-    limit_switch_topic, rclcpp::QoS(qos_depth_),
+    limit_switch_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
   dribble_is_stopped_sub_ = create_subscription<std_msgs::msg::Bool>(
-    dribble_is_stopped_topic, rclcpp::QoS(qos_depth_),
+    dribble_is_stopped_topic_, rclcpp::QoS(qos_depth_),
     std::bind(
       &SpringEduliteController::dribble_is_stopped_callback, this, std::placeholders::_1));
   spring_velocity_pub_ = create_publisher<std_msgs::msg::Float32>(
-    spring_velocity_command_topic, rclcpp::QoS(qos_depth_));
+    spring_velocity_command_topic_, rclcpp::QoS(qos_depth_));
   dribble_stop_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    dribble_stop_request_topic, rclcpp::QoS(qos_depth_));
+    dribble_stop_request_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(10),
     std::bind(&SpringEduliteController::timer_callback, this));
+}
+
+void SpringEduliteController::declare_parameters()
+{
+  declare_parameter<std::string>("fire_request_topic", "/spring/fire_request");
+  declare_parameter<std::string>("limit_switch_topic", "/limit_switches");
+  declare_parameter<std::string>("spring_velocity_command_topic", "/spring/vel_command");
+  declare_parameter<std::string>("dribble_stop_request_topic", "/dribble_stop_request");
+  declare_parameter<std::string>("dribble_is_stopped_topic", "/dribble_is_stopped");
+  declare_parameter<int>("limit_switch_index", 0);
+  declare_parameter<bool>("stop_dribble_on_fire", true);
+  declare_parameter<double>("loading_velocity_rad_s", -5.0);
+  declare_parameter<double>("fire_velocity_rad_s", -20.0);
+  declare_parameter<double>("fire_duration_sec", 5.0);
+  declare_parameter<int>("qos_depth", 1);
+}
+
+void SpringEduliteController::get_parameters()
+{
+  get_parameter("fire_request_topic", fire_request_topic_);
+  get_parameter("limit_switch_topic", limit_switch_topic_);
+  get_parameter("spring_velocity_command_topic", spring_velocity_command_topic_);
+  get_parameter("dribble_stop_request_topic", dribble_stop_request_topic_);
+  get_parameter("dribble_is_stopped_topic", dribble_is_stopped_topic_);
+  get_parameter("limit_switch_index", limit_switch_index_);
+  get_parameter("stop_dribble_on_fire", stop_dribble_on_fire_);
+  get_parameter("loading_velocity_rad_s", loading_velocity_rad_s_);
+  get_parameter("fire_velocity_rad_s", fire_velocity_rad_s_);
+  get_parameter("fire_duration_sec", fire_duration_sec_);
+  get_parameter("qos_depth", qos_depth_);
 }
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)

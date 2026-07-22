@@ -8,18 +8,8 @@
 DribblePositionController::DribblePositionController()
 : Node("dribble_position_controller")
 {
-  const auto command_topic = declare_parameter<std::string>(
-    "dribble_position_command_topic", "/dribble/position_command");
-  const auto feedback_topic = declare_parameter<std::string>(
-    "dribble_position_feedback_topic", "/dribble/position_feedback");
-  const auto action_name = declare_parameter<std::string>(
-    "dribble_position_action", "/dribble/position");
-  dribble_position_rad_ = declare_parameter<double>("dribble_position_rad", 0.0);
-  intake_position_rad_ = declare_parameter<double>("intake_position_rad", 1.5);
-  shoot_position_rad_ = declare_parameter<double>("shoot_position_rad", 2.0);
-  intake_offset_rad_ = declare_parameter<double>("intake_offset_rad", 1.0);
-  position_tolerance_rad_ = declare_parameter<double>("position_tolerance_rad", 0.02);
-  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+  declare_parameters();
+  get_parameters();
 
   if (qos_depth_ <= 0) {
     RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
@@ -27,12 +17,12 @@ DribblePositionController::DribblePositionController()
   }
 
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
-    command_topic, rclcpp::QoS(qos_depth_));
+    dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
   position_feedback_sub_ = create_subscription<std_msgs::msg::Float32>(
-    feedback_topic, rclcpp::QoS(qos_depth_),
+    dribble_position_feedback_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&DribblePositionController::position_feedback_callback, this, std::placeholders::_1));
   action_server_ = rclcpp_action::create_server<DribblePosition>(
-    this, action_name,
+    this, dribble_position_action_,
     std::bind(
       &DribblePositionController::handle_goal, this, std::placeholders::_1,
       std::placeholders::_2),
@@ -40,6 +30,32 @@ DribblePositionController::DribblePositionController()
     std::bind(&DribblePositionController::handle_accepted, this, std::placeholders::_1));
 
   publish_target_position(dribble_position_rad_);
+}
+
+void DribblePositionController::declare_parameters()
+{
+  declare_parameter<std::string>("dribble_position_command_topic", "/dribble/position_command");
+  declare_parameter<std::string>("dribble_position_feedback_topic", "/dribble/position_feedback");
+  declare_parameter<std::string>("dribble_position_action", "/dribble/position");
+  declare_parameter<double>("dribble_position_rad", 0.0);
+  declare_parameter<double>("intake_position_rad", 1.5);
+  declare_parameter<double>("shoot_position_rad", 2.0);
+  declare_parameter<double>("intake_offset_rad", 1.0);
+  declare_parameter<double>("position_tolerance_rad", 0.02);
+  declare_parameter<int>("qos_depth", 1);
+}
+
+void DribblePositionController::get_parameters()
+{
+  get_parameter("dribble_position_command_topic", dribble_position_command_topic_);
+  get_parameter("dribble_position_feedback_topic", dribble_position_feedback_topic_);
+  get_parameter("dribble_position_action", dribble_position_action_);
+  get_parameter("dribble_position_rad", dribble_position_rad_);
+  get_parameter("intake_position_rad", intake_position_rad_);
+  get_parameter("shoot_position_rad", shoot_position_rad_);
+  get_parameter("intake_offset_rad", intake_offset_rad_);
+  get_parameter("position_tolerance_rad", position_tolerance_rad_);
+  get_parameter("qos_depth", qos_depth_);
 }
 
 rclcpp_action::GoalResponse DribblePositionController::handle_goal(

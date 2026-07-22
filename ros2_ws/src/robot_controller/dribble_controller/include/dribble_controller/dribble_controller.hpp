@@ -19,6 +19,8 @@ private:
   static constexpr uint8_t high_mode_{1};
   static constexpr uint8_t low_mode_{2};
 
+  void declare_parameters();
+  void get_parameters();
   void dribble_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void stop_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void timer_callback();
@@ -33,6 +35,10 @@ private:
   double stop_deceleration_rpm_s_{200.0};
   int command_period_ms_{10};
   int qos_depth_{1};
+  std::string dribble_mode_topic_;
+  std::string dribble_rpm_topic_;
+  std::string dribble_stop_request_topic_;
+  std::string dribble_is_stopped_topic_;
 
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr dribble_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_request_sub_;
