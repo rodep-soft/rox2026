@@ -85,6 +85,7 @@ void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPt
 void BeltControllerNode::timer_callback()
 {
   std_msgs::msg::Int16 rpm_command;
+  // 設定が不正、または発射無効中なら安全側として0 RPMを送る。
   rpm_command.data = static_cast<int16_t>(
     is_configuration_valid_ && belt_is_fire_ ? target_rpm_from_mode(belt_mode_) : 0);
   rpm_pub_->publish(rpm_command);
@@ -92,6 +93,7 @@ void BeltControllerNode::timer_callback()
 
 int BeltControllerNode::target_rpm_from_mode(uint8_t mode)
 {
+  // joy_controllerから受けた速度段階を、configで設定した実RPMへ変換する。
   switch (mode) {
     case stop_mode_:
       return stop_rpm_;

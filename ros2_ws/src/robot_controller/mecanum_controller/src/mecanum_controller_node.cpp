@@ -65,15 +65,18 @@ void MecanumControllerNode::get_parameters()
 
 void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
+  // 機体座標系の速度指令に、配線や機構に合わせた符号補正をかける。
   vx_ = msg->linear.x * vx_sign_;
   vy_ = msg->linear.y * vy_sign_;
   wz_ = msg->angular.z * angular_z_sign_;
 
+  // mecanumの逆運動学で、機体速度から各車輪の目標角速度を計算する。
   wheel_vels_[FL] = -(vx_ + vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
   wheel_vels_[FR] = (vx_ - vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
   wheel_vels_[RL] = -(vx_ - vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
   wheel_vels_[RR] = (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
 
+  // 車輪ごとの補正係数をかけて、hardware_driverへ渡す速度指令をpublishする。
   for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
     cmd_msg.data = static_cast<float>(wheel_vels_[index] * velocity_corrections_[index]);

@@ -31,6 +31,11 @@ JoyControllerNode::JoyControllerNode()
       get_logger(), "command_qos_depth must be positive. Using the default value of 1.");
     command_qos_depth_ = 1;
   }
+  if (joy_timeout_ms_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(), "joy_timeout_ms must be positive. Using the default value of 200 ms.");
+    joy_timeout_ms_ = 200;
+  }
 
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
     joy_topic_, rclcpp::QoS(rclcpp::KeepLast(joy_qos_depth_)).best_effort(),
@@ -52,6 +57,12 @@ JoyControllerNode::JoyControllerNode()
   dribble_position_action_client_ = 
     rclcpp_action::create_client<robot_controller::action::DribblePosition>(this, dribble_position_action_);
 
+  // 起動直後は操作入力が来るまで、各機構へ停止指令を出しておく。
+  publish_stop_commands();
+  joy_timeout_timer_ = create_wall_timer(
+    std::chrono::milliseconds(10),
+    std::bind(&JoyControllerNode::joy_timeout_callback, this));
+
   RCLCPP_INFO(
     get_logger(), "Subscribing to %s and publishing mechanism commands", joy_topic_.c_str());
 }
@@ -71,6 +82,7 @@ void JoyControllerNode::declare_parameters()
   // Qos設定
   declare_parameter<int>("joy_qos_depth", 1);
   declare_parameter<int>("command_qos_depth", 1);
+  declare_parameter<int>("joy_timeout_ms", 200);
 
   // Mecanum制御のスケールと制限値
   declare_parameter<double>("linear_x_scale", 1.0);
@@ -119,6 +131,7 @@ void JoyControllerNode::get_parameters()
   get_parameter("dribble_position_action", dribble_position_action_);
   get_parameter("joy_qos_depth", joy_qos_depth_);
   get_parameter("command_qos_depth", command_qos_depth_);
+  get_parameter("joy_timeout_ms", joy_timeout_ms_);
   get_parameter("linear_x_scale", linear_x_scale_);
   get_parameter("linear_y_scale", linear_y_scale_);
   get_parameter("angular_z_scale", angular_z_scale_);
@@ -151,12 +164,14 @@ void JoyControllerNode::get_parameters()
 
 bool JoyControllerNode::button_pressed(const sensor_msgs::msg::Joy & msg, int index)
 {
+  // 設定されたボタン番号が範囲外なら、未押下として扱う。
   return index >= 0 && static_cast<std::size_t>(index) < msg.buttons.size() &&
          msg.buttons[static_cast<std::size_t>(index)] != 0;
 }
 
 double JoyControllerNode::axis_value(const sensor_msgs::msg::Joy & msg, int index)
 {
+  // 設定された軸番号が範囲外なら、入力なしとして0.0を返す。
   return index >= 0 && static_cast<std::size_t>(index) < msg.axes.size() ?
          msg.axes[static_cast<std::size_t>(index)] : 0.0;
 }
@@ -206,8 +221,57 @@ void JoyControllerNode::send_dribble_position_goal(uint8_t command)
   dribble_position_action_client_->async_send_goal(goal);
 }
 
+void JoyControllerNode::publish_stop_commands()
+{
+  cmd_vel_ = geometry_msgs::msg::Twist{};
+  intake_enabled_ = false;
+  spring_fire_enabled_ = false;
+  belt_fire_enabled_ = false;
+  belt_rpm_mode_ = static_cast<uint8_t>(BeltRpmMode::STOP);
+  dribble_rpm_mode_ = static_cast<uint8_t>(DribbleRpmMode::STOP);
+
+  mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+  std_msgs::msg::Bool spring;
+  spring.data = spring_fire_enabled_;
+  spring_fire_publisher_->publish(spring);
+  std_msgs::msg::Bool belt;
+  belt.data = belt_fire_enabled_;
+  belt_fire_publisher_->publish(belt);
+  std_msgs::msg::UInt8 belt_mode_msg;
+  belt_mode_msg.data = belt_rpm_mode_;
+  belt_mode_publisher_->publish(belt_mode_msg);
+  std_msgs::msg::UInt8 dribble_mode_msg;
+  dribble_mode_msg.data = dribble_rpm_mode_;
+  dribble_mode_publisher_->publish(dribble_mode_msg);
+}
+
+void JoyControllerNode::joy_timeout_callback()
+{
+  if (!joy_received_) {
+    return;
+  }
+
+  const auto elapsed = std::chrono::steady_clock::now() - last_joy_received_time_;
+  if (elapsed > std::chrono::milliseconds(joy_timeout_ms_)) {
+    if (!joy_timeout_active_) {
+      // 非常停止操作ではなくJoy通信断による停止だと切り分けるため、最初の1回だけ記録する。
+      RCLCPP_ERROR(get_logger(), "Joy input timed out. Sending stop commands.");
+      joy_timeout_active_ = true;
+    }
+    // Joy入力が途絶えた場合は、最後の操作指令を残さず停止状態を維持する。
+    publish_stop_commands();
+  }
+}
+
 void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
+  if (joy_timeout_active_) {
+    // 停止原因となったJoy通信断が解消したことを、実機確認時に追跡できるよう記録する。
+    RCLCPP_INFO(get_logger(), "Joy input recovered.");
+    joy_timeout_active_ = false;
+  }
+  joy_received_ = true;
+  last_joy_received_time_ = std::chrono::steady_clock::now();
   const auto & joy_msg = *msg;
   const bool intake_is_enable_button = button_pressed(joy_msg, intake_is_enable_button_);
   const bool intake_button_on = button_pressed(joy_msg, intake_button_on_);
@@ -234,23 +298,11 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool is_emergency_stop =
     emergency_stop_is_enable_button && emergency_stop_button_on;
   if (is_emergency_stop) {
-    cmd_vel_ = geometry_msgs::msg::Twist{};
-    intake_enabled_ = false;
-    spring_fire_enabled_ = false;
-    belt_fire_enabled_ = false;
-    belt_rpm_mode_ = static_cast<uint8_t>(BeltRpmMode::STOP);
-    dribble_rpm_mode_ = static_cast<uint8_t>(DribbleRpmMode::STOP);
-    mecanum_cmd_vel_publisher_->publish(cmd_vel_);
-    std_msgs::msg::Bool spring; spring.data = spring_fire_enabled_;
-    spring_fire_publisher_->publish(spring);
-    std_msgs::msg::Bool belt; belt.data = belt_fire_enabled_;
-    belt_fire_publisher_->publish(belt);
-    std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_rpm_mode_;
-    belt_mode_publisher_->publish(belt_mode_msg);
-    std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_rpm_mode_;
-    dribble_mode_publisher_->publish(dribble_mode_msg);
+    // 非常停止中は各機構の指令値を停止状態にして即時publishする。
+    publish_stop_commands();
 
     if (!pre_emergency_stop_button_on_) {
+      // 非常停止ボタンの押下開始時だけserviceとAction goalを送る。
       call_emergency_stop();
       // ドリブルする位置にDribble Positionを移動
       send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
@@ -267,6 +319,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     return;
   }
 
+  // ボタンの押下開始を検出し、各機構の有効状態や動作モードを更新する。
   if (intake_is_enable_button && intake_button_on && !pre_intake_button_on_) {
     intake_enabled_ = !intake_enabled_;
   }
@@ -304,6 +357,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const double linear_y = apply_axis_deadzone(axis_value(joy_msg, left_stick_x_axis_));
   const double angular_z = apply_axis_deadzone(axis_value(joy_msg, right_stick_x_axis_));
 
+  // スティック入力に制限値とスケールをかけて、mecanum_controller向けの速度指令にする。
   cmd_vel_.linear.x =
     apply_axis_limits(linear_x, min_linear_x_, max_linear_x_) * linear_x_scale_;
   cmd_vel_.linear.y =

@@ -1,6 +1,7 @@
 #ifndef JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
 #define JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -50,6 +51,8 @@ private:
 
   void call_emergency_stop();
   void send_dribble_position_goal(uint8_t command);
+  void publish_stop_commands();
+  void joy_timeout_callback();
 
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
@@ -58,6 +61,7 @@ private:
   std::string dribble_position_action_;
   int joy_qos_depth_;
   int command_qos_depth_;
+  int joy_timeout_ms_;
 
   double linear_x_scale_;
   double linear_y_scale_;
@@ -103,6 +107,9 @@ private:
   bool belt_fire_enabled_{false};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
   uint8_t dribble_rpm_mode_{static_cast<uint8_t>(DribbleRpmMode::STOP)};
+  bool joy_received_{false};
+  bool joy_timeout_active_{false};
+  std::chrono::steady_clock::time_point last_joy_received_time_{};
 
   bool pre_intake_button_on_;
   bool pre_spring_fire_button_on_;
@@ -120,6 +127,7 @@ private:
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr emergency_stop_client_;
   rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
     dribble_position_action_client_;
+  rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

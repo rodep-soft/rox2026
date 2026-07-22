@@ -84,6 +84,7 @@ void SpringEduliteController::get_parameters()
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  // READYかつ装填済みのときだけ、発射要求の立ち上がりを受け付ける。
   if (
     now_state_ == State::READY && is_loaded_ &&
     msg->data && !previous_fire_request_)
@@ -123,6 +124,7 @@ void SpringEduliteController::start_fire()
 void SpringEduliteController::publish_dribble_stop_request()
 {
   std_msgs::msg::Bool stop_request;
+  // 発射待ちまたは発射中だけ、dribble_controllerへ停止要求を出す。
   stop_request.data = stop_dribble_on_fire_ &&
     (fire_pending_ || now_state_ == State::FIRE);
   dribble_stop_request_pub_->publish(stop_request);
@@ -141,6 +143,7 @@ void SpringEduliteController::timer_callback()
 
   switch (now_state_) {
     case State::LOAD:
+      // 装填完了までは巻き取り、リミットスイッチ検出後にREADYへ移る。
       if (is_loaded_) {
         now_state_ = State::READY;
         velocity_command.data = 0.0F;
@@ -150,6 +153,7 @@ void SpringEduliteController::timer_callback()
       break;
 
     case State::READY:
+      // 発射要求を受けたら、必要に応じてdribble停止完了を待ってからFIREへ移る。
       if (fire_pending_ && is_loaded_ &&
         (!stop_dribble_on_fire_ || dribble_is_stopped_))
       {
@@ -164,6 +168,7 @@ void SpringEduliteController::timer_callback()
       break;
 
     case State::FIRE:
+      // 一定時間だけ発射速度を出し、その後は再装填のためLOADへ戻る。
       velocity_command.data = static_cast<float>(fire_velocity_rad_s_);
       if ((now() - fire_start_time_).seconds() >= fire_duration_sec_) {
         now_state_ = State::LOAD;

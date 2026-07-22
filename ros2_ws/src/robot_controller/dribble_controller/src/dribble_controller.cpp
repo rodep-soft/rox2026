@@ -97,12 +97,13 @@ void DribbleController::timer_callback()
 {
   const double target_rpm = stop_requested_ ? 0.0 : target_rpm_from_mode(dribble_mode_);
 
-  // 停止要求中は設定した減速度に従って、現在のrpmから0まで徐々に下げる
+  // 停止要求中は設定した減速度に従って、現在のrpmから0まで徐々に下げる。
   if (stop_requested_) {
     const double maximum_decrease =
       stop_deceleration_rpm_s_ * static_cast<double>(command_period_ms_) / 1000.0;
     current_rpm_ = std::max(0.0, current_rpm_ - maximum_decrease);
-  } else {    // stop要求がspringから来なかったらtarget_rpmをそのままcurrent_rpmに入れる
+  } else {
+    // stop要求がspringから来ていない場合は、modeから求めた目標RPMへ即時更新する。
     current_rpm_ = target_rpm;
   }
 
@@ -115,6 +116,7 @@ void DribbleController::timer_callback()
   rpm_pub_->publish(rpm_command);
 
   std_msgs::msg::Bool is_stopped;
+  // spring_controllerへ、停止要求中かつ0 RPMまで下がったことを返す。
   is_stopped.data = stop_requested_ && current_rpm_ == 0.0;
   is_stopped_pub_->publish(is_stopped);
 }

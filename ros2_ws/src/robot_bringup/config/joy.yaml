@@ -13,6 +13,8 @@ joy_controller:
     dribble_position_action: /dribble/position
     joy_qos_depth: 1
     command_qos_depth: 1
+    # Joy入力が途絶えた場合に停止するまでの時間[ms]。
+    joy_timeout_ms: 200
 
     # 取り入れる操作のボタン番号。
     intake_is_enable_button: 6
