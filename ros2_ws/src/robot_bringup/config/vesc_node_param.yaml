@@ -1,0 +1,9 @@
+vesc_driver_node:
+  ros__parameters:
+    can_pub_topic: "/socketcan_bridge/tx"
+    can_sub_topic: "/socketcan_bridge/rx"
+    target_rpm_topic: "/vesc/target/rpm"
+    current_rpm_topic: "/vesc/current/rpm"
+    controller_ids: [1]
+    pole_pairs: [7]
+    command_timeout_ms: 250

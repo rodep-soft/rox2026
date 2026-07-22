@@ -30,14 +30,26 @@ target_link_libraries(
 ament_target_dependencies(
   stm32_node can_msgs rclcpp std_msgs)
 
+add_library(vesc_protocol src/vesc_driver/vesc_protocol.cpp)
+target_compile_features(vesc_protocol PUBLIC cxx_std_17)
+target_include_directories(
+  vesc_protocol
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(vesc_protocol can_msgs)
+
+add_executable(vesc_node src/vesc_driver/vesc_node.cpp)
+target_compile_features(vesc_node PUBLIC cxx_std_17)
+target_link_libraries(vesc_node vesc_protocol)
+ament_target_dependencies(vesc_node can_msgs rclcpp std_msgs)
 install(
-  TARGETS stm32_protocol stm32_node
+  TARGETS stm32_protocol stm32_node vesc_protocol vesc_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
@@ -47,9 +59,12 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+  ament_add_gtest(test_vesc_protocol test/test_vesc_protocol.cpp)
+  target_link_libraries(test_vesc_protocol vesc_protocol)
+  ament_target_dependencies(test_vesc_protocol can_msgs)
 endif()
 
 ament_export_include_directories(include)
 ament_export_dependencies(can_msgs)
-ament_export_libraries(stm32_protocol)
+ament_export_libraries(stm32_protocol vesc_protocol)
 ament_package()
