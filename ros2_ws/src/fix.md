@@ -34,3 +34,25 @@
 
 - cancel要求を受理した場合に`abort()`で終了しており、利用側からはキャンセルと異常終了を区別できない。
 - 通常のcancelは`canceled()`で終了し、新しいgoalによる置換などの中断だけを`abort()`で終了する。
+
+## [中] joy_controllerの状態topic publish周期
+
+- 現在はJoyメッセージを受信するたびに、`spring_fire_enabled_`、`belt_fire_enabled_`、belt/dribbleのRPM modeをpublishしている。
+- これらはボタン操作時だけ変化する状態なので、走行速度指令とは別にtimer callbackで定期publishする、または状態が変化したときだけpublishする方式を検討する。
+- 操作遅延とtopic帯域のバランスを確認し、timer周期はYAMLで設定できるようにする。
+
+## [低] joy_controllerのmode enum値の明示
+
+- `BeltRpmMode`と`DribbleRpmMode`は`UInt8`で別nodeへ送る値の契約になっているため、`STOP = 0`などの明示値は無意味ではない。
+- enum定義順と受信側のmode値が一致していることを確認したうえで、値を省略するか、通信仕様として明示値を残すかを統一する。
+
+## [低] joy_controllerのJoy用QoS
+
+- 現在は`KeepLast(joy_qos_depth_).best_effort()`を個別に指定している。
+- `sensor_msgs/msg/Joy`はセンサ入力なので、`rclcpp::SensorDataQoS()`をベースにし、必要ならdepthだけYAML値で上書きする方式を検討する。
+
+## [低] joy_controllerのcallback分割と早期return
+
+- `joy_callback()`が入力取得、非常停止、状態更新、Action送信、走行速度計算、publish、前回値更新をまとめて担当しており長い。
+- 入力状態の取得、非常停止処理、ボタン操作処理、通常指令publishへ関数を分割し、条件に合わない処理は早期returnで抜ける構成を検討する。
+- 分割後も、非常停止中に停止指令を継続publishする現在の安全動作は維持する。

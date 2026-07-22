@@ -8,14 +8,16 @@
 // コンストラクタ
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller"),
-  pre_intake_button_on_(false),
-  pre_spring_fire_button_on_(false),
-  pre_belt_fire_button_on_(false),
-  pre_mode_up_(false),
-  pre_mode_down_(false),
-  pre_emergency_stop_button_on_(false),
-  pre_dribble_position_dribble_button_on_(false),
-  pre_dribble_position_shoot_button_on_(false)
+  pre_intake_chord_on_(false),
+  pre_spring_fire_chord_on_(false),
+  pre_belt_fire_chord_on_(false),
+  pre_belt_mode_up_chord_on_(false),
+  pre_belt_mode_down_chord_on_(false),
+  pre_dribble_mode_up_chord_on_(false),
+  pre_dribble_mode_down_chord_on_(false),
+  pre_emergency_stop_chord_on_(false),
+  pre_dribble_position_dribble_chord_on_(false),
+  pre_dribble_position_shoot_chord_on_(false)
 {
   declare_parameters();
   get_parameters();
@@ -302,61 +304,84 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   const bool is_mode_up = mode_change_value >= axis_on_threshold_;
   const bool is_mode_down = mode_change_value <= -axis_on_threshold_;
 
-  const bool is_emergency_stop =
+  const bool intake_chord_on = intake_is_enable_button && intake_button_on;
+  const bool spring_fire_chord_on = spring_fire_is_enable_button && spring_fire_button_on;
+  const bool belt_fire_chord_on = belt_fire_is_enable_button && belt_fire_button_on;
+  const bool belt_mode_up_chord_on = belt_mode_is_enable_button && is_mode_up;
+  const bool belt_mode_down_chord_on = belt_mode_is_enable_button && is_mode_down;
+  const bool dribble_mode_up_chord_on = dribble_mode_is_enable_button && is_mode_up;
+  const bool dribble_mode_down_chord_on = dribble_mode_is_enable_button && is_mode_down;
+  const bool emergency_stop_chord_on =
     emergency_stop_is_enable_button && emergency_stop_button_on;
-  if (is_emergency_stop) {
-    // 非常停止中は各機構の指令値を停止状態にして即時publishする。
-    publish_stop_commands();
+  const bool dribble_position_dribble_chord_on =
+    dribble_position_is_enable_button && dribble_position_dribble_button_on;
+  const bool dribble_position_shoot_chord_on =
+    dribble_position_is_enable_button && dribble_position_shoot_button_on;
 
-    if (!pre_emergency_stop_button_on_) {
-      // 非常停止ボタンの押下開始時だけserviceとAction goalを送る。
+  const auto update_previous_chord_states = [&]() {
+      pre_intake_chord_on_ = intake_chord_on;
+      pre_spring_fire_chord_on_ = spring_fire_chord_on;
+      pre_belt_fire_chord_on_ = belt_fire_chord_on;
+      pre_belt_mode_up_chord_on_ = belt_mode_up_chord_on;
+      pre_belt_mode_down_chord_on_ = belt_mode_down_chord_on;
+      pre_dribble_mode_up_chord_on_ = dribble_mode_up_chord_on;
+      pre_dribble_mode_down_chord_on_ = dribble_mode_down_chord_on;
+      pre_emergency_stop_chord_on_ = emergency_stop_chord_on;
+      pre_dribble_position_dribble_chord_on_ = dribble_position_dribble_chord_on;
+      pre_dribble_position_shoot_chord_on_ = dribble_position_shoot_chord_on;
+    };
+
+  if (emergency_stop_chord_on && !pre_emergency_stop_chord_on_) {
+    emergency_stop_latched_ = !emergency_stop_latched_;
+    if (emergency_stop_latched_) {
+      RCLCPP_WARN(get_logger(), "Emergency stop mode enabled");
       call_emergency_stop();
       // ドリブルする位置にDribble Positionを移動
       send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
+    } else {
+      RCLCPP_WARN(get_logger(), "Emergency stop mode disabled");
     }
+    publish_stop_commands();
+    update_previous_chord_states();
+    return;
+  }
 
-    pre_intake_button_on_ = intake_button_on;
-    pre_spring_fire_button_on_ = spring_fire_button_on;
-    pre_belt_fire_button_on_ = belt_fire_button_on;
-    pre_mode_up_ = is_mode_up;
-    pre_mode_down_ = is_mode_down;
-    pre_emergency_stop_button_on_ = emergency_stop_button_on;
-    pre_dribble_position_dribble_button_on_ = dribble_position_dribble_button_on;
-    pre_dribble_position_shoot_button_on_ = dribble_position_shoot_button_on;
+  if (emergency_stop_latched_) {
+    // 非常停止モード中であることをログでも追跡できるようにしつつ、停止指令を維持する。
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000, "Emergency stop mode is active. Sending stop commands.");
+    publish_stop_commands();
+    update_previous_chord_states();
     return;
   }
 
   // ボタンの押下開始を検出し、各機構の有効状態や動作モードを更新する。
-  if (intake_is_enable_button && intake_button_on && !pre_intake_button_on_) {
+  if (intake_chord_on && !pre_intake_chord_on_) {
     intake_enabled_ = !intake_enabled_;
   }
-  if (spring_fire_is_enable_button && spring_fire_button_on && !pre_spring_fire_button_on_) {
+  if (spring_fire_chord_on && !pre_spring_fire_chord_on_) {
     spring_fire_enabled_ = !spring_fire_enabled_;
   }
-  if (belt_fire_is_enable_button && belt_fire_button_on && !pre_belt_fire_button_on_) {
+  if (belt_fire_chord_on && !pre_belt_fire_chord_on_) {
     belt_fire_enabled_ = !belt_fire_enabled_;
   }
-  if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
+  if (belt_mode_up_chord_on && !pre_belt_mode_up_chord_on_) {
     belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_3));
   }
-  if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
+  if (belt_mode_down_chord_on && !pre_belt_mode_down_chord_on_) {
     belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
   }
-  if (dribble_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
+  if (dribble_mode_up_chord_on && !pre_dribble_mode_up_chord_on_) {
     dribble_rpm_mode_ =
       increment_mode(dribble_rpm_mode_, static_cast<uint8_t>(DribbleRpmMode::LOW));
   }
-  if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
+  if (dribble_mode_down_chord_on && !pre_dribble_mode_down_chord_on_) {
     dribble_rpm_mode_ = decrement_mode(dribble_rpm_mode_);
   }
-  if (dribble_position_is_enable_button && dribble_position_dribble_button_on &&
-    !pre_dribble_position_dribble_button_on_)
-  {
+  if (dribble_position_dribble_chord_on && !pre_dribble_position_dribble_chord_on_) {
     send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
   }
-  if (dribble_position_is_enable_button && dribble_position_shoot_button_on &&
-    !pre_dribble_position_shoot_button_on_)
-  {
+  if (dribble_position_shoot_chord_on && !pre_dribble_position_shoot_chord_on_) {
     send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::SHOOT);
   }
 
@@ -381,12 +406,5 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_rpm_mode_;
   dribble_mode_publisher_->publish(dribble_mode_msg);
 
-  pre_intake_button_on_ = intake_button_on;
-  pre_spring_fire_button_on_ = spring_fire_button_on;
-  pre_belt_fire_button_on_ = belt_fire_button_on;
-  pre_mode_up_ = is_mode_up;
-  pre_mode_down_ = is_mode_down;
-  pre_emergency_stop_button_on_ = emergency_stop_button_on;
-  pre_dribble_position_dribble_button_on_ = dribble_position_dribble_button_on;
-  pre_dribble_position_shoot_button_on_ = dribble_position_shoot_button_on;
+  update_previous_chord_states();
 }

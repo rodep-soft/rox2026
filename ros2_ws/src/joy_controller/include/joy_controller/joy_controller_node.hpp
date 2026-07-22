@@ -111,14 +111,17 @@ private:
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
-  bool pre_intake_button_on_;
-  bool pre_spring_fire_button_on_;
-  bool pre_belt_fire_button_on_;
-  bool pre_mode_up_;
-  bool pre_mode_down_;
-  bool pre_emergency_stop_button_on_;
-  bool pre_dribble_position_dribble_button_on_;
-  bool pre_dribble_position_shoot_button_on_;
+  bool emergency_stop_latched_{false};
+  bool pre_intake_chord_on_;
+  bool pre_spring_fire_chord_on_;
+  bool pre_belt_fire_chord_on_;
+  bool pre_belt_mode_up_chord_on_;
+  bool pre_belt_mode_down_chord_on_;
+  bool pre_dribble_mode_up_chord_on_;
+  bool pre_dribble_mode_down_chord_on_;
+  bool pre_emergency_stop_chord_on_;
+  bool pre_dribble_position_dribble_chord_on_;
+  bool pre_dribble_position_shoot_chord_on_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
