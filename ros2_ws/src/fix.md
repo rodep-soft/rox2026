@@ -35,12 +35,6 @@
 - cancel要求を受理した場合に`abort()`で終了しており、利用側からはキャンセルと異常終了を区別できない。
 - 通常のcancelは`canceled()`で終了し、新しいgoalによる置換などの中断だけを`abort()`で終了する。
 
-## [中] joy_controllerの状態topic publish周期
-
-- 現在はJoyメッセージを受信するたびに、`spring_fire_enabled_`、`belt_fire_enabled_`、belt/dribbleのRPM modeをpublishしている。
-- これらはボタン操作時だけ変化する状態なので、走行速度指令とは別にtimer callbackで定期publishする、または状態が変化したときだけpublishする方式を検討する。
-- 操作遅延とtopic帯域のバランスを確認し、timer周期はYAMLで設定できるようにする。
-
 ## [低] joy_controllerのmode enum値の明示
 
 - `BeltRpmMode`と`DribbleRpmMode`は`UInt8`で別nodeへ送る値の契約になっているため、`STOP = 0`などの明示値は無意味ではない。

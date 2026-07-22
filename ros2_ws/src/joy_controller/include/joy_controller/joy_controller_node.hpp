@@ -51,8 +51,10 @@ private:
 
   void call_emergency_stop();
   void send_dribble_position_goal(uint8_t command);
+  void publish_state_commands();
   void publish_stop_commands();
   void joy_timeout_callback();
+  void state_publish_timer_callback();
 
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
@@ -62,6 +64,7 @@ private:
   int joy_qos_depth_;
   int command_qos_depth_;
   int joy_timeout_ms_;
+  int state_publish_period_ms_;
 
   double linear_x_scale_;
   double linear_y_scale_;
@@ -131,6 +134,7 @@ private:
   rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
     dribble_position_action_client_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
+  rclcpp::TimerBase::SharedPtr state_publish_timer_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
