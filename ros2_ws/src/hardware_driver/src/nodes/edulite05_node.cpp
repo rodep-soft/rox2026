@@ -3,7 +3,7 @@
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include <array>
 #include <vector>
-#include "edulite05_protocol.hpp"
+#include "edulite05_driver/edulite05_protocol.hpp"
 
 
 class Ed05DriverNode : public rclcpp::Node
@@ -54,7 +54,7 @@ class Ed05DriverNode : public rclcpp::Node
                 frame_.is_rtr = false;
                 frame_.is_error = false;
             
-            for (int i = 0; i < motors_.size(); i++) {
+            for (size_t i = 0; i < motors_.size(); i++) {
                 frames = motors_[i]->create_init_frame();
                 for (size_t j = 0; j < frames.size(); j++) {
                     frame_.id = frames[j].id;
@@ -67,6 +67,7 @@ class Ed05DriverNode : public rclcpp::Node
 
         void cmd_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
         {
+            RCLCPP_INFO(this->get_logger(), "aaaaaaaaaaaaaaaa");
             float value;
             Canframe frame;
                 frame_.is_extended = true;
@@ -74,15 +75,20 @@ class Ed05DriverNode : public rclcpp::Node
                 frame_.is_error = false;
 
 
-            for (int i = 0; i < motors_.size(); i++)
+            for (size_t i = 0; i < motors_.size(); i++)
             {
-                value = *msg[i];
+                RCLCPP_DEBUG(this->get_logger(), "Received command[%zu]: %f", i, value);
+
+                if (i < msg->data.size()) {
+                    value = msg->data[i];
+                } else {
+                    value = 0.0f;
+                }
                 frame = motors_[i]->create_control_frame(value);
                 frame_.id = frame.id;
                 frame_.dlc = frame.dlc;
                 frame_.data = frame.data;
 
-                RCLCPP_DEBUG(this->get_logger(), "Received command[%d]: %f", i, msg->data[i]);
 
                 frame_pub_->publish(frame_);
             }
@@ -91,19 +97,20 @@ class Ed05DriverNode : public rclcpp::Node
         void declare_parameters()
         {
             this->declare_parameter<std::string>("sub_topic_name", "cmd");
+            this->declare_parameter<std::string>("pub_topic_name", "can_tx");
             //this->declare_parameter<uint8_t>("motor_id", 0);
         }
         void get_parameters()
         {
             sub_topic_name_ = this->get_parameter("sub_topic_name").as_string();
+            pub_topic_name_ = this->get_parameter("pub_topic_name").as_string();
         }
 };
 
 int main (int argc, char **argv)
 {
-    instance_motors();// instanceって名詞？ モーターもといCanframeCreaterのインスタンス化
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<Edulite05CanframeGeneratorNode>();
+    auto node = std::make_shared<Ed05DriverNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

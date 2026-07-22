@@ -10,7 +10,7 @@ struct Canframe
 {
     uint32_t id;
     int dlc;  
-    uint8_t data[8];
+    std::array<uint8_t, 8> data;
 };
 
 class Ed05CanframeCreater

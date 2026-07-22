@@ -102,7 +102,7 @@ Canframe Ed05CanframeCreater::set_runmode(int value)
     frame.dlc = dlc_;
     ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
     auto data = encode_commtype18_data(info);
-    std::memcpy(frame.data, data.data(), 8);
+    std::memcpy(frame.data.data(), data.data(), 8);
     return frame;
 }
 
@@ -111,7 +111,7 @@ Canframe Ed05CanframeCreater::set_enable()
     Canframe frame{};
     frame.id = encode_can_id(0x03);
     frame.dlc = dlc_;
-    std::memset(frame.data, 0, 8);
+    frame.data.fill(0);
     return frame;
 }
 
@@ -121,7 +121,7 @@ Canframe Ed05CanframeCreater::set_target_value(ControlTargetInfo target_info)
     frame.id = encode_can_id(0x12);
     frame.dlc = dlc_;
     auto data = encode_commtype18_data(target_info);
-    std::memcpy(frame.data, data.data(), 8);
+    std::memcpy(frame.data.data(), data.data(), 8);
     return frame;
 }
 
@@ -130,7 +130,7 @@ Canframe Ed05CanframeCreater::set_disable()
     Canframe frame{};
     frame.id = encode_can_id(0x04);
     frame.dlc = dlc_;
-    std::memset(frame.data, 0, 8);
+    frame.data.fill(0);
     return frame;
 }
 
@@ -139,7 +139,7 @@ Canframe Ed05CanframeCreater::set_mechanicalzero()
     Canframe frame{};
     frame.id = encode_can_id(0x06);
     frame.dlc = dlc_;
-    std::memset(frame.data, 0, 8);
+    frame.data.fill(0);
     return frame;
 }
 
