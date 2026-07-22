@@ -29,7 +29,7 @@ belt_controller_node:
 
 roller_belt_can_packer_node:
   ros__parameters:
-    can_transmit_topic: "/CAN/can0/transmit"
+    can_transmit_topic: "/socketcan_bridge/tx"
     stm_can_id: 0x201
     is_extended: false
     roller_rpm_topic: "/roller/rpm"
@@ -39,6 +39,6 @@ roller_belt_can_packer_node:
     publish_period_ms: 20
     timeout_ms: 500
 
-ros2socketcan:
+socketcan_bridge:
   ros__parameters:
-    CAN_INTERFACE: "can0"
+    interface: "can0"

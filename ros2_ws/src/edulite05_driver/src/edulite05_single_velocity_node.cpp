@@ -20,7 +20,8 @@ public:
     max_velocity_rad_s_ = declare_parameter<double>("max_velocity_rad_s", 30.0);
     const auto current_limit_a = declare_parameter<double>("current_limit_a", 11.0);
     const auto acceleration_rad_s2 = declare_parameter<double>("acceleration_rad_s2", 20.0);
-    const auto can_tx_topic = declare_parameter<std::string>("can_tx_topic", "CAN/can0/transmit");
+    const auto can_tx_topic =
+      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
     const auto motor_vel_topic = declare_parameter<std::string>("motor_vel_topic", "motor_vel");
 
     //一応警告も
@@ -47,7 +48,7 @@ public:
           static_cast<float>(max_velocity_rad_s_));
         motor_->set_velocity(velocity);
       });
-    
+
 
     while (can_pub_->get_subscription_count() == 0 && rclcpp::ok()) {
       rclcpp::sleep_for(std::chrono::milliseconds(100));

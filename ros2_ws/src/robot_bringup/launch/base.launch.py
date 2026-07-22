@@ -69,8 +69,8 @@ def generate_launch_description():
 
     # ros2とcan の橋渡し
     can_bridge = Node(
-        package="ros2socketcan_bridge",
-        executable="ros2socketcan",
+        package="nobleo_socketcan_bridge",
+        executable="socketcan_bridge",
         output="screen",
     )
     delayed_wheel_to_can = TimerAction(

@@ -6,7 +6,6 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    bringup_dir = get_package_share_directory("robot_bringup")
     parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"), "config", "joy_conversion.yaml"
     )
@@ -17,9 +16,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="ros2socketcan_bridge",
-                executable="ros2socketcan",
-                #output="screen",
+                package="nobleo_socketcan_bridge",
+                executable="socketcan_bridge",
+                # output="screen",
             ),
             Node(
                 package="receive_stm32",

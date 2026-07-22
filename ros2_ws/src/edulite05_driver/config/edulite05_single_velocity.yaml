@@ -11,5 +11,5 @@ edulite05_single_velocity_node:
     acceleration_rad_s2: 20.0
 
     # ROS topics used by this node.
-    can_tx_topic: "CAN/can0/transmit"
+    can_tx_topic: "/socketcan_bridge/tx"
     motor_vel_topic: "spring_edulite_speed"

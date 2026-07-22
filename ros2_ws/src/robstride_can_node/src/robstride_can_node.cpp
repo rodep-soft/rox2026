@@ -64,7 +64,7 @@ RobstrideCanNode::RobstrideCanNode()
     command_topic_.c_str());
 
   // run_modeの書き込みはノード起動時に一度だけ
-  // ros2socketcan側のsubscriptionとのDDS discoveryが完了するまで時間が読めないため、
+  // socketcan_bridge側のsubscriptionとのDDS discoveryが完了するまで時間が読めないため、
   // subscriber数をポーリングしてから送る。
   // Type 6によるゼロ校正はPPモードではブロックされるため、
   // stop -> motion control -> enable -> mechanical zero -> stop -> PP mode -> enable の順
@@ -73,7 +73,7 @@ RobstrideCanNode::RobstrideCanNode()
     std::chrono::milliseconds(50),
     [this]() {
       if (can_publisher_->get_subscription_count() == 0) {
-        return;         // ros2socketcanとまだ繋がっていない
+        return;         // socketcan_bridgeとまだ繋がっていない
       }
       // ノード再起動前にモーターが有効だった場合も、モード切替前に出力を止める。
       SendDisable();
@@ -106,7 +106,7 @@ RobstrideCanNode::RobstrideCanNode()
 
 void RobstrideCanNode::DeclareParameters()
 {
-  this->declare_parameter<std::string>("can_tx_topic", "/CAN/can0/transmit");
+  this->declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
   this->declare_parameter<int>("motor_can_id", 1);
   this->declare_parameter<int>("host_can_id", 0xFD);
 

@@ -32,14 +32,14 @@ public:
       "motor_vel", 10, std::bind(&WheelToCanNode::callback, this, std::placeholders::_1));
 
     can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-      "/CAN/can0/receive", 10,
+      "/socketcan_bridge/rx", 10,
       std::bind(
         &WheelToCanNode::can_receive_callback, this, std::placeholders::_1
       )
     );
 
 
-    pub_ = this->create_publisher<can_msgs::msg::Frame>("CAN/can0/transmit", 10);
+    pub_ = this->create_publisher<can_msgs::msg::Frame>("/socketcan_bridge/tx", 10);
 
     last_vel_received_time_ = this->now();         // 初期化時に現在の時刻を設定
 
