@@ -2,8 +2,6 @@ joy_controller:
   ros__parameters:
     # subscribeする操作入力topic。sensor_msgs/msg/Joy。
     joy_topic: /joy
-    # publishする操作指令topic。robot_controller/msg/RobotCommand。
-    command_topic: /robot_command
     mecanum_cmd_vel_topic: /mecanum/cmd_vel
     spring_fire_request_topic: /spring/fire_request
     belt_fire_topic: /belt/fire_enabled
@@ -15,8 +13,10 @@ joy_controller:
     dribble_position_action: /dribble/position
     joy_qos_depth: 1
     command_qos_depth: 1
+    # Joy入力が途絶えた場合に停止するまでの時間[ms]。
+    joy_timeout_ms: 200
 
-    # 吸気操作のボタン番号。
+    # 取り入れる操作のボタン番号。
     intake_is_enable_button: 6
     intake_button_on: 3
 
