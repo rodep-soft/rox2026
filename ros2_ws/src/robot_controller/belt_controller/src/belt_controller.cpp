@@ -10,17 +10,8 @@
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
 {
-  const auto belt_fire_topic = declare_parameter<std::string>(
-    "belt_fire_topic",
-    "/belt/fire_enabled");
-  const auto belt_mode_topic = declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
-  const auto belt_rpm_topic = declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm");
-
-  stop_rpm_ = declare_parameter<int>("stop_rpm", 0);
-  level_1_rpm_ = declare_parameter<int>("level_1_rpm", 3000);
-  level_2_rpm_ = declare_parameter<int>("level_2_rpm", 4000);
-  level_3_rpm_ = declare_parameter<int>("level_3_rpm", 5000);
-  command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
+  declare_parameters();
+  get_parameters();
 
   if (stop_rpm_ != 0) {
     RCLCPP_ERROR(get_logger(), "stop_rpm must be zero");
@@ -35,17 +26,50 @@ BeltControllerNode::BeltControllerNode()
     is_configuration_valid_ = false;
     command_period_ms_ = 10;
   }
+  if (qos_depth_ <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
+    qos_depth_ = 1;
+  }
 
   belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
-    belt_fire_topic, 10,
+    belt_fire_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
+
   belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    belt_mode_topic, 10,
+    belt_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic, 10);
+
+  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic_, rclcpp::QoS(qos_depth_));
+
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&BeltControllerNode::timer_callback, this));
+}
+
+void BeltControllerNode::declare_parameters()
+{
+  declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
+  declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
+  declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm_command");
+  declare_parameter<int>("stop_rpm", 0);
+  declare_parameter<int>("level_1_rpm", 3000);
+  declare_parameter<int>("level_2_rpm", 4000);
+  declare_parameter<int>("level_3_rpm", 5000);
+  declare_parameter<int>("command_period_ms", 10);
+  declare_parameter<int>("qos_depth", 1);
+}
+
+void BeltControllerNode::get_parameters()
+{
+  get_parameter("belt_fire_topic", belt_fire_topic_);
+  get_parameter("belt_mode_topic", belt_mode_topic_);
+  get_parameter("belt_rpm_topic", belt_rpm_topic_);
+  get_parameter("stop_rpm", stop_rpm_);
+  get_parameter("level_1_rpm", level_1_rpm_);
+  get_parameter("level_2_rpm", level_2_rpm_);
+  get_parameter("level_3_rpm", level_3_rpm_);
+  get_parameter("command_period_ms", command_period_ms_);
+  get_parameter("qos_depth", qos_depth_);
 }
 
 void BeltControllerNode::belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -61,6 +85,7 @@ void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPt
 void BeltControllerNode::timer_callback()
 {
   std_msgs::msg::Int16 rpm_command;
+  // 設定が不正、または発射無効中なら安全側として0 RPMを送る。
   rpm_command.data = static_cast<int16_t>(
     is_configuration_valid_ && belt_is_fire_ ? target_rpm_from_mode(belt_mode_) : 0);
   rpm_pub_->publish(rpm_command);
@@ -68,15 +93,20 @@ void BeltControllerNode::timer_callback()
 
 int BeltControllerNode::target_rpm_from_mode(uint8_t mode)
 {
+  // joy_controllerから受けた速度段階を、configで設定した実RPMへ変換する。
   switch (mode) {
     case stop_mode_:
       return stop_rpm_;
+
     case level_1_mode_:
       return level_1_rpm_;
+
     case level_2_mode_:
       return level_2_rpm_;
+
     case level_3_mode_:
       return level_3_rpm_;
+
     default:
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 1000, "Unsupported belt_mode %u. Stopping belt.", mode);

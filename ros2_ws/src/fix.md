@@ -1,55 +1,36 @@
 # 修正・実装TODO
 
-## dribble実速度確認後のばね射出
+## [重大] dribble実速度確認後のばね射出
 
 - 現在は、dribble_controllerが減速指令を`0 rad/s`へ到達させたことを停止完了としている。
 - STM32からdribbleモータの実速度を取得するtopicを追加し、実測速度が0付近であることを確認してから`spring_controller`が`FIRE`状態へ遷移するようにする。
+- springで射出するときに、dribbleの回転数を必ず0にしなくてもよい可能性があるため、実機で必要性を確認する。
 
-## EduLiteドライバの集約
+## [重大] spring LOAD状態の巻取りタイムアウト
 
-- `edulite_driver`はモータごとにnodeを起動せず、1 nodeで全EduLiteモータを処理する。
-- controller側はモータIDやCAN仕様を持たず、機構として意味のあるtopicをpublishする。
-- `edulite_driver`側のconfig.yamlで、topic、motor ID、制御種別（position / velocity）、正逆転の符号を管理する。
+- 現在は`LOAD`状態でリミットスイッチがONになるまで、ばねの巻取り速度を出し続ける。
+- リミットスイッチ断線、feedback途絶、機構詰まり時にモータを継続駆動する可能性がある。
+- `load_timeout_sec`を追加し、超過時は`0 rad/s`へ停止してエラー状態へ遷移する。復帰方法は実機運用に合わせて明確にする。
 
-### controllerからedulite_driverへ渡すtopic案
+## [高] mecanumパラメータの妥当性検証
 
-| 機構 | topic | 型 | 内容 |
-| --- | --- | --- | --- |
-| mecanum | `/mecanum_wheel_velocity_command` | `std_msgs/msg/Float32MultiArray` | ホイール角速度ベクトル `[rad/s]`。順序は`[front_left, front_right, rear_left, rear_right]`で固定 |
-| spring | `/spring_velocity_command` | `std_msgs/msg/Float32` | ばねを引き切るベルト用EduLiteの目標角速度 `[rad/s]` |
-| dribble | `/dribble/rpm` | `std_msgs/msg/Int16` | dribble用の目標回転数 `[RPM]` |
+- `wheel_radius`が0以下の場合に車輪速度計算でゼロ除算となり、無限大または不正な速度指令をpublishする可能性がある。
+- `wheel_radius`は正の有限値、車体寸法は非負の有限値、符号・補正係数は有限値であることを起動時に検証する。
+- 不正な設定の場合は、各輪へ`0 rad/s`のみをpublishする。
 
-### edulite_driverの設定案
+## [高] dribble_controllerの不正周期設定時の安全な起動
 
-```yaml
-mecanum:
-  topic: /mecanum_wheel_velocity_command
-  motor_ids: [1, 2, 3, 4]
-  control_type: velocity
-  velocity_sign: [1.0, 1.0, -1.0, -1.0]
+- `command_period_ms`が0以下の場合、エラーログは出るが値を安全な既定値へ戻さずにtimerを生成している。
+- timer生成に失敗してnodeが起動せず、明示的な停止指令を送れない可能性がある。
+- belt_controller、spring_controllerと同様に、不正値検出時は設定を無効扱いにしつつ周期を安全な既定値へ戻す。
 
-spring:
-  topic: /spring_velocity_command
-  motor_id: 5
-  control_type: velocity
-  velocity_sign: 1.0
+## [中] DribblePosition Actionの到達判定とタイムアウト
 
-dribble:
-  topic: /dribble/rpm
-  motor_id: 6
-  control_type: velocity
-  velocity_sign: -1.0
-```
+- `position_tolerance_rad`が0以下の場合、到達判定が成立せずActionが終了しない可能性がある。
+- 位置feedbackが途絶えた場合もActionが実行中のまま残る。
+- `position_tolerance_rad`を正の有限値として検証し、移動時間またはfeedback受信のタイムアウト時にはActionを失敗終了して安全な位置指令を出す。
 
-- position / velocityを実行中に切り替える必要が出た場合だけ、制御modeを含む専用カスタムメッセージを検討する。
+## [中] DribblePosition Actionのキャンセル結果
 
-## ばね射出時の駆動方式
-
-- ばね用RobStrideは、`LOAD`中に`loading_velocity_rad_s`を出してばねを引く。
-- `READY`では`0 rad/s`で待機する。
-- `FIRE`では`fire_velocity_rad_s`を`fire_duration_sec`の間出して、RobStrideを回転させて発射する。
-- 逆回転で発射する場合、`loading_velocity_rad_s`と`fire_velocity_rad_s`は逆符号に設定する。実機に合わせてYAMLで校正する。
-
-## beltの動作モード
-
-- 各速度モードの実際の目標角速度、motor ID、正逆転は`edulite_driver`側config.yamlで管理する。
+- cancel要求を受理した場合に`abort()`で終了しており、利用側からはキャンセルと異常終了を区別できない。
+- 通常のcancelは`canceled()`で終了し、新しいgoalによる置換などの中断だけを`abort()`で終了する。
