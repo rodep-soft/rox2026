@@ -113,15 +113,16 @@ class Ed05DriverNode : public rclcpp::Node
 
         void declare_parameters()
         {
-            this->declare_parameter<std::string>("sub_topic_name", "cmd");
+            this->declare_parameter<std::string>("sub_cmd_topic_name", "cmd");
             this->declare_parameter<std::string>("pub_topic_name", "can_tx");
-            //this->declare_parameter<std::string>("sub_")
-            //this->declare_parameter<uint8_t>("motor_id", 0);
+            this->declare_parameter<std::string>("sub_can_topic_name", "can");
+
         }
         void get_parameters()
         {
             sub_topic_name_ = this->get_parameter("sub_topic_name").as_string();
             pub_topic_name_ = this->get_parameter("pub_topic_name").as_string();
+            sub_can_topic_name_ = this->get_parameter("sub_can_topic_name").as_string();
         }
 };
 
