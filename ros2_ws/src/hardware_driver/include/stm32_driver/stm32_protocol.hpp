@@ -45,23 +45,31 @@ can_msgs::msg::Frame make_alive_frame();
 /// @return canFrame
 can_msgs::msg::Frame make_led_frame(uint8_t command);
 
-/// @brief 現在のモータのrpmのcanFrameのデコード
-/// @param frame canFrame
-/// @param motor モータのインデックス[0 - num]
-/// @param rpm 現在のモータのrpm
-/// @return true:正常にデータを受け取れた false:受信していない
+/// @brief Check whether a frame is a standard CAN data frame.
+/// @param frame Received CAN frame.
+/// @return true for a standard data frame; otherwise false.
+bool is_standard_data_frame(const can_msgs::msg::Frame & frame);
+
+/// @brief Decode the current brushless motor RPM.
+/// @pre is_standard_data_frame(frame) is true.
+/// @param frame CAN frame.
+/// @param motor Motor index.
+/// @param rpm Decoded current RPM.
+/// @return true if the ID and DLC are valid; otherwise false.
 bool decode_motor_current(
   const can_msgs::msg::Frame & frame, std::size_t & motor, float & rpm);
 
-/// @brief リミットスイッチのデータを受信しstateに保存
-/// @param frame 受信したcanFrame
-/// @param state 保存先の変数
-/// @return true:正常なデータを受け取れた false:受信していない
+/// @brief Decode the limit switch state.
+/// @pre is_standard_data_frame(frame) is true.
+/// @param frame CAN frame.
+/// @param state Decoded limit switch state.
+/// @return true if the ID and DLC are valid; otherwise false.
 bool decode_limit_switch(const can_msgs::msg::Frame & frame, uint8_t & state);
 
-/// @brief canFrameの形式があっているかを確認し，受信できていることを判断する
-/// @param frame canFrame
-/// @return true:受信した false:受信していない
+/// @brief Check whether a frame is a heartbeat response from the STM32.
+/// @pre is_standard_data_frame(frame) is true.
+/// @param frame CAN frame.
+/// @return true if the ID and DLC are valid; otherwise false.
 bool is_heartbeat_response(const can_msgs::msg::Frame & frame);
 
 }  // namespace stm32_driver::protocol
