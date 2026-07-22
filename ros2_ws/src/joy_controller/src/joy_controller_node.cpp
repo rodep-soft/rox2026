@@ -297,6 +297,7 @@ void JoyControllerNode::state_publish_timer_callback()
     return;
   }
 
+  // 走行指令以外の状態topicは、Joy受信ごとではなく一定周期でpublishする。
   publish_state_commands();
 }
 
@@ -388,9 +389,13 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   joy_received_ = true;
   last_joy_received_time_ = std::chrono::steady_clock::now();
   const auto & joy_msg = *msg;
+
+  // enableボタンと操作入力の組み合わせ状態を作り、押し順に依存しない判定にする。
   update_chord_inputs(joy_msg);
 
+  // 非常停止は通常操作より優先し、処理した場合はここで抜ける。
   if (handle_emergency_stop()) {
+    // 非常停止中も入力の前回状態を更新し、解除時に同じ押下を二重処理しない。
     update_previous_chord_inputs();
     return;
   }
@@ -439,5 +444,6 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 
   mecanum_cmd_vel_publisher_->publish(cmd_vel_);
 
+  // 次回callbackで組み合わせ入力のoff->onを判定するため、今回の状態を保存する。
   update_previous_chord_inputs();
 }
