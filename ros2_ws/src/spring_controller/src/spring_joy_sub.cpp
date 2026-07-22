@@ -51,8 +51,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr spring_publisher;
   rclcpp::TimerBase::SharedPtr timer_;
 
-  sensor_msgs::msg::Joy::SharedPtr joy_msg;
-  std_msgs::msg::Bool::SharedPtr emergency_msg;
+  sensor_msgs::msg::Joy joy_msg;
+  std_msgs::msg::Bool emergency_msg;
 
   struct JoyInput
   {
@@ -76,9 +76,9 @@ private:
     */
 
     if (getValue(
-        *joy_msg,
+        joy_msg,
         joy_inputs["lock_key"]) > 0.8 &&
-      getValue(*joy_msg, joy_inputs["shoot_key"]) > 0.8)
+      getValue(joy_msg, joy_inputs["shoot_key"]) > 0.8)
     {
       fire_command.data = static_cast<uint8_t>(State::FIRE); // 発射命令
     } else {
@@ -86,9 +86,9 @@ private:
      
      }
 
-    if (emergency_msg && emergency_msg->data) {
-      fire_command.data = static_cast<uint8_t>(State::STOP); // 停止命令
-    }
+   // if (emergency_msg && emergency_msg->data) {
+   //   fire_command.data = static_cast<uint8_t>(State::STOP); // 停止命令
+    //}
 
     spring_publisher->publish(fire_command);
     }
@@ -96,15 +96,15 @@ private:
 
   void topic_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
-    joy_msg = msg;
+    joy_msg = *msg;
   }
 
   void emergency_callback(const std_msgs::msg::Bool::SharedPtr msg)
   {
-    emergency_msg = msg;
+    emergency_msg = *msg;
   }
 
-  float getValue(const sensor_msgs::msg::Joy & joy, const JoyInput & input)
+  float getValue(const sensor_msgs::msg::Joy joy, const JoyInput & input)
   { 
     // axisとbuttonの値を取得する関数
     if (input.type == "axis" && input.index < joy.axes.size()) {
