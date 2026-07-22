@@ -88,7 +88,7 @@ can_msgs::msg::Frame make_led_frame(uint8_t command)
 
 bool decode_motor_current(const can_msgs::msg::Frame & frame, std::size_t & motor, float & rpm)
 {
-  if (!is_standard_data_frame(frame) || frame.dlc != sizeof(float) ||
+  if (frame.dlc != sizeof(float) ||
     frame.id < MOTOR_CURRENT_RPM_BASE ||
     frame.id >= MOTOR_CURRENT_RPM_BASE + MOTOR_NUM)
   {
@@ -102,7 +102,7 @@ bool decode_motor_current(const can_msgs::msg::Frame & frame, std::size_t & moto
 
 bool decode_limit_switch(const can_msgs::msg::Frame & frame, uint8_t & state)
 {
-  if (!is_standard_data_frame(frame) || frame.id != LIMIT_SWITCH_STATE || frame.dlc != 1) {
+  if (frame.id != LIMIT_SWITCH_STATE || frame.dlc != 1) {
     return false;
   }
 
@@ -112,7 +112,7 @@ bool decode_limit_switch(const can_msgs::msg::Frame & frame, uint8_t & state)
 
 bool is_heartbeat_response(const can_msgs::msg::Frame & frame)
 {
-  return is_standard_data_frame(frame) && frame.id == HEARTBEAT_FROM_STM && frame.dlc == 0;
+  return frame.id == HEARTBEAT_FROM_STM && frame.dlc == 0;
 }
 
 } // namespace stm32_driver::protocol
