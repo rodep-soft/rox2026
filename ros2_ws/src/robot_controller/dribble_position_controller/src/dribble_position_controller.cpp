@@ -23,6 +23,11 @@ DribblePositionController::DribblePositionController()
     RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
     qos_depth_ = 1;
   }
+  if (return_timeout_sec_ <= 0.0) {
+    RCLCPP_WARN(
+      get_logger(), "return_timeout_sec must be greater than zero. Using the default value of 3.0 s.");
+    return_timeout_sec_ = 3.0;
+  }
 
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
     dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
@@ -36,6 +41,9 @@ DribblePositionController::DribblePositionController()
       std::placeholders::_2),
     std::bind(&DribblePositionController::handle_cancel, this, std::placeholders::_1),
     std::bind(&DribblePositionController::handle_accepted, this, std::placeholders::_1));
+  return_timeout_timer_ = create_wall_timer(
+    std::chrono::milliseconds(100),
+    std::bind(&DribblePositionController::return_timeout_callback, this));
 
   publish_target_position(dribble_position_rad_);
 }
@@ -49,6 +57,7 @@ void DribblePositionController::declare_parameters()
   declare_parameter<double>("intake_position_rad", 1.5);
   declare_parameter<double>("shoot_position_rad", 2.0);
   declare_parameter<double>("position_tolerance_rad", 0.02);
+  declare_parameter<double>("return_timeout_sec", 3.0);
   declare_parameter<int>("qos_depth", 1);
 }
 
@@ -61,6 +70,7 @@ void DribblePositionController::get_parameters()
   get_parameter("intake_position_rad", intake_position_rad_);
   get_parameter("shoot_position_rad", shoot_position_rad_);
   get_parameter("position_tolerance_rad", position_tolerance_rad_);
+  get_parameter("return_timeout_sec", return_timeout_sec_);
   get_parameter("qos_depth", qos_depth_);
 }
 
@@ -81,7 +91,15 @@ rclcpp_action::CancelResponse DribblePositionController::handle_cancel(
   const std::shared_ptr<GoalHandle> goal_handle)
 {
   if (goal_handle == active_goal_) {
-    finish_goal(false, "Goal cancelled");
+    RCLCPP_INFO(get_logger(), "Dribble position goal cancelled. Returning to dribble position.");
+    start_return_to_dribble(Completion::CANCELED, "Goal cancelled after returning to dribble position");
+  } else if (goal_handle == pending_goal_) {
+    RCLCPP_INFO(get_logger(), "Pending dribble position goal cancelled before execution.");
+    auto result = std::make_shared<DribblePosition::Result>();
+    result->success = false;
+    result->message = "Goal cancelled before execution";
+    pending_goal_->canceled(result);
+    pending_goal_.reset();
   }
   return rclcpp_action::CancelResponse::ACCEPT;
 }
@@ -89,9 +107,26 @@ rclcpp_action::CancelResponse DribblePositionController::handle_cancel(
 void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle> goal_handle)
 {
   if (active_goal_) {
-    // 新しいgoalを受けたら、実行中の移動を中断する。
-    finish_goal(false, "Preempted by a new goal");
+    // 実行中のgoalはDRIBBLE位置への復帰を確認してから中断し、新しいgoalを開始する。
+    if (pending_goal_) {
+      RCLCPP_WARN(get_logger(), "Rejected a dribble position goal while another goal is pending.");
+      auto result = std::make_shared<DribblePosition::Result>();
+      result->success = false;
+      result->message = "Rejected because another goal is pending";
+      goal_handle->abort(result);
+      return;
+    }
+    RCLCPP_WARN(get_logger(), "Dribble position goal preempted. Returning to dribble position.");
+    pending_goal_ = goal_handle;
+    start_return_to_dribble(Completion::ABORTED, "Preempted by a new goal");
+    return;
   }
+
+  start_goal(goal_handle);
+}
+
+void DribblePositionController::start_goal(const std::shared_ptr<GoalHandle> goal_handle)
+{
   active_goal_ = goal_handle;
   if (goal_handle->get_goal()->command == DribblePosition::Goal::DRIBBLE) {
     state_ = State::DRIBBLE;
@@ -101,6 +136,16 @@ void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle
     state_ = State::INTAKE;
     publish_target_position(intake_position_rad_);
   }
+}
+
+void DribblePositionController::start_return_to_dribble(
+  Completion completion, const std::string & message)
+{
+  return_completion_ = completion;
+  return_start_time_ = now();
+  state_ = State::RETURN_TO_DRIBBLE;
+  publish_target_position(dribble_position_rad_);
+  RCLCPP_INFO(get_logger(), "%s", message.c_str());
 }
 
 void DribblePositionController::position_feedback_callback(
@@ -125,16 +170,46 @@ void DribblePositionController::position_feedback_callback(
   // 現在の目標位置に到達したら、次の状態へ進める。
   switch (state_) {
     case State::DRIBBLE:
-      finish_goal(true, "Reached dribble position");
+      finish_goal(Completion::SUCCEEDED, "Reached dribble position");
       break;
     case State::INTAKE:
       state_ = State::SHOOT;
       publish_target_position(shoot_position_rad_);
       break;
     case State::SHOOT:
-      finish_goal(true, "Reached shoot position");
+      finish_goal(Completion::SUCCEEDED, "Reached shoot position");
+      break;
+    case State::RETURN_TO_DRIBBLE: {
+        RCLCPP_INFO(get_logger(), "Returned to dribble position.");
+        const auto completion = return_completion_;
+        finish_goal(
+          completion,
+          completion == Completion::CANCELED ?
+          "Goal cancelled after returning to dribble position" :
+          "Goal aborted after returning to dribble position");
+        if (pending_goal_) {
+          auto pending_goal = pending_goal_;
+          pending_goal_.reset();
+          start_goal(pending_goal);
+        }
+      }
       break;
   }
+}
+
+void DribblePositionController::return_timeout_callback()
+{
+  if (!active_goal_ || state_ != State::RETURN_TO_DRIBBLE) {
+    return;
+  }
+  if ((now() - return_start_time_).seconds() <= return_timeout_sec_) {
+    return;
+  }
+
+  RCLCPP_ERROR(
+    get_logger(), "Timed out while returning to dribble position. Aborting active and pending goals.");
+  finish_goal(Completion::ABORTED, "Timed out while returning to dribble position");
+  abort_pending_goal("Timed out while waiting for return to dribble position");
 }
 
 void DribblePositionController::publish_target_position(double position_rad)
@@ -145,21 +220,39 @@ void DribblePositionController::publish_target_position(double position_rad)
   position_command_pub_->publish(command);
 }
 
-void DribblePositionController::finish_goal(bool success, const std::string & message)
+void DribblePositionController::finish_goal(Completion completion, const std::string & message)
 {
   if (!active_goal_) {
     return;
   }
   // Actionの結果を返し、実行中のgoalを終了状態にする。
   auto result = std::make_shared<DribblePosition::Result>();
-  result->success = success;
+  result->success = completion == Completion::SUCCEEDED;
   result->message = message;
-  if (success) {
-    active_goal_->succeed(result);
-  } else {
-    active_goal_->abort(result);
+  switch (completion) {
+    case Completion::SUCCEEDED:
+      active_goal_->succeed(result);
+      break;
+    case Completion::ABORTED:
+      active_goal_->abort(result);
+      break;
+    case Completion::CANCELED:
+      active_goal_->canceled(result);
+      break;
   }
   active_goal_.reset();
+}
+
+void DribblePositionController::abort_pending_goal(const std::string & message)
+{
+  if (!pending_goal_) {
+    return;
+  }
+  auto result = std::make_shared<DribblePosition::Result>();
+  result->success = false;
+  result->message = message;
+  pending_goal_->abort(result);
+  pending_goal_.reset();
 }
 
 int main(int argc, char * argv[])
