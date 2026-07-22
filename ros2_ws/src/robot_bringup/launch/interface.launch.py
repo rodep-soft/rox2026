@@ -2,6 +2,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 
@@ -15,10 +19,16 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            Node(
-                package="nobleo_socketcan_bridge",
-                executable="socketcan_bridge",
-                # output="screen",
+            IncludeLaunchDescription(
+                AnyLaunchDescriptionSource(
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare("ros2_socketcan"),
+                            "launch",
+                            "socket_can_bridge.launch.xml",
+                        ]
+                    )
+                )
             ),
             Node(
                 package="receive_stm32",

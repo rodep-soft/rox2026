@@ -12,7 +12,7 @@ public:
   LimitSwNode()
   : Node("limit_sw_node")
   {
-    this->declare_parameter<std::string>("can_receive_topic", "/socketcan_bridge/rx");
+    this->declare_parameter<std::string>("can_receive_topic", "/from_can_bus");
     this->declare_parameter<int>("target_can_id", 0x202);
 
     std::string topic_name = this->get_parameter("can_receive_topic").as_string();

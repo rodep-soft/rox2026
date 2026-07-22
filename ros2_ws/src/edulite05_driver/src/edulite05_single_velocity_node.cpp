@@ -21,7 +21,7 @@ public:
     const auto current_limit_a = declare_parameter<double>("current_limit_a", 11.0);
     const auto acceleration_rad_s2 = declare_parameter<double>("acceleration_rad_s2", 20.0);
     const auto can_tx_topic =
-      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+      declare_parameter<std::string>("can_tx_topic", "/to_can_bus");
     const auto motor_vel_topic = declare_parameter<std::string>("motor_vel_topic", "motor_vel");
 
     //一応警告も

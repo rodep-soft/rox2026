@@ -1,7 +1,10 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import TimerAction
+from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 
@@ -68,10 +71,16 @@ def generate_launch_description():
     )
 
     # ros2とcan の橋渡し
-    can_bridge = Node(
-        package="nobleo_socketcan_bridge",
-        executable="socketcan_bridge",
-        output="screen",
+    can_bridge = IncludeLaunchDescription(
+        AnyLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("ros2_socketcan"),
+                    "launch",
+                    "socket_can_bridge.launch.xml",
+                ]
+            )
+        )
     )
     delayed_wheel_to_can = TimerAction(
         period=2.0, actions=[wheel_to_can]  # 遅延させる時間（秒、float型）

@@ -42,7 +42,7 @@ RollerBeltCanPackerNode::RollerBeltCanPackerNode()
 
 void RollerBeltCanPackerNode::DeclareParameters()
 {
-  this->declare_parameter<std::string>("can_transmit_topic", "/socketcan_bridge/tx");
+  this->declare_parameter<std::string>("can_transmit_topic", "/to_can_bus");
   this->declare_parameter<int>("stm_can_id", 0x201);
   this->declare_parameter<bool>("is_extended", false);
   this->declare_parameter<std::string>("roller_rpm_topic", "/roller/rpm");

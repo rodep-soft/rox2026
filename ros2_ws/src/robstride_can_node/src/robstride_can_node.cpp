@@ -106,7 +106,7 @@ RobstrideCanNode::RobstrideCanNode()
 
 void RobstrideCanNode::DeclareParameters()
 {
-  this->declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+  this->declare_parameter<std::string>("can_tx_topic", "/to_can_bus");
   this->declare_parameter<int>("motor_can_id", 1);
   this->declare_parameter<int>("host_can_id", 0xFD);
 
