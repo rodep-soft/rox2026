@@ -55,6 +55,9 @@ private:
   void publish_stop_commands();
   void joy_timeout_callback();
   void state_publish_timer_callback();
+  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
+  bool handle_emergency_stop();
+  void update_previous_chord_inputs();
 
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
@@ -115,6 +118,16 @@ private:
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
   bool emergency_stop_latched_{false};
+  bool intake_chord_on_{false};
+  bool spring_fire_chord_on_{false};
+  bool belt_fire_chord_on_{false};
+  bool belt_mode_up_chord_on_{false};
+  bool belt_mode_down_chord_on_{false};
+  bool dribble_mode_up_chord_on_{false};
+  bool dribble_mode_down_chord_on_{false};
+  bool emergency_stop_chord_on_{false};
+  bool dribble_position_dribble_chord_on_{false};
+  bool dribble_position_shoot_chord_on_{false};
   bool pre_intake_chord_on_;
   bool pre_spring_fire_chord_on_;
   bool pre_belt_fire_chord_on_;
