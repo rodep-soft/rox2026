@@ -34,10 +34,13 @@ BeltControllerNode::BeltControllerNode()
   belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
     belt_fire_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
+
   belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
     belt_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
+
   rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic_, rclcpp::QoS(qos_depth_));
+
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&BeltControllerNode::timer_callback, this));
@@ -92,12 +95,16 @@ int BeltControllerNode::target_rpm_from_mode(uint8_t mode)
   switch (mode) {
     case stop_mode_:
       return stop_rpm_;
+
     case level_1_mode_:
       return level_1_rpm_;
+
     case level_2_mode_:
       return level_2_rpm_;
+
     case level_3_mode_:
       return level_3_rpm_;
+
     default:
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 1000, "Unsupported belt_mode %u. Stopping belt.", mode);

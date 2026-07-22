@@ -5,6 +5,14 @@
 #include <memory>
 #include <utility>
 
+// DribblePosition Actionは、dribble機構の位置移動を管理する。
+// GoalはDRIBBLEまたはSHOOTだけを受け付け、それ以外のcommandは拒否する。
+// DRIBBLE指令ではドリブル位置へ移動し、到達したらActionを成功完了する。
+// SHOOT指令では取り込み位置へ移動し、到達後にシュート位置へ進む。
+// 各移動はhardware_driverからの実位置feedbackを見て、目標位置との差が
+// position_tolerance_rad(許容範囲内のrad)以内になったタイミングで次の状態へ進める。
+// 新しいgoalを受けた場合は、実行中のgoalを中断して新しい移動を開始する。
+
 DribblePositionController::DribblePositionController()
 : Node("dribble_position_controller")
 {
@@ -60,6 +68,7 @@ rclcpp_action::GoalResponse DribblePositionController::handle_goal(
   const rclcpp_action::GoalUUID &,
   std::shared_ptr<const DribblePosition::Goal> goal)
 {
+  // Actionで定義した2種類の位置指令だけを受け付ける。
   if (goal->command != DribblePosition::Goal::DRIBBLE &&
     goal->command != DribblePosition::Goal::SHOOT)
   {
@@ -80,6 +89,7 @@ rclcpp_action::CancelResponse DribblePositionController::handle_cancel(
 void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle> goal_handle)
 {
   if (active_goal_) {
+    // 新しいgoalを受けたら、実行中の移動を中断する。
     finish_goal(false, "Preempted by a new goal");
   }
   active_goal_ = goal_handle;
@@ -87,6 +97,7 @@ void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle
     state_ = State::DRIBBLE;
     publish_target_position(dribble_position_rad_);
   } else {
+    // SHOOTは取り込み位置へ移動してからシュート位置へ進む。
     state_ = State::INTAKE;
     publish_target_position(intake_position_rad_);
   }
@@ -100,6 +111,7 @@ void DribblePositionController::position_feedback_callback(
     return;
   }
 
+  // 実行中の移動状態をfeedbackとして返す。
   auto feedback = std::make_shared<DribblePosition::Feedback>();
   feedback->state = static_cast<uint8_t>(state_);
   feedback->target_position_rad = static_cast<float>(target_position_rad_);
@@ -110,6 +122,7 @@ void DribblePositionController::position_feedback_callback(
     return;
   }
 
+  // 現在の目標位置に到達したら、次の状態へ進める。
   switch (state_) {
     case State::DRIBBLE:
       finish_goal(true, "Reached dribble position");
@@ -137,6 +150,7 @@ void DribblePositionController::finish_goal(bool success, const std::string & me
   if (!active_goal_) {
     return;
   }
+  // Actionの結果を返し、実行中のgoalを終了状態にする。
   auto result = std::make_shared<DribblePosition::Result>();
   result->success = success;
   result->message = message;
