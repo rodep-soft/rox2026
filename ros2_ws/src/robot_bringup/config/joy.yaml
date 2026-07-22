@@ -14,7 +14,7 @@ joy_controller:
     joy_qos_depth: 1
     command_qos_depth: 1
 
-    # 吸気操作のボタン番号。
+    # 取り入れる操作のボタン番号。
     intake_is_enable_button: 6
     intake_button_on: 3
 

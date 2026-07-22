@@ -20,7 +20,7 @@ public:
   JoyControllerNode();
 
 private:
-  enum class BeltMode : uint8_t
+  enum class BeltRpmMode : uint8_t
   {
     STOP = 0,
     LEVEL_1 = 1,
@@ -28,7 +28,7 @@ private:
     LEVEL_3 = 3,
   };
 
-  enum class DribbleMode : uint8_t
+  enum class DribbleRpmMode : uint8_t
   {
     STOP = 0,
     HIGH = 1,
@@ -101,8 +101,8 @@ private:
   bool intake_enabled_{false};
   bool spring_fire_enabled_{false};
   bool belt_fire_enabled_{false};
-  uint8_t belt_mode_{static_cast<uint8_t>(BeltMode::STOP)};
-  uint8_t dribble_mode_{static_cast<uint8_t>(DribbleMode::STOP)};
+  uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
+  uint8_t dribble_rpm_mode_{static_cast<uint8_t>(DribbleRpmMode::STOP)};
 
   bool pre_intake_button_on_;
   bool pre_spring_fire_button_on_;

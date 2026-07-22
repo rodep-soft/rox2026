@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 
+// コンストラクタ
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller"),
   pre_intake_button_on_(false),
@@ -19,6 +20,7 @@ JoyControllerNode::JoyControllerNode()
   declare_parameters();
   get_parameters();
 
+  // qosが有効値かどうか
   if (joy_qos_depth_ <= 0) {
     RCLCPP_WARN(
       get_logger(), "joy_qos_depth must be positive. Using the default value of 1.");
@@ -236,20 +238,21 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     intake_enabled_ = false;
     spring_fire_enabled_ = false;
     belt_fire_enabled_ = false;
-    belt_mode_ = static_cast<uint8_t>(BeltMode::STOP);
-    dribble_mode_ = static_cast<uint8_t>(DribbleMode::STOP);
+    belt_rpm_mode_ = static_cast<uint8_t>(BeltRpmMode::STOP);
+    dribble_rpm_mode_ = static_cast<uint8_t>(DribbleRpmMode::STOP);
     mecanum_cmd_vel_publisher_->publish(cmd_vel_);
     std_msgs::msg::Bool spring; spring.data = spring_fire_enabled_;
     spring_fire_publisher_->publish(spring);
     std_msgs::msg::Bool belt; belt.data = belt_fire_enabled_;
     belt_fire_publisher_->publish(belt);
-    std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_mode_;
+    std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_rpm_mode_;
     belt_mode_publisher_->publish(belt_mode_msg);
-    std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_mode_;
+    std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_rpm_mode_;
     dribble_mode_publisher_->publish(dribble_mode_msg);
 
     if (!pre_emergency_stop_button_on_) {
       call_emergency_stop();
+      // ドリブルする位置にDribble Positionを移動
       send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
     }
 
@@ -274,16 +277,17 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     belt_fire_enabled_ = !belt_fire_enabled_;
   }
   if (belt_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
-    belt_mode_ = increment_mode(belt_mode_, static_cast<uint8_t>(BeltMode::LEVEL_3));
+    belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_3));
   }
   if (belt_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
-    belt_mode_ = decrement_mode(belt_mode_);
+    belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
   }
   if (dribble_mode_is_enable_button && is_mode_up && !pre_mode_up_) {
-    dribble_mode_ = increment_mode(dribble_mode_, static_cast<uint8_t>(DribbleMode::LOW));
+    dribble_rpm_mode_ =
+      increment_mode(dribble_rpm_mode_, static_cast<uint8_t>(DribbleRpmMode::LOW));
   }
   if (dribble_mode_is_enable_button && is_mode_down && !pre_mode_down_) {
-    dribble_mode_ = decrement_mode(dribble_mode_);
+    dribble_rpm_mode_ = decrement_mode(dribble_rpm_mode_);
   }
   if (dribble_position_is_enable_button && dribble_position_dribble_button_on &&
     !pre_dribble_position_dribble_button_on_)
@@ -311,9 +315,9 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   std_msgs::msg::Bool spring; spring.data = spring_fire_enabled_;
   spring_fire_publisher_->publish(spring);
   std_msgs::msg::Bool belt; belt.data = belt_fire_enabled_; belt_fire_publisher_->publish(belt);
-  std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_mode_;
+  std_msgs::msg::UInt8 belt_mode_msg; belt_mode_msg.data = belt_rpm_mode_;
   belt_mode_publisher_->publish(belt_mode_msg);
-  std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_mode_;
+  std_msgs::msg::UInt8 dribble_mode_msg; dribble_mode_msg.data = dribble_rpm_mode_;
   dribble_mode_publisher_->publish(dribble_mode_msg);
 
   pre_intake_button_on_ = intake_button_on;
