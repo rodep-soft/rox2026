@@ -1,6 +1,8 @@
 #ifndef SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 #define SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 
+#include <string>
+
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
@@ -32,6 +34,11 @@ private:
   double fire_duration_sec_{0.0};  // FIRE状態を継続する時間[s]。
   int qos_depth_{1};
   rclcpp::Time fire_start_time_;  // FIRE状態へ遷移した時刻。
+  std::string fire_request_topic_;
+  std::string limit_switch_topic_;
+  std::string spring_velocity_command_topic_;
+  std::string dribble_stop_request_topic_;
+  std::string dribble_is_stopped_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_switch_sub_;
@@ -40,6 +47,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_stop_request_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
+  void declare_parameters();
+  void get_parameters();
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
   void dribble_is_stopped_callback(const std_msgs::msg::Bool::SharedPtr msg);

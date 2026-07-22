@@ -19,6 +19,8 @@ private:
 
   enum class State : uint8_t {DRIBBLE, OFFSET, INTAKE, SHOOT};
 
+  void declare_parameters();
+  void get_parameters();
   rclcpp_action::GoalResponse handle_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const DribblePosition::Goal> goal);
@@ -37,6 +39,9 @@ private:
   double target_position_rad_{0.0};
   int qos_depth_{1};
   State state_{State::DRIBBLE};
+  std::string dribble_position_command_topic_;
+  std::string dribble_position_feedback_topic_;
+  std::string dribble_position_action_;
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr position_feedback_sub_;
