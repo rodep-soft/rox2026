@@ -25,7 +25,8 @@ DribblePositionController::DribblePositionController()
   }
   if (return_timeout_sec_ <= 0.0) {
     RCLCPP_WARN(
-      get_logger(), "return_timeout_sec must be greater than zero. Using the default value of 3.0 s.");
+      get_logger(),
+      "return_timeout_sec must be greater than zero. Using the default value of 3.0 s.");
     return_timeout_sec_ = 3.0;
   }
 
@@ -92,7 +93,9 @@ rclcpp_action::CancelResponse DribblePositionController::handle_cancel(
 {
   if (goal_handle == active_goal_) {
     RCLCPP_INFO(get_logger(), "Dribble position goal cancelled. Returning to dribble position.");
-    start_return_to_dribble(Completion::CANCELED, "Goal cancelled after returning to dribble position");
+    start_return_to_dribble(
+      Completion::CANCELED,
+      "Goal cancelled after returning to dribble position");
   } else if (goal_handle == pending_goal_) {
     RCLCPP_INFO(get_logger(), "Pending dribble position goal cancelled before execution.");
     auto result = std::make_shared<DribblePosition::Result>();
@@ -207,7 +210,8 @@ void DribblePositionController::return_timeout_callback()
   }
 
   RCLCPP_ERROR(
-    get_logger(), "Timed out while returning to dribble position. Aborting active and pending goals.");
+    get_logger(),
+    "Timed out while returning to dribble position. Aborting active and pending goals.");
   finish_goal(Completion::ABORTED, "Timed out while returning to dribble position");
   abort_pending_goal("Timed out while waiting for return to dribble position");
 }

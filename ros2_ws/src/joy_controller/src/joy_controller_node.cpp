@@ -41,21 +41,28 @@ JoyControllerNode::JoyControllerNode()
     joy_topic_, rclcpp::QoS(rclcpp::KeepLast(joy_qos_depth_)).best_effort(),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
-  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(mecanum_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
+    mecanum_cmd_vel_topic_, rclcpp::QoS(
+      command_qos_depth_));
 
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
     spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
 
-  belt_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(command_qos_depth_));
+  belt_fire_publisher_ =
+    create_publisher<std_msgs::msg::Bool>(belt_fire_topic_, rclcpp::QoS(command_qos_depth_));
 
-  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
+  belt_mode_publisher_ =
+    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
 
-  dribble_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(command_qos_depth_));
+  dribble_mode_publisher_ =
+    create_publisher<std_msgs::msg::UInt8>(dribble_mode_topic_, rclcpp::QoS(command_qos_depth_));
 
   emergency_stop_client_ = create_client<std_srvs::srv::Trigger>(emergency_stop_service_);
 
-  dribble_position_action_client_ = 
-    rclcpp_action::create_client<robot_controller::action::DribblePosition>(this, dribble_position_action_);
+  dribble_position_action_client_ =
+    rclcpp_action::create_client<robot_controller::action::DribblePosition>(
+    this,
+    dribble_position_action_);
 
   // 起動直後は操作入力が来るまで、各機構へ停止指令を出しておく。
   publish_stop_commands();
