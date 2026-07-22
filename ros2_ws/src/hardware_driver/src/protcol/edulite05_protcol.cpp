@@ -1,5 +1,5 @@
 #include "edulite05_protcol.hpp"
-
+#include <cmath>
 
 Ed05CanframeCreater::Ed05CanframeCreater(uint8_t motor_id) : motor_id_(motor_id)
 {
@@ -47,7 +47,7 @@ std::vector<Canframe> Position::create_init_frame()
     
     return frames;
 }
-
+/*
 Canframe Ed05CanframeCreater::create_control_frame(float value)
 {
     /*
@@ -57,9 +57,20 @@ Canframe Ed05CanframeCreater::create_control_frame(float value)
 
     ControlTargetInfo[0].value = value;
     frame.data = encode_commtype18_data(targets_info[1]);
-    */
     //この関数も継承して
     //ここでvalueを範囲に丸め込むのがよいのでは？
+    return set_target_value(targets_info[0]);
+}
+*/
+Canframe Velocity::create_control_frame(float value)
+{
+    targets_info[0].value = std::clamp(value, -50, 50);
+    return set_target_value(targets_info[0]);
+}
+
+Canframe Position::create_control_frame(float value)
+{
+    targets_info[0].value = std::clamp(value, -1 * M_PI, M_PI);
     return set_target_value(targets_info[0]);
 }
 
@@ -76,16 +87,15 @@ uint8_t[8] Ed05CanframeCreater::encode_commtype18_data(ControlTargetInfo target_
     uint8_t[8] data;  //arrayのほうがよかったり？
     uint16_t index = target_info.index;
     //ここで値が範囲外なら知らせておくべきか？
-    float value = std::clamp(target_info.value, target_info.min_value, target_info.max_value);
-
+    //float value = std::clamp(target_info.value, target_info.min_value, target_info.max_value);
+    float value = std::clamp(target_info.value);
     //data[0] = index | 0xFF;
-    encode_data(bit_cast<uint32_t> index, 2); 
+    encode_data(static_cast<uint32_t> index, 2); 
     uint8_t[2] = 0; //ここbitcastいるかな？ もしくは0x00 2 = 0x0000 は？
     uint8_t[3] = 0;
-    encode_data(uint32_t value, 4);
+    encode_data(static_cast<uint32_t> value, 4);
 
     return data;
-
 }
 
 void Ed05CanframeCreater::encode_data(uint8_t array[], uint32_t data, int byte_num){

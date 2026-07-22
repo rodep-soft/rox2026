@@ -33,7 +33,8 @@ class Ed05CanframeCreater
         ~Ed05CanframeCreater();
 
         virtual std::vector<Canframe> create_init_frame() = 0;
-        Canframe create_control_frame(float value);
+        //Canframe create_control_frame(float value);
+        virtual Canframe create_control_frame(float value) = 0;
 
         //set_param_value(char[8] param_name, float value); //加速度制限とか変更したかったらこれ使ってがんば;
 
@@ -54,8 +55,8 @@ class Ed05CanframeCreater
             char[12] name;
             uint16_t index; //commtype18で使用
             float value;
-            float max_value;   //maxとmin消すべきかも．vel/posだけ処理中でやるべきかも
-            float min_value;
+            //float max_value;   //maxとmin消すべきかも．vel/posだけ処理中でやるべきかも
+            //float min_value;
         };
         //std::unordered_map<ControlTarget, ControlTargetInfo> control_info;
 
@@ -86,12 +87,13 @@ class Velocity : public Ed05CanframeCreater
     private:
 
     std::vector<Canframe> create_init_frame();
+    std::vector<Canframe> create_control_frame(float value);
 
     std::array<ControlTargetInfo, 3> targets_info = {
         //{"runmode", 0x7005, 2.0, 6, 0}, //これここにいれるのキモくはある
-        {"vel", 0x700A, 0.0, 50.0, -50.0}, //ここにはメインのtarget  後を文字列で検索のがきれいではあるんよな
-        {"acc", 0x7022, 100, 1000, 0},
-        {"limit_cur", 0x7018, 5, 11, 0},
+        {"vel", 0x700A, 0.0}, //ここにはメインのtarget  後を文字列で検索のがきれいではあるんよな
+        {"acc", 0x7022, 100},
+        {"limit_cur", 0x7018, 5},
     }    
 }
 
@@ -99,15 +101,16 @@ class Position : public Ed05CanframeCreater
 {
     private:
     std::vector<Canframe> create_init_frame();
+    std::vector<Canframe> create_control_frame(float value);
 
-    std::array<ControlTargetInfo, 5> targets_info = {
+    std::array<ControlTargetInfo, 6> targets_info = {
         //{"runmode", 0x7005, 1.0, 6, 0},
-        {"limit_cur", 0x7018, , 11, 0},
-        {"zero_sta", 0x7029, 1, 0, 1},
-        {"loc_ref", 0x7016, },
+        {"loc_ref", 0x7016, 0},
+        {"limit_cur", 0x7018, 5},
+        {"vel_max", 0x7024, 50},
+        {"acc_set", 0x7025, 100},
+        {"zero_sta", 0x7029, 1},
 
-        {"vel_max"},
-        {"acc_set"},
-        {"zero_sta"}, //operation mode???
+
     }
 }
