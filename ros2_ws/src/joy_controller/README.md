@@ -63,8 +63,8 @@ ros2 topic echo /joy
 | ドリブル位置をDRIBBLEへ復帰 | L1 + × |
 | 緊急停止 | Create + タッチパッド |
 
-ベルトmodeは`STOP (0)`、`LEVEL_1 (1)`、`LEVEL_2 (2)`、`LEVEL_3 (3)`の4状態、
-dribble modeは`STOP (0)`、`HIGH (1)`、`LOW (2)`の3状態。
+ベルトmodeは`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4状態、
+dribble modeは`STOP (1)`、`HIGH (2)`、`LOW (3)`の3状態。
 DPAD上で1段階増加、DPAD下で1段階減少し、範囲外には遷移しない。
 
 `*_is_enable_button` は機構操作を有効化するボタン、`*_button_on` は実行する

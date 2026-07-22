@@ -15,9 +15,9 @@ public:
   DribbleController();
 
 private:
-  static constexpr uint8_t stop_mode_{0};
-  static constexpr uint8_t high_mode_{1};
-  static constexpr uint8_t low_mode_{2};
+  static constexpr uint8_t stop_mode_{1};
+  static constexpr uint8_t high_mode_{2};
+  static constexpr uint8_t low_mode_{3};
 
   void declare_parameters();
   void get_parameters();

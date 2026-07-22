@@ -215,7 +215,8 @@ uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode)
 
 uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
 {
-  return mode > 0 ? static_cast<uint8_t>(mode - 1) : 0;
+  const auto minimum_mode = static_cast<uint8_t>(BeltRpmMode::STOP);
+  return mode > minimum_mode ? static_cast<uint8_t>(mode - 1) : minimum_mode;
 }
 
 void JoyControllerNode::call_emergency_stop()

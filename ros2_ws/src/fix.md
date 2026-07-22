@@ -29,8 +29,3 @@
 - `position_tolerance_rad`が0以下の場合、到達判定が成立せずActionが終了しない可能性がある。
 - 位置feedbackが途絶えた場合もActionが実行中のまま残る。
 - `position_tolerance_rad`を正の有限値として検証し、移動時間またはfeedback受信のタイムアウト時にはActionを失敗終了して安全な位置指令を出す。
-
-## [低] joy_controllerのmode enum値の明示
-
-- `BeltRpmMode`と`DribbleRpmMode`は`UInt8`で別nodeへ送る値の契約になっているため、`STOP = 0`などの明示値は無意味ではない。
-- enum定義順と受信側のmode値が一致していることを確認したうえで、値を省略するか、通信仕様として明示値を残すかを統一する。

@@ -23,17 +23,17 @@ public:
 private:
   enum class BeltRpmMode : uint8_t
   {
-    STOP = 0,
-    LEVEL_1 = 1,
-    LEVEL_2 = 2,
-    LEVEL_3 = 3,
+    STOP = 1,
+    LEVEL_1,
+    LEVEL_2,
+    LEVEL_3,
   };
 
   enum class DribbleRpmMode : uint8_t
   {
-    STOP = 0,
-    HIGH = 1,
-    LOW = 2,
+    STOP = 1,
+    HIGH,
+    LOW,
   };
 
   void declare_parameters();
