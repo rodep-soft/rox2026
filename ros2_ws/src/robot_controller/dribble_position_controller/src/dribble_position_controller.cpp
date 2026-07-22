@@ -40,7 +40,6 @@ void DribblePositionController::declare_parameters()
   declare_parameter<double>("dribble_position_rad", 0.0);
   declare_parameter<double>("intake_position_rad", 1.5);
   declare_parameter<double>("shoot_position_rad", 2.0);
-  declare_parameter<double>("intake_offset_rad", 1.0);
   declare_parameter<double>("position_tolerance_rad", 0.02);
   declare_parameter<int>("qos_depth", 1);
 }
@@ -53,7 +52,6 @@ void DribblePositionController::get_parameters()
   get_parameter("dribble_position_rad", dribble_position_rad_);
   get_parameter("intake_position_rad", intake_position_rad_);
   get_parameter("shoot_position_rad", shoot_position_rad_);
-  get_parameter("intake_offset_rad", intake_offset_rad_);
   get_parameter("position_tolerance_rad", position_tolerance_rad_);
   get_parameter("qos_depth", qos_depth_);
 }
@@ -89,8 +87,8 @@ void DribblePositionController::handle_accepted(const std::shared_ptr<GoalHandle
     state_ = State::DRIBBLE;
     publish_target_position(dribble_position_rad_);
   } else {
-    state_ = State::OFFSET;
-    publish_target_position(dribble_position_rad_ + intake_offset_rad_);
+    state_ = State::INTAKE;
+    publish_target_position(intake_position_rad_);
   }
 }
 
@@ -116,15 +114,12 @@ void DribblePositionController::position_feedback_callback(
     case State::DRIBBLE:
       finish_goal(true, "Reached dribble position");
       break;
-    case State::OFFSET:
-      state_ = State::INTAKE;
-      publish_target_position(intake_position_rad_);
-      break;
     case State::INTAKE:
       state_ = State::SHOOT;
       publish_target_position(shoot_position_rad_);
       break;
     case State::SHOOT:
+      finish_goal(true, "Reached shoot position");
       break;
   }
 }

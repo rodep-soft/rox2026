@@ -17,7 +17,7 @@ private:
   using DribblePosition = robot_controller::action::DribblePosition;
   using GoalHandle = rclcpp_action::ServerGoalHandle<DribblePosition>;
 
-  enum class State : uint8_t {DRIBBLE, OFFSET, INTAKE, SHOOT};
+  enum class State : uint8_t {DRIBBLE, INTAKE, SHOOT};
 
   void declare_parameters();
   void get_parameters();
@@ -33,7 +33,6 @@ private:
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
   double shoot_position_rad_{0.0};
-  double intake_offset_rad_{1.0};
   double position_tolerance_rad_{0.02};
   double current_position_rad_{0.0};
   double target_position_rad_{0.0};
