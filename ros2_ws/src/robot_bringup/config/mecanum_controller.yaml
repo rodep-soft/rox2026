@@ -1,0 +1,18 @@
+mecanum_controller_node:
+  ros__parameters:
+    # subscribeする操作指令topic。geometry_msgs/msg/Twist。
+    cmd_vel_topic: /mecanum/cmd_vel
+    # 各ホイールへpublishする角速度topic。std_msgs/msg/Float32、単位はrad/s。
+    front_left_velocity_topic: /mecanum/front_left/velocity
+    front_right_velocity_topic: /mecanum/front_right/velocity
+    rear_left_velocity_topic: /mecanum/rear_left/velocity
+    rear_right_velocity_topic: /mecanum/rear_right/velocity
+
+    wheel_radius: 0.05
+    robot_length: 0.47
+    robot_width: 0.41
+    # 各ホイール速度に掛ける補正係数。配列順序は出力速度と同一。
+    velocity_corrections: [1.0, 1.0, 1.0, 1.0]
+    vx_sign: 1.0
+    vy_sign: 1.0
+    angular_z_sign: 1.0

@@ -1,0 +1,24 @@
+spring_controller_node:
+  ros__parameters:
+    # 操作指令を受信するtopic。
+    fire_request_topic: /spring/fire_request
+
+    # hardware_driverがpublishするリミットスイッチ配列topic。
+    # UInt8MultiArrayのdataをvectorとして扱い、0をfalse、1をtrueとする。
+    limit_switch_topic: /limit_switches
+    limit_switch_index: 0
+
+    # hardware_driverへ送るEduLite 05の速度指令topic。std_msgs/msg/Float32、単位はrad/s。
+    spring_velocity_command_topic: /spring_velocity_command
+
+    # 発射前にdribbleを停止させるか。std_msgs/msg/Boolの停止要求・完了topicを使用する。
+    stop_dribble_on_fire: true
+    dribble_stop_request_topic: /dribble_stop_request
+    dribble_is_stopped_topic: /dribble_is_stopped
+
+    # 正負の向きは機構の実装に合わせて調整する。
+    loading_velocity_rad_s: -5.0
+    fire_velocity_rad_s: -20.0
+
+    # FIRE状態を維持する時間[s]。
+    fire_duration_sec: 5.0

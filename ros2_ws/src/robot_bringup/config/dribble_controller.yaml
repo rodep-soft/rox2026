@@ -1,0 +1,18 @@
+dribble_controller_node:
+  ros__parameters:
+    # subscribeする操作指令topic。robot_controller/msg/RobotCommand。
+    dribble_mode_topic: /dribble/mode
+    # hardware_driverへ送る目標回転数topic。std_msgs/msg/Int16、単位はRPM。
+    dribble_rpm_topic: /stm/send/dribble_rpm
+    # spring_controllerから受ける停止要求topic。std_msgs/msg/Bool。
+    dribble_stop_request_topic: /dribble_stop_request
+    # spring_controllerへ返す停止完了topic。std_msgs/msg/Bool。
+    dribble_is_stopped_topic: /dribble_is_stopped
+
+    # dribble_modeがHIGH(1)、LOW(2)のときの目標回転数[RPM]。
+    low_rpm: 300.0
+    high_rpm: 600.0
+    # 停止要求時の減速度[RPM/s]。
+    stop_deceleration_rpm_s: 200.0
+    # RPM指令をpublishする周期[ms]。
+    command_period_ms: 10

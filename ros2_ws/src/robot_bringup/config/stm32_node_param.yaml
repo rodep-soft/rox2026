@@ -1,0 +1,11 @@
+stm32_driver_node:
+  ros__parameters:
+    can_pub_topic: "/socketcan_bridge/tx"  #CANBUSへ送信するトピック
+    can_sub_topic: "/socketcan_bridge/rx"  #CANBUSから受信するトピック
+    target_rpm_topic: "/brushless/target/rpm"   #目標rpmを制御ノードから受信するトピック
+    current_rpm_topic: "/brushless/current/rpm" #現在rpmを制御ノードに送信するトピック
+    led_cmd_topic: "/led/cmd"              #ledのコマンドを制御ノードから受信するトピック
+    limit_sw_topic: "/limitsw"             #limitswのデータを制御ノードへ送信するトピック
+    timeout_ms: 500                        #タイムアウト検知時間
+    keep_alive_period_ms: 100              #heartbeatの送信と判断周期
+    publish_period_ms: 10                  #制御ノードに送る現在のrpm送信周期

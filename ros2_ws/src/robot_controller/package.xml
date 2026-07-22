@@ -3,11 +3,20 @@
 <package format="3">
   <name>robot_controller</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Robot command interfaces and mecanum control node.</description>
   <maintainer email="abe.Mitsunobu2188@mail.kyutech.jp">sunrise</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
