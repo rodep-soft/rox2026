@@ -1,7 +1,7 @@
 roller_position_controller:
   ros__parameters:
     # RobStride loc_ref is radian.
-    storage_angle: 1.45 
+    storage_angle: 0.5 
     intake_angle: 0.2  
     shoot_angle: -1.3
 
