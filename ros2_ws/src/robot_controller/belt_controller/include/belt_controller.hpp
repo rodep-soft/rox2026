@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -18,6 +19,8 @@ private:
   static constexpr uint8_t level_2_mode_{2};
   static constexpr uint8_t level_3_mode_{3};
 
+  void declare_parameters();
+  void get_parameters();
   void belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void timer_callback();
@@ -32,6 +35,10 @@ private:
   int level_2_rpm_{4000};
   int level_3_rpm_{5000};
   int command_period_ms_{10};
+  int qos_depth_{1};
+  std::string belt_fire_topic_;
+  std::string belt_mode_topic_;
+  std::string belt_rpm_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr belt_fire_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
