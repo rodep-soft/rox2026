@@ -5,10 +5,16 @@ import os
 
 
 def generate_launch_description():
-    parameter_file = os.path.join(
+    stm32_parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
         "stm32_node_param.yaml",
+    )
+
+    edulite05_parameter_file = os.path.join(
+            get_package_share_directory("robot_bringup"),
+            "config",
+            "edulite05_node_param.yaml",
     )
 
     return LaunchDescription(
@@ -18,7 +24,15 @@ def generate_launch_description():
                 executable="stm32_node",
                 name="stm32_driver_node",
                 output="screen",
-                parameters=[parameter_file],
+                parameters=[stm32_parameter_file],
+            )
+
+            Node(
+                package="hardware_driver",
+                executable="edulite05_node",
+                name="edulite05_driver_node",
+                output="screen",
+                parameters=[edulite05_parameter_file],
             )
         ]
     )
