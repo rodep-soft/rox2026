@@ -11,7 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 
 # STM32 Protocol Library
-add_library(stm32_protocol src/stm32_driver/stm32_protocol.cpp)
+add_library(stm32_protocol src/protocol/stm32_protocol.cpp)
 target_compile_features(stm32_protocol PUBLIC cxx_std_17)
 target_include_directories(stm32_protocol
   PUBLIC
@@ -32,7 +32,7 @@ target_include_directories(edulite05_protocol
 ament_target_dependencies(edulite05_protocol can_msgs rclcpp std_msgs)
 
 # STM32 Node Executable
-add_executable(stm32_node src/stm32_driver/stm32_node.cpp)
+add_executable(stm32_node src/nodes/stm32_node.cpp)
 target_compile_features(stm32_node PUBLIC cxx_std_17)
 target_link_libraries(stm32_node stm32_protocol)
 ament_target_dependencies(stm32_node can_msgs rclcpp std_msgs)

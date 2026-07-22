@@ -2,4 +2,4 @@ edulite05_driver_node:
   ros__parameters:
     sub_cmd_topic_name: aaa
     pub_topic_name: "socketcan_bridge/tx"
-    sub_can_topic_name: "socketcan_bridge/rx"
+      #    sub_can_topic_name: "socketcan_bridge/rx"
