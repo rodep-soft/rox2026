@@ -20,6 +20,11 @@ SpringEduliteController::SpringEduliteController()
     RCLCPP_ERROR(get_logger(), "fire_duration_sec must be greater than zero");
     is_configuration_valid_ = false;
   }
+  if (command_period_ms_ <= 0) {
+    RCLCPP_ERROR(get_logger(), "command_period_ms must be greater than zero");
+    is_configuration_valid_ = false;
+    command_period_ms_ = 10;
+  }
   if (qos_depth_ <= 0) {
     RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
     qos_depth_ = 1;
@@ -41,7 +46,7 @@ SpringEduliteController::SpringEduliteController()
     dribble_stop_request_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
-    std::chrono::milliseconds(10),
+    std::chrono::milliseconds(command_period_ms_),
     std::bind(&SpringEduliteController::timer_callback, this));
 }
 
@@ -57,6 +62,7 @@ void SpringEduliteController::declare_parameters()
   declare_parameter<double>("loading_velocity_rad_s", -5.0);
   declare_parameter<double>("fire_velocity_rad_s", -20.0);
   declare_parameter<double>("fire_duration_sec", 5.0);
+  declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("qos_depth", 1);
 }
 
@@ -72,6 +78,7 @@ void SpringEduliteController::get_parameters()
   get_parameter("loading_velocity_rad_s", loading_velocity_rad_s_);
   get_parameter("fire_velocity_rad_s", fire_velocity_rad_s_);
   get_parameter("fire_duration_sec", fire_duration_sec_);
+  get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
 }
 
