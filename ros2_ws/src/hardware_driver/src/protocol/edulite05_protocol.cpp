@@ -100,7 +100,6 @@ std::array<uint8_t, 8> Ed05CanframeCreater::encode_commtype18_data(ControlTarget
 
 Canframe Ed05CanframeCreater::set_runmode(int value)
 {
-<<<<<<< HEAD
     Canframe frame{};
     frame.id = encode_can_id(0x12);
     frame.dlc = dlc_;
@@ -116,15 +115,6 @@ Canframe Ed05CanframeCreater::set_runmode(int value)
     frame.data[6] = 0x00; // reserved
     frame.data[7] = 0x00; // reserved
     return frame;
-=======
-  Canframe frame{};
-  frame.id = encode_can_id(0x12);
-  frame.dlc = dlc_;
-  ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
-  auto data = encode_commtype18_data(info);
-  std::memcpy(frame.data.data(), data.data(), 8);
-  return frame;
->>>>>>> origin/feature/edulite/driver
 }
 
 Canframe Ed05CanframeCreater::set_enable()
