@@ -44,7 +44,7 @@ ros2 topic echo /joy
 
 ## ボタン・軸の設定
 
-`robot_bringup/config/joy.yaml` で、各機構のボタンと各軸の番号を変更できる。
+`robot_bringup/config/joy_controller.yaml` で、各機構のボタンと各軸の番号を変更できる。
 設定値の名前は cpp 側で対応する押下状態の名前と共通で、値はボタンまたは軸の番号を表す。
 `/joy`のsubscribeは`joy_qos_depth`、各機構へのpublishは`command_qos_depth`でdepthを変更できる。
 
