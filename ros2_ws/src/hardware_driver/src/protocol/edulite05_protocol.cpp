@@ -143,4 +143,9 @@ Canframe Ed05CanframeCreater::set_mechanicalzero()
     return frame;
 }
 
+Canframe Ed05CanframeCreater::terminate_motor()
+{
+    return set_disable();
+}
+
 

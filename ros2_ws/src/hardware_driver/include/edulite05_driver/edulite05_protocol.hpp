@@ -21,6 +21,7 @@ public:
 
     virtual std::vector<Canframe> create_init_frame() = 0;
     virtual Canframe create_control_frame(float value) = 0;
+    Canframe terminate_motor();
 
 protected:
     struct ControlTargetInfo  

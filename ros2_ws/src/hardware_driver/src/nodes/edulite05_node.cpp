@@ -29,6 +29,20 @@ class Ed05DriverNode : public rclcpp::Node
             RCLCPP_INFO(this->get_logger(), "Ed05Node is shutting down.");
             // Cleanup code can be added here
         }
+        void terminate_motors()
+        {
+            frame_.is_extended = true;
+            frame_.is_rtr = false;
+            frame_.is_error = false;
+            for (size_t i = 0; i < motors_.size(); i++) {
+                Canframe frame = motors_[i]->terminate_motor();
+                frame_.id = frame.id;
+                frame_.dlc = frame.dlc;
+                frame_.data = frame.data;
+                frame_pub_->publish(frame_);
+                RCLCPP_DEBUG(this->get_logger(), "Published terminate frame for motor[%zu]", i);
+            }
+        }
 
     private:
         std::string sub_topic_name_;  // Subscription topic name
@@ -61,13 +75,15 @@ class Ed05DriverNode : public rclcpp::Node
                     frame_.dlc = frames[j].dlc;
                     frame_.data = frames[j].data;
                     frame_pub_->publish(frame_);
+                    RCLCPP_DEBUG(this->get_logger(), 
+                    "Published init frame for motor[%zu]: ID=0x%X, DLC=%d, Data=%d",
+                     i, frame_.id, frame_.dlc, frame_.data[0]);
                 }
             }
         }
 
         void cmd_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
         {
-            RCLCPP_INFO(this->get_logger(), "aaaaaaaaaaaaaaaa");
             float value;
             Canframe frame;
                 frame_.is_extended = true;
@@ -94,10 +110,12 @@ class Ed05DriverNode : public rclcpp::Node
             }
         }
 
+
         void declare_parameters()
         {
             this->declare_parameter<std::string>("sub_topic_name", "cmd");
             this->declare_parameter<std::string>("pub_topic_name", "can_tx");
+            //this->declare_parameter<std::string>("sub_")
             //this->declare_parameter<uint8_t>("motor_id", 0);
         }
         void get_parameters()
@@ -112,6 +130,7 @@ int main (int argc, char **argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<Ed05DriverNode>();
     rclcpp::spin(node);
+    node->terminate_motors();
     rclcpp::shutdown();
     return 0;
 }
