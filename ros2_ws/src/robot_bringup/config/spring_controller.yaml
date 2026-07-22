@@ -23,3 +23,6 @@ spring_controller_node:
 
     # FIRE状態を維持する時間[s]。
     fire_duration_sec: 5.0
+
+    # 速度指令とdribble停止要求をpublishする周期[ms]。
+    command_period_ms: 10

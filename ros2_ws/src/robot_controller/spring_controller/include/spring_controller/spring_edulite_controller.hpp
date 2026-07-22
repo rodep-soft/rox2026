@@ -32,6 +32,7 @@ private:
   double loading_velocity_rad_s_{0.0};  // LOAD状態で出力する目標角速度[rad/s]。
   double fire_velocity_rad_s_{0.0};  // FIRE状態で出力する目標角速度[rad/s]。
   double fire_duration_sec_{0.0};  // FIRE状態を継続する時間[s]。
+  int command_period_ms_{10};
   int qos_depth_{1};
   rclcpp::Time fire_start_time_;  // FIRE状態へ遷移した時刻。
   std::string fire_request_topic_;
