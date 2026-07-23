@@ -12,6 +12,14 @@ struct Canframe
   int dlc;
   std::array<uint8_t, 8> data;
 };
+/*
+enum class RunMode
+{
+  Operation = 0,
+  Velocity = 1,
+  Position = 2
+};
+*/
 
 class Ed05CanframeCreater
 {
@@ -54,9 +62,9 @@ public:
 
 private:
     std::array<ControlTargetInfo, 3> targets_info = {{
-        {"vel", 0x700A, 0.0f},
-        {"limit_cur", 0x7018, 5.0f},
-        {"acc", 0x7022, 100.0f},
+        {"vel", 0x700A, 0.0f}, // 速度指令
+        {"limit_cur", 0x7018, 5.0f}, // 電流制限
+        {"acc_rad", 0x7022, 100.0f}, // 加速度制限
     }};
 };
 
@@ -69,10 +77,10 @@ public:
 
 private:
   std::array<ControlTargetInfo, 5> targets_info = {{
-    {"loc_ref", 0x7016, 0.0f},
-    {"limit_cur", 0x7018, 5.0f},
-    {"vel_max", 0x7024, 50.0f},
-    {"acc_set", 0x7025, 100.0f},
-    {"zero_sta", 0x7029, 1.0f},
+    {"loc_ref", 0x7016, 0.0f}, // 位置指令
+    {"limit_cur", 0x7018, 5.0f}, // 電流制限
+    {"vel_max", 0x7024, 50.0f},  // 速度制限
+    {"acc_set", 0x7025, 100.0f}, // 加速度
+    {"zero_sta", 0x7029, 1.0f},  //
   }};
 };

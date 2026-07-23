@@ -22,6 +22,9 @@ public:
       sub_cmd_topic_name_, 1,
       std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
     frame_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_topic_name_, 10);
+    can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
+      sub_can_topic_name_, 10,
+      std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1));
 
     init_motor();
   }
@@ -47,27 +50,29 @@ public:
 private:
   std::string sub_cmd_topic_name_;        // Subscription topic name
   std::string pub_topic_name_;
+  std::string sub_can_topic_name_;        // Subscription topic name for CAN messages
   can_msgs::msg::Frame frame_;
 
-  uint8_t motor_id_;
-  int runmode_;  //0:vel, 1: pos
+  uint8_t motor_id_;  
+  std::string runmode_;  // "Velocity", "Position"
 
   //int count_motor = 0;
   //std::vector<Ed05CanframeCreater> motors;
 
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr cmd_sub_;
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr frame_pub_;        // Publisher for command messages
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;  // Subscription for CAN messages
   std::unique_ptr<Ed05CanframeCreater> motor_;
 
   void init_motor()
   {
-    if (runmode_ == 0) {
+    if (runmode_ == "Velocity") {
       motor_ = std::make_unique<Velocity>(motor_id_);
     }
-    else if (runmode_ == 1) {
+    else if (runmode_ == "Position") {
       motor_ = std::make_unique<Position>(motor_id_);
     } else {
-      RCLCPP_ERROR(this->get_logger(), "Invalid runmode: %d. Must be 0 (Velocity) or 1 (Position).", runmode_);
+      RCLCPP_ERROR(this->get_logger(), "Invalid runmode: %s. Must be \"Velocity\" or \"Position\".", runmode_.c_str());
       return;
     }
 
@@ -102,23 +107,28 @@ private:
     frame_pub_->publish(frame_);
   }
 
+  void can_callback(const can_msgs::msg::Frame::SharedPtr msg)
+  {
+    // Handle incoming CAN messages if needed
+    RCLCPP_DEBUG(this->get_logger(), "Received CAN frame with ID: %u", msg->id);
+  }
 
   void declare_parameters()
   {
     this->declare_parameter<std::string>("sub_cmd_topic_name", "cmd");
     this->declare_parameter<std::string>("pub_topic_name", "can_tx");
-    //this->declare_parameter<std::string>("sub_can_topic_name", "can");
+    this->declare_parameter<std::string>("sub_can_topic_name", "can");
     this->declare_parameter<uint8_t>("motor_id", 0x01);
-    this->declare_parameter<int>("runmode", 0);
+    this->declare_parameter<std::string>("runmode", "Velocity");
 
   }
   void get_parameters()
   {
     sub_cmd_topic_name_ = this->get_parameter("sub_cmd_topic_name").as_string();
     pub_topic_name_ = this->get_parameter("pub_topic_name").as_string();
-    //sub_can_topic_name_ = this->get_parameter("sub_can_topic_name").as_string();
+    sub_can_topic_name_ = this->get_parameter("sub_can_topic_name").as_string();
     motor_id_ = static_cast<uint8_t>(this->get_parameter("motor_id").as_int());
-    runmode_ = this->get_parameter("runmode").as_int();
+    runmode_ = this->get_parameter("runmode").as_string();
   }
 };
 

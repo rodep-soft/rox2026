@@ -25,7 +25,7 @@ std::vector<Canframe> Velocity::create_init_frame()
   std::vector<Canframe> frames;
 
   // runmode 
-  frames.push_back(set_runmode(2));
+  frames.push_back(set_runmode(2)); // runmode: velocity
 
   // motor enable
   frames.push_back(set_enable());
@@ -45,13 +45,13 @@ std::vector<Canframe> Position::create_init_frame()
   // disable
   frames.push_back(set_disable());
   // runmode: operation
-  frames.push_back(set_runmode(0));
+  frames.push_back(set_runmode(0)); // runmode: operation
   // enable
   frames.push_back(set_enable());
   // mechanical zero
   frames.push_back(set_mechanicalzero());
   frames.push_back(set_disable());
-  frames.push_back(set_runmode(1));
+  frames.push_back(set_runmode(1)); // runmode: position
   frames.push_back(set_enable());
   for (size_t i = 1; i < targets_info.size(); i++) {
     frames.push_back(set_target_value(targets_info[i]));
