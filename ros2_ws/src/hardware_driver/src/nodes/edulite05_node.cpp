@@ -47,7 +47,7 @@ public:
     frame_.data = frame.data;
     frame_pub_->publish(frame_);
     RCLCPP_DEBUG(this->get_logger(), "Published terminate frame for motor %d.", motor_id_);
-  };
+  }
 
 private:
   std::string sub_cmd_topic_name_;        // Subscription topic name
