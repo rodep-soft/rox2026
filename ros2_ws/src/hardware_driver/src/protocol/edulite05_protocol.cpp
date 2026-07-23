@@ -24,7 +24,7 @@ std::vector<Canframe> Velocity::create_init_frame()
 {
   std::vector<Canframe> frames;
 
-  // runmode 
+  // runmode
   frames.push_back(set_runmode(2));
 
   // motor enable
@@ -100,21 +100,21 @@ std::array<uint8_t, 8> Ed05CanframeCreater::encode_commtype18_data(ControlTarget
 
 Canframe Ed05CanframeCreater::set_runmode(int value)
 {
-    Canframe frame{};
-    frame.id = encode_can_id(0x12);
-    frame.dlc = dlc_;
-    //ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
-    //auto data = encode_commtype18_data(info);
-    //std::memcpy(frame.data.data(), data.data(), 8);
-    frame.data[0] = 0x05; // index low byte
-    frame.data[1] = 0x70; // index high byte
-    frame.data[2] = 0x00; // subindex 
-    frame.data[3] = 0x00; // reserved
-    frame.data[4] = static_cast<uint8_t>(value & 0xFF); // value low byte
-    frame.data[5] = 0x00; // value high byte
-    frame.data[6] = 0x00; // reserved
-    frame.data[7] = 0x00; // reserved
-    return frame;
+  Canframe frame{};
+  frame.id = encode_can_id(0x12);
+  frame.dlc = dlc_;
+  //ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
+  //auto data = encode_commtype18_data(info);
+  //std::memcpy(frame.data.data(), data.data(), 8);
+  frame.data[0] = 0x05;   // index low byte
+  frame.data[1] = 0x70;   // index high byte
+  frame.data[2] = 0x00;   // subindex
+  frame.data[3] = 0x00;   // reserved
+  frame.data[4] = static_cast<uint8_t>(value & 0xFF);   // value low byte
+  frame.data[5] = 0x00;   // value high byte
+  frame.data[6] = 0x00;   // reserved
+  frame.data[7] = 0x00;   // reserved
+  return frame;
 }
 
 Canframe Ed05CanframeCreater::set_enable()

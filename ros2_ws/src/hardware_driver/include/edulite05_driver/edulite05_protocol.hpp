@@ -53,11 +53,11 @@ public:
   Canframe create_control_frame(float value) override;
 
 private:
-    std::array<ControlTargetInfo, 3> targets_info = {{
-        {"vel", 0x700A, 0.0f},
-        {"limit_cur", 0x7018, 5.0f},
-        {"acc", 0x7022, 100.0f},
-    }};
+  std::array<ControlTargetInfo, 3> targets_info = {{
+    {"vel", 0x700A, 0.0f},
+    {"limit_cur", 0x7018, 5.0f},
+    {"acc", 0x7022, 100.0f},
+  }};
 };
 
 class Position : public Ed05CanframeCreater

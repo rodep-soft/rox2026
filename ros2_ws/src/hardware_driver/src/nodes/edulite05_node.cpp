@@ -42,7 +42,7 @@ public:
     frame_.data = frame.data;
     frame_pub_->publish(frame_);
     RCLCPP_DEBUG(this->get_logger(), "Published terminate frame for motor %d.", motor_id_);
-  };
+  }
 
 private:
   std::string sub_cmd_topic_name_;        // Subscription topic name
@@ -63,11 +63,11 @@ private:
   {
     if (runmode_ == 0) {
       motor_ = std::make_unique<Velocity>(motor_id_);
-    }
-    else if (runmode_ == 1) {
+    } else if (runmode_ == 1) {
       motor_ = std::make_unique<Position>(motor_id_);
     } else {
-      RCLCPP_ERROR(this->get_logger(), "Invalid runmode: %d. Must be 0 (Velocity) or 1 (Position).", runmode_);
+      RCLCPP_ERROR(
+        this->get_logger(), "Invalid runmode: %d. Must be 0 (Velocity) or 1 (Position).", runmode_);
       return;
     }
 
@@ -81,7 +81,7 @@ private:
       frame_.id = frames[i].id;
       frame_.dlc = frames[i].dlc;
       frame_.data = frames[i].data;
-      frame_pub_->publish(frame_); 
+      frame_pub_->publish(frame_);
     }
     RCLCPP_DEBUG(this->get_logger(), "Published initialization frames for motor %d.", motor_id_);
   }
