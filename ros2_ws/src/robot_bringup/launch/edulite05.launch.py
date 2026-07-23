@@ -9,17 +9,19 @@ def generate_launch_description():
     parameter_file = os.path.join(
         get_package_share_directory('robot_bringup'),
         'config',
-        'belt_controller.yaml',
+        'edulite05_driver.yaml',
     )
 
-    return LaunchDescription(
-        [
+    nodes = []
+    for i in range(1, 7):
+        nodes.append(
             Node(
-                package='robot_controller',
-                executable='belt_controller_node',
-                name='belt_controller_node',
+                package='hardware_driver',
+                executable='edulite05_node',
+                name=f'edulite05_driver_node_{i}',
                 output='screen',
                 parameters=[parameter_file],
-            ),
-        ]
-    )
+            )
+        )
+
+    return LaunchDescription(nodes)

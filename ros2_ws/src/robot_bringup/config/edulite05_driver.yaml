@@ -1,5 +1,48 @@
-edulite05_driver_node:
+#edulite05_driver_node:
+#  ros__parameters:
+#    sub_cmd_topic_name: "motor_1/cmd"
+#    pub_topic_name: "socketcan_bridge/tx"
+#    motor_id: 1
+#    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_1:
   ros__parameters:
-    sub_cmd_topic_name: aaa
+    sub_cmd_topic_name: "motor_1/cmd"
     pub_topic_name: "socketcan_bridge/tx"
-      #    sub_can_topic_name: "socketcan_bridge/rx"
+    motor_id: 1
+    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_2:
+  ros__parameters:
+    sub_cmd_topic_name: "motor_2/cmd"
+    pub_topic_name: "socketcan_bridge/tx"
+    motor_id: 2
+    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_3:
+  ros__parameters:
+    sub_cmd_topic_name: "motor_3/cmd"
+    pub_topic_name: "socketcan_bridge/tx"
+    motor_id: 3
+    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_4:
+  ros__parameters:
+    sub_cmd_topic_name: "motor_4/cmd"
+    pub_topic_name: "socketcan_bridge/tx"
+    motor_id: 4
+    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_5:
+  ros__parameters:
+    sub_cmd_topic_name: "motor_5/cmd"
+    pub_topic_name: "socketcan_bridge/tx"
+    motor_id: 10
+    runmode: 0 # 0:vel, 1:pos
+
+edulite05_driver_node_6:
+  ros__parameters:
+    sub_cmd_topic_name: "motor_6/cmd"
+    pub_topic_name: "socketcan_bridge/tx"
+    motor_id: 38
+    runmode: 1 # 0:vel, 1:pos
