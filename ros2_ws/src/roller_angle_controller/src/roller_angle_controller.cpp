@@ -26,11 +26,17 @@ public:
   }
 
 private:
+  static double DegreeToRadian(double degree)
+  {
+    constexpr double Pi = 3.14159265358979323846;
+    return degree * Pi / 180.0;
+  }
+
   void DeclareParameters()
   {
-    this->declare_parameter<double>("storage_angle", 0.0);
-    this->declare_parameter<double>("intake_angle", 10.0);
-    this->declare_parameter<double>("shoot_angle", 2.0);
+    this->declare_parameter<double>("storage_angle_deg", 0.0);
+    this->declare_parameter<double>("intake_angle_deg", 10.0);
+    this->declare_parameter<double>("shoot_angle_deg", 2.0);
     this->declare_parameter<int>("enable_button", 4);
     this->declare_parameter<int>("storage_button", 1);
     this->declare_parameter<int>("intake_button", 0);
@@ -39,9 +45,9 @@ private:
 
   void GetParameters()
   {
-    storage_angle_ = this->get_parameter("storage_angle").as_double();
-    intake_angle_ = this->get_parameter("intake_angle").as_double();
-    shoot_angle_ = this->get_parameter("shoot_angle").as_double();
+    storage_angle_ = DegreeToRadian(this->get_parameter("storage_angle_deg").as_double());
+    intake_angle_ = DegreeToRadian(this->get_parameter("intake_angle_deg").as_double());
+    shoot_angle_ = DegreeToRadian(this->get_parameter("shoot_angle_deg").as_double());
     enable_button_idx_ = this->get_parameter("enable_button").as_int();
     storage_button_idx_ = this->get_parameter("storage_button").as_int();
     intake_button_idx_ = this->get_parameter("intake_button").as_int();

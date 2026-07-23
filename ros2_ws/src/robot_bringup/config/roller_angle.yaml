@@ -1,9 +1,9 @@
 roller_position_controller:
   ros__parameters:
-    # RobStride loc_ref is radian.
-    storage_angle: 0.5 
-    intake_angle: 0.2  
-    shoot_angle: -1.3
+    # Preset angles are configured in degrees and published as std_msgs/Float32 radians.
+    storage_angle_deg: 28.65
+    intake_angle_deg: 11.46
+    shoot_angle_deg: -74.48
 
     enable_button: 9  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 11
