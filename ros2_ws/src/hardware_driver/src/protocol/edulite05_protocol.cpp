@@ -56,6 +56,7 @@ std::vector<Canframe> Position::create_init_frame()
   for (size_t i = 1; i < targets_info.size(); i++) {
     frames.push_back(set_target_value(targets_info[i]));
   }
+  frames.push_back(set_angle_range()); // angleを-180~180にするための設定
 
   return frames;
 }
@@ -157,4 +158,20 @@ Canframe Ed05CanframeCreater::set_mechanicalzero()
 Canframe Ed05CanframeCreater::terminate_motor()
 {
   return set_disable();
+}
+
+Canframe Ed05CanframeCreater::set_angle_range()
+{
+  Canframe frame{};
+  frame.id = encode_can_id(0x12);
+  frame.dlc = dlc_;
+    frame.data[0] = 0x29; // index low byte
+    frame.data[1] = 0x70; // index high byte
+    frame.data[2] = 0x00; // subindex 
+    frame.data[3] = 0x00; // reserved
+    frame.data[4] = 0x01; // value low byte
+    frame.data[5] = 0x00; // value high byte
+    frame.data[6] = 0x00; // reserved
+    frame.data[7] = 0x00; // reserved
+  return frame;
 }

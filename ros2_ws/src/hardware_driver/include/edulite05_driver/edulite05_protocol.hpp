@@ -51,6 +51,7 @@ protected:
   Canframe set_target_value(ControlTargetInfo target_info);
   Canframe set_disable();
   Canframe set_mechanicalzero();
+  Canframe set_angle_range(); // angleを-180~180にするための設定
 };
 
 class Velocity : public Ed05CanframeCreater
@@ -81,6 +82,6 @@ private:
     {"limit_cur", 0x7018, 5.0f}, // 電流制限
     {"vel_max", 0x7024, 50.0f},  // 速度制限
     {"acc_set", 0x7025, 100.0f}, // 加速度
-    {"zero_sta", 0x7029, 1.0f},  //
+    //{"zero_sta", 0x7029, 1.0f},  //
   }};
 };

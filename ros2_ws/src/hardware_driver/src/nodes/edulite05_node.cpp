@@ -4,6 +4,8 @@
 #include <array>
 #include <vector>
 #include "edulite05_driver/edulite05_protocol.hpp"
+#include <thread>
+#include <chrono>
 
 
 class Ed05DriverNode : public rclcpp::Node
@@ -87,6 +89,8 @@ private:
       frame_.dlc = frames[i].dlc;
       frame_.data = frames[i].data;
       frame_pub_->publish(frame_); 
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));   
     }
     RCLCPP_DEBUG(this->get_logger(), "Published initialization frames for motor %d.", motor_id_);
   }
@@ -111,6 +115,7 @@ private:
   {
     // Handle incoming CAN messages if needed
     RCLCPP_DEBUG(this->get_logger(), "Received CAN frame with ID: %u", msg->id);
+
   }
 
   void declare_parameters()
