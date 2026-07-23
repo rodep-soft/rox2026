@@ -62,11 +62,11 @@ public:
   Canframe create_control_frame(float value) override;
 
 private:
-    std::array<ControlTargetInfo, 3> targets_info = {{
-        {"vel", 0x700A, 0.0f}, // 速度指令
-        {"limit_cur", 0x7018, 5.0f}, // 電流制限
-        {"acc_rad", 0x7022, 100.0f}, // 加速度制限
-    }};
+  std::array<ControlTargetInfo, 3> targets_info = {{
+    {"vel", 0x700A, 0.0f},     // 速度指令
+    {"limit_cur", 0x7018, 5.0f},     // 電流制限
+    {"acc_rad", 0x7022, 100.0f},     // 加速度制限
+  }};
 };
 
 class Position : public Ed05CanframeCreater

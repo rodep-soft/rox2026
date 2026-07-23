@@ -24,7 +24,7 @@ std::vector<Canframe> Velocity::create_init_frame()
 {
   std::vector<Canframe> frames;
 
-  // runmode 
+  // runmode
   frames.push_back(set_runmode(2)); // runmode: velocity
 
   // motor enable
@@ -165,13 +165,13 @@ Canframe Ed05CanframeCreater::set_angle_range()
   Canframe frame{};
   frame.id = encode_can_id(0x12);
   frame.dlc = dlc_;
-    frame.data[0] = 0x29; // index low byte
-    frame.data[1] = 0x70; // index high byte
-    frame.data[2] = 0x00; // subindex 
-    frame.data[3] = 0x00; // reserved
-    frame.data[4] = 0x01; // value low byte
-    frame.data[5] = 0x00; // value high byte
-    frame.data[6] = 0x00; // reserved
-    frame.data[7] = 0x00; // reserved
+  frame.data[0] = 0x29;   // index low byte
+  frame.data[1] = 0x70;   // index high byte
+  frame.data[2] = 0x00;   // subindex
+  frame.data[3] = 0x00;   // reserved
+  frame.data[4] = 0x01;   // value low byte
+  frame.data[5] = 0x00;   // value high byte
+  frame.data[6] = 0x00;   // reserved
+  frame.data[7] = 0x00;   // reserved
   return frame;
 }
