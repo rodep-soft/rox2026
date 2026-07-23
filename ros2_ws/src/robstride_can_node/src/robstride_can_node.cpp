@@ -89,7 +89,7 @@ RobstrideCanNode::RobstrideCanNode()
       SendRunMode(RunModePosition);
       std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       if (enable_on_startup_) {
-      	RCLCPP_INFO(this->get_logger(), "IF check enable_on_setup.");
+        RCLCPP_INFO(this->get_logger(), "IF check enable_on_setup.");
         SendEnable();               // motorのenableを送信
         std::this_thread::sleep_for(std::chrono::milliseconds(startup_inter_frame_ms_));
       }
@@ -114,7 +114,7 @@ void RobstrideCanNode::DeclareParameters()
   this->declare_parameter<int>("send_period_ms", 50);
   this->declare_parameter<int>("startup_inter_frame_ms", 100);
 
- 
+
   this->declare_parameter<double>("position_min_rad", -1.6);
   this->declare_parameter<double>("position_max_rad", 1.7);
   this->declare_parameter<double>("home_position_rad", 0.0);

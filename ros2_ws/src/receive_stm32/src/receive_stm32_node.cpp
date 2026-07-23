@@ -48,17 +48,17 @@ private:
       limit_sw_pub_->publish(output_msg);
 
       if (kokura != 5) {
-	kokura++; 
+        kokura++;
         RCLCPP_INFO(this->get_logger(), "Published limit switch state: %d", limit_status);
       }
-      
+
     }
 
     if (kokura != 5) {
-    	kokura++;
-	RCLCPP_INFO(this->get_logger(), "KOKURA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      kokura++;
+      RCLCPP_INFO(this->get_logger(), "KOKURA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     }
-    
+
   }
 
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;

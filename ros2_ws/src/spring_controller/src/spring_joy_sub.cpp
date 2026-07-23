@@ -66,7 +66,7 @@ private:
 
   void timer_callback()
   {
-     std_msgs::msg::UInt8 fire_command;
+    std_msgs::msg::UInt8 fire_command;
     /*
     if (!joy_msg) {
       fire_command.data = static_cast<uint8_t>(State::STOP);
@@ -83,16 +83,16 @@ private:
       fire_command.data = static_cast<uint8_t>(State::FIRE); // 発射命令
     } else {
       fire_command.data = static_cast<uint8_t>(State::LOAD); // 装填命令
-     
-     }
 
-   // if (emergency_msg && emergency_msg->data) {
-   //   fire_command.data = static_cast<uint8_t>(State::STOP); // 停止命令
+    }
+
+    // if (emergency_msg && emergency_msg->data) {
+    //   fire_command.data = static_cast<uint8_t>(State::STOP); // 停止命令
     //}
 
     spring_publisher->publish(fire_command);
-    }
-  
+  }
+
 
   void topic_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
@@ -105,13 +105,13 @@ private:
   }
 
   float getValue(const sensor_msgs::msg::Joy joy, const JoyInput & input)
-  { 
+  {
     // axisとbuttonの値を取得する関数
     if (input.type == "axis" && input.index < joy.axes.size()) {
-   
+
       return -joy.axes[input.index];
     } else if (input.type == "button" && input.index < joy.buttons.size()) {
-           return joy.buttons[input.index];
+      return joy.buttons[input.index];
     }
 
     return 0.0;
