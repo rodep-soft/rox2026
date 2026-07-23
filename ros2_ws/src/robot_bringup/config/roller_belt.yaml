@@ -36,7 +36,7 @@ roller_belt_can_packer_node:
     belt_rpm_topic: "/belt/rpm"
     min_rpm: 0
     max_rpm: 5000
-    publish_period_ms: 20
+    publish_period_ms: 50
     timeout_ms: 500
 
 socketcan_bridge:

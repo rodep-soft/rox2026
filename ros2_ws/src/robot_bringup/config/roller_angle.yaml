@@ -3,7 +3,7 @@ roller_position_controller:
     # RobStride loc_ref is radian.
     storage_angle: 0.5 
     intake_angle: 0.2  
-    shoot_angle: -1.3
+    shoot_angle: -1.01
 
     enable_button: 9  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 11
@@ -18,8 +18,8 @@ robstride_position_node:
 
     command_topic: "/robstride/position_cmd"  # 目標角度[rad]を受け取るtopic (std_msgs/Float32)
 
-    send_period_ms: 10                   # loc_refを送信する周期
-    startup_inter_frame_ms: 10           # PP初期化フレーム間の待機時間[ms]
+    send_period_ms: 50                   # loc_refを送信する周期
+    startup_inter_frame_ms: 100           # PP初期化フレーム間の待機時間[ms]
 
     position_min_rad: -1.6     # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
                                           # 位置フィードバックが-4π~4πで周期ループする仕様に合わせたソフト側の制限)
