@@ -113,7 +113,7 @@ private:
       frame_mode.data[7] = 0x00;
 
       pub_->publish(std::move(frame_mode));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
       // 4.1.4 Communication Type 3: Motor enabled to run
       can_msgs::msg::Frame frame_enable;
@@ -126,7 +126,7 @@ private:
       }
 
       pub_->publish(std::move(frame_enable));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
       // 4.1.9 Communication type 18: 電流制御
       can_msgs::msg::Frame frame_cur_max;
@@ -147,7 +147,7 @@ private:
       }
 
       pub_->publish(std::move(frame_cur_max));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
       // 4.1.9 Communication type 18: 加速度設定
       can_msgs::msg::Frame frame_acc_rad;
@@ -168,7 +168,7 @@ private:
       }
 
       pub_->publish(std::move(frame_acc_rad));
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
 
