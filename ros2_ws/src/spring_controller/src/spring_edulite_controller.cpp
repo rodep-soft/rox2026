@@ -41,7 +41,7 @@ public:
     now_state_ = State::LOAD;//デバック用
     // 10msごとにモーター制御管理コールバックを呼び出す
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(50),
+      std::chrono::milliseconds(10),
       std::bind(&SpringEduliteController::timer_callback, this));
   }
 

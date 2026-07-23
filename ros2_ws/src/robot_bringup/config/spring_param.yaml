@@ -14,7 +14,7 @@ spring_edulite_controller:
     fire_speed_: -40.0     #発射時の回転速度[rad/s]
     loading_speed: -4.0  #装填時の回転速度[rad/s]
     limit_sw_index: 1   #limit_swのindex
-    fire_duration: 0.5  #発射時間の長さ[s]
+    fire_duration: 0.7  #発射時間の長さ[s]
 
 edulite05_single_velocity_node:
   ros__parameters:

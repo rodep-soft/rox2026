@@ -41,7 +41,7 @@ public:
       10);
 
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(50),
+      std::chrono::milliseconds(10),
       std::bind(&SpringJoySub::timer_callback, this));
   }
 

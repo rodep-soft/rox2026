@@ -58,7 +58,7 @@ JoyConversion::JoyConversion()
   setEmergencyStop(true);
 
   joy_second_pub_timer_ = this->create_wall_timer(
-    50ms,
+    10ms,
     std::bind(&JoyConversion::joySecondPubTimerCallback, this));
 
   last_joy_time_ = this->now();

@@ -18,7 +18,7 @@ robstride_position_node:
 
     command_topic: "/robstride/position_cmd"  # 目標角度[rad]を受け取るtopic (std_msgs/Float32)
 
-    send_period_ms: 20                   # loc_refを送信する周期
+    send_period_ms: 10                   # loc_refを送信する周期
     startup_inter_frame_ms: 10           # PP初期化フレーム間の待機時間[ms]
 
     position_min_rad: -1.6     # 目標角度[rad]の下限 (-4π。loc_ref自体にマニュアル上の制限値記載はないが、
