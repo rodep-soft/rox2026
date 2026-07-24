@@ -28,30 +28,20 @@ can_msgs::msg::Frame make_data_frame(uint32_t id, uint8_t dlc)
   return frame;
 }
 
-/// @brief float型の数値をuint8_tの配列に変換するお互いにリトルエンディアンのためバイト順は変えずそのまま
-/// @param value float型の数値
+/// @brief int16_t型の数値をuint8_tの配列に変換するお互いにリトルエンディアンのためバイト順は変えずそのまま
+/// @param value int16_t型の数値
 /// @param data uint8_tの配列
-void encode_float_le(float value, std::array<uint8_t, 8> & data)
+void encode_int16_le(int16_t value, std::array<uint8_t, 8> & data)
 {
-  uint32_t raw = 0;
-  std::memcpy(&raw, &value, sizeof(raw));
-  for (std::size_t i = 0; i < sizeof(raw); ++i) {
-    data[i] = static_cast<uint8_t>((raw >> (i * 8U)) & 0xffU);
-  }
+  data[0] = static_cast<uint8_t>(value & 0xFF);
+  data[1] = static_cast<uint8_t>((value >> 8) & 0xFF);
 }
-/// @brief uint8_tの配列よりfloat型の数値をデコードする
+/// @brief uint8_tの配列よりint16_t型の数値をデコードする
 /// @param data uint8_t型の配列
-/// @return float型の値
-float decode_float_le(const std::array<uint8_t, 8> & data)
+/// @return int16_t型の値
+int16_t decode_int16_le(const std::array<uint8_t, 8> & data)
 {
-  uint32_t raw = 0;
-  for (std::size_t i = 0; i < sizeof(raw); ++i) {
-    raw |= static_cast<uint32_t>(data[i]) << (i * 8U);
-  }
-
-  float value = 0.0F;
-  std::memcpy(&value, &raw, sizeof(value));
-  return value;
+  return static_cast<int16_t>(static_cast<uint16_t>(data[0]) |(static_cast<uint16_t>(data[1]) << 8));
 }
 
 /// @brief　正常なcanFrameかを判断する
@@ -62,15 +52,15 @@ bool is_standard_data_frame(const can_msgs::msg::Frame & frame)
   return !frame.is_extended && !frame.is_rtr && !frame.is_error;
 }
 
-can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm)
+can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, int16_t rpm)
 {
   if (motor >= MOTOR_NUM) {
     throw std::out_of_range("motor index is outside the CAN protocol range");
   }
 
   auto frame = make_data_frame(
-    MOTOR_TARGET_RPM_BASE + static_cast<uint32_t>(motor), sizeof(float));
-  encode_float_le(rpm, frame.data);
+    MOTOR_TARGET_RPM_BASE + static_cast<uint32_t>(motor), sizeof(int16_t));
+  encode_int16_le(rpm, frame.data);
   return frame;
 }
 
@@ -86,9 +76,9 @@ can_msgs::msg::Frame make_led_frame(uint8_t command)
   return frame;
 }
 
-bool decode_motor_current(const can_msgs::msg::Frame & frame, std::size_t & motor, float & rpm)
+bool decode_motor_current(const can_msgs::msg::Frame & frame, std::size_t & motor, int16_t & rpm)
 {
-  if (frame.dlc != sizeof(float) ||
+  if (frame.dlc != sizeof(int16_t) ||
     frame.id < MOTOR_CURRENT_RPM_BASE ||
     frame.id >= MOTOR_CURRENT_RPM_BASE + MOTOR_NUM)
   {
@@ -96,7 +86,7 @@ bool decode_motor_current(const can_msgs::msg::Frame & frame, std::size_t & moto
   }
 
   motor = static_cast<std::size_t>(frame.id - MOTOR_CURRENT_RPM_BASE);
-  rpm = decode_float_le(frame.data);
+  rpm = decode_int16_le(frame.data);
   return true;
 }
 

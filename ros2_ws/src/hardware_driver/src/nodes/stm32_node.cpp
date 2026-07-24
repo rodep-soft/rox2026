@@ -37,16 +37,20 @@ public:
     const auto can_sub_topic = declare_parameter<std::string>(
       "can_sub_topic",
       "/socketcan_bridge/rx");
-    const auto target_rpm_topics = declare_parameter<std::vector<std::string>>(
+    const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
       "motor_target_rpm_topics",
       {
         "/belt/rpm_command",
         "/dribble/rpm_command",
         "/brushless/motor2/rpm_command"
       });
-    const auto current_rpm_topic = declare_parameter<std::string>(
-      "motor_current_rpm_topic",
-      "/brushless/current/rpm");
+    const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
+      "motor_current_rpm_topics",
+      {   
+        "/underbelt/current/rpm",
+        "/upperbelt/current/rpm",
+        "/dribble/current/rpm"
+    });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
@@ -58,10 +62,6 @@ public:
       throw std::invalid_argument("timer parameters must be greater than zero");
     }
 
-    if (target_rpm_topics.size() != protocol::MOTOR_NUM) {
-      throw std::invalid_argument("motor_target_rpm_topics must contain one topic per motor");
-    }
-
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
     can_pub_ = create_publisher<can_msgs::msg::Frame>(can_pub_topic, 10);
 
@@ -71,18 +71,18 @@ public:
 
     for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {
       motor_target_rpm_subs_[motor] = create_subscription<std_msgs::msg::Int16>(
-        target_rpm_topics[motor], 10,
+        motor_target_rpm_topics[motor], 10,
         [this, motor](const std_msgs::msg::Int16::SharedPtr msg) {
           motor_target_callback(motor, msg);
         });
+      motor_current_rpm_pubs_[motor] = create_publisher<std_msgs::msg::Int16>(
+        motor_current_rpm_topic[motor], 10);
     }
 
     led_cmd_sub_ = create_subscription<std_msgs::msg::UInt8>(
       led_cmd_topic, 10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
 
-    motor_current_rpm_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>(
-      current_rpm_topic, 10);
     current_rpm_msg_.data.resize(protocol::MOTOR_NUM);
 
     limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_sw_topic, 10);
@@ -120,10 +120,10 @@ private:
     }
 
     std::size_t motor = 0;
-    float rpm = 0.0F;
+    int16_t rpm = 0;
     if (protocol::decode_motor_current(*frame, motor, rpm)) {
-      std_msg::msg::Int16 output;
-      ouput.data = rpm;
+      std_msgs::msg::Int16 output;
+      output.data = rpm;
       motor_current_rpm_pubs_[motor] -> publish(output);
       return;
     }
@@ -142,7 +142,7 @@ private:
   void motor_target_callback(std::size_t motor, const std_msgs::msg::Int16::SharedPtr msg)
   {
     can_pub_->publish(
-      protocol::make_motor_target_frame(motor, static_cast<float>(msg->data)));
+      protocol::make_motor_target_frame(motor, static_cast<int16_t>(msg->data)));
   }
 
   /// @brief LEDのコマンドをstm32へ送信

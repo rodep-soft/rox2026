@@ -34,7 +34,7 @@ constexpr std::size_t MOTOR_NUM = 3;
 /// @param motor　ブラシレスモーターのインデックス
 /// @param rpm 目標回転速度
 /// @return canFrame
-can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm);
+can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, int16_t rpm);
 
 /// @brief 自身の生存報告用のcanFrame生成
 /// @return canFrame
@@ -57,7 +57,7 @@ bool is_standard_data_frame(const can_msgs::msg::Frame & frame);
 /// @param rpm デコードした現在RPM
 /// @return true: IDとDLCが正しい、false: それ以外
 bool decode_motor_current(
-  const can_msgs::msg::Frame & frame, std::size_t & motor, float & rpm);
+  const can_msgs::msg::Frame & frame, std::size_t & motor, int16_t & rpm);
 
 /// @brief リミットスイッチの状態をデコードする
 /// @pre is_standard_data_frame(frame)がtrueであること
