@@ -31,7 +31,7 @@ struct MotorFeedbackData
 };
 
 CanIdInfo decode_can_id(uint32_t can_id);
-MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8>& data);
+MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data);
 
 
 class Ed05CanframeCreater

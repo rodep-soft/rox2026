@@ -121,10 +121,10 @@ private:
       MotorFeedbackData fb_data = decode_feedback_data(data_array);
 
       if (runmode_ == "Velocity") {
-        RCLCPP_DEBUG(this->get_logger(), "Motor ID %u Velocity: %.3f rad/s", motor_id_, fb_data.velocity);
+        RCLCPP_DEBUG(
+          this->get_logger(), "Motor ID %u Velocity: %.3f rad/s", motor_id_, fb_data.velocity);
         fb_msg_.data = fb_data.velocity;
-      } 
-      else if (runmode_ == "Position") {
+      } else if (runmode_ == "Position") {
         RCLCPP_DEBUG(this->get_logger(), "Motor ID %u Angle: %.3f rad", motor_id_, fb_data.angle);
         fb_msg_.data = fb_data.angle;
       }
@@ -137,8 +137,7 @@ private:
         std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 一秒の間隔をあけておく
 
       }
-    }
-    else if (id_info.comm_type == 0x00) {
+    } else if (id_info.comm_type == 0x00) {
       send_init_frames(); // モーターに電源が供給された直後に問答無用で初期化;
     }
   }

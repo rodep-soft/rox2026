@@ -188,7 +188,7 @@ CanIdInfo decode_can_id(uint32_t can_id)
   return info;
 }
 
-MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8>& data)
+MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data)
 {
   MotorFeedbackData fb_data{};
 
@@ -204,5 +204,3 @@ MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8>& data)
 
   return fb_data;
 }
-
-
