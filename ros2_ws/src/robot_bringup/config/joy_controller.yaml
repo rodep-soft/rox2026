@@ -39,10 +39,10 @@ joy_controller:
     emergency_stop_is_enable_button: 8
     emergency_stop_button_on: 13
 
-    # ドリブル位置操作のボタン番号。L1 + ×でDRIBBLE、L1 + ○でSHOOT。
+    # ドリブル位置操作のボタン番号。L1 + ×でDRIBBLE、L1 + ○でFIRE。
     dribble_position_is_enable_button: 4
     dribble_position_dribble_button: 1
-    dribble_position_shoot_button: 2
+    dribble_position_fire_button: 2
 
     # 左スティック x 軸。
     left_stick_x_axis: 0

@@ -1,10 +1,15 @@
 uint8 DRIBBLE=0
-uint8 SHOOT=1
+uint8 INTAKE=1
+uint8 FIRE=2
 uint8 command
 ---
 bool success
 string message
 ---
+uint8 STATE_DRIBBLE=0
+uint8 STATE_INTAKE=1
+uint8 STATE_FIRE=2
+uint8 STATE_RETURN_TO_DRIBBLE=3
 uint8 state
 float32 target_position_rad
 float32 current_position_rad

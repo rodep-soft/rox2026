@@ -59,7 +59,7 @@ ros2 topic echo /joy
 | ベルト射出 ON/OFF | L2 + ○ |
 | ベルト mode 増減 | L2 + DPAD 上下 |
 | ドリブル mode 増減 | R2 + DPAD 上下 |
-| ドリブル位置をSHOOTへ移動 | L1 + ○ |
+| ドリブル位置をFIREへ移動（INTAKEを経由） | L1 + ○ |
 | ドリブル位置をDRIBBLEへ復帰 | L1 + × |
 | 緊急停止 | Create + タッチパッド |
 

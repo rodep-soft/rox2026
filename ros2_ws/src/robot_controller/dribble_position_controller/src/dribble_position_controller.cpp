@@ -6,9 +6,10 @@
 #include <utility>
 
 // DribblePosition Actionは、dribble機構の位置移動を管理する。
-// GoalはDRIBBLEまたはSHOOTだけを受け付け、それ以外のcommandは拒否する。
+// GoalはDRIBBLE、INTAKE、FIREだけを受け付け、それ以外のcommandは拒否する。
 // DRIBBLE指令ではドリブル位置へ移動し、到達したらActionを成功完了する。
-// SHOOT指令では取り込み位置へ移動し、到達後にシュート位置へ進む。
+// INTAKE指令では取り込み位置へ移動し、到達したらActionを成功完了する。
+// FIRE指令では取り込み位置へ移動し、到達後に発射位置へ進む。
 // 各移動はhardware_driverからの実位置feedbackを見て、目標位置との差が
 // position_tolerance_rad(許容範囲内のrad)以内になったタイミングで次の状態へ進める。
 // 新しいgoalを受けた場合は、実行中のgoalを中断して新しい移動を開始する。
@@ -56,7 +57,7 @@ void DribblePositionController::declare_parameters()
   declare_parameter<std::string>("dribble_position_action", "/dribble/position");
   declare_parameter<double>("dribble_position_rad", 0.0);
   declare_parameter<double>("intake_position_rad", 1.5);
-  declare_parameter<double>("shoot_position_rad", 2.0);
+  declare_parameter<double>("fire_position_rad", 2.0);
   declare_parameter<double>("position_tolerance_rad", 0.02);
   declare_parameter<double>("return_timeout_sec", 3.0);
   declare_parameter<int>("qos_depth", 1);
@@ -69,7 +70,7 @@ void DribblePositionController::get_parameters()
   get_parameter("dribble_position_action", dribble_position_action_);
   get_parameter("dribble_position_rad", dribble_position_rad_);
   get_parameter("intake_position_rad", intake_position_rad_);
-  get_parameter("shoot_position_rad", shoot_position_rad_);
+  get_parameter("fire_position_rad", fire_position_rad_);
   get_parameter("position_tolerance_rad", position_tolerance_rad_);
   get_parameter("return_timeout_sec", return_timeout_sec_);
   get_parameter("qos_depth", qos_depth_);
@@ -79,9 +80,10 @@ rclcpp_action::GoalResponse DribblePositionController::handle_goal(
   const rclcpp_action::GoalUUID &,
   std::shared_ptr<const DribblePosition::Goal> goal)
 {
-  // Actionで定義した2種類の位置指令だけを受け付ける。
+  // Actionで定義した位置指令だけを受け付ける。
   if (goal->command != DribblePosition::Goal::DRIBBLE &&
-    goal->command != DribblePosition::Goal::SHOOT)
+    goal->command != DribblePosition::Goal::INTAKE &&
+    goal->command != DribblePosition::Goal::FIRE)
   {
     return rclcpp_action::GoalResponse::REJECT;
   }
@@ -134,8 +136,11 @@ void DribblePositionController::start_goal(const std::shared_ptr<GoalHandle> goa
   if (goal_handle->get_goal()->command == DribblePosition::Goal::DRIBBLE) {
     state_ = State::DRIBBLE;
     publish_target_position(dribble_position_rad_);
+  } else if (goal_handle->get_goal()->command == DribblePosition::Goal::INTAKE) {
+    state_ = State::INTAKE;
+    publish_target_position(intake_position_rad_);
   } else {
-    // SHOOTは取り込み位置へ移動してからシュート位置へ進む。
+    // FIREは取り込み位置へ移動してから発射位置へ進む。
     state_ = State::INTAKE;
     publish_target_position(intake_position_rad_);
   }
@@ -176,11 +181,15 @@ void DribblePositionController::position_feedback_callback(
       finish_goal(Completion::SUCCEEDED, "Reached dribble position");
       break;
     case State::INTAKE:
-      state_ = State::SHOOT;
-      publish_target_position(shoot_position_rad_);
+      if (active_goal_->get_goal()->command == DribblePosition::Goal::FIRE) {
+        state_ = State::FIRE;
+        publish_target_position(fire_position_rad_);
+      } else {
+        finish_goal(Completion::SUCCEEDED, "Reached intake position");
+      }
       break;
-    case State::SHOOT:
-      finish_goal(Completion::SUCCEEDED, "Reached shoot position");
+    case State::FIRE:
+      finish_goal(Completion::SUCCEEDED, "Reached fire position");
       break;
     case State::RETURN_TO_DRIBBLE: {
         RCLCPP_INFO(get_logger(), "Returned to dribble position.");

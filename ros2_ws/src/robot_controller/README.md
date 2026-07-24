@@ -102,19 +102,19 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 
 | 種別 | 名前（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`または`SHOOT`の位置移動を受け付ける |
+| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`、`INTAKE`、`FIRE`の位置移動を受け付ける |
 | publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
 | subscribe | `/dribble/position_feedback` | `std_msgs/msg/Float32` | hardware_driverから受ける実位置 `[rad]` |
 
-ActionはGoal、Feedback、ResultをまとめたROS 2の通信方式です。Goalで移動を依頼し、移動中は現在位置と目標位置をFeedbackで返します。`DRIBBLE` Actionはドリブル位置に到達すると成功します。`SHOOT` Actionは次の順で移動し、SHOOT位置で保持します。
+ActionはGoal、Feedback、ResultをまとめたROS 2の通信方式です。Goalで移動を依頼し、移動中は現在位置と目標位置をFeedbackで返します。`DRIBBLE`と`INTAKE` Actionは指定位置に到達すると成功します。`FIRE` Actionは次の順で移動し、FIRE位置で保持します。
 
 ```text
-DRIBBLE → INTAKE → SHOOT
+DRIBBLE → INTAKE → FIRE
 ```
 
-各段階は、実位置が`position_tolerance_rad`以内に到達したことを確認してから次へ進みます。SHOOT位置からは、L1+×のDRIBBLE Actionまたは緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT Actionを開始します。
+各段階は、実位置が`position_tolerance_rad`以内に到達したことをFeedbackで確認してから次へ進みます。FIRE位置からは、L1+×のDRIBBLE Actionまたは緊急停止操作でドリブル位置へ戻ります。L1+○はFIRE Actionを開始します。
 
-`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`position_tolerance_rad`と、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+`dribble_position_rad`、`intake_position_rad`、`fire_position_rad`、`position_tolerance_rad`と、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
 
 ## `dribble_controller_node`
 

@@ -98,7 +98,7 @@ private:
   int emergency_stop_button_on_;
   int dribble_position_is_enable_button_;
   int dribble_position_dribble_button_;
-  int dribble_position_shoot_button_;
+  int dribble_position_fire_button_;
 
   int left_stick_x_axis_;
   int left_stick_y_axis_;
@@ -126,7 +126,7 @@ private:
   bool dribble_mode_down_chord_on_{false};
   bool emergency_stop_chord_on_{false};
   bool dribble_position_dribble_chord_on_{false};
-  bool dribble_position_shoot_chord_on_{false};
+  bool dribble_position_fire_chord_on_{false};
   bool pre_intake_chord_on_;
   bool pre_spring_fire_chord_on_;
   bool pre_belt_fire_chord_on_;
@@ -136,7 +136,7 @@ private:
   bool pre_dribble_mode_down_chord_on_;
   bool pre_emergency_stop_chord_on_;
   bool pre_dribble_position_dribble_chord_on_;
-  bool pre_dribble_position_shoot_chord_on_;
+  bool pre_dribble_position_fire_chord_on_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;

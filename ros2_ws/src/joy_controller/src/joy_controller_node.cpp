@@ -17,7 +17,7 @@ JoyControllerNode::JoyControllerNode()
   pre_dribble_mode_down_chord_on_(false),
   pre_emergency_stop_chord_on_(false),
   pre_dribble_position_dribble_chord_on_(false),
-  pre_dribble_position_shoot_chord_on_(false)
+  pre_dribble_position_fire_chord_on_(false)
 {
   declare_parameters();
   get_parameters();
@@ -134,7 +134,7 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<int>("emergency_stop_button_on", 13);
   declare_parameter<int>("dribble_position_is_enable_button", 4);
   declare_parameter<int>("dribble_position_dribble_button", 1);
-  declare_parameter<int>("dribble_position_shoot_button", 2);
+  declare_parameter<int>("dribble_position_fire_button", 2);
   declare_parameter<int>("left_stick_x_axis", 0);
   declare_parameter<int>("left_stick_y_axis", 1);
   declare_parameter<int>("right_stick_x_axis", 2);
@@ -178,7 +178,7 @@ void JoyControllerNode::get_parameters()
   get_parameter("emergency_stop_button_on", emergency_stop_button_on_);
   get_parameter("dribble_position_is_enable_button", dribble_position_is_enable_button_);
   get_parameter("dribble_position_dribble_button", dribble_position_dribble_button_);
-  get_parameter("dribble_position_shoot_button", dribble_position_shoot_button_);
+  get_parameter("dribble_position_fire_button", dribble_position_fire_button_);
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
@@ -312,8 +312,8 @@ void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy & msg)
     button_pressed(msg, dribble_position_is_enable_button_);
   const bool dribble_position_dribble_button_on =
     button_pressed(msg, dribble_position_dribble_button_);
-  const bool dribble_position_shoot_button_on =
-    button_pressed(msg, dribble_position_shoot_button_);
+  const bool dribble_position_fire_button_on =
+    button_pressed(msg, dribble_position_fire_button_);
   const double mode_change_value = axis_value(msg, mode_change_axis_);
   const bool is_mode_up = mode_change_value >= axis_on_threshold_;
   const bool is_mode_down = mode_change_value <= -axis_on_threshold_;
@@ -328,8 +328,8 @@ void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy & msg)
   emergency_stop_chord_on_ = emergency_stop_is_enable_button && emergency_stop_button_on;
   dribble_position_dribble_chord_on_ =
     dribble_position_is_enable_button && dribble_position_dribble_button_on;
-  dribble_position_shoot_chord_on_ =
-    dribble_position_is_enable_button && dribble_position_shoot_button_on;
+  dribble_position_fire_chord_on_ =
+    dribble_position_is_enable_button && dribble_position_fire_button_on;
 }
 
 bool JoyControllerNode::handle_emergency_stop()
@@ -370,7 +370,7 @@ void JoyControllerNode::update_previous_chord_inputs()
   pre_dribble_mode_down_chord_on_ = dribble_mode_down_chord_on_;
   pre_emergency_stop_chord_on_ = emergency_stop_chord_on_;
   pre_dribble_position_dribble_chord_on_ = dribble_position_dribble_chord_on_;
-  pre_dribble_position_shoot_chord_on_ = dribble_position_shoot_chord_on_;
+  pre_dribble_position_fire_chord_on_ = dribble_position_fire_chord_on_;
 }
 
 void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
@@ -420,8 +420,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   if (dribble_position_dribble_chord_on_ && !pre_dribble_position_dribble_chord_on_) {
     send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::DRIBBLE);
   }
-  if (dribble_position_shoot_chord_on_ && !pre_dribble_position_shoot_chord_on_) {
-    send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::SHOOT);
+  if (dribble_position_fire_chord_on_ && !pre_dribble_position_fire_chord_on_) {
+    send_dribble_position_goal(robot_controller::action::DribblePosition::Goal::FIRE);
   }
 
   const double linear_x = apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
