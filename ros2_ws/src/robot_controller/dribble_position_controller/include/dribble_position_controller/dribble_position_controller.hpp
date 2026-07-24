@@ -18,7 +18,7 @@ private:
   using DribblePosition = robot_controller::action::DribblePosition;
   using GoalHandle = rclcpp_action::ServerGoalHandle<DribblePosition>;
 
-  enum class State : uint8_t {DRIBBLE, INTAKE, SHOOT, RETURN_TO_DRIBBLE};
+  enum class State : uint8_t {DRIBBLE, INTAKE, FIRE, RETURN_TO_DRIBBLE};
   enum class Completion : uint8_t {SUCCEEDED, ABORTED, CANCELED};
 
   void declare_parameters();
@@ -38,7 +38,7 @@ private:
 
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
-  double shoot_position_rad_{0.0};
+  double fire_position_rad_{0.0};
   double position_tolerance_rad_{0.02};
   double return_timeout_sec_{3.0};
   double current_position_rad_{0.0};
