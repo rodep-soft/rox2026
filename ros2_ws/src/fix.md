@@ -29,8 +29,3 @@
 - `position_tolerance_rad`が0以下の場合、到達判定が成立せずActionが終了しない可能性がある。
 - 位置feedbackが途絶えた場合もActionが実行中のまま残る。
 - `position_tolerance_rad`を正の有限値として検証し、移動時間またはfeedback受信のタイムアウト時にはActionを失敗終了して安全な位置指令を出す。
-
-## [中] DribblePosition Actionのキャンセル結果
-
-- cancel要求を受理した場合に`abort()`で終了しており、利用側からはキャンセルと異常終了を区別できない。
-- 通常のcancelは`canceled()`で終了し、新しいgoalによる置換などの中断だけを`abort()`で終了する。

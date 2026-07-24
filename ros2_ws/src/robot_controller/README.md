@@ -91,7 +91,7 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 | subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
 | publish | `/belt/rpm_command` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 
-`belt_mode`は`STOP (0)`、`LEVEL_1 (1)`、`LEVEL_2 (2)`、`LEVEL_3 (3)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
+`belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
 
 `stop_rpm`、`level_1_rpm`〜`level_3_rpm`、指令周期は`robot_bringup/config/belt_controller.yaml`で設定できます。`stop_rpm`は安全のため`0 RPM`固定です。起動には`robot_bringup/launch/belt_controller.launch.py`を使います。
 
@@ -128,6 +128,6 @@ DRIBBLE → INTAKE → SHOOT
 | publish | `/dribble/rpm_command` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
 | publish | `/dribble_is_stopped` | `std_msgs/msg/Bool` | 停止完了状態 |
 
-`dribble_mode`は`STOP (0)`、`HIGH (1)`、`LOW (2)`の3段階です。`LOW`と`HIGH`の目標回転数、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
+`dribble_mode`は`STOP (1)`、`HIGH (2)`、`LOW (3)`の3段階です。`LOW`と`HIGH`の目標回転数、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
 
 停止完了は、今回の実装では減速後の目標回転数が`0 RPM`へ到達した時点で通知します。実速度のCANフィードバックが追加されたら、実測速度が0付近であることを確認する方式へ変更します。

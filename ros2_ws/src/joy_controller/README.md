@@ -44,7 +44,7 @@ ros2 topic echo /joy
 
 ## ボタン・軸の設定
 
-`robot_bringup/config/joy.yaml` で、各機構のボタンと各軸の番号を変更できる。
+`robot_bringup/config/joy_controller.yaml` で、各機構のボタンと各軸の番号を変更できる。
 設定値の名前は cpp 側で対応する押下状態の名前と共通で、値はボタンまたは軸の番号を表す。
 `/joy`のsubscribeは`joy_qos_depth`、各機構へのpublishは`command_qos_depth`でdepthを変更できる。
 
@@ -63,8 +63,8 @@ ros2 topic echo /joy
 | ドリブル位置をDRIBBLEへ復帰 | L1 + × |
 | 緊急停止 | Create + タッチパッド |
 
-ベルトmodeは`STOP (0)`、`LEVEL_1 (1)`、`LEVEL_2 (2)`、`LEVEL_3 (3)`の4状態、
-dribble modeは`STOP (0)`、`HIGH (1)`、`LOW (2)`の3状態。
+ベルトmodeは`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4状態、
+dribble modeは`STOP (1)`、`HIGH (2)`、`LOW (3)`の3状態。
 DPAD上で1段階増加、DPAD下で1段階減少し、範囲外には遷移しない。
 
 `*_is_enable_button` は機構操作を有効化するボタン、`*_button_on` は実行する

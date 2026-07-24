@@ -41,3 +41,6 @@ AGENTS.md
 .serena/
 .vscode/
 ros2_ws/.vscode/
+
+# 修正店を書いたファイル(jodanが使ってます)
+fix.md

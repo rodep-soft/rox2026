@@ -14,10 +14,10 @@ public:
   BeltControllerNode();
 
 private:
-  static constexpr uint8_t stop_mode_{0};
-  static constexpr uint8_t level_1_mode_{1};
-  static constexpr uint8_t level_2_mode_{2};
-  static constexpr uint8_t level_3_mode_{3};
+  static constexpr uint8_t stop_mode_{1};
+  static constexpr uint8_t level_1_mode_{2};
+  static constexpr uint8_t level_2_mode_{3};
+  static constexpr uint8_t level_3_mode_{4};
 
   void declare_parameters();
   void get_parameters();
