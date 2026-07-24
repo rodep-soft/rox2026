@@ -3,6 +3,8 @@ base_controller_node:
     max_linear: 2.5
     max_angular: 2.5
     smoothing_factor: 1.0
+    # 前後移動の向きを切り替えるボタン。sensor_msgs/msg/Joyのbuttons[] index。
+    forward_reverse_toggle_button: 5
 
 mecanum_controller_node:
   ros__parameters:
