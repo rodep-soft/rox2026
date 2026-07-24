@@ -6,7 +6,7 @@ edulite05_fl_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/fl/feedback"     # std_msgs/msg/Float32
-    motor_id: 1
+    motor_id: 0x01
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -16,7 +16,7 @@ edulite05_fr_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/fr/feedback"     # std_msgs/msg/Float32
-    motor_id: 2
+    motor_id: 0x02
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -26,7 +26,7 @@ edulite05_rl_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/rl/feedback"     # std_msgs/msg/Float32
-    motor_id: 3
+    motor_id: 0x03
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -36,7 +36,7 @@ edulite05_rr_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/rr/feedback"     # std_msgs/msg/Float32
-    motor_id: 4
+    motor_id: 0x04
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -46,7 +46,7 @@ edulite05_spring_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/spring/feedback"         # std_msgs/msg/Float32
-    motor_id: 10
+    motor_id: 0x0A
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -56,6 +56,6 @@ edulite05_dribble_position_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/dribble/feedback"         # std_msgs/msg/Float32
-    motor_id: 38
+    motor_id: 0x38
     runmode: "Position"                            # "Velocity" or "Position"
     is_requested_fb_pub: false                     # Publish feedback if true
