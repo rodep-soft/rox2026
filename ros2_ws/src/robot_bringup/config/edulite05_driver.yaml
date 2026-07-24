@@ -55,7 +55,7 @@ edulite05_dribble_position_driver:
     sub_cmd_topic_name: "/dribble/position_command" # std_msgs/msg/Float32 (rad)
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
-    pub_fb_topic_name: "/dribble/feedback"         # std_msgs/msg/Float32
+    pub_fb_topic_name: "/dribble/position_feedback" # std_msgs/msg/Float32
     motor_id: 0x38
     runmode: "Position"                            # "Velocity" or "Position"
-    is_requested_fb_pub: false                     # Publish feedback if true
+    is_requested_fb_pub: true                      # Publish feedback if true
