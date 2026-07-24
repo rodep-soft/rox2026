@@ -145,6 +145,7 @@ private:
 
   void send_init_frames()
   {
+    should_be_enabled_ = false; // 初期化中はこのフラグをfalseにする
     frame_.is_extended = true;
     frame_.is_rtr = false;
     frame_.is_error = false;
