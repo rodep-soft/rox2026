@@ -6,9 +6,9 @@ dribble_position_controller:
     dribble_position_feedback_topic: /dribble/position_feedback
     # 位置移動を受け付けるAction名。robot_controller/action/DribblePosition。
     dribble_position_action: /dribble/position
-    dribble_position_rad: 0.0
-    intake_position_rad: 1.5
-    shoot_position_rad: 2.0
+    dribble_position_rad: 0.15
+    intake_position_rad: -1.1
+    shoot_position_rad: 1.4
     position_tolerance_rad: 0.02
     # cancelまたは中断時にDRIBBLE位置へ戻るまでの待機時間[s]。
     return_timeout_sec: 3.0
