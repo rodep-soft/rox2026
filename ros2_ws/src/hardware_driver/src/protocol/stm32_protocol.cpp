@@ -41,7 +41,8 @@ void encode_int16_le(int16_t value, std::array<uint8_t, 8> & data)
 /// @return int16_t型の値
 int16_t decode_int16_le(const std::array<uint8_t, 8> & data)
 {
-  return static_cast<int16_t>(static_cast<uint16_t>(data[0]) |(static_cast<uint16_t>(data[1]) << 8));
+  return static_cast<int16_t>(static_cast<uint16_t>(data[0]) |
+         (static_cast<uint16_t>(data[1]) << 8));
 }
 
 /// @brief　正常なcanFrameかを判断する

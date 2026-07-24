@@ -46,11 +46,11 @@ public:
       });
     const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
       "motor_current_rpm_topics",
-      {   
+      {
         "/underbelt/current/rpm",
         "/upperbelt/current/rpm",
         "/dribble/current/rpm"
-    });
+      });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
@@ -124,7 +124,7 @@ private:
     if (protocol::decode_motor_current(*frame, motor, rpm)) {
       std_msgs::msg::Int16 output;
       output.data = rpm;
-      motor_current_rpm_pubs_[motor] -> publish(output);
+      motor_current_rpm_pubs_[motor]->publish(output);
       return;
     }
 
