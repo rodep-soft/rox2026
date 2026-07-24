@@ -4,6 +4,7 @@
 // 最後にCAN送信した時刻を記録しておく
 static uint32_t last_send_time = 0;
 
+static uint32_t last_pushed_time = 0;
 // 送信回数を記録するデバッグ用変数
 volatile uint32_t debug_tx_count = 0;
 uint8_t TxData[8] = {0};
@@ -58,5 +59,18 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
         can_error = HAL_CAN_GetError(hcan);
         mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
+    }
+
+    if((current_time - last_pushed_time) >= 100) {
+    	last_pushed_time = current_time;
+    	CAN_TxHeaderTypeDef HbTxHeader;
+    	uint32_t HbTxMailbox;
+
+        HbTxHeader.StdId = 0x100/* 空信号用のID (0x30nなど) */;
+        HbTxHeader.ExtId = 0;
+        HbTxHeader.RTR = CAN_RTR_DATA;
+        HbTxHeader.IDE = CAN_ID_STD;
+        HbTxHeader.DLC = 0; // 空信号
+        HAL_CAN_AddTxMessage(hcan, &HbTxHeader, TxData, &HbTxMailbox);
     }
 }
