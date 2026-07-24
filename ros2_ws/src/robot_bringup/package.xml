@@ -11,6 +11,7 @@
 
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>hardware_driver</exec_depend>
+  <exec_depend>joy</exec_depend>
   <exec_depend>joy_controller</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
