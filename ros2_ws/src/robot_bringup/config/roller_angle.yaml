@@ -1,9 +1,9 @@
 roller_position_controller:
   ros__parameters:
     # RobStride loc_ref is radian.
-    storage_angle: 0.5 
+    storage_angle: 1.5 
     intake_angle: 0.2  
-    shoot_angle: -1.3
+    shoot_angle: -1.05
 
     enable_button: 9  # buttons[4]を押している間だけプリセット操作を有効化
     storage_button: 11
