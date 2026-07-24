@@ -51,9 +51,7 @@ volatile float target_rpm2 = 0.0f;  // モーター2用 (RPM)
 volatile float target_rpm3 = 1000.0f; // モーター3用 (PWM値: 1000〜2000)
 
 volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
-volatile uint8_t led_r = 0;               // LED 赤色値 (0-255)
-volatile uint8_t led_g = 0;               // LED 緑色値 (0-255)
-volatile uint8_t led_b = 0;               // LED 青色値 (0-255)
+volatile int received_LED;
 
 // --- CAN通信用の変数 ---
 volatile uint16_t received_rpm_1_2;
@@ -148,23 +146,58 @@ float Compute_PID(PID_Controller *pid, float target, float current, float dt)
     return output;
 }
 
-void Wheel(uint8_t WheelPos, uint8_t *r, uint8_t *g, uint8_t *b) {
-    WheelPos = 255 - WheelPos;
-    if(WheelPos < 85) {
-        *r = 255 - WheelPos * 3;
-        *g = 0;
-        *b = WheelPos * 3;
-    } else if(WheelPos < 170) {
-        WheelPos -= 85;
-        *r = 0;
-        *g = WheelPos * 3;
-        *b = 255 - WheelPos * 3;
-    } else {
-        WheelPos -= 170;
-        *r = WheelPos * 3;
-        *g = 255 - WheelPos * 3;
-        *b = 0;
-    }
+void shining_LED() {
+	 static unsigned int count_led = 0;
+	 int i_count;
+	 int phase;
+	 int step_val;
+
+	 switch (received_LED) {
+	 	 case 1:/*虹色グラデーション*/
+	 		 for(int i = 0; i < 30; i++) {
+	 			 i_count = count_led + (10 * i);
+	 			 i_count %= 256 * 6;
+	 			 phase = i_count / 256;
+	 			 step_val = i_count % 256;
+	 			 switch (phase) {
+		 	     	 case 0: r = 255;            g = step_val;       b = 0;              break;
+		 	     	 case 1: r = 255 - step_val; g = 255;            b = 0;              break;
+		 	     	 case 2: r = 0;              g = 255;            b = step_val;       break;
+		 			 case 3: r = 0;              g = 255 - step_val; b = 255;            break;
+		 			 case 4: r = step_val;       g = 0;              b = 255;            break;
+		 			 case 5: r = 255;            g = 0;              b = 255 - step_val; break;
+	 			 }
+		    	 setPixel(i, r, g, b);
+	 		 }
+	 		 break;
+
+	 	 case 2:/*緊急停止用真っ赤*/
+	 		 for(int i = 0; i < 30; i++) {
+	 			 r = 255; g = 0; b = 0;
+	 			 setPixel(i, r, g, b);
+	 		 }
+	 		 break;
+
+	 	 case 3:/*異常事態用赤点滅*/
+	 		 for(int i = 0; i < 30; i++) {
+	 			 if((count_led % 20) < 10) {
+	 				 r = 0; g = 0; b = 0;
+	 			 } else {
+	 				 r = 255; g = 0; b = 0;
+	 			 }
+	 			 setPixel(i, r, g, b);
+	 		 }
+	 		 break;
+
+	 	 case 4:/**/
+	 		 break;
+	 	 case 5:/**/
+	 		 break;
+	 	 case 6:/**/
+	 		 break;
+	 }
+	 count_led += 1; //色が変わる速さ
+     show();
 }
 
 /* USER CODE END 0 */
@@ -209,7 +242,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // LEDの初期化
-  int count_led = 0;
   clear();
   for(int i = 0; i < 30; i++) {
       setPixel(i, 0, 0, 0); // 最初は消灯
@@ -217,23 +249,22 @@ int main(void)
   show();
 
   // PWMスタート
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // モーター1 (MAD PWM直結)
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_1); // モーター1 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1); // モーター3 (MAD PWM直結)
+  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1);
 
   // エンコーダのカウント開始
   HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
-  // CANフィルタ設定 (ID 0x201 のみ受信する設定)
+  // CANフィルタ設定 (ID 0x20n のみ受信する設定)
   CAN_FilterTypeDef sFilterConfig;
   sFilterConfig.FilterBank = 0;
   sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
   sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = 0x201 << 5;
+  sFilterConfig.FilterIdHigh = 0x200 << 5;
   sFilterConfig.FilterIdLow = 0x0000;
-  sFilterConfig.FilterMaskIdHigh = 0x7FF << 5;
+  sFilterConfig.FilterMaskIdHigh = 0x7F0 << 5;
   sFilterConfig.FilterMaskIdLow = 0x0000;
   sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
   sFilterConfig.FilterActivation = ENABLE;
@@ -250,7 +281,6 @@ int main(void)
   }
 
 
-  __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, 1000.0f);
   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000.0f);
   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 1000.0f);
 
@@ -277,11 +307,11 @@ int main(void)
       }
 
       // タイムアウト、または非常停止フラグが立っている場合はモーターを強制停止
-//      if (is_timeout || emergency_stop_flag != 0) {
-//          target_rpm1 = 0.0f;
-//          target_rpm2 = 0.0f;
-//          target_rpm3 = 1000.0f; // ESC停止のPWM値
-//      }
+      if (is_timeout || emergency_stop_flag != 0) {
+          target_rpm1 = 0.0f;
+          target_rpm2 = 0.0f;
+          target_rpm3 = 1000.0f; // ESC停止のPWM値
+      }
 
       // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
       pos1 = __HAL_TIM_GET_COUNTER(&htim1);
@@ -294,74 +324,21 @@ int main(void)
       // モーター1, 2 はPIDで計算
       output_pwm1 = Compute_PID(&pid1, target_rpm1, current_rpm1, DT_SEC);
       output_pwm2 = Compute_PID(&pid2, target_rpm2, current_rpm2, DT_SEC);
-      // モーター3 は直接PWM値を使用 (1000〜2000の制限をかける)
-      output_pwm3 = target_rpm3;
-      if (output_pwm3 > 2000.0f) output_pwm3 = 2000.0f;
-      if (output_pwm3 < 1000.0f) output_pwm3 = 1000.0f;
 
       // --- 4. モーターへPWM出力 ---
       //TIM3 CH1  PA6
       //TIM3 CH2  PA4
       //TIM15 CH1 PA2
       //TIN17 CH1 PA7 ←LEDにした
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm2);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm3);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)output_pwm1);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)output_pwm2);
+      //ドリブルは赤ブラシへ変更したため消した。
 
       // --- 5. リミットスイッチの状態を更新＆送信 ---
       LimitSwitch_UpdateAndSend(&hcan);
 
       // --- 6. LEDの点灯更新 ---
-      // 受信したRGB値を使ってLEDの色を更新する
-      for(int i = 0; i < 30; i++) {
-    	  // 隣のLEDとの色の違い
-    	  int i_count = count_led + (10 * i); // 0にしたら全部同じ色
-    	  i_count %= 256 * 6;
-    	  int phase = i_count / 256;
-    	  int step_val = i_count % 256;
-    	  switch (phase) {
-			  case 0: // 赤 → 黄 (緑が増える)
-				  r = 255;
-				  g = step_val; // 0 から 255 へ増加
-				  b = 0;
-				  break;
-
-			  case 1: // 黄 → 緑 (赤が減る)
-				  r = 255 - step_val; // 255 から 0 へ減少
-				  g = 255;
-				  b = 0;
-				  break;
-
-			  case 2: // 緑 → シアン (青が増える)
-				  r = 0;
-				  g = 255;
-				  b = step_val; // 0 から 255 へ増加
-				  break;
-
-			  case 3: // シアン → 青 (緑が減る)
-				  r = 0;
-				  g = 255 - step_val; // 255 から 0 へ減少
-				  b = 255;
-				  break;
-
-			  case 4: // 青 → マゼンタ (赤が増える)
-				  r = step_val; // 0 から 255 へ増加
-				  g = 0;
-				  b = 255;
-				  break;
-
-			  case 5: // マゼンタ → 赤 (青が減る)
-				  r = 255;
-				  g = 0;
-				  b = 255 - step_val; // 255 から 0 へ減少
-				  break;
-
-		  }
-    	  setPixel(i, r, g, b);
-
-      }
-      count_led += 1; //色が変わる速さ
-      show();
+      shining_LED();
 
       // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
       // 処理にかかった時間を差し引いて正確に10msループを作る
@@ -438,31 +415,34 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         debug_rx_count++;
         // -------------------------------------------------------------
 
-        // --- 指定フォーマットの解析処理（ID: 0x201） ---
-        // 8バイトのデータが来ていることを前提として中身を取り出す
-        if(RxHeader.StdId == 0x201 && RxHeader.DLC == 8) {
-
-            // Byte [0],[1]: モーター1,2用 RPM
-            received_rpm_1_2 = (uint16_t)(RxData[2] | (RxData[1] << 8));
+        // --- 指定フォーマットの解析処理（ID: 0x20n） ---
+        if(RxHeader.StdId == 0x201 && RxHeader.DLC == 4) {
+        	//MADモーターのRPM指定
+            received_rpm_1_2 = (uint16_t)(RxData[0] | (RxData[1] << 8));
             target_rpm1 = (float)received_rpm_1_2;
             target_rpm2 = (float)received_rpm_1_2;
-
-            // Byte [2],[3]: モーター3用 PWM (1000-2000)
-            uint16_t received_pwm_3 = (uint16_t)(RxData[0] | (RxData[3] << 8));
-            target_rpm3 = (float)received_pwm_3;
-
-            // Byte [4]: 遠隔非常停止フラグ (1:停止, 0:通常)
-            emergency_stop_flag = RxData[4];
-
-            // Byte [5],[6],[7]: LEDの RGB値
-            led_r = RxData[5];
-            led_g = RxData[6];
-            led_b = RxData[7];
-
-            // 通信成功の証としてタイムアウト時間をリセット
             last_can_rx_time = HAL_GetTick();
             is_timeout = 0;
             DataReadyFlag = 1;
+        }
+        else if(RxHeader.StdId == 0x201) {
+        	//LEDの光り方指定
+        	received_LED = (int)RxData[0];
+        	last_can_rx_time = HAL_GetTick();
+            is_timeout = 0;
+            DataReadyFlag = 1;
+        }
+        else if(RxHeader.StdId == 0x201 && RxHeader.DLC == 0) {
+        	//緊急停止のFlag管理
+        	emergency_stop_flag = 1;
+        	last_can_rx_time = HAL_GetTick();
+        	is_timeout = 0;
+        	DataReadyFlag = 1;
+        }
+        else if(RxHeader.StdId == 0x201) {
+        	//空送信による通信状態管理
+        	last_can_rx_time = HAL_GetTick();
+
         }
     }
 }
