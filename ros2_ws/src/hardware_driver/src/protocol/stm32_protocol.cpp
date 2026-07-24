@@ -69,7 +69,7 @@ can_msgs::msg::Frame make_motor_target_frame(std::size_t motor, float rpm)
   }
 
   auto frame = make_data_frame(
-    MOTOR_TARGET_BASE + static_cast<uint32_t>(motor), sizeof(float));
+    MOTOR_TARGET_RPM_BASE + static_cast<uint32_t>(motor), sizeof(float));
   encode_float_le(rpm, frame.data);
   return frame;
 }
