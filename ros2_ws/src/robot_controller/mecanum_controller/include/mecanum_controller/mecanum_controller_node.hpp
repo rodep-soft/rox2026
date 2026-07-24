@@ -26,6 +26,7 @@ private:
 
   void declare_parameters();
   void get_parameters();
+  void create_interfaces();
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
