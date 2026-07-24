@@ -60,12 +60,13 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         can_error = HAL_CAN_GetError(hcan);
         mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
     }
+
     if((current_time - last_pushed_time) >= 100) {
     	last_pushed_time = current_time;
     	CAN_TxHeaderTypeDef HbTxHeader;
     	uint32_t HbTxMailbox;
 
-        HbTxHeader.StdId = 0x000/* 空信号用のID (0x30nなど) */;
+        HbTxHeader.StdId = 0x100/* 空信号用のID (0x30nなど) */;
         HbTxHeader.ExtId = 0;
         HbTxHeader.RTR = CAN_RTR_DATA;
         HbTxHeader.IDE = CAN_ID_STD;
