@@ -9,6 +9,11 @@ MecanumControllerNode::MecanumControllerNode()
   declare_parameters();
   get_parameters();
 
+  create_interfaces();
+}
+
+void MecanumControllerNode::create_interfaces()
+{
   cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
     cmd_vel_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&MecanumControllerNode::cmd_vel_callback, this, std::placeholders::_1));

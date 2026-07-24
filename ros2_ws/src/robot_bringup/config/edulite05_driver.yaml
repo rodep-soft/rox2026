@@ -5,44 +5,50 @@
 #    motor_id: 1
 #    runmode: Velocity, Position
 
-edulite05_driver_node_1:
+edulite05_fl_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_1/cmd"
+    # std_msgs/msg/Float32、単位はrad/s。
+    sub_cmd_topic_name: "/mecanum/fl/vel_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 1
     runmode: "Velocity" # 0:vel, 1:pos
 
-edulite05_driver_node_2:
+edulite05_fr_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_2/cmd"
+    # std_msgs/msg/Float32、単位はrad/s。
+    sub_cmd_topic_name: "/mecanum/fr/vel_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 2
     runmode: "Velocity" # 0:vel, 1:pos
 
-edulite05_driver_node_3:
+edulite05_rl_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_3/cmd"
+    # std_msgs/msg/Float32、単位はrad/s。
+    sub_cmd_topic_name: "/mecanum/rl/vel_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 3
     runmode: "Velocity" # 0:vel, 1:pos
 
-edulite05_driver_node_4:
+edulite05_rr_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_4/cmd"
+    # std_msgs/msg/Float32、単位はrad/s。
+    sub_cmd_topic_name: "/mecanum/rr/vel_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 4
     runmode: "Velocity" # 0:vel, 1:pos
 
-edulite05_driver_node_5:
+edulite05_spring_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_5/cmd"
+    # std_msgs/msg/Float32、単位はrad/s。
+    sub_cmd_topic_name: "/spring/vel_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 10
     runmode: "Velocity" # 0:vel, 1:pos
 
-edulite05_driver_node_6:
+edulite05_dribble_position_driver:
   ros__parameters:
-    sub_cmd_topic_name: "motor_6/cmd"
+    # std_msgs/msg/Float32、単位はrad。
+    sub_cmd_topic_name: "/dribble/position_command"
     pub_topic_name: "socketcan_bridge/tx"
     motor_id: 38
     runmode: "Position" # 0:vel, 1:pos
