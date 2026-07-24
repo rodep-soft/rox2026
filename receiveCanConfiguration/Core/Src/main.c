@@ -189,12 +189,95 @@ void shining_LED() {
 	 		 }
 	 		 break;
 
-	 	 case 4:/**/
-	 		 break;
-	 	 case 5:/**/
-	 		 break;
-	 	 case 6:/**/
-	 		 break;
+	 	 case 4:/*上下のグラデーション*/
+	 		int r = 0, g = 0, b = 0;
+	 		int step_time = count_led / 10;
+	 		int d = step_time % 11;
+	 		int color_idx = (step_time / 11) % 6;
+
+	 		switch (color_idx) {
+	 	 		case 0: r = 255; g = 0;   b = 0;   break; // R
+	 	 		case 1: r = 0;   g = 255; b = 0;   break; // G
+	 	 		case 2: r = 0;   g = 0;   b = 255; break; // B
+	 	 		case 3: r = 170; g = 170; b = 0;   break; // RG (黄)
+	 	 		case 4: r = 0;   g = 170; b = 170; break; // GB (水色)
+	 	 		case 5: r = 170; g = 0;   b = 170; break; // BR (紫)
+	 		}
+	 		for(int i = 0; i < 30; i++) {
+	 			setPixel(i, 0, 0, 0);
+	 		}
+	 		// --- 1〜20の縦列 (Index: 0〜9 と 19〜10) ---
+	 		for(int i = 0; i < 10; i++) {
+	 			if (i >= d && i <= d + 2) {
+	 				setPixel(i, r, g, b);
+	 				setPixel(19 - i, r, g, b);
+	 			}
+	 		}
+	 		// --- 21〜30の横列 (Index: 20〜29) ---
+	 		for(int j = 0; j < 5; j++) {
+	 			if (j == d || j == d - 1) {
+	 				setPixel(24 - j, r, g, b);
+	 				setPixel(25 + j, r, g, b);
+	 			}
+	 		}
+	 		break;
+	 case 5:/*点滅*/
+		 int wave = (count_led * 2) % 512;
+		 if (wave > 255) {
+			 wave = 511 - wave; // 256を超えたら折り返して減らす
+		 }
+
+		 int bright_even = wave;         // 0 -> 255 -> 0
+		 int bright_odd  = 255 - wave;   // 255 -> 0 -> 255
+
+		 for(int i = 0; i < 30; i++) {
+			 int r = 0, g = 0, b = 0;
+
+			 if (i % 2 == 0) {
+				 // 偶数(Index: 0, 2, 4...)：シアン（水色）
+				 r = 0;
+				 g = bright_even;
+				 b = bright_even;
+			 } else {
+				 // 奇数(Index: 1, 3, 5...)：マゼンタ（紫）
+				 r = bright_odd;
+				 g = 0;
+				 b = bright_odd;
+			 }
+
+			 setPixel(i, r, g, b);
+		 }
+		 break;
+	 case 6:/*RODEPというモールス信号*/
+	 {
+		 int seq[56] = {
+				 1,0,2,2,2,0,1,0,0,0,
+				 2,2,2,0,2,2,2,0,2,2,2,0,0,0,
+				 2,2,2,0,1,0,1,0,0,0,
+				 1,0,0,0,
+				 1,0,2,2,2,0,2,2,2,0,1,0,0,0,0,0,0,0
+		 };
+		 int tu = count_led / 8;
+
+		 for(int i = 0; i < 30; i++) {
+			 int idx = (tu - i) % 56;
+			 if (idx < 0) {
+				 idx += 56;
+			 }
+
+			 int state = seq[idx];
+			 int r = 0, g = 0, b = 0;
+
+			 if (state == 1) {
+				 b = 255;
+			 } else if (state == 2) {
+				 r = 255;
+				 g = 255;
+			 }
+
+			 setPixel(i, r, g, b);
+		 }
+		 break;
 	 }
 	 count_led += 1; //色が変わる速さ
      show();
