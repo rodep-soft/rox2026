@@ -16,12 +16,15 @@ public:
   MecanumControllerNode();
 
 private:
+  static constexpr std::size_t wheel_count_{4};
+  static constexpr int qos_depth_{3};
+
   enum WheelIndex
   {
-    FL = 0,
-    FR = 1,
-    RL = 2,
-    RR = 3,
+    FrontLeft = 0,
+    FrontRight = 1,
+    RearLeft = 2,
+    RearRight = 3,
   };
 
   void declare_parameters();
@@ -29,12 +32,9 @@ private:
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
+  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, wheel_count_>
+  wheel_velocity_pubs_;
 
-  std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
-  double vx_{0.0};
-  double vy_{0.0};
-  double wz_{0.0};
   double wheel_radius_{0.0};
   double robot_length_{0.0};
   double robot_width_{0.0};
@@ -43,8 +43,7 @@ private:
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};
   std::string cmd_vel_topic_;
-  std::array<std::string, 4> wheel_velocity_topics_;
-  int qos_depth_{1};
+  std::array<std::string, wheel_count_> wheel_velocity_topics_;
 };
 
 #endif  // MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_

@@ -14,6 +14,8 @@ public:
   SpringEduliteController();
 
 private:
+  static constexpr int qos_depth_{3};
+
   enum class State
   {
     READY,
@@ -21,11 +23,10 @@ private:
     FIRE,
   };
 
-  State now_state_{State::LOAD};  // 現在のばね射出状態。
+  State state_{State::LOAD};  // 現在のばね射出状態。
   int limit_switch_index_{0};  // 引き切り判定に使うリミットスイッチ配列のindex。
-  bool is_configuration_valid_{true};  // パラメータが有効か。falseの場合は0 rad/sを出力する。
-  bool is_loaded_{false};  // リミットスイッチで取得した、ばねを引き切った状態。
-  bool previous_fire_request_{false};  // 立上り検出に使う、前回のspring_is_fire値。
+  bool spring_loaded_{false};  // リミットスイッチで取得した、ばねを引き切った状態。
+  bool previous_fire_request_active_{false};  // 発射要求の立上り検出に使う前回値。
   bool fire_pending_{false};  // READY状態で受理済みの発射要求。
   bool stop_dribble_on_fire_{true};  // 発射前にdribbleの停止を待つか。
   bool dribble_is_stopped_{false};  // dribble_controllerから受信した停止完了状態。
@@ -33,7 +34,6 @@ private:
   double fire_velocity_rad_s_{0.0};  // FIRE状態で出力する目標角速度[rad/s]。
   double fire_duration_sec_{0.0};  // FIRE状態を継続する時間[s]。
   int command_period_ms_{10};
-  int qos_depth_{1};
   rclcpp::Time fire_start_time_;  // FIRE状態へ遷移した時刻。
   std::string fire_request_topic_;
   std::string limit_switch_topic_;

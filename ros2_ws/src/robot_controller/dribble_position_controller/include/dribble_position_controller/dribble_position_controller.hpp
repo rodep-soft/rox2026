@@ -15,6 +15,8 @@ public:
   DribblePositionController();
 
 private:
+  static constexpr int qos_depth_{3};
+
   using DribblePosition = robot_controller::action::DribblePosition;
   using GoalHandle = rclcpp_action::ServerGoalHandle<DribblePosition>;
 
@@ -43,7 +45,6 @@ private:
   double return_timeout_sec_{3.0};
   double current_position_rad_{0.0};
   double target_position_rad_{0.0};
-  int qos_depth_{1};
   State state_{State::DRIBBLE};
   Completion return_completion_{Completion::ABORTED};
   rclcpp::Time return_start_time_;

@@ -19,10 +19,6 @@ DribblePositionController::DribblePositionController()
   declare_parameters();
   get_parameters();
 
-  if (qos_depth_ <= 0) {
-    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
-    qos_depth_ = 1;
-  }
   if (return_timeout_sec_ <= 0.0) {
     RCLCPP_WARN(
       get_logger(),
@@ -59,7 +55,6 @@ void DribblePositionController::declare_parameters()
   declare_parameter<double>("shoot_position_rad", 2.0);
   declare_parameter<double>("position_tolerance_rad", 0.02);
   declare_parameter<double>("return_timeout_sec", 3.0);
-  declare_parameter<int>("qos_depth", 1);
 }
 
 void DribblePositionController::get_parameters()
@@ -72,7 +67,6 @@ void DribblePositionController::get_parameters()
   get_parameter("shoot_position_rad", shoot_position_rad_);
   get_parameter("position_tolerance_rad", position_tolerance_rad_);
   get_parameter("return_timeout_sec", return_timeout_sec_);
-  get_parameter("qos_depth", qos_depth_);
 }
 
 rclcpp_action::GoalResponse DribblePositionController::handle_goal(

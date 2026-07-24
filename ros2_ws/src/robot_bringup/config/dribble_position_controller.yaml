@@ -12,4 +12,3 @@ dribble_position_controller:
     position_tolerance_rad: 0.02
     # cancelまたは中断時にDRIBBLE位置へ戻るまでの待機時間[s]。
     return_timeout_sec: 3.0
-    qos_depth: 1

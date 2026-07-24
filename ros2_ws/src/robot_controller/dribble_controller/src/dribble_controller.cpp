@@ -13,19 +13,10 @@ DribbleController::DribbleController()
   declare_parameters();
   get_parameters();
 
-  if (stop_deceleration_rpm_s_ <= 0.0) {
-    RCLCPP_ERROR(get_logger(), "stop_deceleration_rpm_s must be greater than zero");
-    is_configuration_valid_ = false;
-  }
   if (command_period_ms_ <= 0) {
-    RCLCPP_ERROR(get_logger(), "command_period_ms must be greater than zero");
-    is_configuration_valid_ = false;
+    RCLCPP_WARN(get_logger(), "command_period_ms must be greater than zero. Using 10 ms.");
+    command_period_ms_ = 10;
   }
-  if (qos_depth_ <= 0) {
-    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
-    qos_depth_ = 1;
-  }
-
   dribble_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
     dribble_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::dribble_mode_callback, this, std::placeholders::_1));
@@ -51,7 +42,6 @@ void DribbleController::declare_parameters()
   declare_parameter<double>("high_rpm", 600.0);
   declare_parameter<double>("stop_deceleration_rpm_s", 200.0);
   declare_parameter<int>("command_period_ms", 10);
-  declare_parameter<int>("qos_depth", 1);
 }
 
 void DribbleController::get_parameters()
@@ -64,17 +54,16 @@ void DribbleController::get_parameters()
   get_parameter("high_rpm", high_rpm_);
   get_parameter("stop_deceleration_rpm_s", stop_deceleration_rpm_s_);
   get_parameter("command_period_ms", command_period_ms_);
-  get_parameter("qos_depth", qos_depth_);
 }
 
 void DribbleController::dribble_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  dribble_mode_ = msg->data;
+  requested_dribble_mode_ = msg->data;
 }
 
 void DribbleController::stop_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  stop_requested_ = msg->data;
+  dribble_stop_requested_ = msg->data;
 }
 
 double DribbleController::target_rpm_from_mode(uint8_t mode)
@@ -88,17 +77,18 @@ double DribbleController::target_rpm_from_mode(uint8_t mode)
       return low_rpm_;
     default:
       RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 1000, "Unsupported dribble_mode %u. Stopping dribble.", mode);
+        get_logger(), *get_clock(), 1000, "Unsupported dribble mode %u. Stopping dribble.", mode);
       return 0.0;
   }
 }
 
 void DribbleController::timer_callback()
 {
-  const double target_rpm = stop_requested_ ? 0.0 : target_rpm_from_mode(dribble_mode_);
+  const double target_rpm =
+    dribble_stop_requested_ ? 0.0 : target_rpm_from_mode(requested_dribble_mode_);
 
   // 停止要求中は設定した減速度に従って、現在のrpmから0まで徐々に下げる。
-  if (stop_requested_) {
+  if (dribble_stop_requested_) {
     const double maximum_decrease =
       stop_deceleration_rpm_s_ * static_cast<double>(command_period_ms_) / 1000.0;
     current_rpm_ = std::max(0.0, current_rpm_ - maximum_decrease);
@@ -107,17 +97,13 @@ void DribbleController::timer_callback()
     current_rpm_ = target_rpm;
   }
 
-  if (!is_configuration_valid_) {
-    current_rpm_ = 0.0;
-  }
-
   std_msgs::msg::Int16 rpm_command;
   rpm_command.data = static_cast<int16_t>(std::round(current_rpm_));
   rpm_pub_->publish(rpm_command);
 
   std_msgs::msg::Bool is_stopped;
   // spring_controllerへ、停止要求中かつ0 RPMまで下がったことを返す。
-  is_stopped.data = stop_requested_ && current_rpm_ == 0.0;
+  is_stopped.data = dribble_stop_requested_ && current_rpm_ == 0.0;
   is_stopped_pub_->publish(is_stopped);
 }
 

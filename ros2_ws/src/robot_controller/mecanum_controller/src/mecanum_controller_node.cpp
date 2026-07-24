@@ -32,7 +32,6 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<std::string>("front_right_velocity_topic", "/mecanum/front_right/vel_command");
   declare_parameter<std::string>("rear_left_velocity_topic", "/mecanum/rear_left/vel_command");
   declare_parameter<std::string>("rear_right_velocity_topic", "/mecanum/rear_right/vel_command");
-  declare_parameter<int>("qos_depth", 1);
 }
 
 void MecanumControllerNode::get_parameters()
@@ -45,41 +44,46 @@ void MecanumControllerNode::get_parameters()
   get_parameter("vy_sign", vy_sign_);
   get_parameter("angular_z_sign", angular_z_sign_);
   get_parameter("cmd_vel_topic", cmd_vel_topic_);
-  get_parameter("front_left_velocity_topic", wheel_velocity_topics_[FL]);
-  get_parameter("front_right_velocity_topic", wheel_velocity_topics_[FR]);
-  get_parameter("rear_left_velocity_topic", wheel_velocity_topics_[RL]);
-  get_parameter("rear_right_velocity_topic", wheel_velocity_topics_[RR]);
-  get_parameter("qos_depth", qos_depth_);
+  get_parameter("front_left_velocity_topic", wheel_velocity_topics_[FrontLeft]);
+  get_parameter("front_right_velocity_topic", wheel_velocity_topics_[FrontRight]);
+  get_parameter("rear_left_velocity_topic", wheel_velocity_topics_[RearLeft]);
+  get_parameter("rear_right_velocity_topic", wheel_velocity_topics_[RearRight]);
 
-  if (velocity_corrections_.size() != wheel_vels_.size()) {
+  if (velocity_corrections_.size() != wheel_count_) {
     RCLCPP_ERROR(
       get_logger(), "velocity_corrections must contain %zu elements, but %zu were provided",
-      wheel_vels_.size(), velocity_corrections_.size());
-    velocity_corrections_.assign(wheel_vels_.size(), 1.0);
-  }
-  if (qos_depth_ <= 0) {
-    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
-    qos_depth_ = 1;
+      wheel_count_, velocity_corrections_.size());
+    velocity_corrections_.assign(wheel_count_, 1.0);
   }
 }
 
 void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
   // 機体座標系の速度指令に、配線や機構に合わせた符号補正をかける。
-  vx_ = msg->linear.x * vx_sign_;
-  vy_ = msg->linear.y * vy_sign_;
-  wz_ = msg->angular.z * angular_z_sign_;
+  const double linear_x_velocity = msg->linear.x * vx_sign_;
+  const double linear_y_velocity = msg->linear.y * vy_sign_;
+  const double angular_z_velocity = msg->angular.z * angular_z_sign_;
 
   // mecanumの逆運動学で、機体速度から各車輪の目標角速度を計算する。
-  wheel_vels_[FL] = -(vx_ + vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[FR] = (vx_ - vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[RL] = -(vx_ - vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[RR] = (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
+  std::array<double, wheel_count_> wheel_angular_velocities;
+  wheel_angular_velocities[FrontLeft] = -(
+    linear_x_velocity + linear_y_velocity -
+    (robot_length_ + robot_width_) / 2.0 * angular_z_velocity) / wheel_radius_;
+  wheel_angular_velocities[FrontRight] = (
+    linear_x_velocity - linear_y_velocity +
+    (robot_length_ + robot_width_) / 2.0 * angular_z_velocity) / wheel_radius_;
+  wheel_angular_velocities[RearLeft] = -(
+    linear_x_velocity - linear_y_velocity -
+    (robot_length_ + robot_width_) / 2.0 * angular_z_velocity) / wheel_radius_;
+  wheel_angular_velocities[RearRight] = (
+    linear_x_velocity + linear_y_velocity +
+    (robot_length_ + robot_width_) / 2.0 * angular_z_velocity) / wheel_radius_;
 
   // 車輪ごとの補正係数をかけて、hardware_driverへ渡す速度指令をpublishする。
-  for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
+  for (std::size_t index = 0; index < wheel_angular_velocities.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
-    cmd_msg.data = static_cast<float>(wheel_vels_[index] * velocity_corrections_[index]);
+    cmd_msg.data = static_cast<float>(
+      wheel_angular_velocities[index] * velocity_corrections_[index]);
     wheel_velocity_pubs_[index]->publish(cmd_msg);
   }
 }

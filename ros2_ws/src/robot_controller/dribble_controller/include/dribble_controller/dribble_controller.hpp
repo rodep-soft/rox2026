@@ -15,6 +15,7 @@ public:
   DribbleController();
 
 private:
+  static constexpr int qos_depth_{3};
   static constexpr uint8_t stop_mode_{0};
   static constexpr uint8_t high_mode_{1};
   static constexpr uint8_t low_mode_{2};
@@ -26,15 +27,13 @@ private:
   void timer_callback();
   double target_rpm_from_mode(uint8_t mode);
 
-  bool is_configuration_valid_{true};
-  bool stop_requested_{false};
-  uint8_t dribble_mode_{stop_mode_};
+  bool dribble_stop_requested_{false};
+  uint8_t requested_dribble_mode_{stop_mode_};
   double current_rpm_{0.0};
   double low_rpm_{300.0};
   double high_rpm_{600.0};
   double stop_deceleration_rpm_s_{200.0};
   int command_period_ms_{10};
-  int qos_depth_{1};
   std::string dribble_mode_topic_;
   std::string dribble_rpm_topic_;
   std::string dribble_stop_request_topic_;

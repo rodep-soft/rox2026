@@ -14,6 +14,8 @@ public:
   BeltControllerNode();
 
 private:
+  static constexpr int qos_depth_{3};
+  static constexpr int stop_rpm_{0};
   static constexpr uint8_t stop_mode_{0};
   static constexpr uint8_t level_1_mode_{1};
   static constexpr uint8_t level_2_mode_{2};
@@ -25,17 +27,13 @@ private:
   void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void timer_callback();
   int target_rpm_from_mode(uint8_t mode);
-  bool is_rpm_valid(int rpm) const;
 
-  bool is_configuration_valid_{true};
-  bool belt_is_fire_{false};
-  uint8_t belt_mode_{stop_mode_};
-  int stop_rpm_{0};
+  bool belt_enabled_{false};
+  uint8_t requested_belt_mode_{stop_mode_};
   int level_1_rpm_{3000};
   int level_2_rpm_{4000};
   int level_3_rpm_{5000};
   int command_period_ms_{10};
-  int qos_depth_{1};
   std::string belt_fire_topic_;
   std::string belt_mode_topic_;
   std::string belt_rpm_topic_;

@@ -10,8 +10,6 @@ spring_controller_node:
 
     # hardware_driverへ送るEduLite 05の速度command topic。std_msgs/msg/Float32、単位はrad/s。
     spring_velocity_command_topic: /spring/vel_command
-    qos_depth: 1
-
     # 発射前にdribbleを停止させるか。std_msgs/msg/Boolの停止要求・完了topicを使用する。
     stop_dribble_on_fire: true
     dribble_stop_request_topic: /dribble_stop_request
