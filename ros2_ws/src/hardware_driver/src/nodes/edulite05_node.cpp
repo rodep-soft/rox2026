@@ -134,8 +134,8 @@ private:
 
       if (id_info.mode_status == 0 && should_be_enabled_) { // モーターがdisableになっていたら初期化;
         send_init_frames();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms程の間隔をあけておく 
-      // sleepでなく時間で見たほうが処理止めなくてベストかも
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms程の間隔をあけておく
+        // sleepでなく時間で見たほうが処理止めなくてベストかも
 
       }
     } else if (id_info.comm_type == 0x00) {
