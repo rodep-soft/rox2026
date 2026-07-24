@@ -1,54 +1,61 @@
-#edulite05_driver_node:
-#  ros__parameters:
-#    sub_cmd_topic_name: "motor_1/cmd"
-#    pub_topic_name: "socketcan_bridge/tx"
-#    motor_id: 1
-#    runmode: Velocity, Position
+# edulite05_driver configuration for all motors
 
 edulite05_fl_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad/s。
-    sub_cmd_topic_name: "/mecanum/fl/vel_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/mecanum/fl/vel_command" # std_msgs/msg/Float32 (rad/s)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/mecanum/fl/feedback"     # std_msgs/msg/Float32
     motor_id: 1
-    runmode: "Velocity" # 0:vel, 1:pos
+    runmode: "Velocity"                           # "Velocity" or "Position"
+    is_requested_fb_pub: false                    # Publish feedback if true
 
 edulite05_fr_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad/s。
-    sub_cmd_topic_name: "/mecanum/fr/vel_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/mecanum/fr/vel_command" # std_msgs/msg/Float32 (rad/s)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/mecanum/fr/feedback"     # std_msgs/msg/Float32
     motor_id: 2
-    runmode: "Velocity" # 0:vel, 1:pos
+    runmode: "Velocity"                           # "Velocity" or "Position"
+    is_requested_fb_pub: false                    # Publish feedback if true
 
 edulite05_rl_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad/s。
-    sub_cmd_topic_name: "/mecanum/rl/vel_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/mecanum/rl/vel_command" # std_msgs/msg/Float32 (rad/s)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/mecanum/rl/feedback"     # std_msgs/msg/Float32
     motor_id: 3
-    runmode: "Velocity" # 0:vel, 1:pos
+    runmode: "Velocity"                           # "Velocity" or "Position"
+    is_requested_fb_pub: false                    # Publish feedback if true
 
 edulite05_rr_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad/s。
-    sub_cmd_topic_name: "/mecanum/rr/vel_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/mecanum/rr/vel_command" # std_msgs/msg/Float32 (rad/s)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/mecanum/rr/feedback"     # std_msgs/msg/Float32
     motor_id: 4
-    runmode: "Velocity" # 0:vel, 1:pos
+    runmode: "Velocity"                           # "Velocity" or "Position"
+    is_requested_fb_pub: false                    # Publish feedback if true
 
 edulite05_spring_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad/s。
-    sub_cmd_topic_name: "/spring/vel_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/spring/vel_command"     # std_msgs/msg/Float32 (rad/s)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/spring/feedback"         # std_msgs/msg/Float32
     motor_id: 10
-    runmode: "Velocity" # 0:vel, 1:pos
+    runmode: "Velocity"                           # "Velocity" or "Position"
+    is_requested_fb_pub: false                    # Publish feedback if true
 
 edulite05_dribble_position_driver:
   ros__parameters:
-    # std_msgs/msg/Float32、単位はrad。
-    sub_cmd_topic_name: "/dribble/position_command"
-    pub_topic_name: "socketcan_bridge/tx"
+    sub_cmd_topic_name: "/dribble/position_command" # std_msgs/msg/Float32 (rad)
+    pub_can_topic_name: "socketcan_bridge/tx"
+    sub_can_topic_name: "socketcan_bridge/rx"
+    pub_fb_topic_name: "/dribble/feedback"         # std_msgs/msg/Float32
     motor_id: 38
-    runmode: "Position" # 0:vel, 1:pos
+    runmode: "Position"                            # "Velocity" or "Position"
+    is_requested_fb_pub: false                     # Publish feedback if true
