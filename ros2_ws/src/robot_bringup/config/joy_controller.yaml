@@ -7,8 +7,8 @@ joy_controller:
     belt_fire_topic: /belt/fire_enabled
     belt_mode_topic: /belt/mode
     dribble_mode_topic: /dribble/mode
-    # 非常停止要求を送るservice。std_srvs/srv/Trigger。
-    emergency_stop_service: /emergency_stop
+    # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
+    emergency_stop_topic: /emergency_stop
     # ドリブル位置移動Action。robot_controller/action/DribblePosition。
     dribble_position_action: /dribble/position
     joy_qos_depth: 3

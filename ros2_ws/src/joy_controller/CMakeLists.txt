@@ -12,7 +12,6 @@ find_package(rclcpp_action REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(robot_controller REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
 
 add_executable(joy_controller_node src/joy_controller_node.cpp src/main.cpp)
 target_include_directories(
@@ -24,8 +23,7 @@ ament_target_dependencies(
   rclcpp_action
   geometry_msgs
   robot_controller
-  sensor_msgs
-  std_srvs)
+  sensor_msgs)
 
 install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
 

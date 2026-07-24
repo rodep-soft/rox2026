@@ -13,7 +13,6 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
-#include "std_srvs/srv/trigger.hpp"
 
 class JoyControllerNode : public rclcpp::Node
 {
@@ -49,8 +48,8 @@ private:
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  void call_emergency_stop();
   void send_dribble_position_goal(uint8_t command);
+  void publish_emergency_stop();
   void publish_state_commands();
   void publish_stop_commands();
   void joy_timeout_callback();
@@ -62,7 +61,7 @@ private:
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
     belt_mode_topic_, dribble_mode_topic_;
-  std::string emergency_stop_service_;
+  std::string emergency_stop_topic_;
   std::string dribble_position_action_;
   int joy_qos_depth_;
   int command_qos_depth_;
@@ -143,7 +142,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_, dribble_mode_publisher_;
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr emergency_stop_client_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
   rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
     dribble_position_action_client_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
