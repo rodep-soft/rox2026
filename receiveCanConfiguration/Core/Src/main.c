@@ -390,6 +390,7 @@ int main(void)
   __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, 1000.0f);
 
   HAL_Delay(4000);
+  last_can_rx_time = HAL_GetTick();
 
   /* USER CODE END 2 */
 
@@ -417,11 +418,11 @@ int main(void)
       }
 
       // タイムアウト、または非常停止フラグが立っている場合はモーターを強制停止
-//      if (is_timeout || emergency_stop_flag != 0) {
-//    	  upper_belt_target_rpm = 0;
-//    	  under_belt_target_rpm = 0;
-//    	  dribble_target_rpm = 0;
-//      }
+      if (is_timeout || emergency_stop_flag != 0) {
+    	  upper_belt_target_rpm = 0;
+    	  under_belt_target_rpm = 0;
+    	  dribble_target_rpm = 0;
+      }
 
       // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
       int16_t  pos1 = __HAL_TIM_GET_COUNTER(&htim1);
@@ -538,6 +539,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
          if(RxHeader.StdId == 0x101) {
         	//空送信による通信状態管理
         	last_can_rx_time = HAL_GetTick();
+        	is_timeout = 0;
         }
          else if(RxHeader.StdId == 0x201) {
          	//LEDの光り方指定
