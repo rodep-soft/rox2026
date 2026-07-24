@@ -134,7 +134,8 @@ private:
 
       if (id_info.mode_status == 0 && should_be_enabled_) { // モーターがdisableになっていたら初期化;
         send_init_frames();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 一秒の間隔をあけておく
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms程の間隔をあけておく
+        // sleepでなく時間で見たほうが処理止めなくてベストかも
 
       }
     } else if (id_info.comm_type == 0x00) {
@@ -144,6 +145,7 @@ private:
 
   void send_init_frames()
   {
+    should_be_enabled_ = false; // 初期化中はこのフラグをfalseにする
     frame_.is_extended = true;
     frame_.is_rtr = false;
     frame_.is_error = false;
@@ -156,7 +158,7 @@ private:
       frame_.data = frames[i].data;
       can_pub_->publish(frame_);
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     should_be_enabled_ = true;
     RCLCPP_DEBUG(this->get_logger(), "Published initialization frames for motor %d.", motor_id_);
