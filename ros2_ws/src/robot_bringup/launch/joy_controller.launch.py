@@ -7,7 +7,9 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     parameter_file = os.path.join(
-        get_package_share_directory("robot_bringup"), "config", "joy_controller.yaml"
+        get_package_share_directory("robot_bringup"),
+        "config",
+        "joy.yaml",
     )
 
     return LaunchDescription(
