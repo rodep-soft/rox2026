@@ -55,7 +55,7 @@ private:
   std::string sub_can_topic_name_;        // Subscription topic name for CAN messages
   can_msgs::msg::Frame frame_;
 
-  uint8_t motor_id_;  
+  uint8_t motor_id_;
   std::string runmode_;  // "Velocity", "Position"
 
   //int count_motor = 0;
@@ -70,11 +70,12 @@ private:
   {
     if (runmode_ == "Velocity") {
       motor_ = std::make_unique<Velocity>(motor_id_);
-    }
-    else if (runmode_ == "Position") {
+    } else if (runmode_ == "Position") {
       motor_ = std::make_unique<Position>(motor_id_);
     } else {
-      RCLCPP_ERROR(this->get_logger(), "Invalid runmode: %s. Must be \"Velocity\" or \"Position\".", runmode_.c_str());
+      RCLCPP_ERROR(
+        this->get_logger(), "Invalid runmode: %s. Must be \"Velocity\" or \"Position\".",
+        runmode_.c_str());
       return;
     }
 
@@ -90,9 +91,9 @@ private:
       frame_.id = frames[i].id;
       frame_.dlc = frames[i].dlc;
       frame_.data = frames[i].data;
-      frame_pub_->publish(frame_); 
+      frame_pub_->publish(frame_);
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));   
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     RCLCPP_DEBUG(this->get_logger(), "Published initialization frames for motor %d.", motor_id_);
   }
