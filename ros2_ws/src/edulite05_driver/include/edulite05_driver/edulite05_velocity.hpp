@@ -31,7 +31,7 @@ public:
     publish(make_frame(kCommEnable));
     wait_after_command();
 
-    // Communication type 18: current_limit (0x7006)
+    // Communication type 18: current_limit (0x7018)
     write_float(kIndexCurrentLimit, current_limit_a_);
     wait_after_command();
 
@@ -58,7 +58,7 @@ private:
   static constexpr std::uint8_t kCommSingleParameterWrite = 0x12;
 
   static constexpr std::uint16_t kIndexRunMode = 0x7005;
-  static constexpr std::uint16_t kIndexCurrentLimit = 0x7006;
+  static constexpr std::uint16_t kIndexCurrentLimit = 0x7018;
   static constexpr std::uint16_t kIndexVelocityCommand = 0x700A;
   static constexpr std::uint16_t kIndexVelocityAcceleration = 0x7022;
   static constexpr std::uint32_t kVelocityMode = 2;
