@@ -25,7 +25,7 @@ std::vector<Canframe> Velocity::create_init_frame()
   std::vector<Canframe> frames;
 
   // runmode
-  frames.push_back(set_runmode(1));
+  frames.push_back(set_runmode(2)); // runmode: velocity
 
   // motor enable
   frames.push_back(set_enable());
@@ -45,17 +45,18 @@ std::vector<Canframe> Position::create_init_frame()
   // disable
   frames.push_back(set_disable());
   // runmode: operation
-  frames.push_back(set_runmode(0));
+  frames.push_back(set_runmode(0)); // runmode: operation
   // enable
   frames.push_back(set_enable());
   // mechanical zero
   frames.push_back(set_mechanicalzero());
   frames.push_back(set_disable());
-  frames.push_back(set_runmode(1));
+  frames.push_back(set_runmode(1)); // runmode: position
   frames.push_back(set_enable());
   for (size_t i = 1; i < targets_info.size(); i++) {
     frames.push_back(set_target_value(targets_info[i]));
   }
+  frames.push_back(set_angle_range()); // angleを-180~180にするための設定
 
   return frames;
 }
@@ -103,9 +104,17 @@ Canframe Ed05CanframeCreater::set_runmode(int value)
   Canframe frame{};
   frame.id = encode_can_id(0x12);
   frame.dlc = dlc_;
-  ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
-  auto data = encode_commtype18_data(info);
-  std::memcpy(frame.data.data(), data.data(), 8);
+  //ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
+  //auto data = encode_commtype18_data(info);
+  //std::memcpy(frame.data.data(), data.data(), 8);
+  frame.data[0] = 0x05;   // index low byte
+  frame.data[1] = 0x70;   // index high byte
+  frame.data[2] = 0x00;   // subindex
+  frame.data[3] = 0x00;   // reserved
+  frame.data[4] = static_cast<uint8_t>(value & 0xFF);   // value low byte
+  frame.data[5] = 0x00;   // value high byte
+  frame.data[6] = 0x00;   // reserved
+  frame.data[7] = 0x00;   // reserved
   return frame;
 }
 
@@ -149,4 +158,20 @@ Canframe Ed05CanframeCreater::set_mechanicalzero()
 Canframe Ed05CanframeCreater::terminate_motor()
 {
   return set_disable();
+}
+
+Canframe Ed05CanframeCreater::set_angle_range()
+{
+  Canframe frame{};
+  frame.id = encode_can_id(0x12);
+  frame.dlc = dlc_;
+  frame.data[0] = 0x29;   // index low byte
+  frame.data[1] = 0x70;   // index high byte
+  frame.data[2] = 0x00;   // subindex
+  frame.data[3] = 0x00;   // reserved
+  frame.data[4] = 0x01;   // value low byte
+  frame.data[5] = 0x00;   // value high byte
+  frame.data[6] = 0x00;   // reserved
+  frame.data[7] = 0x00;   // reserved
+  return frame;
 }
