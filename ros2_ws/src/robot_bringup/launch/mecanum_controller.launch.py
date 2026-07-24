@@ -9,15 +9,15 @@ def generate_launch_description():
     parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
-        "joy_controller.yaml",
+        "mecanum_controller.yaml",
     )
 
     return LaunchDescription(
         [
             Node(
-                package="joy_controller",
-                executable="joy_controller_node",
-                name="joy_controller",
+                package="robot_controller",
+                executable="mecanum_controller_node",
+                name="mecanum_controller_node",
                 output="screen",
                 parameters=[parameter_file],
             ),
