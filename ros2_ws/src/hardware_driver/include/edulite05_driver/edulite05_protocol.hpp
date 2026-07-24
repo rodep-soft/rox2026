@@ -12,14 +12,27 @@ struct Canframe
   int dlc;
   std::array<uint8_t, 8> data;
 };
-/*
-enum class RunMode
+
+struct CanIdInfo
 {
-  Operation = 0,
-  Velocity = 1,
-  Position = 2
+  uint8_t comm_type;   // Bit 28~24
+  uint8_t mode_status; // Bit 23~22
+  uint8_t fault_info;  // Bit 21~16
+  uint8_t motor_id;    // Bit 15~8
+  uint8_t host_id;     // Bit 7~0
 };
-*/
+
+struct MotorFeedbackData
+{
+  float angle;        // [rad] (-4pi ~ 4pi)
+  float velocity;     // [rad/s] (-50 ~ 50)
+  float torque;       // [Nm] (-6 ~ 6)
+  float temperature;  // [Celsius]
+};
+
+CanIdInfo decode_can_id(uint32_t can_id);
+MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8>& data);
+
 
 class Ed05CanframeCreater
 {
