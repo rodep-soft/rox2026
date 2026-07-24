@@ -49,6 +49,16 @@ ros2 launch robot_bringup controllers.launch.py
 - `belt_controller_node`
 - `dribble_position_controller_node`
 
+### ドリブル位置だけを確認する場合
+
+ターミナル1で `hardware_joy.launch.py` を起動したうえで、ターミナル2では次を実行します。
+
+```bash
+ros2 launch robot_bringup dribble_position_controller.launch.py
+```
+
+位置feedbackは `/dribble/position_feedback` で受信します。
+
 ## 注意
 
 `hardware_joy.launch.py` はEduLite driverを初期化してモータをenableします。実機で起動する前に、車輪を浮かせるなど安全を確保してください。
