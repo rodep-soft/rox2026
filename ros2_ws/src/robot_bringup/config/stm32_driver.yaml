@@ -3,9 +3,12 @@ stm32_driver_node:
     can_pub_topic: "/socketcan_bridge/tx"  #CANBUSへ送信するトピック
     can_sub_topic: "/socketcan_bridge/rx"  #CANBUSから受信するトピック
     motor_target_rpm_topics:
-      - /underbelt/target/rpm 
-      - /upperbelt/target/rpm
-      - /dribble/target/rpm
+      #   - /underbelt/target/rpm 
+      # - /upperbelt/target/rpm
+      #- /dribble/target/rpm
+      - belt/rpm_command
+      - belt/rpm_command
+      - dribble/rpm_command
     motor_current_rpm_topics:
       - /underbelt/current/rpm 
       - /upperbelt/current/rpm
