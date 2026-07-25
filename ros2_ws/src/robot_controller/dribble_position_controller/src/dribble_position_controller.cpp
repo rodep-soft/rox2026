@@ -10,9 +10,11 @@ DribblePositionController::DribblePositionController()
 {
   declare_parameters();
   get_parameters();
-  if (command_period_ms_ <= 0) command_period_ms_ = 20;
-  if (qos_depth_ <= 0) qos_depth_ = 1;
-  if (!std::isfinite(position_tolerance_rad_) || position_tolerance_rad_ <= 0.0) position_tolerance_rad_ = 0.02;
+  if (command_period_ms_ <= 0) {command_period_ms_ = 20;}
+  if (qos_depth_ <= 0) {qos_depth_ = 1;}
+  if (!std::isfinite(position_tolerance_rad_) || position_tolerance_rad_ <= 0.0) {
+    position_tolerance_rad_ = 0.02;
+  }
 
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
     dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
@@ -25,7 +27,8 @@ DribblePositionController::DribblePositionController()
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local(),
     std::bind(&DribblePositionController::emergency_stop_callback, this, std::placeholders::_1));
-  command_timer_ = create_wall_timer(std::chrono::milliseconds(command_period_ms_),
+  command_timer_ = create_wall_timer(
+    std::chrono::milliseconds(command_period_ms_),
     std::bind(&DribblePositionController::watchdog_callback, this));
   set_target_position(dribble_position_rad_, State::IDLE);
 }
@@ -67,7 +70,9 @@ void DribblePositionController::get_parameters()
 void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
   if (emergency_stop_active_ || state_ != State::IDLE) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "Ignoring dribble position command while moving or stopped");
+    RCLCPP_WARN_THROTTLE(
+      get_logger(),
+      *get_clock(), 1000, "Ignoring dribble position command while moving or stopped");
     return;
   }
   if (msg->data == 0) {
@@ -77,13 +82,16 @@ void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt
   }
 }
 
-void DribblePositionController::position_feedback_callback(const std_msgs::msg::Float32::SharedPtr msg)
+void DribblePositionController::position_feedback_callback(
+  const std_msgs::msg::Float32::SharedPtr msg)
 {
-  if (!std::isfinite(msg->data) || state_ == State::IDLE) return;
+  if (!std::isfinite(msg->data) || state_ == State::IDLE) {return;}
   last_feedback_time_ = now();
-  if (std::abs(static_cast<double>(msg->data) - target_position_rad_) > position_tolerance_rad_) return;
-  if (state_ == State::INTAKE) set_target_position(shoot_position_rad_, State::SHOOT);
-  else if (state_ == State::SHOOT) {
+  if (std::abs(static_cast<double>(msg->data) - target_position_rad_) > position_tolerance_rad_) {
+    return;
+  }
+  if (state_ == State::INTAKE) {set_target_position(shoot_position_rad_, State::SHOOT);
+  } else if (state_ == State::SHOOT) {
     state_ = State::HOLD_SHOOT;
     phase_start_time_ = now();
   } else if (state_ == State::RETURN_TO_DRIBBLE) {
@@ -94,12 +102,12 @@ void DribblePositionController::position_feedback_callback(const std_msgs::msg::
 void DribblePositionController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   emergency_stop_active_ = msg->data;
-  if (emergency_stop_active_) set_target_position(dribble_position_rad_, State::IDLE);
+  if (emergency_stop_active_) {set_target_position(dribble_position_rad_, State::IDLE);}
 }
 
 void DribblePositionController::watchdog_callback()
 {
-  if (state_ == State::IDLE) return;
+  if (state_ == State::IDLE) {return;}
 
   // 位置指令を送るたびにEduLite 05からfeedbackが返るため、到達するまで同じ目標を送る。
   std_msgs::msg::Float32 command;
@@ -108,7 +116,8 @@ void DribblePositionController::watchdog_callback()
 
   const auto current_time = now();
   if ((current_time - last_feedback_time_).seconds() > feedback_timeout_sec_ ||
-    (state_ != State::HOLD_SHOOT && (current_time - phase_start_time_).seconds() > move_timeout_sec_))
+    (state_ != State::HOLD_SHOOT &&
+    (current_time - phase_start_time_).seconds() > move_timeout_sec_))
   {
     set_target_position(dribble_position_rad_, State::RETURN_TO_DRIBBLE);
     return;
