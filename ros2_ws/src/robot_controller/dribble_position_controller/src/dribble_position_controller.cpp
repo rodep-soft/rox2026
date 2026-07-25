@@ -9,8 +9,8 @@
 // hardware_driverへ目標位置(rad)をpublishする。
 // 実位置feedbackは見ず、時間で位置を進める簡易方式。
 //  - DRIBBLE指令: dribble_position_radへ移動する。
-//  - SHOOT指令  : intake_position_radへ移動し、intake_to_shoot_delay_sec経過後に
-//                 shoot_position_radへ移動する。
+//  - SHOOT指令  : intake_position_radへ移動 → intake_to_shoot_delay_sec後にshoot_position_rad
+//                 → shoot_to_dribble_delay_sec後にdribble_position_radへ自動で戻る。
 
 DribblePositionController::DribblePositionController()
 : Node("dribble_position_controller")
@@ -28,6 +28,12 @@ DribblePositionController::DribblePositionController()
       get_logger(),
       "intake_to_shoot_delay_sec must be zero or greater. Using the default value of 1.0 s.");
     intake_to_shoot_delay_sec_ = 1.0;
+  }
+  if (shoot_to_dribble_delay_sec_ < 0.0) {
+    RCLCPP_WARN(
+      get_logger(),
+      "shoot_to_dribble_delay_sec must be zero or greater. Using the default value of 1.0 s.");
+    shoot_to_dribble_delay_sec_ = 1.0;
   }
   if (qos_depth_ <= 0) {
     RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
@@ -55,6 +61,7 @@ void DribblePositionController::declare_parameters()
   declare_parameter<double>("intake_position_rad", 1.5);
   declare_parameter<double>("shoot_position_rad", 2.0);
   declare_parameter<double>("intake_to_shoot_delay_sec", 1.0);
+  declare_parameter<double>("shoot_to_dribble_delay_sec", 1.0);
   declare_parameter<int>("command_period_ms", 20);
   declare_parameter<int>("qos_depth", 1);
 }
@@ -67,6 +74,7 @@ void DribblePositionController::get_parameters()
   get_parameter("intake_position_rad", intake_position_rad_);
   get_parameter("shoot_position_rad", shoot_position_rad_);
   get_parameter("intake_to_shoot_delay_sec", intake_to_shoot_delay_sec_);
+  get_parameter("shoot_to_dribble_delay_sec", shoot_to_dribble_delay_sec_);
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
 }
@@ -75,16 +83,16 @@ void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt
 {
   switch (msg->data) {
     case dribble_mode_:
-      // ドリブル位置へ戻す。SHOOT進行中なら中断する。
-      shoot_pending_ = false;
+      // ドリブル位置へ戻す。SHOOTシーケンス進行中なら中断する。
+      state_ = State::IDLE;
       publish_target_position(dribble_position_rad_);
       break;
 
     case shoot_mode_:
-      // まずINTAKE位置へ動かし、遅延後にSHOOT位置へ進める。
+      // まずINTAKE位置へ動かし、以降は時間でSHOOT→DRIBBLEへ進める。
       publish_target_position(intake_position_rad_);
-      intake_start_time_ = now();
-      shoot_pending_ = true;
+      phase_start_time_ = now();
+      state_ = State::WAIT_SHOOT;
       break;
 
     default:
@@ -97,12 +105,28 @@ void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt
 
 void DribblePositionController::timer_callback()
 {
-  // SHOOT指令後、指定時間が経過したらSHOOT位置へ進める。
-  if (shoot_pending_ &&
-    (now() - intake_start_time_).seconds() >= intake_to_shoot_delay_sec_)
-  {
-    publish_target_position(shoot_position_rad_);
-    shoot_pending_ = false;
+  const double elapsed = (now() - phase_start_time_).seconds();
+
+  switch (state_) {
+    case State::WAIT_SHOOT:
+      // INTAKE到達後、指定時間でSHOOT位置へ進める。
+      if (elapsed >= intake_to_shoot_delay_sec_) {
+        publish_target_position(shoot_position_rad_);
+        phase_start_time_ = now();
+        state_ = State::WAIT_RETURN;
+      }
+      break;
+
+    case State::WAIT_RETURN:
+      // SHOOT到達後、指定時間でDRIBBLE位置へ自動で戻す。
+      if (elapsed >= shoot_to_dribble_delay_sec_) {
+        publish_target_position(dribble_position_rad_);
+        state_ = State::IDLE;
+      }
+      break;
+
+    case State::IDLE:
+      break;
   }
 }
 

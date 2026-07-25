@@ -99,15 +99,15 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 | subscribe | `/dribble/position_mode` | `std_msgs/msg/UInt8` | 位置指令。`0=DRIBBLE`、`1=SHOOT` |
 | publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
 
-`DRIBBLE (0)`を受けると`dribble_position_rad`へ移動します。`SHOOT (1)`を受けるとまず`intake_position_rad`へ移動し、`intake_to_shoot_delay_sec`経過後に`shoot_position_rad`へ移動して保持します。
+`DRIBBLE (0)`を受けると`dribble_position_rad`へ移動します。`SHOOT (1)`を受けるとまず`intake_position_rad`へ移動し、`intake_to_shoot_delay_sec`経過後に`shoot_position_rad`へ移動、さらに`shoot_to_dribble_delay_sec`経過後に`dribble_position_rad`へ自動で戻ります。
 
 ```text
-SHOOT指令: INTAKE → (intake_to_shoot_delay_sec) → SHOOT
+SHOOT指令: INTAKE → (intake_to_shoot_delay_sec) → SHOOT → (shoot_to_dribble_delay_sec) → DRIBBLE
 ```
 
-feedbackによる到達確認は行わず、SHOOTのINTAKE→SHOOT遷移は時間で判断します。SHOOT位置からは、L1+×のDRIBBLE指令または緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT指令を送ります。
+feedbackによる到達確認は行わず、各遷移は時間で判断します。シーケンス中でも、L1+×のDRIBBLE指令または緊急停止操作でいつでもドリブル位置へ戻ります。L1+○はSHOOT指令を送ります。
 
-`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`intake_to_shoot_delay_sec`、topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`intake_to_shoot_delay_sec`、`shoot_to_dribble_delay_sec`、topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
 
 ## `dribble_controller_node`
 

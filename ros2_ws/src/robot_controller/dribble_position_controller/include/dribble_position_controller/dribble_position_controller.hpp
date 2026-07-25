@@ -17,6 +17,14 @@ private:
   static constexpr uint8_t dribble_mode_{0};
   static constexpr uint8_t shoot_mode_{1};
 
+  // SHOOTシーケンスの進行状態。
+  enum class State : uint8_t
+  {
+    IDLE,          // 待機(位置を保持しているだけ)。
+    WAIT_SHOOT,    // INTAKE位置へ移動済み、SHOOT位置への遷移待ち。
+    WAIT_RETURN,   // SHOOT位置へ移動済み、DRIBBLE位置への復帰待ち。
+  };
+
   void declare_parameters();
   void get_parameters();
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
@@ -28,11 +36,13 @@ private:
   double shoot_position_rad_{0.0};
   // SHOOT指令でINTAKE位置へ動かしてから、SHOOT位置へ進めるまでの待ち時間[s]。
   double intake_to_shoot_delay_sec_{1.0};
+  // SHOOT位置へ動かしてから、DRIBBLE位置へ戻すまでの待ち時間[s]。
+  double shoot_to_dribble_delay_sec_{1.0};
   int command_period_ms_{20};
   int qos_depth_{1};
 
-  bool shoot_pending_{false};  // SHOOT指令後、SHOOT位置への遷移待ちかどうか。
-  rclcpp::Time intake_start_time_;  // INTAKE位置指令を出した時刻。
+  State state_{State::IDLE};
+  rclcpp::Time phase_start_time_;  // 現在のフェーズを開始した時刻。
 
   std::string dribble_position_command_topic_;
   std::string dribble_position_mode_topic_;

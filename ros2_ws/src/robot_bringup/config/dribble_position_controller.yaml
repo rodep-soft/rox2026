@@ -9,6 +9,8 @@ dribble_position_controller:
     shoot_position_rad: 1.1
     # SHOOT指令でINTAKE位置へ動かしてから、SHOOT位置へ進めるまでの待ち時間[s]。実機に合わせて調整する。
     intake_to_shoot_delay_sec: 1.0
+    # SHOOT位置へ動かしてから、DRIBBLE位置へ自動で戻すまでの待ち時間[s]。実機に合わせて調整する。
+    shoot_to_dribble_delay_sec: 1.0
     # 位置指令をチェックする周期[ms]。
     command_period_ms: 20
     qos_depth: 1
