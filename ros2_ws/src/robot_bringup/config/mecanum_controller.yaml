@@ -7,7 +7,7 @@ mecanum_controller_node:
     front_right_velocity_topic: /mecanum/fr/vel_command
     rear_left_velocity_topic: /mecanum/rl/vel_command
     rear_right_velocity_topic: /mecanum/rr/vel_command
-    qos_depth: 1
+    qos_depth: 3
 
     wheel_radius: 0.05
     robot_length: 0.47

@@ -7,6 +7,6 @@ dribble_controller_node:
     qos_depth: 1
 
     # ON時の目標回転数[RPM]。OFF時は0 RPM。
-    on_rpm: 600.0
+    on_rpm: 2000.0
     # RPM指令をpublishする周期[ms]。
     command_period_ms: 10
