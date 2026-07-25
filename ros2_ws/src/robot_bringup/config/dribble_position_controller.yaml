@@ -1,7 +1,7 @@
 dribble_position_controller:
   ros__parameters:
     # hardware_driverへ送る目標位置topic。std_msgs/msg/Float32、単位はrad。
-    # 位置遷移の開始時・feedback到達時・timeout時に一回だけpublishする。
+    # 移動中はこの目標位置をcommand_period_ms周期でpublishし、feedbackを取得する。
     dribble_position_command_topic: /dribble/position_command
     # hardware_driverから受ける実位置topic。std_msgs/msg/Float32、単位はrad。
     dribble_position_feedback_topic: /dribble/position_feedback
@@ -22,6 +22,6 @@ dribble_position_controller:
     move_timeout_sec: 3.0
     # 位置feedbackの受信タイムアウト[s]。超過時はDRIBBLE位置を指令して待機へ戻る。
     feedback_timeout_sec: 0.5
-    # SHOOT保持時間とtimeoutを確認する周期[ms]。
-    watchdog_period_ms: 20
+    # 移動中の目標位置送信とfeedback確認の周期[ms]。
+    command_period_ms: 20
     qos_depth: 1

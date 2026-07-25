@@ -10,7 +10,7 @@ DribblePositionController::DribblePositionController()
 {
   declare_parameters();
   get_parameters();
-  if (watchdog_period_ms_ <= 0) watchdog_period_ms_ = 20;
+  if (command_period_ms_ <= 0) command_period_ms_ = 20;
   if (qos_depth_ <= 0) qos_depth_ = 1;
   if (!std::isfinite(position_tolerance_rad_) || position_tolerance_rad_ <= 0.0) position_tolerance_rad_ = 0.02;
 
@@ -25,7 +25,7 @@ DribblePositionController::DribblePositionController()
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local(),
     std::bind(&DribblePositionController::emergency_stop_callback, this, std::placeholders::_1));
-  watchdog_timer_ = create_wall_timer(std::chrono::milliseconds(watchdog_period_ms_),
+  command_timer_ = create_wall_timer(std::chrono::milliseconds(command_period_ms_),
     std::bind(&DribblePositionController::watchdog_callback, this));
   set_target_position(dribble_position_rad_, State::IDLE);
 }
@@ -43,7 +43,7 @@ void DribblePositionController::declare_parameters()
   declare_parameter<double>("shoot_to_dribble_delay_sec", 1.0);
   declare_parameter<double>("move_timeout_sec", 3.0);
   declare_parameter<double>("feedback_timeout_sec", 0.5);
-  declare_parameter<int>("watchdog_period_ms", 20);
+  declare_parameter<int>("command_period_ms", 20);
   declare_parameter<int>("qos_depth", 1);
 }
 
@@ -60,7 +60,7 @@ void DribblePositionController::get_parameters()
   get_parameter("shoot_to_dribble_delay_sec", shoot_to_dribble_delay_sec_);
   get_parameter("move_timeout_sec", move_timeout_sec_);
   get_parameter("feedback_timeout_sec", feedback_timeout_sec_);
-  get_parameter("watchdog_period_ms", watchdog_period_ms_);
+  get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
 }
 
@@ -100,11 +100,17 @@ void DribblePositionController::emergency_stop_callback(const std_msgs::msg::Boo
 void DribblePositionController::watchdog_callback()
 {
   if (state_ == State::IDLE) return;
+
+  // 位置指令を送るたびにEduLite 05からfeedbackが返るため、到達するまで同じ目標を送る。
+  std_msgs::msg::Float32 command;
+  command.data = static_cast<float>(target_position_rad_);
+  position_command_pub_->publish(command);
+
   const auto current_time = now();
   if ((current_time - last_feedback_time_).seconds() > feedback_timeout_sec_ ||
     (state_ != State::HOLD_SHOOT && (current_time - phase_start_time_).seconds() > move_timeout_sec_))
   {
-    set_target_position(dribble_position_rad_, State::IDLE);
+    set_target_position(dribble_position_rad_, State::RETURN_TO_DRIBBLE);
     return;
   }
   if (state_ == State::HOLD_SHOOT &&
