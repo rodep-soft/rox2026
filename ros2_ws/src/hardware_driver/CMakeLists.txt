@@ -16,11 +16,8 @@ find_package(std_msgs REQUIRED)
 
 function(add_protocol_library target source)
   add_library(${target} ${source})
-  target_include_directories(
-    ${target}
-    PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-      $<INSTALL_INTERFACE:include>)
+  target_include_directories(${target} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                                              $<INSTALL_INTERFACE:include>)
   if(ARGN)
     ament_target_dependencies(${target} ${ARGN})
   endif()
@@ -28,42 +25,22 @@ endfunction()
 
 function(add_hardware_node target source)
   add_executable(${target} ${source})
-  target_include_directories(
-    ${target}
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   if(ARGN)
     target_link_libraries(${target} ${ARGN})
   endif()
   ament_target_dependencies(${target} can_msgs rclcpp std_msgs)
 endfunction()
 
-add_protocol_library(
-  stm32_protocol
-  src/protocol/stm32_protocol.cpp
-  can_msgs)
-add_protocol_library(
-  edulite05_protocol
-  src/protocol/edulite05_protocol.cpp)
+add_protocol_library(stm32_protocol src/protocol/stm32_protocol.cpp can_msgs)
+add_protocol_library(edulite05_protocol src/protocol/edulite05_protocol.cpp)
 
-add_hardware_node(
-  stm32_node
-  src/nodes/stm32_node.cpp
-  stm32_protocol)
-add_hardware_node(
-  edulite05_node
-  src/nodes/edulite05_node.cpp
-  edulite05_protocol)
-add_hardware_node(
-  vesc_node
-  src/nodes/vesc_node.cpp)
+add_hardware_node(stm32_node src/nodes/stm32_node.cpp stm32_protocol)
+add_hardware_node(edulite05_node src/nodes/edulite05_node.cpp edulite05_protocol)
+add_hardware_node(vesc_node src/nodes/vesc_node.cpp)
 
-set(protocol_libraries
-  stm32_protocol
-  edulite05_protocol)
-set(driver_nodes
-  stm32_node
-  edulite05_node
-  vesc_node)
+set(protocol_libraries stm32_protocol edulite05_protocol)
+set(driver_nodes stm32_node edulite05_node vesc_node)
 
 install(
   TARGETS ${protocol_libraries}
@@ -71,12 +48,8 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
-install(
-  TARGETS ${driver_nodes}
-  DESTINATION lib/${PROJECT_NAME})
-install(
-  DIRECTORY include/
-  DESTINATION include)
+install(TARGETS ${driver_nodes} DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
