@@ -7,6 +7,10 @@ static uint32_t last_send_time = 0;
 static uint32_t last_pushed_time = 0;
 // 送信回数を記録するデバッグ用変数
 volatile uint32_t debug_tx_count = 0;
+
+extern uint32_t upper_belt_current_rpm;
+extern uint32_t under_belt_current_rpm;
+extern float dribble_target_rpm;
 uint8_t TxData[8] = {0};
 HAL_StatusTypeDef ret;
 uint32_t can_error;
@@ -33,7 +37,7 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
         uint32_t TxMailbox;
 
-        TxHeader.StdId = 0x202;
+        TxHeader.StdId = 0x310;
         TxHeader.ExtId = 0;
         TxHeader.RTR = CAN_RTR_DATA;
         TxHeader.IDE = CAN_ID_STD;
@@ -59,7 +63,45 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
 
         can_error = HAL_CAN_GetError(hcan);
         mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
+
+        //モータの現在rpmも一緒に
+        CAN_TxHeaderTypeDef TxHeader1;
+        uint32_t TxMailbox1;
+        TxHeader1.StdId = 0x330;
+        TxHeader1.ExtId = 0;
+        TxHeader1.RTR = CAN_RTR_DATA;
+        TxHeader1.IDE = CAN_ID_STD;
+        TxHeader1.DLC = 2; // 1バイト送信で十分
+        TxData[0] = (uint8_t)((int16_t)under_belt_current_rpm);
+        TxData[1] = (uint8_t)((int16_t)under_belt_current_rpm >> 8);
+
+        HAL_CAN_AddTxMessage(hcan, &TxHeader1, TxData, &TxMailbox1);
+
+        CAN_TxHeaderTypeDef TxHeader2;
+        uint32_t TxMailbox2;
+        TxHeader2.StdId = 0x331;
+        TxHeader2.ExtId = 0;
+        TxHeader2.RTR = CAN_RTR_DATA;
+        TxHeader2.IDE = CAN_ID_STD;
+        TxHeader2.DLC = 2; // 1バイト送信で十分
+        TxData[0] = (uint8_t)((int16_t)upper_belt_current_rpm);
+        TxData[1] = (uint8_t)((int16_t)upper_belt_current_rpm >> 8);
+
+        HAL_CAN_AddTxMessage(hcan, &TxHeader2, TxData, &TxMailbox2);
+        CAN_TxHeaderTypeDef TxHeader3;
+        uint32_t TxMailbox3;
+        TxHeader3.StdId = 0x332;
+        TxHeader3.ExtId = 0;
+        TxHeader3.RTR = CAN_RTR_DATA;
+        TxHeader3.IDE = CAN_ID_STD;
+        TxHeader3.DLC = 2; // 1バイト送信で十分
+        TxData[0] = (uint8_t)((int16_t)dribble_target_rpm);
+        TxData[1] = (uint8_t)((int16_t)dribble_target_rpm >> 8);//これはエンコーダ内からしゃあない
+
+        HAL_CAN_AddTxMessage(hcan, &TxHeader3, TxData, &TxMailbox3);
     }
+
+
 
     if((current_time - last_pushed_time) >= 100) {
     	last_pushed_time = current_time;
