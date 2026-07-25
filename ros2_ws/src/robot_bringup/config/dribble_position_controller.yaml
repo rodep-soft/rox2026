@@ -4,8 +4,8 @@ dribble_position_controller:
     dribble_position_command_topic: /dribble/position_command
     # hardware_driverから受ける実位置topic。std_msgs/msg/Float32、単位はrad。
     dribble_position_feedback_topic: /dribble/position_feedback
-    # 位置移動を受け付けるAction名。robot_controller/action/DribblePosition。
-    dribble_position_action: /dribble/position
+    # joy_controllerから受ける位置指令topic。std_msgs/msg/UInt8(0=DRIBBLE, 1=SHOOT)。
+    dribble_position_mode_topic: /dribble/position_mode
     dribble_position_rad: 0.2
     intake_position_rad: -1.3
     shoot_position_rad: 1.1
@@ -17,6 +17,6 @@ dribble_position_controller:
     move_timeout_sec: 3.0
     # 位置feedbackの受信タイムアウト[s]。超過時はActionを失敗終了してDRIBBLE位置を指令する。
     feedback_timeout_sec: 0.5
-    # 目標位置を再publishし、タイムアウトを監視する周期[ms]。
-    command_period_ms: 20
+    # SHOOT保持時間とtimeoutを確認する周期[ms]。
+    watchdog_period_ms: 20
     qos_depth: 1

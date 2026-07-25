@@ -90,7 +90,7 @@ enable ボタンの押下だけでは操作を実行しない。△、○、タ�
 | `/spring/fire_request` | `std_msgs/msg/Bool` | ばね射出要求 |
 | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モード |
 | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルON/OFF |
-| `/dribble/position` | `robot_controller/action/DribblePosition` | ドリブル位置移動Action |
+| `/dribble/position_mode` | `std_msgs/msg/UInt8` | ドリブル位置指令(0=DRIBBLE, 1=SHOOT) |
 | `/emergency_stop` | `std_msgs/msg/Bool` | 非常停止状態 |
 
 スティック入力は、絶対値が `axis_deadzone` 未満の場合に `0.0` として扱う。
@@ -103,6 +103,6 @@ enable ボタンの押下だけでは操作を実行しない。△、○、タ�
 
 ## 非常停止
 
-Create + タッチパッドの押下開始で非常停止状態をON/OFFします。非常停止中は通常操作より先に停止指令をpublishし、`/emergency_stop`へ`true`をpublishします。ONにしたときは、ドリブル位置をDRIBBLE位置へ戻すAction Goalも送ります。
+Create + タッチパッドの押下開始で非常停止状態をON/OFFします。非常停止中は通常操作より先に停止指令をpublishし、`/emergency_stop`へ`true`をpublishします。ONにしたときは、ドリブル位置をDRIBBLE位置へ戻す指令も送ります。
 
 非常停止中も入力の前回値を更新するため、解除時に押しっぱなしのボタンやDPADを新規操作として扱わない。非常停止の状態はtransient local QoSでpublishするため、後から起動したcontrollerも現在の停止状態を受信できます。

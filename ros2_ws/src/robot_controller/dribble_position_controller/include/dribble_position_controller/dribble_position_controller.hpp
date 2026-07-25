@@ -1,13 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
-#include "robot_controller/action/dribble_position.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 class DribblePositionController : public rclcpp::Node
 {
@@ -15,30 +14,15 @@ public:
   DribblePositionController();
 
 private:
-  using DribblePosition = robot_controller::action::DribblePosition;
-  using GoalHandle = rclcpp_action::ServerGoalHandle<DribblePosition>;
-
-  enum class State : uint8_t
-  {
-    DRIBBLE,
-    INTAKE,
-    SHOOT,
-    HOLD_SHOOT,
-    RETURN_TO_DRIBBLE,
-  };
+  enum class State : uint8_t {IDLE, INTAKE, SHOOT, HOLD_SHOOT, RETURN_TO_DRIBBLE};
 
   void declare_parameters();
   void get_parameters();
-  rclcpp_action::GoalResponse handle_goal(
-    const rclcpp_action::GoalUUID & uuid,
-    std::shared_ptr<const DribblePosition::Goal> goal);
-  rclcpp_action::CancelResponse handle_cancel(const std::shared_ptr<GoalHandle> goal_handle);
-  void handle_accepted(const std::shared_ptr<GoalHandle> goal_handle);
+  void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void position_feedback_callback(const std_msgs::msg::Float32::SharedPtr msg);
-  void timer_callback();
-  void start_goal(const std::shared_ptr<GoalHandle> goal_handle);
+  void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void watchdog_callback();
   void set_target_position(double position_rad, State state);
-  void finish_goal(bool succeeded, const std::string & message);
 
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
@@ -47,21 +31,20 @@ private:
   double shoot_to_dribble_delay_sec_{1.0};
   double move_timeout_sec_{3.0};
   double feedback_timeout_sec_{0.5};
-  int command_period_ms_{20};
+  int watchdog_period_ms_{20};
   int qos_depth_{1};
-
   double target_position_rad_{0.0};
-  double current_position_rad_{0.0};
-  State state_{State::DRIBBLE};
+  State state_{State::IDLE};
+  bool emergency_stop_active_{false};
   rclcpp::Time phase_start_time_;
   rclcpp::Time last_feedback_time_;
   std::string dribble_position_command_topic_;
   std::string dribble_position_feedback_topic_;
-  std::string dribble_position_action_;
-
+  std::string dribble_position_mode_topic_;
+  std::string emergency_stop_topic_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr position_feedback_sub_;
-  rclcpp_action::Server<DribblePosition>::SharedPtr action_server_;
-  std::shared_ptr<GoalHandle> active_goal_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+  rclcpp::TimerBase::SharedPtr watchdog_timer_;
 };

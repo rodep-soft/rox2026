@@ -8,7 +8,6 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(robot_controller REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -18,7 +17,7 @@ target_include_directories(
   joy_controller_node
   PRIVATE include)
 ament_target_dependencies(
-  joy_controller_node rclcpp rclcpp_action geometry_msgs robot_controller sensor_msgs)
+  joy_controller_node rclcpp geometry_msgs robot_controller sensor_msgs)
 
 install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
 

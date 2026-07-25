@@ -9,8 +9,8 @@ joy_controller:
     dribble_enabled_topic: /dribble/enabled
     # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
     emergency_stop_topic: /emergency_stop
-    # ドリブル位置移動Action。robot_controller/action/DribblePosition。
-    dribble_position_action: /dribble/position
+    # ドリブル位置指令topic。std_msgs/msg/UInt8(0=DRIBBLE, 1=SHOOT)。
+    dribble_position_mode_topic: /dribble/position_mode
     joy_qos_depth: 3
     command_qos_depth: 1
     # Joy入力が途絶えた場合に停止するまでの時間[ms]。

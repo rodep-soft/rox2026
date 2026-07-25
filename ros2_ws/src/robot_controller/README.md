@@ -20,7 +20,7 @@ flowchart LR
   joy -->|/spring/fire_request| spring
   joy -->|/dribble/enabled| dribble
   joy -->|/belt/mode| belt
-  joy -->|/dribble/position\nDribblePosition Action| position
+  joy -->|/dribble/position_mode\nstd_msgs/msg/UInt8| position
   joy -->|/emergency_stop\nstd_msgs/msg/Bool| spring
 
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| edulite_driver
@@ -95,23 +95,23 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `dribble_position_controller`
 
 - node名: `dribble_position_controller`
-- 処理: RobStrideの実位置feedbackを確認しながら、ドリブル機構を指定位置へ移動する`DribblePosition` Action serverです。目標位置は`command_period_ms`周期で再publishします。
+- 処理: `/dribble/position_mode`を受け、実位置feedbackを確認してドリブル機構を移動します。移動中の位置指令は無視します。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`または`SHOOT`の位置移動を受け付ける |
+| subscribe | `/dribble/position_mode` | `std_msgs/msg/UInt8` | 位置指令。`0=DRIBBLE`、`1=SHOOT` |
 | publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
 | subscribe | `/dribble/position_feedback` | `std_msgs/msg/Float32` | hardware_driverから受ける実位置 `[rad]` |
 
-`DRIBBLE` Goalは`dribble_position_rad`へ移動し、実位置が`position_tolerance_rad`以内になると成功します。`SHOOT` Goalは、実位置が各目標位置の許容誤差内へ入ったことを確認してから次へ進みます。
+`SHOOT`指令は、実位置が各目標位置の許容誤差内へ入ったことを確認してから次へ進みます。移動中に受けた位置指令は無視します。
 
 ```text
-SHOOT Goal: INTAKE → (feedback到達) → SHOOT → (shoot_to_dribble_delay_sec) → DRIBBLE → (feedback到達) → 成功
+SHOOT指令: INTAKE → (feedback到達) → SHOOT → (shoot_to_dribble_delay_sec) → DRIBBLE → (feedback到達) → 待機
 ```
 
-位置feedbackが`feedback_timeout_sec`を超えて届かない場合、または各位置移動が`move_timeout_sec`を超えた場合は、Actionを失敗終了してDRIBBLE位置を指令します。シーケンス中でも、L1+×のDRIBBLE Goalまたは緊急停止操作でいつでもドリブル位置へ戻ります。L1+○はSHOOT Goalを送ります。
+位置feedbackが`feedback_timeout_sec`を超えて届かない場合、または各位置移動が`move_timeout_sec`を超えた場合は、DRIBBLE位置を指令して待機に戻ります。緊急停止は移動中でもDRIBBLE位置を指令します。
 
-`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`position_tolerance_rad`、各timeout、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`position_tolerance_rad`、各timeout、topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
 
 ## `dribble_controller_node`
 

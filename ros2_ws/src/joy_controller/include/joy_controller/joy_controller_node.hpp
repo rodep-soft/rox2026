@@ -7,10 +7,8 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
-#include "robot_controller/action/dribble_position.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
@@ -28,7 +26,7 @@ private:
     LEVEL_3,
   };
 
-  using DribblePosition = robot_controller::action::DribblePosition;
+  enum class DribblePositionMode : uint8_t {DRIBBLE = 0, SHOOT = 1};
 
   void declare_parameters();
   void get_parameters();
@@ -43,7 +41,7 @@ private:
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  void send_dribble_position_goal(uint8_t command);
+  void publish_dribble_position_mode(DribblePositionMode mode);
   void publish_emergency_stop();
   void publish_state_commands();
   void publish_stop_commands();
@@ -57,7 +55,7 @@ private:
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_,
     belt_mode_topic_, dribble_enabled_topic_;
   std::string emergency_stop_topic_;
-  std::string dribble_position_action_;
+  std::string dribble_position_mode_topic_;
   int joy_qos_depth_;
   int command_qos_depth_;
   int joy_timeout_ms_;
@@ -133,7 +131,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
-  rclcpp_action::Client<DribblePosition>::SharedPtr dribble_position_action_client_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr dribble_position_mode_publisher_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
 };
