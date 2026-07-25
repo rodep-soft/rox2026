@@ -18,7 +18,7 @@ flowchart LR
 
   joy -->|/mecanum/cmd_vel| mecanum
   joy -->|/spring/fire_request| spring
-  joy -->|/dribble/mode| dribble
+  joy -->|/dribble/enabled| dribble
   joy -->|/belt/fire_enabled, /belt/mode| belt
   joy -->|/dribble/position_mode\nstd_msgs/msg/UInt8| position
 
@@ -112,13 +112,11 @@ feedbackによる到達確認は行わず、SHOOTのINTAKE→SHOOT遷移は時�
 ## `dribble_controller_node`
 
 - node名: `dribble_controller_node`
-- 処理: `/dribble/mode`をドリブルの目標回転数へ変換します。
+- 処理: `/dribble/enabled`のON/OFFを目標回転数へ変換します。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/dribble/mode` | `std_msgs/msg/UInt8` | ドリブル速度モードを受信 |
+| subscribe | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルのON/OFFを受信 |
 | publish | `/dribble/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送る目標回転数 `[RPM]` |
 
-`dribble_mode`は`STOP (1)`、`HIGH (2)`、`LOW (3)`の3段階です。`LOW`と`HIGH`の目標回転数、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
-
-選択したmodeに対応する目標回転数を周期的にpublishします。
+`true`なら`on_rpm`、`false`なら`0 RPM`を`command_period_ms`周期でpublishします。`on_rpm`と指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。

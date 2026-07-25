@@ -6,7 +6,8 @@ joy_controller:
     spring_fire_request_topic: /spring/fire_request
     belt_fire_topic: /belt/fire_enabled
     belt_mode_topic: /belt/mode
-    dribble_mode_topic: /dribble/mode
+    # ドリブルON/OFF topic。std_msgs/msg/Bool。
+    dribble_enabled_topic: /dribble/enabled
     # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
     emergency_stop_topic: /emergency_stop
     # ドリブル位置指令topic。std_msgs/msg/UInt8(0=DRIBBLE, 1=SHOOT)。

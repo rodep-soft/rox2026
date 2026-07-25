@@ -1,13 +1,12 @@
 dribble_controller_node:
   ros__parameters:
-    # ドリブルモードtopic。std_msgs/msg/UInt8。
-    dribble_mode_topic: /dribble/mode
+    # ドリブルON/OFF topic。std_msgs/msg/Bool。true=回す、false=止める。
+    dribble_enabled_topic: /dribble/enabled
     # hardware_driver(stm32_driver_node)へ送る目標回転数command topic。std_msgs/msg/Int16、単位はRPM。
     dribble_rpm_topic: /dribble/target/rpm
     qos_depth: 1
 
-    # dribble_modeがHIGH(2)、LOW(3)のときの目標回転数[RPM]。STOP(1)は0 RPM。
-    low_rpm: 300.0
-    high_rpm: 600.0
+    # ON時の目標回転数[RPM]。OFF時は0 RPM。
+    on_rpm: 600.0
     # RPM指令をpublishする周期[ms]。
     command_period_ms: 10

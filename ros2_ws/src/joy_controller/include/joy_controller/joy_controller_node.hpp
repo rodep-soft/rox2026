@@ -26,13 +26,6 @@ private:
     LEVEL_3,
   };
 
-  enum class DribbleRpmMode : uint8_t
-  {
-    STOP = 1,
-    HIGH,
-    LOW,
-  };
-
   // /dribble/position_modeへ送る位置指令。dribble_position_controllerと対応させる。
   enum class DribblePositionMode : uint8_t
   {
@@ -65,7 +58,7 @@ private:
 
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
-    belt_mode_topic_, dribble_mode_topic_;
+    belt_mode_topic_, dribble_enabled_topic_;
   std::string emergency_stop_topic_;
   std::string dribble_position_mode_topic_;
   int joy_qos_depth_;
@@ -116,7 +109,7 @@ private:
   bool spring_fire_enabled_{false};
   bool belt_fire_enabled_{false};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
-  uint8_t dribble_rpm_mode_{static_cast<uint8_t>(DribbleRpmMode::STOP)};
+  bool dribble_enabled_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
@@ -146,7 +139,8 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_, dribble_mode_publisher_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr dribble_position_mode_publisher_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
