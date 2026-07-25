@@ -17,9 +17,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "device_id",
-                default_value="0",
-                description="Joystick device id read by joy_node (/dev/input/js<device_id>)",
+                "device",
+                default_value="/dev/input/event0",
+                description="Input device read by joy_node",
             ),
             # 物理コントローラーの入力をsensor_msgs/msg/Joyとして/joyへpublishするドライバ。
             Node(
@@ -27,7 +27,7 @@ def generate_launch_description():
                 executable="joy_node",
                 name="joy_node",
                 output="screen",
-                parameters=[{"device_id": LaunchConfiguration("device_id")}],
+                parameters=[{"dev": LaunchConfiguration("device")}],
             ),
             Node(
                 package="joy_controller",
