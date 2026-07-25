@@ -14,9 +14,9 @@ namespace vesc_driver::protocol
     int32_t erpm;
   };
 
-  /// @brief rpmをescに送るためのcanFrame生成
-  /// @param id motorID
-  /// @param erpm 実際のRPMに極数がかけられているrpm = erpm
+  /// @brief escに送る速度制御用のcanFrame生成
+  /// @param id モータID
+  /// @param erpm 実際のrpm * 極数
   /// @return canFrame
   can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
   {
@@ -33,9 +33,9 @@ namespace vesc_driver::protocol
     return frame;
   }
 
-  /// @brief status1のcanFrameについてデコードする
-  /// @param frame
-  /// @param status
+  /// @brief status1のcanFrameをデコードして，速度データの取り出し
+  /// @param frame 
+  /// @param status 
   /// @return true:デコードした false:デコードしていない
   bool decode_status_1(const can_msgs::msg::Frame &frame, Status1 &status)
   {
@@ -53,5 +53,5 @@ namespace vesc_driver::protocol
     status.erpm = static_cast<int32_t>(rpm);
 
     return true;
-  } // namespace vesc_driver::protocol
-}
+  }
+} // namespace vesc_driver::protocol

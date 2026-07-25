@@ -39,10 +39,8 @@ public:
       declare_parameter<int64_t>("feedback_timeout_ms", 500);
     max_rpm_ = declare_parameter<double>("max_rpm", 10000.0);
 
-
     controller_id_ = static_cast<uint8_t>(controller_id);
     pole_pairs_ = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-
 
     command_timeout_ = std::chrono::milliseconds(command_timeout_ms);
     feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
@@ -59,14 +57,11 @@ public:
     timer_ = create_wall_timer(20ms, std::bind(&Node::timer_callback, this));
 
     RCLCPP_INFO(
-      get_logger(), "VESC driver started: controller_id = %u"
-      static_cast<unsigned int>(controller_id_);
+      get_logger(), "VESC driver started: controller_id=%u",
+      static_cast<unsigned int>(controller_id_));
   }
 
 private:
-
-  /// @brief canからのコールバック関数 (status1のFrameに入っている速度の情報のみ取り出す)
-  /// @param frame 
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     protocol::Status1 status{};
@@ -80,8 +75,7 @@ private:
     last_feedback_time_ = std::chrono::steady_clock::now();
     feedback_received_ = true;
   }
-  /// @brief 
-  /// @param msg 
+
   void target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
   {
     if (!std::isfinite(msg->data) || std::abs(msg->data) > max_rpm_) {
@@ -94,7 +88,6 @@ private:
     command_received_ = true;
   }
 
-  /// @brief 
   void timer_callback()
   {
     const auto now = std::chrono::steady_clock::now();
@@ -126,6 +119,7 @@ private:
 
   std::chrono::steady_clock::time_point last_command_time_;
   std::chrono::steady_clock::time_point last_feedback_time_;
+
   std::chrono::milliseconds command_timeout_{500};
   std::chrono::milliseconds feedback_timeout_{500};
 
