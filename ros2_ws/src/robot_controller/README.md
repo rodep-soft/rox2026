@@ -20,7 +20,7 @@ flowchart LR
   joy -->|/spring/fire_request| spring
   joy -->|/dribble/mode| dribble
   joy -->|/belt/fire_enabled, /belt/mode| belt
-  joy -->|/dribble/position\nDribblePosition Action| position
+  joy -->|/dribble/position_mode\nstd_msgs/msg/UInt8| position
 
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| robstride_driver
   spring -->|/spring/vel_command\nstd_msgs/msg/Float32| robstride_driver
@@ -28,7 +28,6 @@ flowchart LR
   belt -->|/underbelt/target/rpm, /upperbelt/target/rpm\nstd_msgs/msg/Int16| stm_driver
   position -->|/dribble/position_command\nstd_msgs/msg/Float32| robstride_driver
   stm_driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
-  robstride_driver -->|/dribble/position_feedback\nstd_msgs/msg/Float32| position
 
   stm_driver --> bridge
   robstride_driver --> bridge
@@ -36,7 +35,7 @@ flowchart LR
 
 `robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様はdriver nodeが担当します。
 
-`stm_driver_node`は`/underbelt/target/rpm`、`/upperbelt/target/rpm`、`/dribble/target/rpm`をsubscribeし、STM32向けCANフレームへ変換して送信します。また、STM32から受けたリミットスイッチ状態を`/limit_switches`(`std_msgs/msg/UInt8MultiArray`、1バイトをbitごとに1スイッチとして展開)へpublishします。`robstride_driver_node`はメカナム各輪の速度指令、ばね速度指令、ドリブル位置指令を担当し、ドリブルの実位置を`/dribble/position_feedback`へpublishします。いずれも`robot_controller`にはCAN送受信処理を書きません。
+`stm_driver_node`は`/underbelt/target/rpm`、`/upperbelt/target/rpm`、`/dribble/target/rpm`をsubscribeし、STM32向けCANフレームへ変換して送信します。また、STM32から受けたリミットスイッチ状態を`/limit_switches`(`std_msgs/msg/UInt8MultiArray`、1バイトをbitごとに1スイッチとして展開)へpublishします。`robstride_driver_node`はメカナム各輪の速度指令、ばね速度指令、ドリブル位置指令を担当します。いずれも`robot_controller`にはCAN送受信処理を書きません。
 
 ## 操作指令topic
 
@@ -93,23 +92,22 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `dribble_position_controller`
 
 - node名: `dribble_position_controller`
-- 処理: RobStrideの実位置feedbackを確認しながら、ドリブル機構を指定位置へ移動する`DribblePosition` Action serverです。
+- 処理: `/dribble/position_mode`を受け取り、ドリブル機構を指定位置へ移動する目標位置をpublishします。実位置feedbackは見ず、時間で位置を進める簡易方式です。
 
-| 種別 | 名前（既定値） | 型 | 内容 |
+| 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`または`SHOOT`の位置移動を受け付ける |
+| subscribe | `/dribble/position_mode` | `std_msgs/msg/UInt8` | 位置指令。`0=DRIBBLE`、`1=SHOOT` |
 | publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
-| subscribe | `/dribble/position_feedback` | `std_msgs/msg/Float32` | hardware_driverから受ける実位置 `[rad]` |
 
-ActionはGoal、Feedback、ResultをまとめたROS 2の通信方式です。Goalで移動を依頼し、移動中は現在位置と目標位置をFeedbackで返します。`DRIBBLE` Actionはドリブル位置に到達すると成功します。`SHOOT` Actionは次の順で移動し、SHOOT位置で保持します。
+`DRIBBLE (0)`を受けると`dribble_position_rad`へ移動します。`SHOOT (1)`を受けるとまず`intake_position_rad`へ移動し、`intake_to_shoot_delay_sec`経過後に`shoot_position_rad`へ移動して保持します。
 
 ```text
-DRIBBLE → INTAKE → SHOOT
+SHOOT指令: INTAKE → (intake_to_shoot_delay_sec) → SHOOT
 ```
 
-各段階は、実位置が`position_tolerance_rad`以内に到達したことを確認してから次へ進みます。SHOOT位置からは、L1+×のDRIBBLE Actionまたは緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT Actionを開始します。
+feedbackによる到達確認は行わず、SHOOTのINTAKE→SHOOT遷移は時間で判断します。SHOOT位置からは、L1+×のDRIBBLE指令または緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT指令を送ります。
 
-`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`position_tolerance_rad`と、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`intake_to_shoot_delay_sec`、topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
 
 ## `dribble_controller_node`
 

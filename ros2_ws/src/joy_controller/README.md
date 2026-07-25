@@ -92,7 +92,7 @@ enable ボタンの押下だけでは操作を実行しない。△、○、タ�
 | `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出の有効状態 |
 | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モード |
 | `/dribble/mode` | `std_msgs/msg/UInt8` | ドリブル回転モード |
-| `/dribble/position` | `robot_controller/action/DribblePosition` | ドリブル位置移動Action |
+| `/dribble/position_mode` | `std_msgs/msg/UInt8` | ドリブル位置指令(0=DRIBBLE, 1=SHOOT) |
 
 スティック入力は、絶対値が `axis_deadzone` 未満の場合に `0.0` として扱う。
 既定値は `0.05`。DPAD のような ON/OFF 判定に使う軸は、絶対値が
