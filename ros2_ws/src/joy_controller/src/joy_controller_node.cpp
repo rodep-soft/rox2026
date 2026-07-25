@@ -315,7 +315,7 @@ bool JoyControllerNode::handle_emergency_stop()
     emergency_stop_latched_ = !emergency_stop_latched_;
     if (emergency_stop_latched_) {
       RCLCPP_WARN(get_logger(), "Emergency stop mode enabled");
-      // ドリブルする位置にDribble Positionを移動
+      // ドリブル位置へ復帰するActionを送る。
       publish_dribble_position_mode(DribblePositionMode::DRIBBLE);
     } else {
       RCLCPP_WARN(get_logger(), "Emergency stop mode disabled");

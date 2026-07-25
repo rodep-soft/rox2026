@@ -26,12 +26,7 @@ private:
     LEVEL_3,
   };
 
-  // /dribble/position_modeへ送る位置指令。dribble_position_controllerと対応させる。
-  enum class DribblePositionMode : uint8_t
-  {
-    DRIBBLE = 0,
-    SHOOT = 1,
-  };
+  enum class DribblePositionMode : uint8_t {DRIBBLE = 0, SHOOT = 1};
 
   void declare_parameters();
   void get_parameters();

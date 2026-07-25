@@ -10,6 +10,7 @@ joy_controller:
     # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
     emergency_stop_topic: /emergency_stop
     # ドリブル位置指令topic。std_msgs/msg/UInt8(0=DRIBBLE, 1=SHOOT)。
+    # L1+×またはL1+○の押下開始で一回だけpublishする。
     dribble_position_mode_topic: /dribble/position_mode
     joy_qos_depth: 3
     command_qos_depth: 1
@@ -36,6 +37,7 @@ joy_controller:
     emergency_stop_button_on: 13
 
     # ドリブル位置操作のボタン番号。L1 + ×でDRIBBLE、L1 + ○でSHOOT。
+    # 移動中の再押下はdribble_position_controller側で無視する。
     dribble_position_is_enable_button: 4
     dribble_position_dribble_button: 1
     dribble_position_shoot_button: 2
