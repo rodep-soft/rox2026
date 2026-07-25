@@ -31,7 +31,7 @@ private:
   double shoot_to_dribble_delay_sec_{1.0};
   double move_timeout_sec_{3.0};
   double feedback_timeout_sec_{0.5};
-  int watchdog_period_ms_{20};
+  int command_period_ms_{20};
   int qos_depth_{1};
   double target_position_rad_{0.0};
   State state_{State::IDLE};
@@ -46,5 +46,5 @@ private:
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr position_feedback_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::TimerBase::SharedPtr watchdog_timer_;
+  rclcpp::TimerBase::SharedPtr command_timer_;
 };
