@@ -12,8 +12,8 @@ dribble_position_controller:
     emergency_stop_topic: /emergency_stop
     # 各位置はrad。SHOOTはINTAKE到達後にSHOOTへ移動し、保持後にDRIBBLEへ戻る。
     dribble_position_rad: 0.2
-    intake_position_rad: -1.3
-    shoot_position_rad: 1.1
+    intake_position_rad: -1.0
+    shoot_position_rad: 1.3
     # 目標位置へ到達したとみなす許容誤差[rad]。
     position_tolerance_rad: 0.02
     # SHOOT位置への到達後、DRIBBLE位置へ自動で戻すまでの保持時間[s]。
