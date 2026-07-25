@@ -6,7 +6,7 @@ spring_controller_node:
     # hardware_driverがpublishするリミットスイッチ配列topic。
     # UInt8MultiArrayのdataをvectorとして扱い、0をfalse、1をtrueとする。
     limit_switch_topic: /limit_switches
-    limit_switch_index: 0
+    limit_switch_index: 1
 
     # hardware_driverへ送るEduLite 05の速度command topic。std_msgs/msg/Float32、単位はrad/s。
     spring_velocity_command_topic: /spring/vel_command
@@ -14,10 +14,10 @@ spring_controller_node:
 
     # 正負の向きは機構の実装に合わせて調整する。
     loading_velocity_rad_s: -5.0
-    fire_velocity_rad_s: -20.0
+    fire_velocity_rad_s: -40.0
 
     # FIRE状態を維持する時間[s]。
-    fire_duration_sec: 4.0
+    fire_duration_sec: 0.5
 
     # 速度指令をpublishする周期[ms]。
     command_period_ms: 10
