@@ -1,31 +1,57 @@
-#include "vesc_driver/vesc_protocol.hpp"
+#include <array>
+#include <cstdint>
+#include "can_msgs/msg/frame.hpp"
+
 namespace vesc_driver::protocol
-{namespace
 {
-int32_t i32(const std::array<uint8_t, 8> & d)
-{
-  return static_cast<int32_t>((uint32_t(d[0]) <<
-         24) | (uint32_t(d[1]) << 16) | (uint32_t(d[2]) << 8) | d[3]);
-}
-int16_t i16(const std::array<uint8_t, 8> & d, size_t i)
-{
-  return static_cast<int16_t>((uint16_t(d[i]) << 8) | d[i + 1]);
-}
-}
-can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
-{
-  can_msgs::msg::Frame f{};f.id = (SET_RPM << 8) | id;f.is_extended = true;f.dlc = 4;
-  auto v = uint32_t(erpm);for (int i = 0; i < 4; i++) {
-    f.data[i] = (v >> (24 - 8 * i)) & 0xff;
+  constexpr uint32_t SET_RPM = 3;
+  constexpr uint32_t STATUS_1 = 9;
+  constexpr int64_t MOTOR_POLES = 14; // モーターの極数
+
+  struct Status1
+  {
+    uint8_t controller_id;
+    int32_t erpm;
+  };
+
+  /// @brief rpmをescに送るためのcanFrame生成
+  /// @param id motorID
+  /// @param erpm 実際のRPMに極数がかけられているrpm = erpm
+  /// @return canFrame
+  can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
+  {
+    can_msgs::msg::Frame frame{};
+    frame.id = (SET_RPM << 8) | id;
+    frame.is_extended = true;
+    frame.dlc = 4;
+
+    const auto value = static_cast<uint32_t>(erpm);
+    for (std::size_t i = 0; i < 4; ++i)
+    {
+      frame.data[i] = static_cast<uint8_t>((value >> (24 - 8 * i)) & 0xFF);
+    }
+    return frame;
   }
-  return f;
-}
-bool decode_status_1(const can_msgs::msg::Frame & f, Status1 & s)
-{
-  if (!f.is_extended || f.is_rtr || f.is_error || f.dlc != 8 || (f.id >> 8) != STATUS_1) {
-    return false;
-  }
-  s.controller_id = f.id & 0xff;s.erpm = i32(f.data);s.motor_current = i16(f.data, 4) / 10.0F;
-  s.duty_cycle = i16(f.data, 6) / 1000.0F;return true;
-}
+
+  /// @brief status1のcanFrameについてデコードする
+  /// @param frame
+  /// @param status
+  /// @return true:デコードした false:デコードしていない
+  bool decode_status_1(const can_msgs::msg::Frame &frame, Status1 &status)
+  {
+    if (!frame.is_extended || frame.is_rtr || frame.is_error || frame.dlc != 8 ||
+        (frame.id >> 8) != STATUS_1)
+    {
+      return false;
+    }
+    status.controller_id = static_cast<uint8_t>(frame.id & 0xFF);
+    const uint32_t rpm =
+        (static_cast<uint32_t>(frame.data[0]) << 24) |
+        (static_cast<uint32_t>(frame.data[1]) << 16) |
+        (static_cast<uint32_t>(frame.data[2]) << 8) |
+        static_cast<uint32_t>(frame.data[3]);
+    status.erpm = static_cast<int32_t>(rpm);
+
+    return true;
+  } // namespace vesc_driver::protocol
 }
