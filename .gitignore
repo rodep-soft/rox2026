@@ -17,6 +17,9 @@ __pycache__/
 *.mcap
 rosbag2_*/
 
+# debag file (.txt)
+*.txt
+
 #about vscode setting
 .vacode/
 !.vscode/extensions.json
@@ -44,3 +47,7 @@ ros2_ws/.vscode/
 
 # 修正店を書いたファイル(jodanが使ってます)
 fix.md
+
+
+# kamei氏のdirを入れないものとする
+kamei/

@@ -152,6 +152,7 @@ Canframe Ed05CanframeCreater::set_mechanicalzero()
   frame.id = encode_can_id(0x06);
   frame.dlc = dlc_;
   frame.data.fill(0);
+  frame.data[0] = 0x1;
   return frame;
 }
 
@@ -174,4 +175,32 @@ Canframe Ed05CanframeCreater::set_angle_range()
   frame.data[6] = 0x00;   // reserved
   frame.data[7] = 0x00;   // reserved
   return frame;
+}
+
+CanIdInfo decode_can_id(uint32_t can_id)
+{
+  CanIdInfo info{};
+  info.comm_type = static_cast<uint8_t>((can_id >> 24) & 0x1F);
+  info.mode_status = static_cast<uint8_t>((can_id >> 22) & 0x03);
+  info.fault_info = static_cast<uint8_t>((can_id >> 16) & 0x3F);
+  info.motor_id = static_cast<uint8_t>((can_id >> 8) & 0xFF);
+  info.host_id = static_cast<uint8_t>(can_id & 0xFF);
+  return info;
+}
+
+MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data)
+{
+  MotorFeedbackData fb_data{};
+
+  uint16_t raw_angle = (static_cast<uint16_t>(data[0]) << 8) | data[1];
+  uint16_t raw_vel = (static_cast<uint16_t>(data[2]) << 8) | data[3];
+  uint16_t raw_torque = (static_cast<uint16_t>(data[4]) << 8) | data[5];
+  uint16_t raw_temp = (static_cast<uint16_t>(data[6]) << 8) | data[7];
+
+  fb_data.angle = -4.0f * M_PI + (static_cast<float>(raw_angle) / 65535.0f) * (8.0f * M_PI);
+  fb_data.velocity = -50.0f + (static_cast<float>(raw_vel) / 65535.0f) * 100.0f;
+  fb_data.torque = -6.0f + (static_cast<float>(raw_torque) / 65535.0f) * 12.0f;
+  fb_data.temperature = static_cast<float>(raw_temp) / 10.0f;
+
+  return fb_data;
 }

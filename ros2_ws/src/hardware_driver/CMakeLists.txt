@@ -5,61 +5,78 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 find_package(ament_cmake REQUIRED)
 find_package(can_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 
-# STM32 Protocol Library
-add_library(stm32_protocol src/protocol/stm32_protocol.cpp)
-target_compile_features(
-  stm32_protocol
-  PUBLIC cxx_std_17)
-target_include_directories(
-  stm32_protocol
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(
-  stm32_protocol can_msgs)
+function(add_protocol_library target source)
+  add_library(${target} ${source})
+  target_include_directories(
+    ${target}
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:include>)
+  if(ARGN)
+    ament_target_dependencies(${target} ${ARGN})
+  endif()
+endfunction()
 
-# EduLite 05 Protocol Library
-add_library(edulite05_protocol src/protocol/edulite05_protocol.cpp)
-target_compile_features(
-  edulite05_protocol
-  PUBLIC cxx_std_17)
-target_include_directories(
-  edulite05_protocol
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/edulite05_driver> $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(
-  edulite05_protocol can_msgs rclcpp std_msgs)
+function(add_hardware_node target source)
+  add_executable(${target} ${source})
+  target_include_directories(
+    ${target}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  if(ARGN)
+    target_link_libraries(${target} ${ARGN})
+  endif()
+  ament_target_dependencies(${target} can_msgs rclcpp std_msgs)
+endfunction()
 
-# STM32 Node Executable
-add_executable(stm32_node src/nodes/stm32_node.cpp)
-target_compile_features(
+add_protocol_library(
+  stm32_protocol
+  src/protocol/stm32_protocol.cpp
+  can_msgs)
+add_protocol_library(
+  edulite05_protocol
+  src/protocol/edulite05_protocol.cpp)
+
+add_hardware_node(
   stm32_node
-  PUBLIC cxx_std_17)
-target_link_libraries(
-  stm32_node stm32_protocol)
-ament_target_dependencies(
-  stm32_node can_msgs rclcpp std_msgs)
-
-# EduLite 05 Node Executable
-add_executable(edulite05_node src/nodes/edulite05_node.cpp)
-target_compile_features(
+  src/nodes/stm32_node.cpp
+  stm32_protocol)
+add_hardware_node(
   edulite05_node
-  PUBLIC cxx_std_17)
-target_link_libraries(
-  edulite05_node edulite05_protocol)
-ament_target_dependencies(
-  edulite05_node can_msgs rclcpp std_msgs)
+  src/nodes/edulite05_node.cpp
+  edulite05_protocol)
+add_hardware_node(
+  vesc_node
+  src/nodes/vesc_node.cpp)
+
+set(protocol_libraries
+  stm32_protocol
+  edulite05_protocol)
+set(driver_nodes
+  stm32_node
+  edulite05_node
+  vesc_node)
 
 install(
-  TARGETS stm32_protocol stm32_node edulite05_protocol edulite05_node
+  TARGETS ${protocol_libraries}
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY include/ DESTINATION include)
+  RUNTIME DESTINATION bin)
+install(
+  TARGETS ${driver_nodes}
+  DESTINATION lib/${PROJECT_NAME})
+install(
+  DIRECTORY include/
+  DESTINATION include)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -68,7 +85,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_export_include_directories(include)
-ament_export_dependencies(can_msgs rclcpp std_msgs)
-ament_export_libraries(stm32_protocol edulite05_protocol)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(can_msgs)
 ament_package()
