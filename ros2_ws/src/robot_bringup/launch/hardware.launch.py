@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import (
     AnyLaunchDescriptionSource,
     PythonLaunchDescriptionSource,
@@ -52,6 +53,11 @@ def generate_launch_description():
                 description="SocketCAN interface used by ros2_socketcan",
             ),
             DeclareLaunchArgument(
+                "use_vesc",
+                default_value="true",
+                description="Launch the VESC (赤ブラシ) driver nodes",
+            ),
+            DeclareLaunchArgument(
                 "vesc_1_controller_id",
                 default_value="51",
                 description="CAN controller ID of VESC 1",
@@ -80,6 +86,7 @@ def generate_launch_description():
                 executable="vesc_node",
                 name="vesc_driver_1",
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_1_controller_id"),
@@ -93,6 +100,7 @@ def generate_launch_description():
                 executable="vesc_node",
                 name="vesc_driver_2",
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_2_controller_id"),
@@ -106,6 +114,7 @@ def generate_launch_description():
                 executable="vesc_node",
                 name="vesc_driver_3",
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_3_controller_id"),

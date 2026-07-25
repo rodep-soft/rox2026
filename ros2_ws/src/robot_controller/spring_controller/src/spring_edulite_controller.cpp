@@ -36,14 +36,8 @@ SpringEduliteController::SpringEduliteController()
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
     limit_switch_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
-  dribble_is_stopped_sub_ = create_subscription<std_msgs::msg::Bool>(
-    dribble_is_stopped_topic_, rclcpp::QoS(qos_depth_),
-    std::bind(
-      &SpringEduliteController::dribble_is_stopped_callback, this, std::placeholders::_1));
   spring_velocity_pub_ = create_publisher<std_msgs::msg::Float32>(
     spring_velocity_command_topic_, rclcpp::QoS(qos_depth_));
-  dribble_stop_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    dribble_stop_request_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -55,10 +49,7 @@ void SpringEduliteController::declare_parameters()
   declare_parameter<std::string>("fire_request_topic", "/spring/fire_request");
   declare_parameter<std::string>("limit_switch_topic", "/limit_switches");
   declare_parameter<std::string>("spring_velocity_command_topic", "/spring/vel_command");
-  declare_parameter<std::string>("dribble_stop_request_topic", "/dribble_stop_request");
-  declare_parameter<std::string>("dribble_is_stopped_topic", "/dribble_is_stopped");
   declare_parameter<int>("limit_switch_index", 0);
-  declare_parameter<bool>("stop_dribble_on_fire", true);
   declare_parameter<double>("loading_velocity_rad_s", -5.0);
   declare_parameter<double>("fire_velocity_rad_s", -20.0);
   declare_parameter<double>("fire_duration_sec", 5.0);
@@ -71,10 +62,7 @@ void SpringEduliteController::get_parameters()
   get_parameter("fire_request_topic", fire_request_topic_);
   get_parameter("limit_switch_topic", limit_switch_topic_);
   get_parameter("spring_velocity_command_topic", spring_velocity_command_topic_);
-  get_parameter("dribble_stop_request_topic", dribble_stop_request_topic_);
-  get_parameter("dribble_is_stopped_topic", dribble_is_stopped_topic_);
   get_parameter("limit_switch_index", limit_switch_index_);
-  get_parameter("stop_dribble_on_fire", stop_dribble_on_fire_);
   get_parameter("loading_velocity_rad_s", loading_velocity_rad_s_);
   get_parameter("fire_velocity_rad_s", fire_velocity_rad_s_);
   get_parameter("fire_duration_sec", fire_duration_sec_);
@@ -90,15 +78,8 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
     msg->data && !previous_fire_request_)
   {
     fire_pending_ = true;
-    dribble_is_stopped_ = false;
   }
   previous_fire_request_ = msg->data;
-}
-
-void SpringEduliteController::dribble_is_stopped_callback(
-  const std_msgs::msg::Bool::SharedPtr msg)
-{
-  dribble_is_stopped_ = msg->data;
 }
 
 void SpringEduliteController::limit_switch_callback(
@@ -121,15 +102,6 @@ void SpringEduliteController::start_fire()
   fire_pending_ = false;
 }
 
-void SpringEduliteController::publish_dribble_stop_request()
-{
-  std_msgs::msg::Bool stop_request;
-  // 発射待ちまたは発射中だけ、dribble_controllerへ停止要求を出す。
-  stop_request.data = stop_dribble_on_fire_ &&
-    (fire_pending_ || now_state_ == State::FIRE);
-  dribble_stop_request_pub_->publish(stop_request);
-}
-
 void SpringEduliteController::timer_callback()
 {
   std_msgs::msg::Float32 velocity_command;
@@ -137,7 +109,6 @@ void SpringEduliteController::timer_callback()
   if (!is_configuration_valid_) {
     velocity_command.data = 0.0F;
     spring_velocity_pub_->publish(velocity_command);
-    publish_dribble_stop_request();
     return;
   }
 
@@ -153,10 +124,8 @@ void SpringEduliteController::timer_callback()
       break;
 
     case State::READY:
-      // 発射要求を受けたら、必要に応じてdribble停止完了を待ってからFIREへ移る。
-      if (fire_pending_ && is_loaded_ &&
-        (!stop_dribble_on_fire_ || dribble_is_stopped_))
-      {
+      // 発射要求を受けたらFIREへ移る。
+      if (fire_pending_ && is_loaded_) {
         start_fire();
         velocity_command.data = static_cast<float>(fire_velocity_rad_s_);
       } else if (!is_loaded_) {
@@ -177,7 +146,6 @@ void SpringEduliteController::timer_callback()
   }
 
   spring_velocity_pub_->publish(velocity_command);
-  publish_dribble_stop_request();
 }
 
 int main(int argc, char * argv[])

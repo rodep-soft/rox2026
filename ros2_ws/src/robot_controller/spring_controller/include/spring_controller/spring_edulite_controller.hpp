@@ -27,8 +27,6 @@ private:
   bool is_loaded_{false};  // リミットスイッチで取得した、ばねを引き切った状態。
   bool previous_fire_request_{false};  // 立上り検出に使う、前回のspring_is_fire値。
   bool fire_pending_{false};  // READY状態で受理済みの発射要求。
-  bool stop_dribble_on_fire_{true};  // 発射前にdribbleの停止を待つか。
-  bool dribble_is_stopped_{false};  // dribble_controllerから受信した停止完了状態。
   double loading_velocity_rad_s_{0.0};  // LOAD状態で出力する目標角速度[rad/s]。
   double fire_velocity_rad_s_{0.0};  // FIRE状態で出力する目標角速度[rad/s]。
   double fire_duration_sec_{0.0};  // FIRE状態を継続する時間[s]。
@@ -38,23 +36,17 @@ private:
   std::string fire_request_topic_;
   std::string limit_switch_topic_;
   std::string spring_velocity_command_topic_;
-  std::string dribble_stop_request_topic_;
-  std::string dribble_is_stopped_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_switch_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_is_stopped_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_stop_request_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   void declare_parameters();
   void get_parameters();
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
-  void dribble_is_stopped_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_fire();
-  void publish_dribble_stop_request();
   void timer_callback();
 };
 

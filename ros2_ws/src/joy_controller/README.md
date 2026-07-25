@@ -56,16 +56,15 @@ ros2 topic echo /joy
 |---|---|
 | 吸気 ON/OFF | L2 + △ |
 | ばね射出 ON/OFF | R2 + ○ |
-| ベルト射出 ON/OFF | L2 + ○ |
 | ベルト mode 増減 | L2 + DPAD 上下 |
-| ドリブル mode 増減 | R2 + DPAD 上下 |
+| ドリブル ON/OFF | R2 + DPAD 上(ON)／下(OFF) |
 | ドリブル位置をSHOOTへ移動 | L1 + ○ |
 | ドリブル位置をDRIBBLEへ復帰 | L1 + × |
 | 緊急停止 | Create + タッチパッド |
 
-ベルトmodeは`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4状態、
-dribble modeは`STOP (1)`、`HIGH (2)`、`LOW (3)`の3状態。
+ベルトmodeは`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4状態で、
 DPAD上で1段階増加、DPAD下で1段階減少し、範囲外には遷移しない。
+ドリブルはON/OFFの2状態で、R2 + DPAD上でON、R2 + DPAD下でOFF。
 
 `*_is_enable_button` は機構操作を有効化するボタン、`*_button_on` は実行する
 ボタンの番号を表す。これらは名前に `is` や `on` を含むが、YAML では bool ではなく
@@ -89,10 +88,9 @@ enable ボタンの押下だけでは操作を実行しない。△、○、タ�
 | --- | --- | --- |
 | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度指令 |
 | `/spring/fire_request` | `std_msgs/msg/Bool` | ばね射出要求 |
-| `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出の有効状態 |
 | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モード |
-| `/dribble/mode` | `std_msgs/msg/UInt8` | ドリブル回転モード |
-| `/dribble/position` | `robot_controller/action/DribblePosition` | ドリブル位置移動Action |
+| `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルON/OFF |
+| `/dribble/position_mode` | `std_msgs/msg/UInt8` | ドリブル位置指令(0=DRIBBLE, 1=SHOOT) |
 
 スティック入力は、絶対値が `axis_deadzone` 未満の場合に `0.0` として扱う。
 既定値は `0.05`。DPAD のような ON/OFF 判定に使う軸は、絶対値が

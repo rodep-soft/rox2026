@@ -14,6 +14,7 @@
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
+#include "std_msgs/msg/u_int8_multi_array.hpp"
 
 #include "stm32_driver/stm32_protocol.hpp"
 
@@ -40,9 +41,9 @@ public:
     const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
       "motor_target_rpm_topics",
       {
-        "/belt/rpm_command",
-        "/dribble/rpm_command",
-        "/brushless/motor2/rpm_command"
+        "/underbelt/target/rpm",
+        "/upperbelt/target/rpm",
+        "/dribble/target/rpm"
       });
     const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
       "motor_current_rpm_topics",
@@ -52,7 +53,7 @@ public:
         "/dribble/current/rpm"
       });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
-    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
+    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limit_switches");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
     const auto publish_period_ms = declare_parameter<int64_t>("publish_period_ms", 10);
 
@@ -85,7 +86,7 @@ public:
 
     current_rpm_msg_.data.resize(protocol::MOTOR_NUM);
 
-    limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_sw_topic, 10);
+    limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8MultiArray>(limit_sw_topic, 10);
 
     alive_timer_ = create_wall_timer(
       std::chrono::milliseconds(keep_alive_period_ms),
@@ -130,8 +131,13 @@ private:
 
     uint8_t limit_state = 0;
     if (protocol::decode_limit_switch(*frame, limit_state)) {
-      std_msgs::msg::UInt8 output;
-      output.data = limit_state;
+      // STM32から受け取った1バイトを、bitごとに1スイッチとして配列へ展開する。
+      // data[i]がi番目のリミットスイッチに対応し、購読側はindexでスイッチを選ぶ。
+      std_msgs::msg::UInt8MultiArray output;
+      output.data.resize(8);
+      for (std::size_t bit = 0; bit < output.data.size(); ++bit) {
+        output.data[bit] = static_cast<uint8_t>((limit_state >> bit) & 0x01);
+      }
       limit_sw_pub_->publish(output);
     }
   }
@@ -173,7 +179,7 @@ private:
   std::array<rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr, protocol::MOTOR_NUM>
   motor_current_rpm_pubs_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr led_cmd_sub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr limit_sw_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
 

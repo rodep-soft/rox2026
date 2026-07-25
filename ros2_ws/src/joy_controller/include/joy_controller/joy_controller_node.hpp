@@ -7,8 +7,6 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
-#include "robot_controller/action/dribble_position.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -28,11 +26,11 @@ private:
     LEVEL_3,
   };
 
-  enum class DribbleRpmMode : uint8_t
+  // /dribble/position_modeへ送る位置指令。dribble_position_controllerと対応させる。
+  enum class DribblePositionMode : uint8_t
   {
-    STOP = 1,
-    HIGH,
-    LOW,
+    DRIBBLE = 0,
+    SHOOT = 1,
   };
 
   void declare_parameters();
@@ -48,7 +46,7 @@ private:
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  void send_dribble_position_goal(uint8_t command);
+  void publish_dribble_position_mode(DribblePositionMode mode);
   void publish_emergency_stop();
   void publish_state_commands();
   void publish_stop_commands();
@@ -59,10 +57,10 @@ private:
   void update_previous_chord_inputs();
 
   std::string joy_topic_;
-  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
-    belt_mode_topic_, dribble_mode_topic_;
+  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_,
+    belt_mode_topic_, dribble_enabled_topic_;
   std::string emergency_stop_topic_;
-  std::string dribble_position_action_;
+  std::string dribble_position_mode_topic_;
   int joy_qos_depth_;
   int command_qos_depth_;
   int joy_timeout_ms_;
@@ -88,9 +86,6 @@ private:
   int spring_fire_is_enable_button_;
   int spring_fire_button_on_;
 
-  int belt_fire_is_enable_button_;
-  int belt_fire_button_on_;
-
   int belt_mode_is_enable_button_;
   int dribble_mode_is_enable_button_;
 
@@ -109,9 +104,8 @@ private:
   geometry_msgs::msg::Twist cmd_vel_;
   bool intake_enabled_{false};
   bool spring_fire_enabled_{false};
-  bool belt_fire_enabled_{false};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
-  uint8_t dribble_rpm_mode_{static_cast<uint8_t>(DribbleRpmMode::STOP)};
+  bool dribble_enabled_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
@@ -119,7 +113,6 @@ private:
   bool emergency_stop_latched_{false};
   bool intake_chord_on_{false};
   bool spring_fire_chord_on_{false};
-  bool belt_fire_chord_on_{false};
   bool belt_mode_up_chord_on_{false};
   bool belt_mode_down_chord_on_{false};
   bool dribble_mode_up_chord_on_{false};
@@ -129,7 +122,6 @@ private:
   bool dribble_position_shoot_chord_on_{false};
   bool pre_intake_chord_on_;
   bool pre_spring_fire_chord_on_;
-  bool pre_belt_fire_chord_on_;
   bool pre_belt_mode_up_chord_on_;
   bool pre_belt_mode_down_chord_on_;
   bool pre_dribble_mode_up_chord_on_;
@@ -140,11 +132,11 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_, dribble_mode_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
-  rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
-    dribble_position_action_client_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr dribble_position_mode_publisher_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
 };

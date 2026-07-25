@@ -6,11 +6,12 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    parameter_file = os.path.join(
+    config_dir = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
-        "belt_controller.yaml",
     )
+    belt_parameter_file = os.path.join(config_dir, "belt_controller.yaml")
+    dribble_parameter_file = os.path.join(config_dir, "dribble_controller.yaml")
 
     return LaunchDescription(
         [
@@ -19,7 +20,14 @@ def generate_launch_description():
                 executable="belt_controller_node",
                 name="belt_controller_node",
                 output="screen",
-                parameters=[parameter_file],
+                parameters=[belt_parameter_file],
+            ),
+            Node(
+                package="robot_controller",
+                executable="dribble_controller_node",
+                name="dribble_controller_node",
+                output="screen",
+                parameters=[dribble_parameter_file],
             ),
         ]
     )
