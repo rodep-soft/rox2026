@@ -53,13 +53,6 @@ def generate_launch_description():
             ),
             socketcan_launch,
             Node(
-                package="nobleo_socketcan_bridge",
-                executable="socketcan_bridge",
-                name="socketcan_bridge",
-                output="screen",
-                parameters=[{"interface": "can0"}],
-            ),
-            Node(
                 package="hardware_driver",
                 executable="stm32_node",
                 name="stm32_driver_node",
