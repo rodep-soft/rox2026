@@ -51,6 +51,21 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface used by ros2_socketcan",
             ),
+            DeclareLaunchArgument(
+                "vesc_1_controller_id",
+                default_value="51",
+                description="CAN controller ID of VESC 1",
+            ),
+            DeclareLaunchArgument(
+                "vesc_2_controller_id",
+                default_value="2",
+                description="CAN controller ID of VESC 2",
+            ),
+            DeclareLaunchArgument(
+                "vesc_3_controller_id",
+                default_value="3",
+                description="CAN controller ID of VESC 3",
+            ),
             socketcan_launch,
             Node(
                 package="hardware_driver",
@@ -60,5 +75,44 @@ def generate_launch_description():
                 parameters=[stm32_parameter_file],
             ),
             edulite05_launch,
+            Node(
+                package="hardware_driver",
+                executable="vesc_node",
+                name="vesc_driver_1",
+                output="screen",
+                parameters=[
+                    {
+                        "controller_id": LaunchConfiguration("vesc_1_controller_id"),
+                        "target_rpm_topic": "/vesc_1/target/rpm",
+                        "current_rpm_topic": "/vesc_1/current/rpm",
+                    }
+                ],
+            ),
+            Node(
+                package="hardware_driver",
+                executable="vesc_node",
+                name="vesc_driver_2",
+                output="screen",
+                parameters=[
+                    {
+                        "controller_id": LaunchConfiguration("vesc_2_controller_id"),
+                        "target_rpm_topic": "/vesc_2/target/rpm",
+                        "current_rpm_topic": "/vesc_2/current/rpm",
+                    }
+                ],
+            ),
+            Node(
+                package="hardware_driver",
+                executable="vesc_node",
+                name="vesc_driver_3",
+                output="screen",
+                parameters=[
+                    {
+                        "controller_id": LaunchConfiguration("vesc_3_controller_id"),
+                        "target_rpm_topic": "/vesc_3/target/rpm",
+                        "current_rpm_topic": "/vesc_3/current/rpm",
+                    }
+                ],
+            ),
         ]
     )
