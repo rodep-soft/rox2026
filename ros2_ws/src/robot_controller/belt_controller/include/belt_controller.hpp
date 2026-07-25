@@ -38,10 +38,12 @@ private:
   int qos_depth_{1};
   std::string belt_fire_topic_;
   std::string belt_mode_topic_;
-  std::string belt_rpm_topic_;
+  std::string underbelt_rpm_topic_;
+  std::string upperbelt_rpm_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr belt_fire_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr underbelt_rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr upperbelt_rpm_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

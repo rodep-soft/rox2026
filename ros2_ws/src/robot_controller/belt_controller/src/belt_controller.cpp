@@ -39,7 +39,10 @@ BeltControllerNode::BeltControllerNode()
     belt_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(belt_rpm_topic_, rclcpp::QoS(qos_depth_));
+  underbelt_rpm_pub_ =
+    create_publisher<std_msgs::msg::Int16>(underbelt_rpm_topic_, rclcpp::QoS(qos_depth_));
+  upperbelt_rpm_pub_ =
+    create_publisher<std_msgs::msg::Int16>(upperbelt_rpm_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -50,7 +53,8 @@ void BeltControllerNode::declare_parameters()
 {
   declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
   declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
-  declare_parameter<std::string>("belt_rpm_topic", "/belt/rpm_command");
+  declare_parameter<std::string>("underbelt_rpm_topic", "/underbelt/target/rpm");
+  declare_parameter<std::string>("upperbelt_rpm_topic", "/upperbelt/target/rpm");
   declare_parameter<int>("stop_rpm", 0);
   declare_parameter<int>("level_1_rpm", 3000);
   declare_parameter<int>("level_2_rpm", 4000);
@@ -63,7 +67,8 @@ void BeltControllerNode::get_parameters()
 {
   get_parameter("belt_fire_topic", belt_fire_topic_);
   get_parameter("belt_mode_topic", belt_mode_topic_);
-  get_parameter("belt_rpm_topic", belt_rpm_topic_);
+  get_parameter("underbelt_rpm_topic", underbelt_rpm_topic_);
+  get_parameter("upperbelt_rpm_topic", upperbelt_rpm_topic_);
   get_parameter("stop_rpm", stop_rpm_);
   get_parameter("level_1_rpm", level_1_rpm_);
   get_parameter("level_2_rpm", level_2_rpm_);
@@ -88,7 +93,9 @@ void BeltControllerNode::timer_callback()
   // 設定が不正、または発射無効中なら安全側として0 RPMを送る。
   rpm_command.data = static_cast<int16_t>(
     is_configuration_valid_ && belt_is_fire_ ? target_rpm_from_mode(belt_mode_) : 0);
-  rpm_pub_->publish(rpm_command);
+  // under/upperの2モータへ同一RPMを送る。
+  underbelt_rpm_pub_->publish(rpm_command);
+  upperbelt_rpm_pub_->publish(rpm_command);
 }
 
 int BeltControllerNode::target_rpm_from_mode(uint8_t mode)
