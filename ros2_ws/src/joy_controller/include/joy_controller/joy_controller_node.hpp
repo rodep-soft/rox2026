@@ -57,7 +57,7 @@ private:
   void update_previous_chord_inputs();
 
   std::string joy_topic_;
-  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
+  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_,
     belt_mode_topic_, dribble_enabled_topic_;
   std::string emergency_stop_topic_;
   std::string dribble_position_mode_topic_;
@@ -86,9 +86,6 @@ private:
   int spring_fire_is_enable_button_;
   int spring_fire_button_on_;
 
-  int belt_fire_is_enable_button_;
-  int belt_fire_button_on_;
-
   int belt_mode_is_enable_button_;
   int dribble_mode_is_enable_button_;
 
@@ -107,7 +104,6 @@ private:
   geometry_msgs::msg::Twist cmd_vel_;
   bool intake_enabled_{false};
   bool spring_fire_enabled_{false};
-  bool belt_fire_enabled_{false};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
   bool dribble_enabled_{false};
   bool joy_received_{false};
@@ -117,7 +113,6 @@ private:
   bool emergency_stop_latched_{false};
   bool intake_chord_on_{false};
   bool spring_fire_chord_on_{false};
-  bool belt_fire_chord_on_{false};
   bool belt_mode_up_chord_on_{false};
   bool belt_mode_down_chord_on_{false};
   bool dribble_mode_up_chord_on_{false};
@@ -127,7 +122,6 @@ private:
   bool dribble_position_shoot_chord_on_{false};
   bool pre_intake_chord_on_;
   bool pre_spring_fire_chord_on_;
-  bool pre_belt_fire_chord_on_;
   bool pre_belt_mode_up_chord_on_;
   bool pre_belt_mode_down_chord_on_;
   bool pre_dribble_mode_up_chord_on_;
@@ -138,7 +132,7 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;

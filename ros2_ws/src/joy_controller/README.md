@@ -56,7 +56,6 @@ ros2 topic echo /joy
 |---|---|
 | 吸気 ON/OFF | L2 + △ |
 | ばね射出 ON/OFF | R2 + ○ |
-| ベルト射出 ON/OFF | L2 + ○ |
 | ベルト mode 増減 | L2 + DPAD 上下 |
 | ドリブル ON/OFF | R2 + DPAD 上(ON)／下(OFF) |
 | ドリブル位置をSHOOTへ移動 | L1 + ○ |
@@ -89,7 +88,6 @@ enable ボタンの押下だけでは操作を実行しない。△、○、タ�
 | --- | --- | --- |
 | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度指令 |
 | `/spring/fire_request` | `std_msgs/msg/Bool` | ばね射出要求 |
-| `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出の有効状態 |
 | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モード |
 | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルON/OFF |
 | `/dribble/position_mode` | `std_msgs/msg/UInt8` | ドリブル位置指令(0=DRIBBLE, 1=SHOOT) |

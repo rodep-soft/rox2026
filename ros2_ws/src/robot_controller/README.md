@@ -19,7 +19,7 @@ flowchart LR
   joy -->|/mecanum/cmd_vel| mecanum
   joy -->|/spring/fire_request| spring
   joy -->|/dribble/enabled| dribble
-  joy -->|/belt/fire_enabled, /belt/mode| belt
+  joy -->|/belt/mode| belt
   joy -->|/dribble/position_mode\nstd_msgs/msg/UInt8| position
 
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| robstride_driver
@@ -76,16 +76,15 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `belt_controller_node`
 
 - node名: `belt_controller_node`
-- 処理: `/belt/mode`をベルトの目標回転数へ変換します。`/belt/fire_enabled`が`true`の間だけ、選択中の目標回転数をpublishします。under/upperの2モータへ同一RPMを2本publishします。
+- 処理: `/belt/mode`をベルトの目標回転数へ変換し、選択中のRPMを常時publishします。under/upperの2モータへ同一RPMを2本publishします。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
-| subscribe | `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出状態を受信 |
 | subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
 | publish | `/underbelt/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送るunder側目標回転数 `[RPM]` |
 | publish | `/upperbelt/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送るupper側目標回転数 `[RPM]` |
 
-`belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
+`belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_mode`が`STOP`の場合は`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
 
 `stop_rpm`、`level_1_rpm`〜`level_3_rpm`、指令周期は`robot_bringup/config/belt_controller.yaml`で設定できます。`stop_rpm`は安全のため`0 RPM`固定です。起動には`robot_bringup/launch/belt_controller.launch.py`を使います。
 

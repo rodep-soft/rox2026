@@ -31,10 +31,6 @@ BeltControllerNode::BeltControllerNode()
     qos_depth_ = 1;
   }
 
-  belt_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
-    belt_fire_topic_, rclcpp::QoS(qos_depth_),
-    std::bind(&BeltControllerNode::belt_fire_callback, this, std::placeholders::_1));
-
   belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
     belt_mode_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
@@ -51,7 +47,6 @@ BeltControllerNode::BeltControllerNode()
 
 void BeltControllerNode::declare_parameters()
 {
-  declare_parameter<std::string>("belt_fire_topic", "/belt/fire_enabled");
   declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
   declare_parameter<std::string>("underbelt_rpm_topic", "/underbelt/target/rpm");
   declare_parameter<std::string>("upperbelt_rpm_topic", "/upperbelt/target/rpm");
@@ -65,7 +60,6 @@ void BeltControllerNode::declare_parameters()
 
 void BeltControllerNode::get_parameters()
 {
-  get_parameter("belt_fire_topic", belt_fire_topic_);
   get_parameter("belt_mode_topic", belt_mode_topic_);
   get_parameter("underbelt_rpm_topic", underbelt_rpm_topic_);
   get_parameter("upperbelt_rpm_topic", upperbelt_rpm_topic_);
@@ -77,11 +71,6 @@ void BeltControllerNode::get_parameters()
   get_parameter("qos_depth", qos_depth_);
 }
 
-void BeltControllerNode::belt_fire_callback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-  belt_is_fire_ = msg->data;
-}
-
 void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
   belt_mode_ = msg->data;
@@ -90,9 +79,9 @@ void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPt
 void BeltControllerNode::timer_callback()
 {
   std_msgs::msg::Int16 rpm_command;
-  // 設定が不正、または発射無効中なら安全側として0 RPMを送る。
+  // 設定が不正なら安全側として0 RPM。それ以外はmodeに対応するRPMを出す。
   rpm_command.data = static_cast<int16_t>(
-    is_configuration_valid_ && belt_is_fire_ ? target_rpm_from_mode(belt_mode_) : 0);
+    is_configuration_valid_ ? target_rpm_from_mode(belt_mode_) : 0);
   // under/upperの2モータへ同一RPMを送る。
   underbelt_rpm_pub_->publish(rpm_command);
   upperbelt_rpm_pub_->publish(rpm_command);

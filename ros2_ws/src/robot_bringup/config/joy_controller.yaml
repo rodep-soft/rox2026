@@ -4,7 +4,6 @@ joy_controller:
     joy_topic: /joy
     mecanum_cmd_vel_topic: /mecanum/cmd_vel
     spring_fire_request_topic: /spring/fire_request
-    belt_fire_topic: /belt/fire_enabled
     belt_mode_topic: /belt/mode
     # ドリブルON/OFF topic。std_msgs/msg/Bool。
     dribble_enabled_topic: /dribble/enabled
@@ -26,10 +25,6 @@ joy_controller:
     # ばね射出操作のボタン番号。
     spring_fire_is_enable_button: 7
     spring_fire_button_on: 2
-
-    # ベルト射出操作のボタン番号。
-    belt_fire_is_enable_button: 6
-    belt_fire_button_on: 2
 
     # ベルトモード変更を有効化するボタン番号。
     belt_mode_is_enable_button: 6
