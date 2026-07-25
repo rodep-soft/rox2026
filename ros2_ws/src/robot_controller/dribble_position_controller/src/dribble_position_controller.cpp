@@ -6,11 +6,12 @@
 #include <string>
 
 // dribble機構の位置制御。joy_controllerのボタンで/dribble/position_modeを受け取り、
-// hardware_driverへ目標位置(rad)をpublishする。
+// hardware_driverへ目標位置(rad)をタイマーで常時publishする。
 // 実位置feedbackは見ず、時間で位置を進める簡易方式。
 //  - DRIBBLE指令: dribble_position_radへ移動する。
 //  - SHOOT指令  : intake_position_radへ移動 → intake_to_shoot_delay_sec後にshoot_position_rad
 //                 → shoot_to_dribble_delay_sec後にdribble_position_radへ自動で戻る。
+// 目標位置はcommand_period_msごとに毎回publishする(モータ側のコマンドタイムアウト対策)。
 
 DribblePositionController::DribblePositionController()
 : Node("dribble_position_controller")
@@ -40,6 +41,9 @@ DribblePositionController::DribblePositionController()
     qos_depth_ = 1;
   }
 
+  // 起動時はドリブル位置で保持する。
+  target_position_rad_ = dribble_position_rad_;
+
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
     dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
@@ -48,9 +52,6 @@ DribblePositionController::DribblePositionController()
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&DribblePositionController::timer_callback, this));
-
-  // 起動時はドリブル位置で保持する。
-  publish_target_position(dribble_position_rad_);
 }
 
 void DribblePositionController::declare_parameters()
@@ -85,13 +86,13 @@ void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt
     case dribble_mode_:
       // ドリブル位置へ戻す。SHOOTシーケンス進行中なら中断する。
       state_ = State::IDLE;
-      publish_target_position(dribble_position_rad_);
+      set_target_position(dribble_position_rad_);
       break;
 
     case shoot_mode_:
       // まずINTAKE位置へ動かし、以降は時間でSHOOT→DRIBBLEへ進める。
-      publish_target_position(intake_position_rad_);
-      phase_start_time_ = now();
+      set_target_position(intake_position_rad_);
+      phase_start_time_ = std::chrono::steady_clock::now();
       state_ = State::WAIT_SHOOT;
       break;
 
@@ -105,36 +106,32 @@ void DribblePositionController::position_mode_callback(const std_msgs::msg::UInt
 
 void DribblePositionController::timer_callback()
 {
-  const double elapsed = (now() - phase_start_time_).seconds();
+  // SHOOTシーケンスの時間経過による遷移を処理する。
+  if (state_ != State::IDLE) {
+    const double elapsed =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - phase_start_time_).count();
 
-  switch (state_) {
-    case State::WAIT_SHOOT:
+    if (state_ == State::WAIT_SHOOT && elapsed >= intake_to_shoot_delay_sec_) {
       // INTAKE到達後、指定時間でSHOOT位置へ進める。
-      if (elapsed >= intake_to_shoot_delay_sec_) {
-        publish_target_position(shoot_position_rad_);
-        phase_start_time_ = now();
-        state_ = State::WAIT_RETURN;
-      }
-      break;
-
-    case State::WAIT_RETURN:
+      set_target_position(shoot_position_rad_);
+      phase_start_time_ = std::chrono::steady_clock::now();
+      state_ = State::WAIT_RETURN;
+    } else if (state_ == State::WAIT_RETURN && elapsed >= shoot_to_dribble_delay_sec_) {
       // SHOOT到達後、指定時間でDRIBBLE位置へ自動で戻す。
-      if (elapsed >= shoot_to_dribble_delay_sec_) {
-        publish_target_position(dribble_position_rad_);
-        state_ = State::IDLE;
-      }
-      break;
-
-    case State::IDLE:
-      break;
+      set_target_position(dribble_position_rad_);
+      state_ = State::IDLE;
+    }
   }
+
+  // 現在の目標位置を毎周期publishする(モータ側のコマンドタイムアウト対策)。
+  std_msgs::msg::Float32 command;
+  command.data = static_cast<float>(target_position_rad_);
+  position_command_pub_->publish(command);
 }
 
-void DribblePositionController::publish_target_position(double position_rad)
+void DribblePositionController::set_target_position(double position_rad)
 {
-  std_msgs::msg::Float32 command;
-  command.data = static_cast<float>(position_rad);
-  position_command_pub_->publish(command);
+  target_position_rad_ = position_rad;
 }
 
 int main(int argc, char * argv[])

@@ -92,7 +92,7 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 ## `dribble_position_controller`
 
 - node名: `dribble_position_controller`
-- 処理: `/dribble/position_mode`を受け取り、ドリブル機構を指定位置へ移動する目標位置をpublishします。実位置feedbackは見ず、時間で位置を進める簡易方式です。
+- 処理: `/dribble/position_mode`を受け取り、ドリブル機構の目標位置を`command_period_ms`周期で常時publishします。実位置feedbackは見ず、時間で位置を進める簡易方式です。目標位置を毎周期publishするので、モータ側のコマンドタイムアウトを避けられます。
 
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |

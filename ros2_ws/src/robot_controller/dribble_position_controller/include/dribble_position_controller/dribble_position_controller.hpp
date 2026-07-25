@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -29,7 +30,7 @@ private:
   void get_parameters();
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void timer_callback();
-  void publish_target_position(double position_rad);
+  void set_target_position(double position_rad);
 
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
@@ -41,8 +42,9 @@ private:
   int command_period_ms_{20};
   int qos_depth_{1};
 
+  double target_position_rad_{0.0};  // タイマーで常時publishする現在の目標位置。
   State state_{State::IDLE};
-  rclcpp::Time phase_start_time_;  // 現在のフェーズを開始した時刻。
+  std::chrono::steady_clock::time_point phase_start_time_;  // 現在のフェーズを開始した時刻。
 
   std::string dribble_position_command_topic_;
   std::string dribble_position_mode_topic_;
