@@ -24,8 +24,5 @@
 - timer生成に失敗してnodeが起動せず、明示的な停止指令を送れない可能性がある。
 - belt_controller、spring_controllerと同様に、不正値検出時は設定を無効扱いにしつつ周期を安全な既定値へ戻す。
 
-## [中] DribblePosition Actionの到達判定とタイムアウト
-
-- `position_tolerance_rad`が0以下の場合、到達判定が成立せずActionが終了しない可能性がある。
-- 位置feedbackが途絶えた場合もActionが実行中のまま残る。
-- `position_tolerance_rad`を正の有限値として検証し、移動時間またはfeedback受信のタイムアウト時にはActionを失敗終了して安全な位置指令を出す。
+## たぶんどうでもいいくらい
+max, mini linear(anguler) x,y,zは絶対値使えばparamの数を減らせるよな

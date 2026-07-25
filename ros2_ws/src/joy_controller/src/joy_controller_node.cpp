@@ -65,8 +65,8 @@ JoyControllerNode::JoyControllerNode()
   emergency_stop_publisher_ = create_publisher<std_msgs::msg::Bool>(
     emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local());
 
-  dribble_position_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
-    dribble_position_mode_topic_, rclcpp::QoS(command_qos_depth_));
+  dribble_position_action_client_ = rclcpp_action::create_client<DribblePosition>(
+    this, dribble_position_action_);
 
   // 起動直後は操作入力が来るまで、各機構へ停止指令を出しておく。
   publish_stop_commands();
@@ -91,7 +91,7 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
   declare_parameter<std::string>("dribble_enabled_topic", "/dribble/enabled");
   declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  declare_parameter<std::string>("dribble_position_mode_topic", "/dribble/position_mode");
+  declare_parameter<std::string>("dribble_position_action", "/dribble/position");
 
   // Qos設定
   declare_parameter<int>("joy_qos_depth", 1);
@@ -140,7 +140,7 @@ void JoyControllerNode::get_parameters()
   get_parameter("belt_mode_topic", belt_mode_topic_);
   get_parameter("dribble_enabled_topic", dribble_enabled_topic_);
   get_parameter("emergency_stop_topic", emergency_stop_topic_);
-  get_parameter("dribble_position_mode_topic", dribble_position_mode_topic_);
+  get_parameter("dribble_position_action", dribble_position_action_);
   get_parameter("joy_qos_depth", joy_qos_depth_);
   get_parameter("command_qos_depth", command_qos_depth_);
   get_parameter("joy_timeout_ms", joy_timeout_ms_);
@@ -215,11 +215,16 @@ void JoyControllerNode::publish_emergency_stop()
   emergency_stop_publisher_->publish(emergency_stop);
 }
 
-void JoyControllerNode::publish_dribble_position_mode(DribblePositionMode mode)
+void JoyControllerNode::send_dribble_position_goal(uint8_t command)
 {
-  std_msgs::msg::UInt8 message;
-  message.data = static_cast<uint8_t>(mode);
-  dribble_position_mode_publisher_->publish(message);
+  if (!dribble_position_action_client_->wait_for_action_server(std::chrono::seconds(0))) {
+    RCLCPP_WARN(get_logger(), "Dribble position action server is not available");
+    return;
+  }
+
+  DribblePosition::Goal goal;
+  goal.command = command;
+  dribble_position_action_client_->async_send_goal(goal);
 }
 
 void JoyControllerNode::publish_state_commands()
@@ -315,8 +320,8 @@ bool JoyControllerNode::handle_emergency_stop()
     emergency_stop_latched_ = !emergency_stop_latched_;
     if (emergency_stop_latched_) {
       RCLCPP_WARN(get_logger(), "Emergency stop mode enabled");
-      // ドリブルする位置にDribble Positionを移動
-      publish_dribble_position_mode(DribblePositionMode::DRIBBLE);
+      // ドリブル位置へ復帰するActionを送る。
+      send_dribble_position_goal(DribblePosition::Goal::DRIBBLE);
     } else {
       RCLCPP_WARN(get_logger(), "Emergency stop mode disabled");
     }
@@ -392,10 +397,10 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     dribble_enabled_ = false;
   }
   if (dribble_position_dribble_chord_on_ && !pre_dribble_position_dribble_chord_on_) {
-    publish_dribble_position_mode(DribblePositionMode::DRIBBLE);
+    send_dribble_position_goal(DribblePosition::Goal::DRIBBLE);
   }
   if (dribble_position_shoot_chord_on_ && !pre_dribble_position_shoot_chord_on_) {
-    publish_dribble_position_mode(DribblePositionMode::SHOOT);
+    send_dribble_position_goal(DribblePosition::Goal::SHOOT);
   }
 
   const double linear_x = apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
