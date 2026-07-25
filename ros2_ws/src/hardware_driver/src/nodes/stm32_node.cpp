@@ -1,16 +1,18 @@
-/* ROS 2 <-> STM32 CAN frame encoder/decoder node. */
+/* ROS 2とSTM32間でCANフレームを送受信するノード。 */
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <vector>
 #include <stdexcept>
 #include <string>
 
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
+#include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 #include "stm32_driver/stm32_protocol.hpp"
@@ -35,12 +37,20 @@ public:
     const auto can_sub_topic = declare_parameter<std::string>(
       "can_sub_topic",
       "/socketcan_bridge/rx");
-    const auto target_rpm_topic = declare_parameter<std::string>(
-      "target_rpm_topic",
-      "/brushless/target/rpm");
-    const auto current_rpm_topic = declare_parameter<std::string>(
-      "current_rpm_topic",
-      "/brushless/current/rpm");
+    const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
+      "motor_target_rpm_topics",
+      {
+        "/belt/rpm_command",
+        "/dribble/rpm_command",
+        "/brushless/motor2/rpm_command"
+      });
+    const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
+      "motor_current_rpm_topics",
+      {
+        "/underbelt/current/rpm",
+        "/upperbelt/current/rpm",
+        "/dribble/current/rpm"
+      });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
@@ -59,16 +69,20 @@ public:
       can_sub_topic, 10,
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1));
 
-    target_rpm_sub_ = create_subscription<std_msgs::msg::Float32MultiArray>(
-      target_rpm_topic, 10,
-      std::bind(&Stm32Node::motor_target_callback, this, std::placeholders::_1));
+    for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {
+      motor_target_rpm_subs_[motor] = create_subscription<std_msgs::msg::Int16>(
+        motor_target_rpm_topics[motor], 10,
+        [this, motor](const std_msgs::msg::Int16::SharedPtr msg) {
+          motor_target_callback(motor, msg);
+        });
+      motor_current_rpm_pubs_[motor] = create_publisher<std_msgs::msg::Int16>(
+        motor_current_rpm_topic[motor], 10);
+    }
 
     led_cmd_sub_ = create_subscription<std_msgs::msg::UInt8>(
       led_cmd_topic, 10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
 
-    current_rpm_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>(
-      current_rpm_topic, 10);
     current_rpm_msg_.data.resize(protocol::MOTOR_NUM);
 
     limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_sw_topic, 10);
@@ -76,10 +90,6 @@ public:
     alive_timer_ = create_wall_timer(
       std::chrono::milliseconds(keep_alive_period_ms),
       std::bind(&Stm32Node::alive_timer_callback, this));
-
-    publish_timer_ = create_wall_timer(
-      std::chrono::milliseconds(publish_period_ms),
-      std::bind(&Stm32Node::publish_timer_callback, this));
 
     RCLCPP_INFO(get_logger(), "stm32_driver_node started");
   }
@@ -110,9 +120,11 @@ private:
     }
 
     std::size_t motor = 0;
-    float rpm = 0.0F;
+    int16_t rpm = 0;
     if (protocol::decode_motor_current(*frame, motor, rpm)) {
-      current_rpm_[motor] = rpm;
+      std_msgs::msg::Int16 output;
+      output.data = rpm;
+      motor_current_rpm_pubs_[motor]->publish(output);
       return;
     }
 
@@ -124,20 +136,13 @@ private:
     }
   }
 
-  /// @brief 制御nodeから送られてきた目標rpmをstm32に送信
-  /// @param msg モータID = MOTOR_TARGET_BASE + モータインデックス[0 - num]
-  void motor_target_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+  /// @brief 制御ノードから受け取った目標RPMを対応するSTM32モーターへ送信する
+  /// @param motor モーターのインデックス
+  /// @param msg 目標RPM
+  void motor_target_callback(std::size_t motor, const std_msgs::msg::Int16::SharedPtr msg)
   {
-    if (msg->data.size() != protocol::MOTOR_NUM) {
-      RCLCPP_WARN(
-        get_logger(), "target RPM requires %zu values; received %zu",
-        protocol::MOTOR_NUM, msg->data.size());
-      return;
-    }
-
-    for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {
-      can_pub_->publish(protocol::make_motor_target_frame(motor, msg->data[motor]));
-    }
+    can_pub_->publish(
+      protocol::make_motor_target_frame(motor, static_cast<int16_t>(msg->data)));
   }
 
   /// @brief LEDのコマンドをstm32へ送信
@@ -161,30 +166,21 @@ private:
     }
   }
 
-  /// @brief 受け取っている現在のrpmを一定周期で制御ノードに送信する
-  void publish_timer_callback()
-  {
-    std::copy(current_rpm_.cbegin(), current_rpm_.cend(), current_rpm_msg_.data.begin());
-    current_rpm_pub_->publish(current_rpm_msg_);
-  }
-
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr target_rpm_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr current_rpm_pub_;
+  std::array<rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr, protocol::MOTOR_NUM>
+  motor_target_rpm_subs_;
+  std::array<rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr, protocol::MOTOR_NUM>
+  motor_current_rpm_pubs_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr led_cmd_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
 
-  // 現在のrpmが入る配列
   std::array<float, protocol::MOTOR_NUM> current_rpm_;
   std_msgs::msg::Float32MultiArray current_rpm_msg_;
-  // 受信したheartbeat
   std::chrono::steady_clock::time_point last_heartbeat_from_stm32_;
-  // タイムアウトとする時間[ms]
   std::chrono::milliseconds heartbeat_timeout_;
-  // タイムアウトしているかどうか false:していない true:している
   bool heartbeat_timed_out_;
 };
 

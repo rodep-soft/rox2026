@@ -12,15 +12,14 @@ find_package(rclcpp_action REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME} "msg/RobotCommand.msg" "action/DribblePosition.action" DEPENDENCIES
-                           geometry_msgs)
+rosidl_generate_interfaces(${PROJECT_NAME} "action/DribblePosition.action")
 
 add_executable(mecanum_controller_node mecanum_controller/src/mecanum_controller_node.cpp)
 target_include_directories(
   mecanum_controller_node
   PRIVATE mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_controller_node rclcpp std_msgs)
+  mecanum_controller_node geometry_msgs rclcpp std_msgs)
 
 add_executable(spring_controller_node spring_controller/src/spring_edulite_controller.cpp)
 target_include_directories(

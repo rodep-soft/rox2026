@@ -26,6 +26,7 @@ private:
 
   void declare_parameters();
   void get_parameters();
+  void create_interfaces();
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
@@ -44,7 +45,7 @@ private:
   double angular_z_sign_{1.0};
   std::string cmd_vel_topic_;
   std::array<std::string, 4> wheel_velocity_topics_;
-  int qos_depth_{10};
+  int qos_depth_{1};
 };
 
 #endif  // MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_

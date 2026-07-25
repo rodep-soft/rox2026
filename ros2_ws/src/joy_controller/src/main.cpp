@@ -6,7 +6,7 @@
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<joy_controller::JoyControllerNode>());
+  rclcpp::spin(std::make_shared<JoyControllerNode>());
   rclcpp::shutdown();
   return 0;
 }
