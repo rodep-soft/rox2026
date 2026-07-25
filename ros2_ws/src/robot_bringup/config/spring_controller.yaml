@@ -2,6 +2,8 @@ spring_controller_node:
   ros__parameters:
     # 操作指令を受信するtopic。
     fire_request_topic: /spring/fire_request
+    # 非常停止状態topic。std_msgs/msg/Bool。trueの間は状態遷移せず0 rad/sを維持する。
+    emergency_stop_topic: /emergency_stop
 
     # hardware_driverがpublishするリミットスイッチ配列topic。
     # UInt8MultiArrayのdataをvectorとして扱い、0をfalse、1をtrueとする。

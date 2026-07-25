@@ -33,6 +33,9 @@ SpringEduliteController::SpringEduliteController()
   fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
     fire_request_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
+  emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
+    emergency_stop_topic_, rclcpp::QoS(qos_depth_),
+    std::bind(&SpringEduliteController::emergency_stop_callback, this, std::placeholders::_1));
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
     limit_switch_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
@@ -47,6 +50,7 @@ SpringEduliteController::SpringEduliteController()
 void SpringEduliteController::declare_parameters()
 {
   declare_parameter<std::string>("fire_request_topic", "/spring/fire_request");
+  declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
   declare_parameter<std::string>("limit_switch_topic", "/limit_switches");
   declare_parameter<std::string>("spring_velocity_command_topic", "/spring/vel_command");
   declare_parameter<int>("limit_switch_index", 0);
@@ -60,6 +64,7 @@ void SpringEduliteController::declare_parameters()
 void SpringEduliteController::get_parameters()
 {
   get_parameter("fire_request_topic", fire_request_topic_);
+  get_parameter("emergency_stop_topic", emergency_stop_topic_);
   get_parameter("limit_switch_topic", limit_switch_topic_);
   get_parameter("spring_velocity_command_topic", spring_velocity_command_topic_);
   get_parameter("limit_switch_index", limit_switch_index_);
@@ -72,6 +77,11 @@ void SpringEduliteController::get_parameters()
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (emergency_stop_active_) {
+    previous_fire_request_ = msg->data;
+    return;
+  }
+
   // READYかつ装填済みのときだけ、発射要求の立ち上がりを受け付ける。
   if (
     now_state_ == State::READY && is_loaded_ &&
@@ -80,6 +90,23 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
     fire_pending_ = true;
   }
   previous_fire_request_ = msg->data;
+}
+
+void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  emergency_stop_active_ = msg->data;
+  if (!emergency_stop_active_) {
+    return;
+  }
+
+  // LOAD中は再装填を再開しないようREADYへ遷移して停止する。
+  // FIRE中の射出は中断し、LOADへ戻して停止する。
+  if (now_state_ == State::LOAD) {
+    now_state_ = State::READY;
+  } else if (now_state_ == State::FIRE) {
+    now_state_ = State::LOAD;
+  }
+  fire_pending_ = false;
 }
 
 void SpringEduliteController::limit_switch_callback(
@@ -106,7 +133,11 @@ void SpringEduliteController::timer_callback()
 {
   std_msgs::msg::Float32 velocity_command;
 
-  if (!is_configuration_valid_) {
+  if (!is_configuration_valid_ || emergency_stop_active_) {
+    // 非常停止中は、状態遷移を止めて0 rad/sを維持する。
+    if (emergency_stop_active_) {
+      fire_pending_ = false;
+    }
     velocity_command.data = 0.0F;
     spring_velocity_pub_->publish(velocity_command);
     return;
