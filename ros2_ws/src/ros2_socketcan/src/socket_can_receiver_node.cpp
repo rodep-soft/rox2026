@@ -68,11 +68,15 @@ LNI::CallbackReturn SocketCanReceiverNode::on_configure(const lc::State & state)
 
   RCLCPP_DEBUG(this->get_logger(), "Receiver successfully configured.");
 
+  auto can_rx_qos = rclcpp::QoS(rclcpp::KeepLast(30))
+  .best_effort()
+  .durability_volatile();
+
   if (!enable_fd_) {
-    frames_pub_ = this->create_publisher<can_msgs::msg::Frame>("from_can_bus", 500);
+    frames_pub_ = this->create_publisher<can_msgs::msg::Frame>("from_can_bus", can_rx_qos);
   } else {
     fd_frames_pub_ =
-      this->create_publisher<ros2_socketcan_msgs::msg::FdFrame>("from_can_bus_fd", 500);
+      this->create_publisher<ros2_socketcan_msgs::msg::FdFrame>("from_can_bus_fd", can_rx_qos);
   }
 
   receiver_thread_ = std::make_unique<std::thread>(&SocketCanReceiverNode::receive, this);

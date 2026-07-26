@@ -8,12 +8,16 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    stm32_parameter_file = os.path.join(
-        get_package_share_directory("robot_bringup"),
-        "config",
-        "stm32_driver.yaml",
+
+    stm32_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("robot_bringup"),
+                "launch",
+                "stm32.launch.py",
+            )
+        )
     )
-    
     edulite05_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -44,13 +48,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            Node(
-                package="hardware_driver",
-                executable="stm32_node",
-                name="stm32_driver_node",
-                output="screen",
-                parameters=[stm32_parameter_file],
-            ),
+            stm32_launch,
             edulite05_launch,
             vesc_launch,
             socketcan_launch,

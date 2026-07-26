@@ -64,12 +64,16 @@ LNI::CallbackReturn SocketCanSenderNode::on_configure(const lc::State & state)
 
   RCLCPP_DEBUG(this->get_logger(), "Sender successfully configured.");
 
+  auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(30))
+    .best_effort()
+    .durability_volatile();
+
   if (!enable_fd_) {
     frames_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-      "to_can_bus", 500, std::bind(&SocketCanSenderNode::on_frame, this, std::placeholders::_1));
+      "to_can_bus", can_tx_qos, std::bind(&SocketCanSenderNode::on_frame, this, std::placeholders::_1));
   } else {
     fd_frames_sub_ = this->create_subscription<ros2_socketcan_msgs::msg::FdFrame>(
-      "to_can_bus_fd", 500, std::bind(
+      "to_can_bus_fd", can_tx_qos, std::bind(
         &SocketCanSenderNode::on_fd_frame, this,
         std::placeholders::_1));
   }
