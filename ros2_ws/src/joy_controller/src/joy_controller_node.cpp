@@ -89,22 +89,21 @@ void JoyControllerNode::declare_parameters() {
   declare_parameter<double>("axis_on_threshold", 0.7);
 
   // ボタン番号
-  declare_parameter<int>("spring_fire_enable_button", 9);
-  declare_parameter<int>("spring_fire_button", 1);
-  declare_parameter<int>("create_button", 4);
-  declare_parameter<int>("ps_button", 5);
-  declare_parameter<int>("options_button", 6);
-  declare_parameter<int>("home_button", 15);
-  declare_parameter<int>("dpad_up_button", 11);
-  declare_parameter<int>("dpad_down_button", 12);
-  declare_parameter<int>("circle_button", 1);
+  declare_parameter<int>("spring_fire_enable_button", 4);
+  declare_parameter<int>("spring_fire_button", 2);
+  declare_parameter<int>("create_button", 8);
+  declare_parameter<int>("ps_button", 12);
+  declare_parameter<int>("options_button", 9);
+  declare_parameter<int>("home_button", 13);
+  declare_parameter<int>("circle_button", 2);
 
   // 軸番号
-  declare_parameter<int>("left_trigger_axis", 4);
-  declare_parameter<int>("right_trigger_axis", 5);
+  declare_parameter<int>("left_trigger_axis", 3);
+  declare_parameter<int>("right_trigger_axis", 4);
   declare_parameter<int>("left_stick_x_axis", 0);
   declare_parameter<int>("left_stick_y_axis", 1);
   declare_parameter<int>("right_stick_x_axis", 2);
+  declare_parameter<int>("mode_change_axis", 7);
 }
 
 void JoyControllerNode::get_parameters() {
@@ -144,8 +143,6 @@ void JoyControllerNode::get_parameters() {
   get_parameter("ps_button", ps_button_);
   get_parameter("options_button", options_button_);
   get_parameter("home_button", home_button_);
-  get_parameter("dpad_up_button", dpad_up_button_);
-  get_parameter("dpad_down_button", dpad_down_button_);
   get_parameter("circle_button", circle_button_);
 
   // 軸番号
@@ -154,6 +151,7 @@ void JoyControllerNode::get_parameters() {
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
+  get_parameter("mode_change_axis", mode_change_axis_);
 }
 
 bool JoyControllerNode::button_pressed(const sensor_msgs::msg::Joy& msg,
@@ -254,10 +252,11 @@ void JoyControllerNode::belt_ready_callback(
 void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy& msg) {
   const bool l2 = axis_value(msg, left_trigger_axis_) <= -axis_on_threshold_;
   const bool r2 = axis_value(msg, right_trigger_axis_) <= -axis_on_threshold_;
+  const double mode_change_value = axis_value(msg, mode_change_axis_);
   spring_fire_chord_on_ = button_pressed(msg, spring_fire_enable_button_) &&
                           button_pressed(msg, spring_fire_button_);
-  belt_mode_up_chord_on_ = button_pressed(msg, dpad_up_button_);
-  belt_mode_down_chord_on_ = button_pressed(msg, dpad_down_button_);
+  belt_mode_up_chord_on_ = mode_change_value >= axis_on_threshold_;
+  belt_mode_down_chord_on_ = mode_change_value <= -axis_on_threshold_;
   dribble_toggle_chord_on_ = r2 && button_pressed(msg, home_button_);
   emergency_stop_chord_on_ =
       button_pressed(msg, create_button_) && button_pressed(msg, home_button_);

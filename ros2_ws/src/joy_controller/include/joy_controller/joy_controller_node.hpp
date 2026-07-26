@@ -60,20 +60,19 @@ class JoyControllerNode : public rclcpp::Node {
   double linear_x_limit_{2.0}, linear_y_limit_{2.0}, angular_z_limit_{2.0};
   double axis_deadzone_{0.05}, axis_on_threshold_{0.7};
 
-  int spring_fire_enable_button_{9};
-  int spring_fire_button_{1};
-  int create_button_{4};
-  int ps_button_{5};
-  int options_button_{6};
-  int home_button_{15};
-  int dpad_up_button_{11};
-  int dpad_down_button_{12};
-  int circle_button_{1};
-  int left_trigger_axis_{4};
-  int right_trigger_axis_{5};
+  int spring_fire_enable_button_{4};
+  int spring_fire_button_{2};
+  int create_button_{8};
+  int ps_button_{12};
+  int options_button_{9};
+  int home_button_{13};
+  int circle_button_{2};
+  int left_trigger_axis_{3};
+  int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
   int left_stick_y_axis_{1};
   int right_stick_x_axis_{2};
+  int mode_change_axis_{7};
 
   geometry_msgs::msg::Twist cmd_vel_;
   bool spring_fire_enabled_{false};

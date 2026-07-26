@@ -9,7 +9,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "device",
-                default_value="/dev/input/event0",
+                default_value="/dev/input/js0",
                 description="Input device read by joy_node",
             ),
             Node(

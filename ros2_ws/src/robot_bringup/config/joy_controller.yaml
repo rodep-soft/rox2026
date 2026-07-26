@@ -15,30 +15,29 @@ joy_controller:
     state_publish_period_ms: 20  # [ms] 機構の状態指令を再送する周期。
 
     # L1 + ○: spring ON/OFF。
-    spring_fire_enable_button: 9
-    spring_fire_button: 1
-    # Create + Home: 非常停止ON/OFF。Homeは中央ボタン(index 15)。
-    create_button: 4
-    home_button: 15
+    spring_fire_enable_button: 4
+    spring_fire_button: 2
+    # Create + Home: 非常停止ON/OFF。Homeはタッチパッド(index 13)。
+    create_button: 8
+    home_button: 13
     # PS: 前後反転ON/OFF（linear.xのみ）。
-    ps_button: 5
+    ps_button: 12
     # L2 + Options: 最大開放ON/OFF。解除時はDRIBBLE位置へ戻す。
-    options_button: 6
-    # DPAD上/下: belt modeを増減。
-    dpad_up_button: 11
-    dpad_down_button: 12
+    options_button: 9
+    # DPAD上/下(axis 7): belt modeを増減。
+    mode_change_axis: 7
     # L2 + ○: ベルト到達後にINTAKE→SHOOT→DRIBBLEを要求。
-    circle_button: 1
-    # L2/R2のaxis。通常=1、押し込み=-1。
-    left_trigger_axis: 4
-    right_trigger_axis: 5
+    circle_button: 2
+    # L2/R2のaxis。通常=1、押下=-1。
+    left_trigger_axis: 3
+    right_trigger_axis: 4
     # R2 + Home: ドリブルON/OFF。
 
-    left_stick_x_axis: 0  # 左スティック左右。左=1、右=-1。
-    left_stick_y_axis: 1  # 左スティック上下。上=1、下=-1。
-    right_stick_x_axis: 2  # 右スティック左右。左=1、右=-1。
+    left_stick_x_axis: 0  # 左スティック左右。
+    left_stick_y_axis: 1  # 左スティック上下。
+    right_stick_x_axis: 2  # 右スティック左右。
     axis_deadzone: 0.05  # スティック中心ずれを無効化する範囲。
-    axis_on_threshold: 0.7  # トリガーを押下とみなすしきい値。
+    axis_on_threshold: 0.7  # DPAD軸を押下とみなすしきい値。
 
     linear_x_limit: 2.0  # [m/s] 前後方向の速度上限。絶対値を使用する。
     linear_y_limit: 2.0  # [m/s] 左右方向の速度上限。絶対値を使用する。
