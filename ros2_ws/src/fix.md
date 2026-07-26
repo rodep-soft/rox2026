@@ -3,7 +3,7 @@
 ## [重大] dribble実速度確認後のばね射出
 
 - 現在は、dribble_controllerが減速指令を`0 rad/s`へ到達させたことを停止完了としている。
-- STM32からdribbleモータの実速度を取得するtopicを追加し、実測速度が0付近であることを確認してから`spring_controller`が`FIRE`状態へ遷移するようにする。
+- VESC ID 50の`/dribble/current/rpm`を購読し、実測速度が0付近であることを確認してから`spring_controller`が`FIRE`状態へ遷移するようにする。
 - springで射出するときに、dribbleの回転数を必ず0にしなくてもよい可能性があるため、実機で必要性を確認する。
 
 ## [重大] spring LOAD状態の巻取りタイムアウト

@@ -1,7 +1,6 @@
 #include "dribble_controller/dribble_controller.hpp"
 
 #include <chrono>
-#include <cmath>
 #include <functional>
 #include <memory>
 #include <string>
@@ -24,7 +23,8 @@ DribbleController::DribbleController()
   dribble_enabled_sub_ = create_subscription<std_msgs::msg::Bool>(
     dribble_enabled_topic_, rclcpp::QoS(qos_depth_),
     std::bind(&DribbleController::dribble_enabled_callback, this, std::placeholders::_1));
-  rpm_pub_ = create_publisher<std_msgs::msg::Int16>(dribble_rpm_topic_, rclcpp::QoS(qos_depth_));
+  rpm_pub_ = create_publisher<std_msgs::msg::Float32>(
+    dribble_rpm_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -59,8 +59,8 @@ void DribbleController::timer_callback()
   // onなら目標RPM、offまたは設定不正なら0 RPMを送る。
   const double target_rpm = (is_configuration_valid_ && dribble_enabled_) ? on_rpm_ : 0.0;
 
-  std_msgs::msg::Int16 rpm_command;
-  rpm_command.data = static_cast<int16_t>(std::round(target_rpm));
+  std_msgs::msg::Float32 rpm_command;
+  rpm_command.data = static_cast<float>(target_rpm);
   rpm_pub_->publish(rpm_command);
 }
 

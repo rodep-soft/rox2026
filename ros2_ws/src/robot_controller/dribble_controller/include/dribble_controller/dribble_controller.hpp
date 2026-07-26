@@ -6,7 +6,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/int16.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 class DribbleController : public rclcpp::Node
 {
@@ -28,7 +28,7 @@ private:
   std::string dribble_rpm_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rpm_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

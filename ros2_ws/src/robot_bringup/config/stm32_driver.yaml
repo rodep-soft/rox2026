@@ -5,11 +5,11 @@ stm32_driver_node:
     motor_target_rpm_topics:
       - /stm32/underbelt/target/rpm
       - /stm32/upperbelt/target/rpm
-      - /dribble/target/rpm
+      - /stm32/dribble/target/rpm
     motor_current_rpm_topics:
       - /stm32/underbelt/current/rpm
       - /stm32/upperbelt/current/rpm
-      - /dribble/current/rpm
+      - /stm32/dribble/current/rpm
     led_cmd_topic: "/led/cmd"              #ledのコマンドを制御ノードから受信するトピック
     limit_sw_topic: "/limit_switches"      #limitswのデータを制御ノードへ送信するトピック(std_msgs/msg/UInt8MultiArray、bitごとに1スイッチ)
     timeout_ms: 500                        #タイムアウト検知時間

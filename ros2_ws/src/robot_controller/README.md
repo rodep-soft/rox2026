@@ -15,6 +15,7 @@ flowchart LR
   stm_driver[stm_driver_node]
   under_vesc[underbelt VESC ID 51]
   upper_vesc[upperbelt VESC ID 52]
+  dribble_vesc[dribble VESC ID 50]
   edulite_driver[edulite05_driver_node]
   bridge[ros2socketcan_bridge]
 
@@ -27,7 +28,7 @@ flowchart LR
 
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| edulite_driver
   spring -->|/spring/vel_command\nstd_msgs/msg/Float32| edulite_driver
-  dribble -->|/dribble/target/rpm\nstd_msgs/msg/Int16| stm_driver
+  dribble -->|/dribble/target/rpm\nstd_msgs/msg/Float32| dribble_vesc
   belt -->|/underbelt/target/rpm\nstd_msgs/msg/Float32| under_vesc
   belt -->|/upperbelt/target/rpm\nstd_msgs/msg/Float32| upper_vesc
   under_vesc -->|/underbelt/current/rpm\nstd_msgs/msg/Float32| belt
@@ -42,11 +43,12 @@ flowchart LR
 
 `robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様はdriver nodeが担当します。
 
-underbeltとupperbeltはVESC driverを通して赤ブラシへ指令します。underbeltはVESC ID 51、
-upperbeltはVESC ID 52です。`stm32_driver_node`はdribbleのRPM指令、heartbeat、
-リミットスイッチを担当します。`edulite05_node`はメカナム各輪の速度指令、
-ばね速度指令、ドリブル位置指令を担当します。いずれも`robot_controller`には
-CAN送受信処理を書きません。
+underbelt、upperbelt、dribble回転モータはVESC driverを通して赤ブラシへ指令します。
+underbeltはVESC ID 51、upperbeltはVESC ID 52、dribbleはVESC ID 50です。
+`stm32_driver_node`はheartbeatとリミットスイッチを担当します。
+`edulite05_node`はメカナム各輪の速度指令、ばね速度指令、
+ドリブル位置指令を担当します。いずれも`robot_controller`にはCAN送受信処理を
+書きません。
 
 ## 操作指令topic
 
@@ -152,6 +154,9 @@ SHOOT指令: INTAKE → (feedback到達) → SHOOT → (shoot_to_dribble_delay_s
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
 | subscribe | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルのON/OFFを受信 |
-| publish | `/dribble/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送る目標回転数 `[RPM]` |
+| publish | `/dribble/target/rpm` | `std_msgs/msg/Float32` | VESC ID 50へ送る目標回転数 `[RPM]` |
 
-`true`なら`on_rpm`、`false`なら`0 RPM`を`command_period_ms`周期でpublishします。`on_rpm`と指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
+`true`なら`on_rpm`、`false`なら`0 RPM`を`command_period_ms`周期でpublishします。
+VESC driverからの実回転数は`/dribble/current/rpm`
+（`std_msgs/msg/Float32`）へpublishされます。`on_rpm`と指令周期は
+`robot_bringup/config/dribble_controller.yaml`で設定できます。

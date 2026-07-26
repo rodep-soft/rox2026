@@ -2,7 +2,7 @@ dribble_controller_node:
   ros__parameters:
     # ドリブルON/OFF topic。std_msgs/msg/Bool。true=回す、false=止める。
     dribble_enabled_topic: /dribble/enabled
-    # hardware_driver(stm32_driver_node)へ送る目標回転数command topic。std_msgs/msg/Int16、単位はRPM。
+    # hardware_driver(vesc_driver、CAN ID 0x32=50)へ送る目標回転数command topic。std_msgs/msg/Float32、単位はRPM。
     dribble_rpm_topic: /dribble/target/rpm
     qos_depth: 1
 

@@ -74,7 +74,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "vesc_3_controller_id",
-                default_value="3",
+                default_value="50",
                 description="CAN controller ID of VESC 3",
             ),
             socketcan_launch,
@@ -123,8 +123,8 @@ def generate_launch_description():
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_3_controller_id"),
-                        "target_rpm_topic": "/vesc_3/target/rpm",
-                        "current_rpm_topic": "/vesc_3/current/rpm",
+                        "target_rpm_topic": "/dribble/target/rpm",
+                        "current_rpm_topic": "/dribble/current/rpm",
                     }
                 ],
             ),
