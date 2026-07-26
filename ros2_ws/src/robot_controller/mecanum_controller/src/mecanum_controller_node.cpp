@@ -1,5 +1,7 @@
 #include "mecanum_controller/mecanum_controller_node.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 #include <memory>
 
@@ -32,6 +34,7 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<double>("vx_sign", 1.0);
   declare_parameter<double>("vy_sign", 1.0);
   declare_parameter<double>("angular_z_sign", 1.0);
+  declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
   declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
   declare_parameter<std::string>("front_left_velocity_topic", "/mecanum/front_left/vel_command");
   declare_parameter<std::string>("front_right_velocity_topic", "/mecanum/front_right/vel_command");
@@ -49,6 +52,7 @@ void MecanumControllerNode::get_parameters()
   get_parameter("vx_sign", vx_sign_);
   get_parameter("vy_sign", vy_sign_);
   get_parameter("angular_z_sign", angular_z_sign_);
+  get_parameter("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
   get_parameter("cmd_vel_topic", cmd_vel_topic_);
   get_parameter("front_left_velocity_topic", wheel_velocity_topics_[FL]);
   get_parameter("front_right_velocity_topic", wheel_velocity_topics_[FR]);
@@ -66,6 +70,16 @@ void MecanumControllerNode::get_parameters()
     RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using the default value of 1.");
     qos_depth_ = 1;
   }
+  if (
+    !std::isfinite(max_wheel_velocity_rad_s_) ||
+    max_wheel_velocity_rad_s_ <= 0.0)
+  {
+    RCLCPP_WARN(
+      get_logger(),
+      "max_wheel_velocity_rad_s must be positive and finite. "
+      "Using the default value of 50.0.");
+    max_wheel_velocity_rad_s_ = 50.0;
+  }
 }
 
 void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
@@ -81,11 +95,34 @@ void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
   wheel_vels_[RL] = -(vx_ - vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
   wheel_vels_[RR] = (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
 
-  // 車輪ごとの補正係数をかけて、hardware_driverへ渡す速度指令をpublishする。
+  correct_and_limit_wheel_velocities();
+
+  // hardware_driverへ制限後の速度指令をpublishする。
   for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
-    cmd_msg.data = static_cast<float>(wheel_vels_[index] * velocity_corrections_[index]);
+    cmd_msg.data = static_cast<float>(wheel_vels_[index]);
     wheel_velocity_pubs_[index]->publish(cmd_msg);
+  }
+}
+
+void MecanumControllerNode::correct_and_limit_wheel_velocities()
+{
+  double maximum_absolute_velocity = 0.0;
+
+  for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
+    wheel_vels_[index] *= velocity_corrections_[index];
+    maximum_absolute_velocity =
+      std::max(maximum_absolute_velocity, std::abs(wheel_vels_[index]));
+  }
+
+  if (maximum_absolute_velocity <= max_wheel_velocity_rad_s_) {
+    return;
+  }
+
+  const double reduction_ratio =
+    max_wheel_velocity_rad_s_ / maximum_absolute_velocity;
+  for (double & wheel_velocity : wheel_vels_) {
+    wheel_velocity *= reduction_ratio;
   }
 }
 

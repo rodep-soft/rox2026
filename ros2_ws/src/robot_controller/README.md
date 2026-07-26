@@ -53,7 +53,15 @@ flowchart LR
 | subscribe | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度を受信 |
 | publish | `/mecanum/*/vel_command` | `std_msgs/msg/Float32` | 各輪のホイール角速度 `[rad/s]` |
 
-主なパラメータは`wheel_radius`、`robot_length`、`robot_width`、`velocity_corrections`、`vx_sign`、`vy_sign`、`angular_z_sign`です。`velocity_corrections`は出力配列と同じ順序の4要素ベクトルで、各ホイール速度に掛けます。motor IDとCAN仕様は保持せず、hardware_driver側で管理します。
+主なパラメータは`wheel_radius`、`robot_length`、`robot_width`、
+`velocity_corrections`、`vx_sign`、`vy_sign`、`angular_z_sign`、
+`max_wheel_velocity_rad_s`です。`velocity_corrections`は出力配列と同じ順序の
+4要素ベクトルで、各ホイール速度に掛けます。
+
+補正後のいずれかの車輪角速度が`max_wheel_velocity_rad_s`の絶対値を超える場合は、
+最大の車輪が上限に収まる倍率を4輪すべてに掛けます。これにより、各輪の速度比率を
+維持したまま、既定値では全輪を`-50.0`〜`50.0 rad/s`へ収めます。
+motor IDとCAN仕様は保持せず、hardware_driver側で管理します。
 
 ## `spring_controller_node`
 

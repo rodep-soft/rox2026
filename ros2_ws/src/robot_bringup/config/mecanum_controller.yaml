@@ -17,3 +17,5 @@ mecanum_controller_node:
     vx_sign: 1.0
     vy_sign: 1.0
     angular_z_sign: 1.0
+    # 4輪の最大角速度絶対値。超過時は全輪を同じ比率で縮小する[rad/s]。
+    max_wheel_velocity_rad_s: 50.0

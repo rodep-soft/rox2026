@@ -28,6 +28,7 @@ private:
   void get_parameters();
   void create_interfaces();
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
+  void correct_and_limit_wheel_velocities();
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
@@ -43,6 +44,7 @@ private:
   double vx_sign_{1.0};
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};
+  double max_wheel_velocity_rad_s_{50.0};
   std::string cmd_vel_topic_;
   std::array<std::string, 4> wheel_velocity_topics_;
   int qos_depth_{1};
