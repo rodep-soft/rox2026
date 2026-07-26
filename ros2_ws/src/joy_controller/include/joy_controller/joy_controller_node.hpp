@@ -40,7 +40,8 @@ class JoyControllerNode : public rclcpp::Node {
   void declare_parameters();
   void get_parameters();
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
-  void intake_and_shoot_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void position_sequence_active_callback(
+      const std_msgs::msg::Bool::SharedPtr msg);
   void operation_mode_complete_callback(
       const std_msgs::msg::Bool::SharedPtr msg);
 
@@ -75,7 +76,7 @@ class JoyControllerNode : public rclcpp::Node {
   std::string operation_mode_topic_;
   std::string operation_mode_complete_topic_;
   std::string game2_command_topic_;
-  std::string intake_and_shoot_topic_;
+  std::string position_sequence_active_topic_;
   std::string dribble_position_mode_topic_;
 
   int joy_qos_depth_{1};
@@ -149,7 +150,7 @@ class JoyControllerNode : public rclcpp::Node {
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      intake_and_shoot_subscription_;
+      position_sequence_active_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
       operation_mode_complete_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr

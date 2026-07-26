@@ -81,5 +81,5 @@ INTAKE_AND_SHOOTの位置シーケンス実行中は、STOP以外のmode変更�
 | publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
-| subscribe | `/intake_and_shoot` | `std_msgs/msg/Bool` |
+| subscribe | `/position_sequence_active` | `std_msgs/msg/Bool` |
 | subscribe | `/operation_mode_complete` | `std_msgs/msg/Bool` |

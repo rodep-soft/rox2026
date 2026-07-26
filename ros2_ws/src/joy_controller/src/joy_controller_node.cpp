@@ -27,10 +27,11 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller") {
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
       joy_topic_, joy_qos,
       std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
-  intake_and_shoot_subscription_ = create_subscription<std_msgs::msg::Bool>(
-      intake_and_shoot_topic_, rclcpp::QoS(command_qos_depth_),
-      std::bind(&JoyControllerNode::intake_and_shoot_callback, this,
-                std::placeholders::_1));
+  position_sequence_active_subscription_ =
+      create_subscription<std_msgs::msg::Bool>(
+          position_sequence_active_topic_, rclcpp::QoS(command_qos_depth_),
+          std::bind(&JoyControllerNode::position_sequence_active_callback, this,
+                    std::placeholders::_1));
   operation_mode_complete_subscription_ =
       create_subscription<std_msgs::msg::Bool>(
           operation_mode_complete_topic_, rclcpp::QoS(command_qos_depth_),
@@ -77,7 +78,8 @@ void JoyControllerNode::declare_parameters() {
   declare_parameter<std::string>("operation_mode_complete_topic",
                                  "/operation_mode_complete");
   declare_parameter<std::string>("game2_command_topic", "/game2_command");
-  declare_parameter<std::string>("intake_and_shoot_topic", "/intake_and_shoot");
+  declare_parameter<std::string>("position_sequence_active_topic",
+                                 "/position_sequence_active");
   declare_parameter<std::string>("dribble_position_mode_topic",
                                  "/dribble/position_mode");
 
@@ -131,7 +133,8 @@ void JoyControllerNode::get_parameters() {
   get_parameter("operation_mode_complete_topic",
                 operation_mode_complete_topic_);
   get_parameter("game2_command_topic", game2_command_topic_);
-  get_parameter("intake_and_shoot_topic", intake_and_shoot_topic_);
+  get_parameter("position_sequence_active_topic",
+                position_sequence_active_topic_);
   get_parameter("dribble_position_mode_topic", dribble_position_mode_topic_);
 
   // QoSと周期
@@ -290,17 +293,16 @@ void JoyControllerNode::state_publish_timer_callback() {
   }
 }
 
-void JoyControllerNode::intake_and_shoot_callback(
+void JoyControllerNode::position_sequence_active_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
-  if (msg->data && operation_mode_ == OperationMode::INTAKE_AND_SHOOT) {
-    sequence_active_ = true;
+  if (operation_mode_ == OperationMode::INTAKE_AND_SHOOT) {
+    sequence_active_ = msg->data;
   }
 }
 
 void JoyControllerNode::operation_mode_complete_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
-  if (msg->data && sequence_active_ &&
-      operation_mode_ == OperationMode::INTAKE_AND_SHOOT) {
+  if (msg->data && operation_mode_ == OperationMode::INTAKE_AND_SHOOT) {
     sequence_active_ = false;
     set_operation_mode(OperationMode::DRIVE);
   }

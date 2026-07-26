@@ -18,7 +18,7 @@ SpringPositionController::SpringPositionController()
   position_timer_ = create_wall_timer(
       std::chrono::milliseconds(position_command_period_ms_),
       std::bind(&SpringPositionController::position_timer_callback, this));
-  set_target_position(dribble_position_rad_, PositionState::IDLE);
+  set_target_position(dribble_position_rad_, PositionState::RETURN_TO_DRIBBLE);
 }
 
 void SpringPositionController::declare_parameters() {
@@ -43,6 +43,8 @@ void SpringPositionController::declare_parameters() {
   declare_parameter<std::string>("position_mode_topic",
                                  "/dribble/position_mode");
   declare_parameter<std::string>("intake_and_shoot_topic", "/intake_and_shoot");
+  declare_parameter<std::string>("position_sequence_active_topic",
+                                 "/position_sequence_active");
   declare_parameter<std::string>("position_command_topic",
                                  "/dribble/position_command");
   declare_parameter<std::string>("position_feedback_topic",
@@ -80,6 +82,8 @@ void SpringPositionController::get_parameters() {
   // position
   get_parameter("position_mode_topic", position_mode_topic_);
   get_parameter("intake_and_shoot_topic", intake_and_shoot_topic_);
+  get_parameter("position_sequence_active_topic",
+                position_sequence_active_topic_);
   get_parameter("position_command_topic", position_command_topic_);
   get_parameter("position_feedback_topic", position_feedback_topic_);
   get_parameter("dribble_position_rad", dribble_position_rad_);
@@ -168,6 +172,8 @@ void SpringPositionController::create_interfaces() {
       position_command_topic_, command_qos);
   operation_mode_complete_publisher_ = create_publisher<std_msgs::msg::Bool>(
       operation_mode_complete_topic_, command_qos);
+  position_sequence_active_publisher_ = create_publisher<std_msgs::msg::Bool>(
+      position_sequence_active_topic_, command_qos);
 }
 
 void SpringPositionController::operation_mode_callback(
@@ -188,10 +194,12 @@ void SpringPositionController::operation_mode_callback(
   }
   if (operation_mode_ == OperationMode::STOP) {
     position_sequence_active_ = false;
+    publish_position_sequence_active(false);
     set_target_position(dribble_position_rad_,
                         PositionState::RETURN_TO_DRIBBLE);
   } else if (operation_mode_ == OperationMode::GAME2_MODE) {
     position_sequence_active_ = false;
+    publish_position_sequence_active(false);
     set_target_position(max_open_position_rad_, PositionState::MAX_OPEN);
   } else if (previous_mode == OperationMode::GAME2_MODE &&
              operation_mode_ == OperationMode::DRIVE) {
@@ -218,6 +226,7 @@ void SpringPositionController::emergency_stop_callback(
 
   stop_spring_state_transition();
   position_sequence_active_ = false;
+  publish_position_sequence_active(false);
   set_target_position(dribble_position_rad_, PositionState::RETURN_TO_DRIBBLE);
 }
 
@@ -259,6 +268,7 @@ void SpringPositionController::intake_and_shoot_callback(
   }
 
   position_sequence_active_ = true;
+  publish_position_sequence_active(true);
   set_target_position(intake_position_rad_, PositionState::INTAKE);
 }
 
@@ -405,6 +415,7 @@ void SpringPositionController::finish_position_move() {
   position_state_ = PositionState::IDLE;
   if (position_sequence_active_) {
     position_sequence_active_ = false;
+    publish_position_sequence_active(false);
     publish_operation_mode_complete();
   }
 }
@@ -413,6 +424,12 @@ void SpringPositionController::publish_operation_mode_complete() {
   std_msgs::msg::Bool message;
   message.data = true;
   operation_mode_complete_publisher_->publish(message);
+}
+
+void SpringPositionController::publish_position_sequence_active(bool active) {
+  std_msgs::msg::Bool message;
+  message.data = active;
+  position_sequence_active_publisher_->publish(message);
 }
 
 int main(int argc, char* argv[]) {

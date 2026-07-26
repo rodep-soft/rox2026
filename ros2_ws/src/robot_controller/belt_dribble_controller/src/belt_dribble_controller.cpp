@@ -163,11 +163,17 @@ void BeltDribbleController::create_interfaces() {
 
 void BeltDribbleController::operation_mode_callback(
     const std_msgs::msg::UInt8::SharedPtr msg) {
+  OperationMode new_mode = OperationMode::STOP;
   if (msg->data > static_cast<uint8_t>(OperationMode::GAME2_MODE)) {
-    operation_mode_ = OperationMode::STOP;
+    new_mode = OperationMode::STOP;
   } else {
-    operation_mode_ = static_cast<OperationMode>(msg->data);
+    new_mode = static_cast<OperationMode>(msg->data);
   }
+  if (new_mode == operation_mode_) {
+    return;
+  }
+
+  operation_mode_ = new_mode;
   reset_shoot_ready();
 }
 
@@ -178,12 +184,19 @@ void BeltDribbleController::belt_mode_callback(
     belt_mode_ = BeltMode::STOP;
     return;
   }
-  belt_mode_ = static_cast<BeltMode>(msg->data);
+  const BeltMode new_mode = static_cast<BeltMode>(msg->data);
+  if (new_mode != belt_mode_) {
+    belt_mode_ = new_mode;
+    reset_shoot_ready();
+  }
 }
 
 void BeltDribbleController::dribble_enabled_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
-  dribble_enabled_ = msg->data;
+  if (msg->data != dribble_enabled_) {
+    dribble_enabled_ = msg->data;
+    reset_shoot_ready();
+  }
 }
 
 void BeltDribbleController::game2_command_callback(

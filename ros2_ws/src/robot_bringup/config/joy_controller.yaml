@@ -9,7 +9,7 @@ joy_controller:
     operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=INTAKE_AND_SHOOT、3=GAME2_MODE。
     operation_mode_complete_topic: /operation_mode_complete  # std_msgs/msg/Bool。trueでINTAKE_AND_SHOOTからDRIVEへ戻る。
     game2_command_topic: /game2_command  # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
-    intake_and_shoot_topic: /intake_and_shoot  # std_msgs/msg/Bool。下側がL2+○を受理した通知。
+    position_sequence_active_topic: /position_sequence_active  # std_msgs/msg/Bool。positionが実際にシーケンスを開始した状態。
     dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
     joy_qos_depth: 3  # Joy入力のQoS queue depth。
     command_qos_depth: 1  # 指令topicのQoS queue depth。

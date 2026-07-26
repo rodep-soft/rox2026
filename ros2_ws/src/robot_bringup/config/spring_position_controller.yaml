@@ -15,6 +15,7 @@ spring_position_controller_node:
 
     position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
     intake_and_shoot_topic: /intake_and_shoot  # std_msgs/msg/Bool。trueでINTAKE→SHOOT→DRIBBLEを開始する。
+    position_sequence_active_topic: /position_sequence_active  # std_msgs/msg/Bool。positionが実際にシーケンスを開始した状態。
     position_command_topic: /dribble/position_command  # std_msgs/msg/Float32 [rad]。
     position_feedback_topic: /dribble/position_feedback  # std_msgs/msg/Float32 [rad]。
     dribble_position_rad: 0.2  # [rad] DRIBBLE位置。

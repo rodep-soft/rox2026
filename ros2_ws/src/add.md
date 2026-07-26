@@ -82,6 +82,7 @@ DRIVE / INTAKE_AND_SHOOT / GAME2_MODE -- L2 + Home --> STOP
 | Joy → Spring/position | `/spring/fire_request` | `std_msgs/msg/Bool` | Spring発射要求 |
 | Joy → Spring/position | `/dribble/position_mode` | `std_msgs/msg/UInt8` | 手動位置指令 |
 | belt/dribble → Spring/position | `/intake_and_shoot` | `std_msgs/msg/Bool` | RPM到達後の位置シーケンス開始 |
+| Spring/position → Joy | `/position_sequence_active` | `std_msgs/msg/Bool` | positionが実際にシーケンスを開始した状態 |
 | belt/dribble → monitoring | `/shoot_ready` | `std_msgs/msg/Bool` | 3モータのRPM到達状態 |
 | Spring/position → Joy | `/operation_mode_complete` | `std_msgs/msg/Bool` | 位置シーケンス完了 |
 | hardware → belt/dribble | `*/current/rpm` | `std_msgs/msg/Int16` | 3モータの実RPM |

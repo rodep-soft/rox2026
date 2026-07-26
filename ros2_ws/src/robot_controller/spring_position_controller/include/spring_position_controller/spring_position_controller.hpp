@@ -62,6 +62,7 @@ class SpringPositionController : public rclcpp::Node {
   void set_target_position(double position_rad, PositionState state);
   void finish_position_move();
   void publish_operation_mode_complete();
+  void publish_position_sequence_active(bool active);
 
   bool configuration_valid_{true};
   bool emergency_stop_active_{false};
@@ -102,6 +103,7 @@ class SpringPositionController : public rclcpp::Node {
   std::string spring_velocity_command_topic_;
   std::string position_mode_topic_;
   std::string intake_and_shoot_topic_;
+  std::string position_sequence_active_topic_;
   std::string position_command_topic_;
   std::string position_feedback_topic_;
 
@@ -125,6 +127,8 @@ class SpringPositionController : public rclcpp::Node {
       position_command_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr
       operation_mode_complete_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr
+      position_sequence_active_publisher_;
   rclcpp::TimerBase::SharedPtr spring_timer_;
   rclcpp::TimerBase::SharedPtr position_timer_;
 };

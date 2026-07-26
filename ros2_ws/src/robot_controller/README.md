@@ -70,6 +70,8 @@ STOP、INTAKE_AND_SHOOT、GAME2_MODE、非常停止中は`0 rad/s`を維持す�
 
 positionは移動中、`position_command_period_ms`周期で同じ目標radを送り続け、
 `/dribble/position_feedback`が許容範囲内へ入ったことを確認して次へ進む。
+実際に位置シーケンスを開始したときは`/position_sequence_active=true`をpublishし、
+完了または中断時に`false`へ戻す。
 
 ```text
 /intake_and_shoot=true
