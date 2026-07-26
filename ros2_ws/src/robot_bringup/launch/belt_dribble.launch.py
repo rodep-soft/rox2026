@@ -10,24 +10,16 @@ def generate_launch_description():
         get_package_share_directory("robot_bringup"),
         "config",
     )
-    belt_parameter_file = os.path.join(config_dir, "belt_controller.yaml")
-    dribble_parameter_file = os.path.join(config_dir, "dribble_controller.yaml")
+    parameter_file = os.path.join(config_dir, "belt_dribble_controller.yaml")
 
     return LaunchDescription(
         [
             Node(
                 package="robot_controller",
-                executable="belt_controller_node",
-                name="belt_controller_node",
+                executable="belt_dribble_controller_node",
+                name="belt_dribble_controller_node",
                 output="screen",
-                parameters=[belt_parameter_file],
-            ),
-            Node(
-                package="robot_controller",
-                executable="dribble_controller_node",
-                name="dribble_controller_node",
-                output="screen",
-                parameters=[dribble_parameter_file],
+                parameters=[parameter_file],
             ),
         ]
     )
