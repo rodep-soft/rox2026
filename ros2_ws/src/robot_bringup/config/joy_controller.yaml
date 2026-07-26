@@ -6,38 +6,34 @@ joy_controller:
     belt_mode_topic: /belt/mode  # std_msgs/msg/UInt8。
     dribble_enabled_topic: /dribble/enabled  # std_msgs/msg/Bool。
     emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=INTAKE_AND_SHOOT、3=GAME2_MODE。
+    operation_mode_complete_topic: /operation_mode_complete  # std_msgs/msg/Bool。trueでINTAKE_AND_SHOOTからDRIVEへ戻る。
+    game2_command_topic: /game2_command  # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
+    intake_and_shoot_topic: /intake_and_shoot  # std_msgs/msg/Bool。下側がL2+○を受理した通知。
     dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
-    intake_shoot_request_topic: /dribble/intake_shoot_request  # std_msgs/msg/Bool。ベルト到達後に一度だけtrueをpublishする。
-    belt_ready_topic: /belt/ready  # std_msgs/msg/Bool。belt_controllerが両ベルトの実RPMからpublishする。
     joy_qos_depth: 3  # Joy入力のQoS queue depth。
     command_qos_depth: 1  # 指令topicのQoS queue depth。
-    joy_timeout_ms: 200  # [ms] Joy入力断で停止するまでの時間。
-    control_period_ms: 10  # [ms] 最新Joy入力の判定、計算、各指令topicのpublish周期。
+    joy_timeout_ms: 200  # [ms] Joy入力断でSTOPへ移るまでの時間。
+    state_publish_period_ms: 20  # [ms] 状態指令とoperation modeの再送周期。
 
-    # L1 + ○: spring ON/OFF。
-    spring_fire_enable_button: 4
-    spring_fire_button: 2
-    # Create + Home: 非常停止ON/OFF。Homeはタッチパッド(index 13)。
-    create_button: 8
-    home_button: 13
-    # PS: 前後反転ON/OFF（linear.xのみ）。
-    ps_button: 12
-    # L2 + Options: 最大開放ON/OFF。解除時はDRIBBLE位置へ戻す。
-    options_button: 9
-    # DPAD上/下(axis 7): belt modeを増減。
-    mode_change_axis: 7
-    # L2 + ○: ベルト到達後にINTAKE→SHOOT→DRIBBLEを要求。
-    circle_button: 2
-    # L2のaxis。通常=1、押下=-1。
-    left_trigger_axis: 3
-    # R1: ドリブルON。R1 + Home: ドリブルOFF。
-    dribble_enable_button: 5
+    spring_fire_enable_button: 4  # L1。
+    spring_fire_button: 2  # ○。
+    create_button: 8  # Create。
+    ps_button: 12  # PS。
+    options_button: 9  # Options。
+    home_button: 13  # タッチパッドをHomeとして扱う。
+    circle_button: 2  # ○。
+    dribble_enable_button: 5  # R1。
 
+    left_trigger_axis: 3  # L2。通常=1、押下=-1。
+    right_trigger_axis: 4  # R2。通常=1、押下=-1。
     left_stick_x_axis: 0  # 左スティック左右。
     left_stick_y_axis: 1  # 左スティック上下。
     right_stick_x_axis: 2  # 右スティック左右。
+    dpad_horizontal_axis: 6  # DPAD左右。左=1、右=-1。
+    dpad_vertical_axis: 7  # DPAD上下。上=1、下=-1。
     axis_deadzone: 0.05  # スティック中心ずれを無効化する範囲。
-    axis_on_threshold: 0.7  # DPAD軸を押下とみなすしきい値。
+    axis_on_threshold: 0.7  # トリガー・DPAD軸をONとみなすしきい値。
 
     linear_x_limit: 2.0  # [m/s] 前後方向の速度上限。絶対値を使用する。
     linear_y_limit: 2.0  # [m/s] 左右方向の速度上限。絶対値を使用する。
