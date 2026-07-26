@@ -53,11 +53,19 @@ public:
 
     const auto timeout_ms = declare_parameter<int64_t>("timeout_ms", 500);
 
+ 
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, 10);
+     
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
+  	.reliable()
+  	.durability_volatile();
+    auto can_qos = rclcpp::QoS(rclcpp::KeepLast(30))
+        .best_effort()
+	.durability_volatile();
+    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
 
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      CAN_SUB_TOPIC, 10,
+      CAN_SUB_TOPIC, can_qos,
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1));
 
 

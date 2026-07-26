@@ -64,8 +64,8 @@ LNI::CallbackReturn SocketCanSenderNode::on_configure(const lc::State & state)
 
   RCLCPP_DEBUG(this->get_logger(), "Sender successfully configured.");
 
-  auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(30))
-    .best_effort()
+  auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(10))
+    .reliable()
     .durability_volatile();
 
   if (!enable_fd_) {
