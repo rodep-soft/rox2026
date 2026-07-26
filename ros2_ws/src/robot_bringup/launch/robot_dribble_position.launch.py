@@ -36,6 +36,6 @@ def generate_launch_description():
             ),
             include("joy_controller.launch.py"),
             # この構成の対象controller
-            include("dribble_position_controller.launch.py"),
+            include("spring_position.launch.py"),
         ]
     )

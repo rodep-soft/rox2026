@@ -34,8 +34,7 @@ def generate_launch_description():
     launch_files = [
         "belt_dribble.launch.py",
         "mecanum_controller.launch.py",
-        "spring_controller.launch.py",
-        "dribble_position_controller.launch.py",
+        "spring_position.launch.py",
         "joy_controller.launch.py",
     ]
 
