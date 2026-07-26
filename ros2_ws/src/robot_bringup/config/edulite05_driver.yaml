@@ -8,7 +8,7 @@ edulite05_fl_driver:
     pub_fb_topic_name: "/mecanum/fl/feedback"     # std_msgs/msg/Float32
     motor_id: 0x01
     runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    is_requested_fb_pub: true                    # Publish feedback if true
 
 edulite05_fr_driver:
   ros__parameters:
@@ -18,7 +18,7 @@ edulite05_fr_driver:
     pub_fb_topic_name: "/mecanum/fr/feedback"     # std_msgs/msg/Float32
     motor_id: 0x02
     runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    is_requested_fb_pub: true                    # Publish feedback if true
 
 edulite05_rl_driver:
   ros__parameters:
@@ -28,7 +28,7 @@ edulite05_rl_driver:
     pub_fb_topic_name: "/mecanum/rl/feedback"     # std_msgs/msg/Float32
     motor_id: 0x03
     runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    is_requested_fb_pub: true                    # Publish feedback if true
 
 edulite05_rr_driver:
   ros__parameters:
@@ -38,7 +38,7 @@ edulite05_rr_driver:
     pub_fb_topic_name: "/mecanum/rr/feedback"     # std_msgs/msg/Float32
     motor_id: 0x04
     runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    is_requested_fb_pub: true                    # Publish feedback if true
 
 edulite05_spring_driver:
   ros__parameters:

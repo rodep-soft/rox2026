@@ -31,6 +31,11 @@ RUN apt-get update && apt-get install -y \
     ros-humble-ros2-socketcan \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup \
+    ros-humble-robot-localization \
+    ros-humble-robot-state-publisher \
+    ros-humble-xacro \
     evtest \
     libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
