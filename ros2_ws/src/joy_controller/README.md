@@ -1,5 +1,8 @@
 ## Joyボタン・軸の配置
 
+`joy_controller`は`joy_node`からの`/joy`を受け、機構ごとの指令topicへ変換します。
+既定では`robot_bringup/launch/joy_controller.launch.py`が`/dev/input/js0`を読みます。
+
 ### Buttons
 
 `sensor_msgs/msg/Joy`の`buttons[]`に対応する。
@@ -18,8 +21,8 @@
 | 9 | Options |
 | 10 | L3（左スティック押し込み） |
 | 11 | R3（右スティック押し込み） |
-| 12 | PSボタン |
-| 13 | タッチパッド押し込み |
+| 12 | PS |
+| 13 | タッチパッド（Home） |
 
 ### Axes
 
@@ -30,83 +33,50 @@
 | 0 | 左スティック 左右 |
 | 1 | 左スティック 上下 |
 | 2 | 右スティック 左右 |
-| 3 | L2 |
-| 4 | R2 |
+| 3 | L2（通常=`1`、押下=`-1`） |
+| 4 | R2（通常=`1`、押下=`-1`） |
 | 5 | 右スティック 上下 |
 | 6 | 十字キー 左右 |
 | 7 | 十字キー 上下 |
+
+### 操作仕様
+
+| 操作 | 入力 | 動作 |
+|---|---|---|
+| 最大開放 | L2 + Options | `MAX_OPEN (-1.3 rad)`へ移動。もう一度でDRIBBLEへ復帰 |
+| 非常停止 | Create + Home | 停止状態をON/OFF。ON時はDRIBBLE位置へ復帰 |
+| ベルトmode | DPAD 上 / 下 | modeを1段階増減 |
+| ドリブル | R1 | ON |
+| ドリブル | R1 + Home | OFF |
+| Spring | L1 + ○ | ON/OFFを切替。最大開放中は出力しない |
+| 前後反転 | PS | `linear.x`のみ符号を反転 |
+| 取り込み・投射 | L2 + ○ | 両ベルトが目標RPMへ到達後、`INTAKE → SHOOT → DRIBBLE`を一度だけ要求 |
+
+L2 + ○を押した時点でベルトが未到達なら要求を保留し、`/belt/ready`が`true`に
+なった時点で実行します。位置移動中に同じ要求を送っても、
+`dribble_position_controller`が無視します。
+
+### 処理周期
+
+`joy_callback`は最新のJoyメッセージと受信時刻の保存だけを行います。
+ボタン判定、mecanum速度計算、各指令topicのpublish、Joy timeoutの確認は、
+`control_period_ms`周期のtimer callbackで行います。既定値は10 ms（100 Hz）です。
+
+### Publish / subscribe topic
+
+| 種別 | topic名 | 型 | 内容 |
+|---|---|---|---|
+| publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度指令 |
+| publish | `/spring/fire_request` | `std_msgs/msg/Bool` | Spring ON/OFF |
+| publish | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度mode |
+| publish | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルON/OFF |
+| publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` | `0=DRIBBLE`、`1=SHOOT`、`2=MAX_OPEN` |
+| publish | `/dribble/intake_shoot_request` | `std_msgs/msg/Bool` | `true`で位置シーケンスを開始 |
+| publish | `/emergency_stop` | `std_msgs/msg/Bool` | 非常停止状態 |
+| subscribe | `/belt/ready` | `std_msgs/msg/Bool` | 両ベルトが目標RPMに到達した状態 |
 
 ### 確認コマンド
 
 ```bash
 ros2 topic echo /joy
 ```
-
-## ボタン・軸の設定
-
-`robot_bringup/config/joy_controller.yaml` で、各機構のボタンと各軸の番号を変更できる。
-設定値の名前は cpp 側で対応する押下状態の名前と共通で、値はボタンまたは軸の番号を表す。
-`/joy`のsubscribeは`joy_qos_depth`、各機構へのpublishは`command_qos_depth`でdepthを変更できる。
-
-`joy_callback`は最新のJoyメッセージと受信時刻の保存だけを行う。ボタン判定、
-mecanum速度計算、各指令topicのpublish、Joy timeoutの確認は
-`control_period_ms`周期のtimer callbackで行う。既定値は10 ms（100 Hz）。
-
-## 操作仕様
-
-既定のボタン番号では、以下の操作を行う。
-
-| 操作 | 入力 |
-|---|---|
-| 吸気 ON/OFF | L2 + △ |
-| ばね射出 ON/OFF | R2 + ○ |
-| ベルト mode 増減 | L2 + DPAD 上下 |
-| ドリブル ON/OFF | R2 + DPAD 上(ON)／下(OFF) |
-| ドリブル位置をSHOOTへ移動 | L1 + ○ |
-| ドリブル位置をDRIBBLEへ復帰 | L1 + × |
-| 緊急停止 | Create + タッチパッド |
-
-ベルトmodeは`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4状態で、
-DPAD上で1段階増加、DPAD下で1段階減少し、範囲外には遷移しない。
-ドリブルはON/OFFの2状態で、R2 + DPAD上でON、R2 + DPAD下でOFF。
-
-`*_is_enable_button` は機構操作を有効化するボタン、`*_button_on` は実行する
-ボタンの番号を表す。これらは名前に `is` や `on` を含むが、YAML では bool ではなく
-ボタン番号を設定する。
-
-enable ボタンの押下だけでは操作を実行しない。△、○、タッチパッド、および DPAD は
-`off -> on` になった瞬間だけ受け付ける。L2 と R2 を同時に押した場合も、両方の機構を
-有効化する。
-
-## 速度指令
-
-| Joy 軸 | 出力topic |
-|---|---|
-| 左スティック y | `/mecanum/cmd_vel.linear.x` |
-| 左スティック x | `/mecanum/cmd_vel.linear.y` |
-| 右スティック x | `/mecanum/cmd_vel.angular.z` |
-
-## Publishする指令
-
-| topic名 | 型 | 内容 |
-| --- | --- | --- |
-| `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度指令 |
-| `/spring/fire_request` | `std_msgs/msg/Bool` | ばね射出要求 |
-| `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モード |
-| `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルON/OFF |
-| `/dribble/position_mode` | `std_msgs/msg/UInt8` | ドリブル位置指令(0=DRIBBLE, 1=SHOOT) |
-| `/emergency_stop` | `std_msgs/msg/Bool` | 非常停止状態 |
-
-スティック入力は、絶対値が `axis_deadzone` 未満の場合に `0.0` として扱う。
-既定値は `0.05`。DPAD のような ON/OFF 判定に使う軸は、絶対値が
-`axis_on_threshold` 以上で ON として扱う。既定値は `0.7`。
-
-速度指令は deadzone 適用後の軸入力に対して、正方向には `max_*`、負方向には
-`min_*` を掛け、さらに `linear_x_scale`、`linear_y_scale`、`angular_z_scale` を掛ける。
-既定の速度範囲は `linear.x` / `linear.y` が ±2.0 m/s、`angular.z` が ±2.0 rad/s。
-
-## 非常停止
-
-Create + タッチパッドの押下開始で非常停止状態をON/OFFします。非常停止中は通常操作より先に停止指令をpublishし、`/emergency_stop`へ`true`をpublishします。ONにしたときは、ドリブル位置をDRIBBLE位置へ戻す指令も送ります。
-
-非常停止中も入力の前回値を更新するため、解除時に押しっぱなしのボタンやDPADを新規操作として扱わない。非常停止の状態はtransient local QoSでpublishするため、後から起動したcontrollerも現在の停止状態を受信できます。

@@ -23,6 +23,3 @@
 - `command_period_ms`が0以下の場合、エラーログは出るが値を安全な既定値へ戻さずにtimerを生成している。
 - timer生成に失敗してnodeが起動せず、明示的な停止指令を送れない可能性がある。
 - belt_controller、spring_controllerと同様に、不正値検出時は設定を無効扱いにしつつ周期を安全な既定値へ戻す。
-
-## たぶんどうでもいいくらい
-max, mini linear(anguler) x,y,zは絶対値使えばparamの数を減らせるよな

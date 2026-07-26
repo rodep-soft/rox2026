@@ -1,69 +1,44 @@
 joy_controller:
   ros__parameters:
-    # subscribeする操作入力topic。sensor_msgs/msg/Joy。
-    joy_topic: /joy
-    mecanum_cmd_vel_topic: /mecanum/cmd_vel
-    spring_fire_request_topic: /spring/fire_request
-    belt_mode_topic: /belt/mode
-    # ドリブルON/OFF topic。std_msgs/msg/Bool。
-    dribble_enabled_topic: /dribble/enabled
-    # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
-    emergency_stop_topic: /emergency_stop
-    # ドリブル位置指令topic。std_msgs/msg/UInt8(0=DRIBBLE, 1=SHOOT)。
-    # L1+×またはL1+○の押下開始で一回だけpublishする。
-    dribble_position_mode_topic: /dribble/position_mode
-    joy_qos_depth: 3
-    command_qos_depth: 1
-    # Joy入力が途絶えた場合に停止するまでの時間[ms]。
-    joy_timeout_ms: 200
-    # 最新Joy入力の判定、mecanum計算、各指令topicのpublish周期[ms]。
-    control_period_ms: 10
+    joy_topic: /joy  # sensor_msgs/msg/Joy。
+    mecanum_cmd_vel_topic: /mecanum/cmd_vel  # geometry_msgs/msg/Twist。
+    spring_fire_request_topic: /spring/fire_request  # std_msgs/msg/Bool。
+    belt_mode_topic: /belt/mode  # std_msgs/msg/UInt8。
+    dribble_enabled_topic: /dribble/enabled  # std_msgs/msg/Bool。
+    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。
+    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
+    intake_shoot_request_topic: /dribble/intake_shoot_request  # std_msgs/msg/Bool。ベルト到達後に一度だけtrueをpublishする。
+    belt_ready_topic: /belt/ready  # std_msgs/msg/Bool。belt_controllerが両ベルトの実RPMからpublishする。
+    joy_qos_depth: 3  # Joy入力のQoS queue depth。
+    command_qos_depth: 1  # 指令topicのQoS queue depth。
+    joy_timeout_ms: 200  # [ms] Joy入力断で停止するまでの時間。
+    control_period_ms: 10  # [ms] 最新Joy入力の判定、計算、各指令topicのpublish周期。
 
-    # 取り入れる操作のボタン番号。
-    intake_is_enable_button: 6
-    intake_button_on: 3
-
-    # ばね射出操作のボタン番号。
-    spring_fire_is_enable_button: 7
-    spring_fire_button_on: 2
-
-    # ベルトモード変更を有効化するボタン番号。
-    belt_mode_is_enable_button: 6
-    # ドリブルモード変更を有効化するボタン番号。
-    dribble_mode_is_enable_button: 7
-
-    # 緊急停止操作のボタン番号。
-    emergency_stop_is_enable_button: 8
-    emergency_stop_button_on: 13
-
-    # ドリブル位置操作のボタン番号。L1 + ×でDRIBBLE、L1 + ○でSHOOT。
-    # 移動中の再押下はdribble_position_controller側で無視する。
-    dribble_position_is_enable_button: 4
-    dribble_position_dribble_button: 1
-    dribble_position_shoot_button: 2
-
-    # 左スティック x 軸。
-    left_stick_x_axis: 0
-    # 左スティック y 軸。
-    left_stick_y_axis: 1
-    # 右スティック x 軸。
-    right_stick_x_axis: 2
-    # 十字キー上下軸。cpp 側では is_mode_up/down を判定する。
+    # L1 + ○: spring ON/OFF。
+    spring_fire_enable_button: 4
+    spring_fire_button: 2
+    # Create + Home: 非常停止ON/OFF。Homeはタッチパッド(index 13)。
+    create_button: 8
+    home_button: 13
+    # PS: 前後反転ON/OFF（linear.xのみ）。
+    ps_button: 12
+    # L2 + Options: 最大開放ON/OFF。解除時はDRIBBLE位置へ戻す。
+    options_button: 9
+    # DPAD上/下(axis 7): belt modeを増減。
     mode_change_axis: 7
-    # スティックの中心ずれを無効化する axis のデッドゾーン。
-    axis_deadzone: 0.05
-    # DPAD などの軸を ON とみなすしきい値。
-    axis_on_threshold: 0.7
+    # L2 + ○: ベルト到達後にINTAKE→SHOOT→DRIBBLEを要求。
+    circle_button: 2
+    # L2のaxis。通常=1、押下=-1。
+    left_trigger_axis: 3
+    # R1: ドリブルON。R1 + Home: ドリブルOFF。
+    dribble_enable_button: 5
 
-    # 前進方向の最大速度 [m/s]。
-    max_linear_x: 2.0
-    # 後退方向の最小速度 [m/s]。
-    min_linear_x: -2.0
-    # 左右方向の最大速度 [m/s]。
-    max_linear_y: 2.0
-    # 左右方向の最小速度 [m/s]。
-    min_linear_y: -2.0
-    # 反時計回り方向の最大角速度 [rad/s]。
-    max_angular_z: 2.0
-    # 時計回り方向の最小角速度 [rad/s]。
-    min_angular_z: -2.0
+    left_stick_x_axis: 0  # 左スティック左右。
+    left_stick_y_axis: 1  # 左スティック上下。
+    right_stick_x_axis: 2  # 右スティック左右。
+    axis_deadzone: 0.05  # スティック中心ずれを無効化する範囲。
+    axis_on_threshold: 0.7  # DPAD軸を押下とみなすしきい値。
+
+    linear_x_limit: 2.0  # [m/s] 前後方向の速度上限。絶対値を使用する。
+    linear_y_limit: 2.0  # [m/s] 左右方向の速度上限。絶対値を使用する。
+    angular_z_limit: 2.0  # [rad/s] 回転方向の角速度上限。絶対値を使用する。
