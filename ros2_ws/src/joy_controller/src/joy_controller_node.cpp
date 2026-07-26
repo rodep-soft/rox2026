@@ -1,103 +1,103 @@
 #include "joy_controller/joy_controller_node.hpp"
 
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <memory>
 
 // コンストラクタ
 JoyControllerNode::JoyControllerNode()
-: Node("joy_controller"),
-  pre_intake_chord_on_(false),
-  pre_spring_fire_chord_on_(false),
-  pre_belt_mode_up_chord_on_(false),
-  pre_belt_mode_down_chord_on_(false),
-  pre_dribble_mode_up_chord_on_(false),
-  pre_dribble_mode_down_chord_on_(false),
-  pre_emergency_stop_chord_on_(false),
-  pre_dribble_position_dribble_chord_on_(false),
-  pre_dribble_position_shoot_chord_on_(false)
-{
+    : Node("joy_controller"),
+      pre_intake_chord_on_(false),
+      pre_spring_fire_chord_on_(false),
+      pre_belt_mode_up_chord_on_(false),
+      pre_belt_mode_down_chord_on_(false),
+      pre_dribble_mode_up_chord_on_(false),
+      pre_dribble_mode_down_chord_on_(false),
+      pre_emergency_stop_chord_on_(false),
+      pre_dribble_position_dribble_chord_on_(false),
+      pre_dribble_position_shoot_chord_on_(false) {
   declare_parameters();
   get_parameters();
 
   // qosが有効値かどうか
   if (joy_qos_depth_ <= 0) {
     RCLCPP_WARN(
-      get_logger(), "joy_qos_depth must be positive. Using the default value of 1.");
+        get_logger(),
+        "joy_qos_depth must be positive. Using the default value of 1.");
     joy_qos_depth_ = 1;
   }
   if (command_qos_depth_ <= 0) {
     RCLCPP_WARN(
-      get_logger(), "command_qos_depth must be positive. Using the default value of 1.");
+        get_logger(),
+        "command_qos_depth must be positive. Using the default value of 1.");
     command_qos_depth_ = 1;
   }
   if (joy_timeout_ms_ <= 0) {
     RCLCPP_WARN(
-      get_logger(), "joy_timeout_ms must be positive. Using the default value of 200 ms.");
+        get_logger(),
+        "joy_timeout_ms must be positive. Using the default value of 200 ms.");
     joy_timeout_ms_ = 200;
   }
-  if (state_publish_period_ms_ <= 0) {
-    RCLCPP_WARN(
-      get_logger(),
-      "state_publish_period_ms must be positive. Using the default value of 20 ms.");
-    state_publish_period_ms_ = 20;
+  if (control_period_ms_ <= 0) {
+    RCLCPP_WARN(get_logger(),
+                "control_period_ms must be positive. Using the default value "
+                "of 10 ms.");
+    control_period_ms_ = 10;
   }
 
   auto joy_qos = rclcpp::SensorDataQoS();
   joy_qos.keep_last(joy_qos_depth_);
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
-    joy_topic_, joy_qos,
-    std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
+      joy_topic_, joy_qos,
+      std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
   mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
-    mecanum_cmd_vel_topic_, rclcpp::QoS(
-      command_qos_depth_));
+      mecanum_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
 
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
+      spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
 
-  belt_mode_publisher_ =
-    create_publisher<std_msgs::msg::UInt8>(belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
+  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
+      belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
 
-  dribble_enabled_publisher_ =
-    create_publisher<std_msgs::msg::Bool>(dribble_enabled_topic_, rclcpp::QoS(command_qos_depth_));
+  dribble_enabled_publisher_ = create_publisher<std_msgs::msg::Bool>(
+      dribble_enabled_topic_, rclcpp::QoS(command_qos_depth_));
   emergency_stop_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local());
+      emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local());
 
   dribble_position_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
-    dribble_position_mode_topic_, rclcpp::QoS(command_qos_depth_));
+      dribble_position_mode_topic_, rclcpp::QoS(command_qos_depth_));
 
   // 起動直後は操作入力が来るまで、各機構へ停止指令を出しておく。
   publish_stop_commands();
   publish_emergency_stop();
-  joy_timeout_timer_ = create_wall_timer(
-    std::chrono::milliseconds(10),
-    std::bind(&JoyControllerNode::joy_timeout_callback, this));
-  state_publish_timer_ = create_wall_timer(
-    std::chrono::milliseconds(state_publish_period_ms_),
-    std::bind(&JoyControllerNode::state_publish_timer_callback, this));
+  control_timer_ = create_wall_timer(
+      std::chrono::milliseconds(control_period_ms_),
+      std::bind(&JoyControllerNode::control_timer_callback, this));
 
-  RCLCPP_INFO(
-    get_logger(), "Subscribing to %s and publishing mechanism commands", joy_topic_.c_str());
+  RCLCPP_INFO(get_logger(),
+              "Subscribing to %s and publishing mechanism commands",
+              joy_topic_.c_str());
 }
 
-void JoyControllerNode::declare_parameters()
-{
+void JoyControllerNode::declare_parameters() {
   // Topic名の宣言
   declare_parameter<std::string>("joy_topic", "/joy");
   declare_parameter<std::string>("mecanum_cmd_vel_topic", "/mecanum/cmd_vel");
-  declare_parameter<std::string>("spring_fire_request_topic", "/spring/fire_request");
+  declare_parameter<std::string>("spring_fire_request_topic",
+                                 "/spring/fire_request");
   declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
   declare_parameter<std::string>("dribble_enabled_topic", "/dribble/enabled");
   declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  declare_parameter<std::string>("dribble_position_mode_topic", "/dribble/position_mode");
+  declare_parameter<std::string>("dribble_position_mode_topic",
+                                 "/dribble/position_mode");
 
   // Qos設定
   declare_parameter<int>("joy_qos_depth", 1);
   declare_parameter<int>("command_qos_depth", 1);
   declare_parameter<int>("joy_timeout_ms", 200);
-  declare_parameter<int>("state_publish_period_ms", 20);
+  declare_parameter<int>("control_period_ms", 10);
 
   // Mecanum制御のスケールと制限値
   declare_parameter<double>("linear_x_scale", 1.0);
@@ -132,8 +132,7 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<int>("mode_change_axis", 7);
 }
 
-void JoyControllerNode::get_parameters()
-{
+void JoyControllerNode::get_parameters() {
   get_parameter("joy_topic", joy_topic_);
   get_parameter("mecanum_cmd_vel_topic", mecanum_cmd_vel_topic_);
   get_parameter("spring_fire_request_topic", spring_fire_request_topic_);
@@ -144,7 +143,7 @@ void JoyControllerNode::get_parameters()
   get_parameter("joy_qos_depth", joy_qos_depth_);
   get_parameter("command_qos_depth", command_qos_depth_);
   get_parameter("joy_timeout_ms", joy_timeout_ms_);
-  get_parameter("state_publish_period_ms", state_publish_period_ms_);
+  get_parameter("control_period_ms", control_period_ms_);
   get_parameter("linear_x_scale", linear_x_scale_);
   get_parameter("linear_y_scale", linear_y_scale_);
   get_parameter("angular_z_scale", angular_z_scale_);
@@ -161,69 +160,70 @@ void JoyControllerNode::get_parameters()
   get_parameter("spring_fire_is_enable_button", spring_fire_is_enable_button_);
   get_parameter("spring_fire_button_on", spring_fire_button_on_);
   get_parameter("belt_mode_is_enable_button", belt_mode_is_enable_button_);
-  get_parameter("dribble_mode_is_enable_button", dribble_mode_is_enable_button_);
-  get_parameter("emergency_stop_is_enable_button", emergency_stop_is_enable_button_);
+  get_parameter("dribble_mode_is_enable_button",
+                dribble_mode_is_enable_button_);
+  get_parameter("emergency_stop_is_enable_button",
+                emergency_stop_is_enable_button_);
   get_parameter("emergency_stop_button_on", emergency_stop_button_on_);
-  get_parameter("dribble_position_is_enable_button", dribble_position_is_enable_button_);
-  get_parameter("dribble_position_dribble_button", dribble_position_dribble_button_);
-  get_parameter("dribble_position_shoot_button", dribble_position_shoot_button_);
+  get_parameter("dribble_position_is_enable_button",
+                dribble_position_is_enable_button_);
+  get_parameter("dribble_position_dribble_button",
+                dribble_position_dribble_button_);
+  get_parameter("dribble_position_shoot_button",
+                dribble_position_shoot_button_);
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
   get_parameter("mode_change_axis", mode_change_axis_);
 }
 
-bool JoyControllerNode::button_pressed(const sensor_msgs::msg::Joy & msg, int index)
-{
+bool JoyControllerNode::button_pressed(const sensor_msgs::msg::Joy& msg,
+                                       int index) {
   // 設定されたボタン番号が範囲外なら、未押下として扱う。
   return index >= 0 && static_cast<std::size_t>(index) < msg.buttons.size() &&
          msg.buttons[static_cast<std::size_t>(index)] != 0;
 }
 
-double JoyControllerNode::axis_value(const sensor_msgs::msg::Joy & msg, int index)
-{
+double JoyControllerNode::axis_value(const sensor_msgs::msg::Joy& msg,
+                                     int index) {
   // 設定された軸番号が範囲外なら、入力なしとして0.0を返す。
-  return index >= 0 && static_cast<std::size_t>(index) < msg.axes.size() ?
-         msg.axes[static_cast<std::size_t>(index)] : 0.0;
+  return index >= 0 && static_cast<std::size_t>(index) < msg.axes.size()
+             ? msg.axes[static_cast<std::size_t>(index)]
+             : 0.0;
 }
 
-double JoyControllerNode::apply_axis_deadzone(double value) const
-{
+double JoyControllerNode::apply_axis_deadzone(double value) const {
   return std::abs(value) < axis_deadzone_ ? 0.0 : value;
 }
 
-double JoyControllerNode::apply_axis_limits(double value, double minimum, double maximum)
-{
+double JoyControllerNode::apply_axis_limits(double value, double minimum,
+                                            double maximum) {
   return value >= 0.0 ? value * maximum : -value * minimum;
 }
 
-uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode)
-{
+uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode) {
   return mode < maximum_mode ? static_cast<uint8_t>(mode + 1) : maximum_mode;
 }
 
-uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
-{
+uint8_t JoyControllerNode::decrement_mode(uint8_t mode) {
   const auto minimum_mode = static_cast<uint8_t>(BeltRpmMode::STOP);
   return mode > minimum_mode ? static_cast<uint8_t>(mode - 1) : minimum_mode;
 }
 
-void JoyControllerNode::publish_emergency_stop()
-{
+void JoyControllerNode::publish_emergency_stop() {
   std_msgs::msg::Bool emergency_stop;
   emergency_stop.data = emergency_stop_latched_;
   emergency_stop_publisher_->publish(emergency_stop);
 }
 
-void JoyControllerNode::publish_dribble_position_mode(DribblePositionMode mode)
-{
+void JoyControllerNode::publish_dribble_position_mode(
+    DribblePositionMode mode) {
   std_msgs::msg::UInt8 message;
   message.data = static_cast<uint8_t>(mode);
   dribble_position_mode_publisher_->publish(message);
 }
 
-void JoyControllerNode::publish_state_commands()
-{
+void JoyControllerNode::publish_state_commands() {
   std_msgs::msg::Bool spring;
   spring.data = spring_fire_enabled_;
   spring_fire_publisher_->publish(spring);
@@ -235,8 +235,7 @@ void JoyControllerNode::publish_state_commands()
   dribble_enabled_publisher_->publish(dribble_enabled_msg);
 }
 
-void JoyControllerNode::publish_stop_commands()
-{
+void JoyControllerNode::publish_stop_commands() {
   cmd_vel_ = geometry_msgs::msg::Twist{};
   intake_enabled_ = false;
   spring_fire_enabled_ = false;
@@ -247,13 +246,13 @@ void JoyControllerNode::publish_stop_commands()
   publish_state_commands();
 }
 
-void JoyControllerNode::joy_timeout_callback()
-{
+void JoyControllerNode::control_timer_callback() {
   if (!joy_received_) {
     return;
   }
 
-  const auto elapsed = std::chrono::steady_clock::now() - last_joy_received_time_;
+  const auto elapsed =
+      std::chrono::steady_clock::now() - last_joy_received_time_;
   if (elapsed > std::chrono::milliseconds(joy_timeout_ms_)) {
     if (!joy_timeout_active_) {
       // 非常停止操作ではなくJoy通信断による停止だと切り分けるため、最初の1回だけ記録する。
@@ -262,36 +261,39 @@ void JoyControllerNode::joy_timeout_callback()
     }
     // Joy入力が途絶えた場合は、最後の操作指令を残さず停止状態を維持する。
     publish_stop_commands();
-  }
-}
-
-void JoyControllerNode::state_publish_timer_callback()
-{
-  if (emergency_stop_latched_ || joy_timeout_active_) {
     return;
   }
 
-  // 走行指令以外の状態topicは、Joy受信ごとではなく一定周期でpublishする。
-  publish_state_commands();
+  if (joy_timeout_active_) {
+    RCLCPP_INFO(get_logger(), "Joy input recovered.");
+    joy_timeout_active_ = false;
+  }
+
+  process_joy_message(latest_joy_msg_);
 }
 
-void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy & msg)
-{
-  const bool intake_is_enable_button = button_pressed(msg, intake_is_enable_button_);
+void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy& msg) {
+  const bool intake_is_enable_button =
+      button_pressed(msg, intake_is_enable_button_);
   const bool intake_button_on = button_pressed(msg, intake_button_on_);
-  const bool spring_fire_is_enable_button = button_pressed(msg, spring_fire_is_enable_button_);
-  const bool spring_fire_button_on = button_pressed(msg, spring_fire_button_on_);
-  const bool belt_mode_is_enable_button = button_pressed(msg, belt_mode_is_enable_button_);
-  const bool dribble_mode_is_enable_button = button_pressed(msg, dribble_mode_is_enable_button_);
+  const bool spring_fire_is_enable_button =
+      button_pressed(msg, spring_fire_is_enable_button_);
+  const bool spring_fire_button_on =
+      button_pressed(msg, spring_fire_button_on_);
+  const bool belt_mode_is_enable_button =
+      button_pressed(msg, belt_mode_is_enable_button_);
+  const bool dribble_mode_is_enable_button =
+      button_pressed(msg, dribble_mode_is_enable_button_);
   const bool emergency_stop_is_enable_button =
-    button_pressed(msg, emergency_stop_is_enable_button_);
-  const bool emergency_stop_button_on = button_pressed(msg, emergency_stop_button_on_);
+      button_pressed(msg, emergency_stop_is_enable_button_);
+  const bool emergency_stop_button_on =
+      button_pressed(msg, emergency_stop_button_on_);
   const bool dribble_position_is_enable_button =
-    button_pressed(msg, dribble_position_is_enable_button_);
+      button_pressed(msg, dribble_position_is_enable_button_);
   const bool dribble_position_dribble_button_on =
-    button_pressed(msg, dribble_position_dribble_button_);
+      button_pressed(msg, dribble_position_dribble_button_);
   const bool dribble_position_shoot_button_on =
-    button_pressed(msg, dribble_position_shoot_button_);
+      button_pressed(msg, dribble_position_shoot_button_);
   const double mode_change_value = axis_value(msg, mode_change_axis_);
   const bool is_mode_up = mode_change_value >= axis_on_threshold_;
   const bool is_mode_down = mode_change_value <= -axis_on_threshold_;
@@ -302,15 +304,15 @@ void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy & msg)
   belt_mode_down_chord_on_ = belt_mode_is_enable_button && is_mode_down;
   dribble_mode_up_chord_on_ = dribble_mode_is_enable_button && is_mode_up;
   dribble_mode_down_chord_on_ = dribble_mode_is_enable_button && is_mode_down;
-  emergency_stop_chord_on_ = emergency_stop_is_enable_button && emergency_stop_button_on;
+  emergency_stop_chord_on_ =
+      emergency_stop_is_enable_button && emergency_stop_button_on;
   dribble_position_dribble_chord_on_ =
-    dribble_position_is_enable_button && dribble_position_dribble_button_on;
+      dribble_position_is_enable_button && dribble_position_dribble_button_on;
   dribble_position_shoot_chord_on_ =
-    dribble_position_is_enable_button && dribble_position_shoot_button_on;
+      dribble_position_is_enable_button && dribble_position_shoot_button_on;
 }
 
-bool JoyControllerNode::handle_emergency_stop()
-{
+bool JoyControllerNode::handle_emergency_stop() {
   if (emergency_stop_chord_on_ && !pre_emergency_stop_chord_on_) {
     emergency_stop_latched_ = !emergency_stop_latched_;
     if (emergency_stop_latched_) {
@@ -328,7 +330,8 @@ bool JoyControllerNode::handle_emergency_stop()
   if (emergency_stop_latched_) {
     // 非常停止モード中であることをログでも追跡できるようにしつつ、停止指令を維持する。
     RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 1000, "Emergency stop mode is active. Sending stop commands.");
+        get_logger(), *get_clock(), 1000,
+        "Emergency stop mode is active. Sending stop commands.");
     publish_stop_commands();
     return true;
   }
@@ -336,8 +339,7 @@ bool JoyControllerNode::handle_emergency_stop()
   return false;
 }
 
-void JoyControllerNode::update_previous_chord_inputs()
-{
+void JoyControllerNode::update_previous_chord_inputs() {
   pre_intake_chord_on_ = intake_chord_on_;
   pre_spring_fire_chord_on_ = spring_fire_chord_on_;
   pre_belt_mode_up_chord_on_ = belt_mode_up_chord_on_;
@@ -349,17 +351,15 @@ void JoyControllerNode::update_previous_chord_inputs()
   pre_dribble_position_shoot_chord_on_ = dribble_position_shoot_chord_on_;
 }
 
-void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
-{
-  if (joy_timeout_active_) {
-    // 停止原因となったJoy通信断が解消したことを、実機確認時に追跡できるよう記録する。
-    RCLCPP_INFO(get_logger(), "Joy input recovered.");
-    joy_timeout_active_ = false;
-  }
+void JoyControllerNode::joy_callback(
+    const sensor_msgs::msg::Joy::SharedPtr msg) {
+  latest_joy_msg_ = *msg;
   joy_received_ = true;
   last_joy_received_time_ = std::chrono::steady_clock::now();
-  const auto & joy_msg = *msg;
+}
 
+void JoyControllerNode::process_joy_message(
+    const sensor_msgs::msg::Joy& joy_msg) {
   // enableボタンと操作入力の組み合わせ状態を作り、押し順に依存しない判定にする。
   update_chord_inputs(joy_msg);
 
@@ -378,7 +378,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     spring_fire_enabled_ = !spring_fire_enabled_;
   }
   if (belt_mode_up_chord_on_ && !pre_belt_mode_up_chord_on_) {
-    belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_3));
+    belt_rpm_mode_ = increment_mode(belt_rpm_mode_,
+                                    static_cast<uint8_t>(BeltRpmMode::LEVEL_3));
   }
   if (belt_mode_down_chord_on_ && !pre_belt_mode_down_chord_on_) {
     belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
@@ -391,26 +392,35 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     // R2 + DPAD下でドリブルをOFF。
     dribble_enabled_ = false;
   }
-  if (dribble_position_dribble_chord_on_ && !pre_dribble_position_dribble_chord_on_) {
+  if (dribble_position_dribble_chord_on_ &&
+      !pre_dribble_position_dribble_chord_on_) {
     publish_dribble_position_mode(DribblePositionMode::DRIBBLE);
   }
-  if (dribble_position_shoot_chord_on_ && !pre_dribble_position_shoot_chord_on_) {
+  if (dribble_position_shoot_chord_on_ &&
+      !pre_dribble_position_shoot_chord_on_) {
     publish_dribble_position_mode(DribblePositionMode::SHOOT);
   }
 
-  const double linear_x = apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
-  const double linear_y = apply_axis_deadzone(axis_value(joy_msg, left_stick_x_axis_));
-  const double angular_z = apply_axis_deadzone(axis_value(joy_msg, right_stick_x_axis_));
+  const double linear_x =
+      apply_axis_deadzone(axis_value(joy_msg, left_stick_y_axis_));
+  const double linear_y =
+      apply_axis_deadzone(axis_value(joy_msg, left_stick_x_axis_));
+  const double angular_z =
+      apply_axis_deadzone(axis_value(joy_msg, right_stick_x_axis_));
 
   // スティック入力に制限値とスケールをかけて、mecanum_controller向けの速度指令にする。
   cmd_vel_.linear.x =
-    apply_axis_limits(linear_x, min_linear_x_, max_linear_x_) * linear_x_scale_;
+      apply_axis_limits(linear_x, min_linear_x_, max_linear_x_) *
+      linear_x_scale_;
   cmd_vel_.linear.y =
-    apply_axis_limits(linear_y, min_linear_y_, max_linear_y_) * linear_y_scale_;
+      apply_axis_limits(linear_y, min_linear_y_, max_linear_y_) *
+      linear_y_scale_;
   cmd_vel_.angular.z =
-    apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) * angular_z_scale_;
+      apply_axis_limits(angular_z, min_angular_z_, max_angular_z_) *
+      angular_z_scale_;
 
   mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+  publish_state_commands();
 
   // 次回callbackで組み合わせ入力のoff->onを判定するため、今回の状態を保存する。
   update_previous_chord_inputs();

@@ -6,35 +6,35 @@
 #include <cstdint>
 #include <string>
 
+#include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class JoyControllerNode : public rclcpp::Node
-{
-public:
+class JoyControllerNode : public rclcpp::Node {
+ public:
   JoyControllerNode();
 
-private:
-  enum class BeltRpmMode : uint8_t
-  {
+ private:
+  enum class BeltRpmMode : uint8_t {
     STOP = 1,
     LEVEL_1,
     LEVEL_2,
     LEVEL_3,
   };
 
-  enum class DribblePositionMode : uint8_t {DRIBBLE = 0, SHOOT = 1};
+  enum class DribblePositionMode : uint8_t { DRIBBLE = 0, SHOOT = 1 };
 
   void declare_parameters();
   void get_parameters();
 
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
+  void control_timer_callback();
+  void process_joy_message(const sensor_msgs::msg::Joy& msg);
 
-  static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
-  static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
+  static bool button_pressed(const sensor_msgs::msg::Joy& msg, int index);
+  static double axis_value(const sensor_msgs::msg::Joy& msg, int index);
   double apply_axis_deadzone(double value) const;
   static double apply_axis_limits(double value, double minimum, double maximum);
 
@@ -45,21 +45,19 @@ private:
   void publish_emergency_stop();
   void publish_state_commands();
   void publish_stop_commands();
-  void joy_timeout_callback();
-  void state_publish_timer_callback();
-  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
+  void update_chord_inputs(const sensor_msgs::msg::Joy& msg);
   bool handle_emergency_stop();
   void update_previous_chord_inputs();
 
   std::string joy_topic_;
   std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_,
-    belt_mode_topic_, dribble_enabled_topic_;
+      belt_mode_topic_, dribble_enabled_topic_;
   std::string emergency_stop_topic_;
   std::string dribble_position_mode_topic_;
   int joy_qos_depth_;
   int command_qos_depth_;
   int joy_timeout_ms_;
-  int state_publish_period_ms_;
+  int control_period_ms_;
 
   double linear_x_scale_;
   double linear_y_scale_;
@@ -97,6 +95,7 @@ private:
   int mode_change_axis_;
 
   geometry_msgs::msg::Twist cmd_vel_;
+  sensor_msgs::msg::Joy latest_joy_msg_;
   bool intake_enabled_{false};
   bool spring_fire_enabled_{false};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
@@ -126,14 +125,15 @@ private:
   bool pre_dribble_position_shoot_chord_on_;
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
+      mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr dribble_position_mode_publisher_;
-  rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
-  rclcpp::TimerBase::SharedPtr state_publish_timer_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr
+      dribble_position_mode_publisher_;
+  rclcpp::TimerBase::SharedPtr control_timer_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

@@ -48,6 +48,10 @@ ros2 topic echo /joy
 設定値の名前は cpp 側で対応する押下状態の名前と共通で、値はボタンまたは軸の番号を表す。
 `/joy`のsubscribeは`joy_qos_depth`、各機構へのpublishは`command_qos_depth`でdepthを変更できる。
 
+`joy_callback`は最新のJoyメッセージと受信時刻の保存だけを行う。ボタン判定、
+mecanum速度計算、各指令topicのpublish、Joy timeoutの確認は
+`control_period_ms`周期のtimer callbackで行う。既定値は10 ms（100 Hz）。
+
 ## 操作仕様
 
 既定のボタン番号では、以下の操作を行う。
