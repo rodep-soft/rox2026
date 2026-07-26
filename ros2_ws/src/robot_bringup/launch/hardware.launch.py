@@ -55,7 +55,12 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "use_vesc",
                 default_value="true",
-                description="Launch the VESC (赤ブラシ) driver nodes",
+                description="Launch the underbelt and upperbelt VESC driver nodes",
+            ),
+            DeclareLaunchArgument(
+                "use_dribble_vesc",
+                default_value="false",
+                description="Launch the dribble VESC driver node",
             ),
             DeclareLaunchArgument(
                 "vesc_1_controller_id",
@@ -64,7 +69,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "vesc_2_controller_id",
-                default_value="2",
+                default_value="52",
                 description="CAN controller ID of VESC 2",
             ),
             DeclareLaunchArgument(
@@ -90,8 +95,8 @@ def generate_launch_description():
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_1_controller_id"),
-                        "target_rpm_topic": "/vesc_1/target/rpm",
-                        "current_rpm_topic": "/vesc_1/current/rpm",
+                        "target_rpm_topic": "/underbelt/target/rpm",
+                        "current_rpm_topic": "/underbelt/current/rpm",
                     }
                 ],
             ),
@@ -104,8 +109,8 @@ def generate_launch_description():
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_2_controller_id"),
-                        "target_rpm_topic": "/vesc_2/target/rpm",
-                        "current_rpm_topic": "/vesc_2/current/rpm",
+                        "target_rpm_topic": "/upperbelt/target/rpm",
+                        "current_rpm_topic": "/upperbelt/current/rpm",
                     }
                 ],
             ),
@@ -114,7 +119,7 @@ def generate_launch_description():
                 executable="vesc_node",
                 name="vesc_driver_3",
                 output="screen",
-                condition=IfCondition(LaunchConfiguration("use_vesc")),
+                condition=IfCondition(LaunchConfiguration("use_dribble_vesc")),
                 parameters=[
                     {
                         "controller_id": LaunchConfiguration("vesc_3_controller_id"),
