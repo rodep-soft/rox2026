@@ -5,17 +5,24 @@ import os
 
 
 def generate_launch_description():
-    params = os.path.join(
+    vesc_parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"), "config", "vesc_driver.yaml"
     )
-    return LaunchDescription(
-        [
+
+    node_names = [
+        "vesc_upper_belt_driver" "vesc_under_belt_driver",
+        "vesc_dribble_belt_driver",
+    ]
+
+    nodes = []
+    for node_name in nodes:
+        nodes.append(
             Node(
                 package="hardware_driver",
                 executable="vesc_node",
-                name="vesc_driver_node",
+                name=node_name,
                 output="screen",
-                parameters=[params],
+                parameters=[vesc_parameter_file],
             )
-        ]
-    )
+        )
+    return LaunchDescription(nodes)

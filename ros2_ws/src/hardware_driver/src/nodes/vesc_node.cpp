@@ -18,16 +18,15 @@ namespace vesc_driver
 
 using namespace std::chrono_literals;
 
+constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
+constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
+
 class Node : public rclcpp::Node
 {
 public:
   Node()
   : rclcpp::Node("vesc_driver_node")
   {
-    const auto can_pub_topic =
-      declare_parameter<std::string>("can_pub_topic", "/socketcan_bridge/tx");
-    const auto can_sub_topic =
-      declare_parameter<std::string>("can_sub_topic", "/socketcan_bridge/rx");
     const auto target_rpm_topic =
       declare_parameter<std::string>("target_rpm_topic", "/vesc/target/rpm");
     const auto current_rpm_topic =
@@ -45,11 +44,11 @@ public:
     command_timeout_ = std::chrono::milliseconds(command_timeout_ms);
     feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
 
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(can_pub_topic, 10);
+    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, 10);
     rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
 
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      can_sub_topic, 10,
+      CAN_SUB_TOPIC, 10,
       std::bind(&Node::can_callback, this, std::placeholders::_1));
     target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
       target_rpm_topic, 10,
@@ -78,16 +77,12 @@ private:
 
   void target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
   {
-    if (!std::isfinite(msg->data) || std::abs(msg->data) > max_rpm_) {
-      RCLCPP_WARN(get_logger(), "Rejected invalid target RPM: %.3f", msg->data);
-      return;
-    }
-
     target_rpm_ = msg->data;
     last_command_time_ = std::chrono::steady_clock::now();
     command_received_ = true;
   }
 
+  /// @brief 一定周期で送受信がされるように調整するコールバック関数
   void timer_callback()
   {
     const auto now = std::chrono::steady_clock::now();
@@ -96,17 +91,17 @@ private:
       const bool command_timed_out = now - last_command_time_ > command_timeout_;
       const double mechanical_rpm = command_timed_out ? 0.0 : target_rpm_;
       const double erpm = mechanical_rpm * pole_pairs_;
-      can_pub_->publish(
-        protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
+      can_pub_->publish(protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
+      command_received_ = false;
     }
 
     std_msgs::msg::Float32 feedback;
     if (!feedback_received_ || now - last_feedback_time_ > feedback_timeout_) {
-      feedback.data = std::numeric_limits<float>::quiet_NaN();
+      feedback.data = 0.0;
     } else {
       feedback.data = current_rpm_;
+      rpm_pub_->publish(feedback);
     }
-    rpm_pub_->publish(feedback);
   }
 
   uint8_t controller_id_{1};

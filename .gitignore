@@ -17,8 +17,8 @@ __pycache__/
 *.mcap
 rosbag2_*/
 
-# debag file (.txt)
-*.txt
+# debug file (.txt)
+*debug.txt
 
 #about vscode setting
 .vacode/
