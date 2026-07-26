@@ -67,8 +67,8 @@ class JoyControllerNode : public rclcpp::Node {
   int options_button_{9};
   int home_button_{13};
   int circle_button_{2};
+  int dribble_enable_button_{5};
   int left_trigger_axis_{3};
-  int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
   int left_stick_y_axis_{1};
   int right_stick_x_axis_{2};
@@ -90,7 +90,8 @@ class JoyControllerNode : public rclcpp::Node {
   bool spring_fire_chord_on_{false};
   bool belt_mode_up_chord_on_{false};
   bool belt_mode_down_chord_on_{false};
-  bool dribble_toggle_chord_on_{false};
+  bool dribble_enable_button_on_{false};
+  bool dribble_disable_chord_on_{false};
   bool emergency_stop_chord_on_{false};
   bool max_open_chord_on_{false};
   bool intake_shoot_chord_on_{false};
@@ -98,7 +99,8 @@ class JoyControllerNode : public rclcpp::Node {
   bool pre_spring_fire_chord_on_{false};
   bool pre_belt_mode_up_chord_on_{false};
   bool pre_belt_mode_down_chord_on_{false};
-  bool pre_dribble_toggle_chord_on_{false};
+  bool pre_dribble_enable_button_on_{false};
+  bool pre_dribble_disable_chord_on_{false};
   bool pre_emergency_stop_chord_on_{false};
   bool pre_max_open_chord_on_{false};
   bool pre_intake_shoot_chord_on_{false};

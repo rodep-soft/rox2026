@@ -28,10 +28,10 @@ joy_controller:
     mode_change_axis: 7
     # L2 + ○: ベルト到達後にINTAKE→SHOOT→DRIBBLEを要求。
     circle_button: 2
-    # L2/R2のaxis。通常=1、押下=-1。
+    # L2のaxis。通常=1、押下=-1。
     left_trigger_axis: 3
-    right_trigger_axis: 4
-    # R2 + Home: ドリブルON/OFF。
+    # R1: ドリブルON。R1 + Home: ドリブルOFF。
+    dribble_enable_button: 5
 
     left_stick_x_axis: 0  # 左スティック左右。
     left_stick_y_axis: 1  # 左スティック上下。

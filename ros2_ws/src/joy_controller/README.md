@@ -45,7 +45,8 @@
 | 最大開放 | L2 + Options | `MAX_OPEN (-1.3 rad)`へ移動。もう一度でDRIBBLEへ復帰 |
 | 非常停止 | Create + Home | 停止状態をON/OFF。ON時はDRIBBLE位置へ復帰 |
 | ベルトmode | DPAD 上 / 下 | modeを1段階増減 |
-| ドリブル | R2 + Home | ON/OFFを切替 |
+| ドリブル | R1 | ON |
+| ドリブル | R1 + Home | OFF |
 | Spring | L1 + ○ | ON/OFFを切替。最大開放中は出力しない |
 | 前後反転 | PS | `linear.x`のみ符号を反転 |
 | 取り込み・投射 | L2 + ○ | 両ベルトが目標RPMへ到達後、`INTAKE → SHOOT → DRIBBLE`を一度だけ要求 |

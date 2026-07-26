@@ -96,10 +96,10 @@ void JoyControllerNode::declare_parameters() {
   declare_parameter<int>("options_button", 9);
   declare_parameter<int>("home_button", 13);
   declare_parameter<int>("circle_button", 2);
+  declare_parameter<int>("dribble_enable_button", 5);
 
   // 軸番号
   declare_parameter<int>("left_trigger_axis", 3);
-  declare_parameter<int>("right_trigger_axis", 4);
   declare_parameter<int>("left_stick_x_axis", 0);
   declare_parameter<int>("left_stick_y_axis", 1);
   declare_parameter<int>("right_stick_x_axis", 2);
@@ -144,10 +144,10 @@ void JoyControllerNode::get_parameters() {
   get_parameter("options_button", options_button_);
   get_parameter("home_button", home_button_);
   get_parameter("circle_button", circle_button_);
+  get_parameter("dribble_enable_button", dribble_enable_button_);
 
   // 軸番号
   get_parameter("left_trigger_axis", left_trigger_axis_);
-  get_parameter("right_trigger_axis", right_trigger_axis_);
   get_parameter("left_stick_x_axis", left_stick_x_axis_);
   get_parameter("left_stick_y_axis", left_stick_y_axis_);
   get_parameter("right_stick_x_axis", right_stick_x_axis_);
@@ -251,13 +251,14 @@ void JoyControllerNode::belt_ready_callback(
 }
 void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy& msg) {
   const bool l2 = axis_value(msg, left_trigger_axis_) <= -axis_on_threshold_;
-  const bool r2 = axis_value(msg, right_trigger_axis_) <= -axis_on_threshold_;
   const double mode_change_value = axis_value(msg, mode_change_axis_);
   spring_fire_chord_on_ = button_pressed(msg, spring_fire_enable_button_) &&
                           button_pressed(msg, spring_fire_button_);
   belt_mode_up_chord_on_ = mode_change_value >= axis_on_threshold_;
   belt_mode_down_chord_on_ = mode_change_value <= -axis_on_threshold_;
-  dribble_toggle_chord_on_ = r2 && button_pressed(msg, home_button_);
+  dribble_enable_button_on_ = button_pressed(msg, dribble_enable_button_);
+  dribble_disable_chord_on_ =
+      dribble_enable_button_on_ && button_pressed(msg, home_button_);
   emergency_stop_chord_on_ =
       button_pressed(msg, create_button_) && button_pressed(msg, home_button_);
   max_open_chord_on_ = l2 && button_pressed(msg, options_button_);
@@ -286,7 +287,8 @@ void JoyControllerNode::update_previous_chord_inputs() {
   pre_spring_fire_chord_on_ = spring_fire_chord_on_;
   pre_belt_mode_up_chord_on_ = belt_mode_up_chord_on_;
   pre_belt_mode_down_chord_on_ = belt_mode_down_chord_on_;
-  pre_dribble_toggle_chord_on_ = dribble_toggle_chord_on_;
+  pre_dribble_enable_button_on_ = dribble_enable_button_on_;
+  pre_dribble_disable_chord_on_ = dribble_disable_chord_on_;
   pre_emergency_stop_chord_on_ = emergency_stop_chord_on_;
   pre_max_open_chord_on_ = max_open_chord_on_;
   pre_intake_shoot_chord_on_ = intake_shoot_chord_on_;
@@ -322,8 +324,10 @@ void JoyControllerNode::joy_callback(
   if (belt_mode_down_chord_on_ && !pre_belt_mode_down_chord_on_) {
     belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
   }
-  if (dribble_toggle_chord_on_ && !pre_dribble_toggle_chord_on_) {
-    dribble_enabled_ = !dribble_enabled_;
+  if (dribble_disable_chord_on_ && !pre_dribble_disable_chord_on_) {
+    dribble_enabled_ = false;
+  } else if (dribble_enable_button_on_ && !pre_dribble_enable_button_on_) {
+    dribble_enabled_ = true;
   }
   if (forward_reverse_button_on_ && !pre_forward_reverse_button_on_) {
     forward_reverse_ = !forward_reverse_;
