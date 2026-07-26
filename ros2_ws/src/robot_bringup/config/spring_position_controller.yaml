@@ -1,0 +1,29 @@
+spring_position_controller_node:
+  ros__parameters:
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=INTAKE_AND_SHOOT、3=GAME2_MODE。
+    operation_mode_complete_topic: /operation_mode_complete  # std_msgs/msg/Bool。DRIBBLE到達時にtrueを一度publishする。
+    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。trueでSpring停止・positionをDRIBBLEへ戻す。
+
+    fire_request_topic: /spring/fire_request  # std_msgs/msg/Bool。DRIVEだけで受理する。
+    limit_switch_topic: /limit_switches  # std_msgs/msg/UInt8MultiArray。
+    limit_switch_index: 1  # Spring装填完了に使うdata index。
+    spring_velocity_command_topic: /spring/vel_command  # std_msgs/msg/Float32 [rad/s]。
+    loading_velocity_rad_s: -5.0  # [rad/s] Spring LOAD速度。
+    fire_velocity_rad_s: -40.0  # [rad/s] Spring FIRE速度。
+    fire_duration_sec: 0.5  # [s] FIRE継続時間。
+    spring_command_period_ms: 10  # [ms] Spring速度送信周期。
+
+    position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
+    intake_and_shoot_topic: /intake_and_shoot  # std_msgs/msg/Bool。trueでINTAKE→SHOOT→DRIBBLEを開始する。
+    position_command_topic: /dribble/position_command  # std_msgs/msg/Float32 [rad]。
+    position_feedback_topic: /dribble/position_feedback  # std_msgs/msg/Float32 [rad]。
+    dribble_position_rad: 0.2  # [rad] DRIBBLE位置。
+    intake_position_rad: -1.0  # [rad] INTAKE位置。
+    shoot_position_rad: 1.3  # [rad] SHOOT位置。
+    max_open_position_rad: -1.3  # [rad] GAME2・手動MAX_OPEN位置。
+    position_tolerance_rad: 0.02  # [rad] 到達許容誤差。
+    shoot_to_dribble_delay_sec: 1.0  # [s] SHOOT到達後の保持時間。
+    move_timeout_sec: 3.0  # [s] 1回の位置移動timeout。
+    feedback_timeout_sec: 0.5  # [s] position feedback timeout。
+    position_command_period_ms: 20  # [ms] 位置目標の再送周期。
+    qos_depth: 3  # ROS 2 QoSのqueue depth。
