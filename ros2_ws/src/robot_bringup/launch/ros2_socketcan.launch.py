@@ -26,7 +26,7 @@ def generate_launch_description():
             "interval_sec": "0.1",
             "use_bus_time": "false",
             "from_can_bus_topic": "/socketcan_bridge/rx",
-            #"filters": "",
+            # "filters": "",
         }.items(),
     )
 

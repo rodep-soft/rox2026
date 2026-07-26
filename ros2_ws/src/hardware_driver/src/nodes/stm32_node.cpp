@@ -36,16 +36,16 @@ public:
     const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
       "motor_target_rpm_topics",
       {
-       "/belt/rpm_command",
-       "/dribble/rpm_command",
-       "/brushless/motor2/rpm_command"
+        "/belt/rpm_command",
+        "/dribble/rpm_command",
+        "/brushless/motor2/rpm_command"
       });
     const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
       "motor_current_rpm_topics",
       {
-      "/underbelt/current/rpm",
-      "/upperbelt/current/rpm",
-      "/dribble/current/rpm"
+        "/underbelt/current/rpm",
+        "/upperbelt/current/rpm",
+        "/dribble/current/rpm"
       });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
@@ -60,7 +60,7 @@ public:
       CAN_SUB_TOPIC, 10,
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1));
 
-      
+
     for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {
       motor_target_rpm_subs_[motor] = create_subscription<std_msgs::msg::Int16>(
         motor_target_rpm_topics[motor], 10,
@@ -105,7 +105,7 @@ private:
 
     if (protocol::is_heartbeat_response(*frame)) {
       last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-      if(is_heartbeat_timed_out_){
+      if (is_heartbeat_timed_out_) {
         RCLCPP_INFO(get_logger(), "Resuming after timeout");
         is_heartbeat_timed_out_ = false;
       }

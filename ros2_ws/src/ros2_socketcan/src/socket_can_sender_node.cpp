@@ -70,7 +70,8 @@ LNI::CallbackReturn SocketCanSenderNode::on_configure(const lc::State & state)
 
   if (!enable_fd_) {
     frames_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-      "to_can_bus", can_tx_qos, std::bind(&SocketCanSenderNode::on_frame, this, std::placeholders::_1));
+      "to_can_bus", can_tx_qos,
+      std::bind(&SocketCanSenderNode::on_frame, this, std::placeholders::_1));
   } else {
     fd_frames_sub_ = this->create_subscription<ros2_socketcan_msgs::msg::FdFrame>(
       "to_can_bus_fd", can_tx_qos, std::bind(

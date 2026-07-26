@@ -69,8 +69,8 @@ LNI::CallbackReturn SocketCanReceiverNode::on_configure(const lc::State & state)
   RCLCPP_DEBUG(this->get_logger(), "Receiver successfully configured.");
 
   auto can_rx_qos = rclcpp::QoS(rclcpp::KeepLast(30))
-  .best_effort()
-  .durability_volatile();
+    .best_effort()
+    .durability_volatile();
 
   if (!enable_fd_) {
     frames_pub_ = this->create_publisher<can_msgs::msg::Frame>("from_can_bus", can_rx_qos);
