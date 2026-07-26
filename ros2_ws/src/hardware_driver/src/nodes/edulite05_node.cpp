@@ -20,12 +20,18 @@ public:
     declare_parameters();
     get_parameters();
 
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
+  	.reliable()
+  	.durability_volatile();
+    auto can_qos = rclcpp::QoS(rclcpp::KeepLast(30))
+	  .best_effort()
+	  .durability_volatile();
     cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
       sub_cmd_topic_name_, 1,
       std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
-    can_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_can_topic_name_, 10);
+    can_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_can_topic_name_, can_qos_pub);
     can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-      sub_can_topic_name_, 10,
+      sub_can_topic_name_, can_qos,
       std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1));
     fb_pub_ = this->create_publisher<std_msgs::msg::Float32>(pub_fb_topic_name_, 10);
 

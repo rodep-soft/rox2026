@@ -28,7 +28,7 @@ constexpr uint32_t MOTOR_CURRENT_RPM_BASE = 0x330;
 constexpr uint32_t PID_ACK_BASE = 0x340;
 
 //モーター数
-constexpr std::size_t MOTOR_NUM = 3;
+constexpr std::size_t MOTOR_NUM = 1;
 
 /// @brief ブラシレスモーター用のcanFrameの生成
 /// @param motor　ブラシレスモーターのインデックス
