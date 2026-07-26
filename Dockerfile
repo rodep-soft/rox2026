@@ -28,7 +28,6 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     usbutils \
     can-utils \
-    ros-humble-ros2-socketcan \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
     evtest \

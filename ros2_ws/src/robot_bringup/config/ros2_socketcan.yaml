@@ -1,0 +1,30 @@
+/socketcan_bridge/socket_can_receiver:
+  ros__parameters:
+    interface: can0
+    enable_can_fd: false
+    interval_sec: 0.1
+    use_bus_time: false
+    filters: "80000A00:8000FF00"
+
+    qos_overrides:
+      /socketcan_bridge/rx:
+        publisher:
+          history: keep_last
+          depth: 10
+          reliability: best_effort
+          durability: volatile
+
+/socketcan_bridge/socket_can_sender:
+  ros__parameters:
+    interface: can0
+    enable_can_fd: false
+    enable_frame_loopback: false
+    timeout_sec: 0.01
+
+    qos_overrides:
+      /socketcan_bridge/tx:
+        subscription:
+          history: keep_last
+          depth: 10
+          reliability: reliable
+          durability: volatile

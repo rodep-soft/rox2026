@@ -22,53 +22,45 @@ namespace stm32_driver
 
 using namespace std::chrono_literals;
 
+constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
+constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
+
 class Stm32Node : public rclcpp::Node
 {
 public:
   Stm32Node()
   : Node("stm32_driver_node"),
-    current_rpm_{},
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now()),
-    heartbeat_timed_out_(false)
+    is_heartbeat_timed_out_(false)
   {
-    const auto can_pub_topic = declare_parameter<std::string>(
-      "can_pub_topic",
-      "/socketcan_bridge/tx");
-    const auto can_sub_topic = declare_parameter<std::string>(
-      "can_sub_topic",
-      "/socketcan_bridge/rx");
     const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
       "motor_target_rpm_topics",
       {
-        "/belt/rpm_command",
-        "/dribble/rpm_command",
-        "/brushless/motor2/rpm_command"
+       "/belt/rpm_command",
+       "/dribble/rpm_command",
+       "/brushless/motor2/rpm_command"
       });
     const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
       "motor_current_rpm_topics",
       {
-        "/underbelt/current/rpm",
-        "/upperbelt/current/rpm",
-        "/dribble/current/rpm"
+      "/underbelt/current/rpm",
+      "/upperbelt/current/rpm",
+      "/dribble/current/rpm"
       });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
-    const auto publish_period_ms = declare_parameter<int64_t>("publish_period_ms", 10);
 
     const auto timeout_ms = declare_parameter<int64_t>("timeout_ms", 500);
 
-    if (keep_alive_period_ms <= 0 || publish_period_ms <= 0 || timeout_ms <= 0) {
-      throw std::invalid_argument("timer parameters must be greater than zero");
-    }
-
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(can_pub_topic, 10);
+    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, 10);
 
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      can_sub_topic, 10,
+      CAN_SUB_TOPIC, 10,
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1));
 
+      
     for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {
       motor_target_rpm_subs_[motor] = create_subscription<std_msgs::msg::Int16>(
         motor_target_rpm_topics[motor], 10,
@@ -82,8 +74,6 @@ public:
     led_cmd_sub_ = create_subscription<std_msgs::msg::UInt8>(
       led_cmd_topic, 10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
-
-    current_rpm_msg_.data.resize(protocol::MOTOR_NUM);
 
     limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_sw_topic, 10);
 
@@ -115,7 +105,10 @@ private:
 
     if (protocol::is_heartbeat_response(*frame)) {
       last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-      heartbeat_timed_out_ = false;
+      if(is_heartbeat_timed_out_){
+        RCLCPP_INFO(get_logger(), "Resuming after timeout");
+        is_heartbeat_timed_out_ = false;
+      }
       return;
     }
 
@@ -159,9 +152,9 @@ private:
 
     const auto elapsed = std::chrono::steady_clock::now() - last_heartbeat_from_stm32_;
     if (elapsed > heartbeat_timeout_) {
-      if (!heartbeat_timed_out_) {
+      if (!is_heartbeat_timed_out_) {
         RCLCPP_WARN(get_logger(), "STM32 heartbeat timed out");
-        heartbeat_timed_out_ = true;
+        is_heartbeat_timed_out_ = true;
       }
     }
   }
@@ -175,13 +168,10 @@ private:
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr led_cmd_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;
-  rclcpp::TimerBase::SharedPtr publish_timer_;
 
-  std::array<float, protocol::MOTOR_NUM> current_rpm_;
-  std_msgs::msg::Float32MultiArray current_rpm_msg_;
   std::chrono::steady_clock::time_point last_heartbeat_from_stm32_;
   std::chrono::milliseconds heartbeat_timeout_;
-  bool heartbeat_timed_out_;
+  bool is_heartbeat_timed_out_;
 };
 
 } // namespace stm32_driver
