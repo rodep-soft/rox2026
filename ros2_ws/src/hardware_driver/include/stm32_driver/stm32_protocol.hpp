@@ -21,7 +21,7 @@ constexpr uint32_t MOTOR_TARGET_RPM_BASE = 0x230;
 constexpr uint32_t MOTOR_PID_BASE = 0x240;
 
 //リミットスイッチデータ受け取り(STM32ファームの送信IDに合わせる)
-constexpr uint32_t LIMIT_SWITCH_STATE = 0x202;
+constexpr uint32_t LIMIT_SWITCH_STATE = 0x310;
 //ブラシレスモータPRM受信用ベース [0x230 , 0x231 , 0x232]
 constexpr uint32_t MOTOR_CURRENT_RPM_BASE = 0x330;
 //PIDゲイン設定完了ACK
