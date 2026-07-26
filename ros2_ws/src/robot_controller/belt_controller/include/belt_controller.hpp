@@ -30,7 +30,9 @@ private:
   double target_rpm_from_mode(uint8_t mode);
   bool is_rpm_valid(double rpm) const;
   bool is_belt_ready(
-    double target_rpm, const rclcpp::Time & current_time);
+    double underbelt_target_rpm,
+    double upperbelt_target_rpm,
+    const rclcpp::Time & current_time);
 
   bool is_configuration_valid_{true};
   uint8_t belt_mode_{stop_mode_};

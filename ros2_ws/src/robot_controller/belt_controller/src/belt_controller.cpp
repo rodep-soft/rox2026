@@ -138,23 +138,31 @@ void BeltControllerNode::timer_callback()
   rpm_command.data = static_cast<float>(
     is_configuration_valid_ ? target_rpm_from_mode(belt_mode_) : 0.0);
   underbelt_rpm_pub_->publish(rpm_command);
+
+  const double underbelt_target_rpm = rpm_command.data;
+  rpm_command.data = -rpm_command.data;
   upperbelt_rpm_pub_->publish(rpm_command);
 
   std_msgs::msg::Bool ready;
-  ready.data = is_belt_ready(rpm_command.data, now());
+  ready.data = is_belt_ready(
+    underbelt_target_rpm,
+    rpm_command.data,
+    now());
   belt_ready_pub_->publish(ready);
 }
 
 bool BeltControllerNode::is_belt_ready(
-  double target_rpm, const rclcpp::Time & current_time)
+  double underbelt_target_rpm,
+  double upperbelt_target_rpm,
+  const rclcpp::Time & current_time)
 {
   const bool within_tolerance =
-    target_rpm != stop_rpm_ &&
+    underbelt_target_rpm != stop_rpm_ &&
     underbelt_feedback_received_ &&
     upperbelt_feedback_received_ &&
-    std::abs(underbelt_current_rpm_ - target_rpm) <=
+    std::abs(underbelt_current_rpm_ - underbelt_target_rpm) <=
     ready_tolerance_rpm_ &&
-    std::abs(upperbelt_current_rpm_ - target_rpm) <=
+    std::abs(upperbelt_current_rpm_ - upperbelt_target_rpm) <=
     ready_tolerance_rpm_;
 
   if (!within_tolerance) {
