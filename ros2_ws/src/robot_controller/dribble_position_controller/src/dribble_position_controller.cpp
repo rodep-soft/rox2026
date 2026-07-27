@@ -109,7 +109,8 @@ void DribblePositionController::position_feedback_callback(
   if (std::abs(static_cast<double>(msg->data) - target_position_rad_) > position_tolerance_rad_) {
     return;
   }
-  if (state_ == State::INTAKE) {set_target_position(shoot_position_rad_, State::SHOOT);
+  if (state_ == State::INTAKE) {
+    set_target_position(shoot_position_rad_, State::SHOOT);
   } else if (state_ == State::SHOOT) {
     state_ = State::HOLD_SHOOT;
     phase_start_time_ = now();
