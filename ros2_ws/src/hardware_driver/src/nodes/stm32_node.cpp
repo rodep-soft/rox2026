@@ -41,16 +41,16 @@ public:
     const auto motor_target_rpm_topics = declare_parameter<std::vector<std::string>>(
       "motor_target_rpm_topics",
       {
-        "/underbelt/target/rpm",
-        "/upperbelt/target/rpm",
-        "/dribble/target/rpm"
+        "/stm32/underbelt/target/rpm",
+        "/stm32/upperbelt/target/rpm",
+        "/stm32/dribble/target/rpm"
       });
     const auto motor_current_rpm_topic = declare_parameter<std::vector<std::string>>(
       "motor_current_rpm_topics",
       {
-        "/underbelt/current/rpm",
-        "/upperbelt/current/rpm",
-        "/dribble/current/rpm"
+        "/stm32/underbelt/current/rpm",
+        "/stm32/upperbelt/current/rpm",
+        "/stm32/dribble/current/rpm"
       });
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
     const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limit_switches");

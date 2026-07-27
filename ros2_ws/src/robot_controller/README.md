@@ -13,6 +13,8 @@ flowchart LR
   position[dribble_position_controller]
   belt[belt_controller_node]
   stm_driver[stm_driver_node]
+  under_vesc[underbelt VESC ID 51]
+  upper_vesc[upperbelt VESC ID 52]
   edulite_driver[edulite05_driver_node]
   bridge[ros2socketcan_bridge]
 
@@ -25,8 +27,11 @@ flowchart LR
 
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| edulite_driver
   spring -->|/spring/vel_command\nstd_msgs/msg/Float32| edulite_driver
-  dribble -->|/dribble/target/rpm\nstd_msgs/msg/Int16| stm_driver
-  belt -->|/underbelt/target/rpm, /upperbelt/target/rpm\nstd_msgs/msg/Int16| stm_driver
+  dribble -->|/stm32/dribble/target/rpm\nstd_msgs/msg/Int16| stm_driver
+  belt -->|/underbelt/target/rpm\nstd_msgs/msg/Float32| under_vesc
+  belt -->|/upperbelt/target/rpm\nstd_msgs/msg/Float32| upper_vesc
+  under_vesc -->|/underbelt/current/rpm\nstd_msgs/msg/Float32| belt
+  upper_vesc -->|/upperbelt/current/rpm\nstd_msgs/msg/Float32| belt
   position -->|/dribble/position_command\nstd_msgs/msg/Float32| edulite_driver
   edulite_driver -->|/dribble/position_feedback\nstd_msgs/msg/Float32| position
   stm_driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
@@ -37,7 +42,13 @@ flowchart LR
 
 `robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様はdriver nodeが担当します。
 
-`stm32_driver_node`は`/underbelt/target/rpm`、`/upperbelt/target/rpm`、`/dribble/target/rpm`をsubscribeし、STM32向けCANフレームへ変換して送信します。また、STM32から受けたリミットスイッチ状態を`/limit_switches`(`std_msgs/msg/UInt8MultiArray`、1バイトをbitごとに1スイッチとして展開)へpublishします。`edulite05_node`はメカナム各輪の速度指令、ばね速度指令、ドリブル位置指令を担当します。いずれも`robot_controller`にはCAN送受信処理を書きません。
+underbelt、upperbeltはVESC driverを通して赤ブラシへ指令します。
+underbeltはVESC ID 51、upperbeltはVESC ID 52です。
+dribble回転モータはSTM32 driverへRPM指令を送り、STM32からCANで制御します。
+`stm32_driver_node`はdribble回転、heartbeat、リミットスイッチを担当します。
+`edulite05_node`はメカナム各輪の速度指令、ばね速度指令、
+ドリブル位置指令を担当します。いずれも`robot_controller`にはCAN送受信処理を
+書きません。
 
 ## 操作指令topic
 
@@ -93,15 +104,25 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
 | subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
-| subscribe | `/underbelt/current/rpm` | `std_msgs/msg/Int16` | under側の実回転数 `[RPM]` |
-| subscribe | `/upperbelt/current/rpm` | `std_msgs/msg/Int16` | upper側の実回転数 `[RPM]` |
-| publish | `/underbelt/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送るunder側目標回転数 `[RPM]` |
-| publish | `/upperbelt/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送るupper側目標回転数 `[RPM]` |
+| subscribe | `/underbelt/current/rpm` | `std_msgs/msg/Float32` | VESC ID 51から受けるunder側実回転数 `[RPM]` |
+| subscribe | `/upperbelt/current/rpm` | `std_msgs/msg/Float32` | VESC ID 52から受けるupper側実回転数 `[RPM]` |
+| publish | `/underbelt/target/rpm` | `std_msgs/msg/Float32` | VESC ID 51へ送るunder側目標回転数 `[RPM]` |
+| publish | `/upperbelt/target/rpm` | `std_msgs/msg/Float32` | VESC ID 52へ送るupper側目標回転数 `[RPM]` |
 | publish | `/belt/ready` | `std_msgs/msg/Bool` | 両ベルトが目標RPM付近に一定時間到達した状態 |
 
 `belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_mode`が`STOP`の場合は`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
 
 `/belt/ready`は、STOP以外のmodeでunder/upper両方の実RPMが目標RPMの`ready_tolerance_rpm`以内に入り、`ready_hold_sec`継続した場合だけ`true`です。各値と指令周期は`robot_bringup/config/belt_controller.yaml`で設定できます。`stop_rpm`は安全のため`0 RPM`固定です。
+
+既定の目標回転数は`LEVEL_1=1000 RPM`、`LEVEL_2=2000 RPM`、
+`LEVEL_3=3000 RPM`です。beltだけを実機確認する場合は、次のlaunchを使います。
+
+```bash
+ros2 launch robot_bringup robot_belt.launch.py
+```
+
+このlaunchが起動するのは、`joy_node`、`joy_controller`、
+`belt_controller_node`、SocketCAN bridge、VESC ID 51・52のdriverです。
 
 ## `dribble_position_controller`
 
@@ -133,6 +154,9 @@ SHOOT指令: INTAKE → (feedback到達) → SHOOT → (shoot_to_dribble_delay_s
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
 | subscribe | `/dribble/enabled` | `std_msgs/msg/Bool` | ドリブルのON/OFFを受信 |
-| publish | `/dribble/target/rpm` | `std_msgs/msg/Int16` | hardware_driver(STM32)へ送る目標回転数 `[RPM]` |
+| publish | `/stm32/dribble/target/rpm` | `std_msgs/msg/Int16` | STM32 driverへ送る目標回転数 `[RPM]` |
 
-`true`なら`on_rpm`、`false`なら`0 RPM`を`command_period_ms`周期でpublishします。`on_rpm`と指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
+`true`なら`on_rpm`、`false`なら`0 RPM`を`command_period_ms`周期でpublishします。
+STM32から受け取った実回転数は`/stm32/dribble/current/rpm`
+（`std_msgs/msg/Int16`）へpublishされます。`on_rpm`と指令周期は
+`robot_bringup/config/dribble_controller.yaml`で設定できます。

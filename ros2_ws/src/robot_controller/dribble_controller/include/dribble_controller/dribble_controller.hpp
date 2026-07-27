@@ -21,7 +21,7 @@ private:
 
   bool is_configuration_valid_{true};
   bool dribble_enabled_{false};
-  double on_rpm_{600.0};
+  int on_rpm_{600};
   int command_period_ms_{10};
   int qos_depth_{1};
   std::string dribble_enabled_topic_;
