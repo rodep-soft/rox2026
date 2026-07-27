@@ -12,19 +12,22 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class JoyControllerNode : public rclcpp::Node {
- public:
+class JoyControllerNode : public rclcpp::Node
+{
+public:
   JoyControllerNode();
 
- private:
-  enum class BeltRpmMode : uint8_t {
+private:
+  enum class BeltRpmMode : uint8_t
+  {
     STOP = 1,
     LEVEL_1,
     LEVEL_2,
     LEVEL_3,
   };
 
-  enum class DribblePositionMode : uint8_t {
+  enum class DribblePositionMode : uint8_t
+  {
     DRIBBLE = 0,
     SHOOT = 1,
     MAX_OPEN = 2,
@@ -35,10 +38,10 @@ class JoyControllerNode : public rclcpp::Node {
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
   void belt_ready_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void control_timer_callback();
-  void process_joy_message(const sensor_msgs::msg::Joy& msg);
+  void process_joy_message(const sensor_msgs::msg::Joy & msg);
 
-  static bool button_pressed(const sensor_msgs::msg::Joy& msg, int index);
-  static double axis_value(const sensor_msgs::msg::Joy& msg, int index);
+  static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
+  static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
   double apply_axis_deadzone(double value) const;
   static double apply_axis_limit(double value, double limit);
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
@@ -49,7 +52,7 @@ class JoyControllerNode : public rclcpp::Node {
   void publish_emergency_stop();
   void publish_state_commands();
   void publish_stop_commands();
-  void update_chord_inputs(const sensor_msgs::msg::Joy& msg);
+  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
   bool handle_emergency_stop();
   void update_previous_chord_inputs();
 
@@ -124,18 +127,18 @@ class JoyControllerNode : public rclcpp::Node {
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      belt_ready_subscription_;
+    belt_ready_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
-      mecanum_cmd_vel_publisher_;
+    mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr
-      dribble_enabled_publisher_;
+    dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr
-      dribble_position_mode_publisher_;
+    dribble_position_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr
-      intake_shoot_request_publisher_;
+    intake_shoot_request_publisher_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };
 

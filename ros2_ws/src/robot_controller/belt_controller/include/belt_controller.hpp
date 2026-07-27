@@ -9,11 +9,12 @@
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class BeltControllerNode : public rclcpp::Node {
- public:
+class BeltControllerNode : public rclcpp::Node
+{
+public:
   BeltControllerNode();
 
- private:
+private:
   static constexpr uint8_t stop_mode_{1};
   static constexpr uint8_t level_1_mode_{2};
   static constexpr uint8_t level_2_mode_{3};
@@ -27,8 +28,9 @@ class BeltControllerNode : public rclcpp::Node {
   void timer_callback();
   int target_rpm_from_mode(uint8_t mode);
   bool is_rpm_valid(int rpm) const;
-  bool is_belt_ready(int underbelt_target_rpm, int upperbelt_target_rpm,
-                     const rclcpp::Time& current_time);
+  bool is_belt_ready(
+    int underbelt_target_rpm, int upperbelt_target_rpm,
+    const rclcpp::Time & current_time);
 
   bool is_configuration_valid_{true};
   uint8_t belt_mode_{stop_mode_};

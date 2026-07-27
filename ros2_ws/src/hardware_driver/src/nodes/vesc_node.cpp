@@ -13,26 +13,30 @@
 #include "std_msgs/msg/int16.hpp"
 #include "vesc_driver/vesc_protocol.hpp"
 
-namespace vesc_driver {
+namespace vesc_driver
+{
 
 using namespace std::chrono_literals;
 
-class Node : public rclcpp::Node {
- public:
-  Node() : rclcpp::Node("vesc_driver_node") {
+class Node : public rclcpp::Node
+{
+public:
+  Node()
+  : rclcpp::Node("vesc_driver_node")
+  {
     const auto can_pub_topic =
-        declare_parameter<std::string>("can_pub_topic", "/socketcan_bridge/tx");
+      declare_parameter<std::string>("can_pub_topic", "/socketcan_bridge/tx");
     const auto can_sub_topic =
-        declare_parameter<std::string>("can_sub_topic", "/socketcan_bridge/rx");
+      declare_parameter<std::string>("can_sub_topic", "/socketcan_bridge/rx");
     const auto target_rpm_topic =
-        declare_parameter<std::string>("target_rpm_topic", "/vesc/target/rpm");
+      declare_parameter<std::string>("target_rpm_topic", "/vesc/target/rpm");
     const auto current_rpm_topic = declare_parameter<std::string>(
-        "current_rpm_topic", "/vesc/current/rpm");
+      "current_rpm_topic", "/vesc/current/rpm");
     const auto controller_id = declare_parameter<int64_t>("controller_id", 1);
     const auto command_timeout_ms =
-        declare_parameter<int64_t>("command_timeout_ms", 500);
+      declare_parameter<int64_t>("command_timeout_ms", 500);
     const auto feedback_timeout_ms =
-        declare_parameter<int64_t>("feedback_timeout_ms", 500);
+      declare_parameter<int64_t>("feedback_timeout_ms", 500);
     max_rpm_ = declare_parameter<int>("max_rpm", 10000);
 
     controller_id_ = static_cast<uint8_t>(controller_id);
@@ -45,22 +49,25 @@ class Node : public rclcpp::Node {
     rpm_pub_ = create_publisher<std_msgs::msg::Int16>(current_rpm_topic, 10);
 
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-        can_sub_topic, 10,
-        std::bind(&Node::can_callback, this, std::placeholders::_1));
+      can_sub_topic, 10,
+      std::bind(&Node::can_callback, this, std::placeholders::_1));
     target_rpm_sub_ = create_subscription<std_msgs::msg::Int16>(
-        target_rpm_topic, 10,
-        std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
+      target_rpm_topic, 10,
+      std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
     timer_ = create_wall_timer(20ms, std::bind(&Node::timer_callback, this));
 
-    RCLCPP_INFO(get_logger(), "VESC driver started: controller_id=%u",
-                static_cast<unsigned int>(controller_id_));
+    RCLCPP_INFO(
+      get_logger(), "VESC driver started: controller_id=%u",
+      static_cast<unsigned int>(controller_id_));
   }
 
- private:
-  void can_callback(const can_msgs::msg::Frame::SharedPtr frame) {
+private:
+  void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
+  {
     protocol::Status1 status{};
     if (!protocol::decode_status_1(*frame, status) ||
-        status.controller_id != controller_id_) {
+      status.controller_id != controller_id_)
+    {
       return;
     }
 
@@ -69,7 +76,8 @@ class Node : public rclcpp::Node {
     feedback_received_ = true;
   }
 
-  void target_rpm_callback(const std_msgs::msg::Int16::SharedPtr msg) {
+  void target_rpm_callback(const std_msgs::msg::Int16::SharedPtr msg)
+  {
     if (std::abs(static_cast<int>(msg->data)) > max_rpm_) {
       RCLCPP_WARN(get_logger(), "Rejected invalid target RPM: %d", msg->data);
       return;
@@ -80,16 +88,17 @@ class Node : public rclcpp::Node {
     command_received_ = true;
   }
 
-  void timer_callback() {
+  void timer_callback()
+  {
     const auto now = std::chrono::steady_clock::now();
 
     if (command_received_) {
       const bool command_timed_out =
-          now - last_command_time_ > command_timeout_;
+        now - last_command_time_ > command_timeout_;
       const int mechanical_rpm = command_timed_out ? 0 : target_rpm_;
       const double erpm = mechanical_rpm * pole_pairs_;
       can_pub_->publish(
-          protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
+        protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
     }
 
     std_msgs::msg::Int16 feedback;
@@ -101,11 +110,12 @@ class Node : public rclcpp::Node {
     rpm_pub_->publish(feedback);
   }
 
-  static int16_t rpm_to_int16(double rpm) {
+  static int16_t rpm_to_int16(double rpm)
+  {
     const auto rounded = static_cast<int>(std::lround(rpm));
     return static_cast<int16_t>(std::clamp(
-        rounded, static_cast<int>(std::numeric_limits<int16_t>::min()),
-        static_cast<int>(std::numeric_limits<int16_t>::max())));
+             rounded, static_cast<int>(std::numeric_limits<int16_t>::min()),
+             static_cast<int>(std::numeric_limits<int16_t>::max())));
   }
 
   uint8_t controller_id_{1};
@@ -131,7 +141,8 @@ class Node : public rclcpp::Node {
 
 }  // namespace vesc_driver
 
-int main(int argc, char** argv) {
+int main(int argc, char ** argv)
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<vesc_driver::Node>());
   rclcpp::shutdown();
