@@ -1,11 +1,5 @@
 # 修正・実装TODO
 
-## [重大] dribble実速度確認後のばね射出
-
-- 現在は、dribble_controllerが減速指令を`0 rad/s`へ到達させたことを停止完了としている。
-- VESC ID 50の`/dribble/current/rpm`を購読し、実測速度が0付近であることを確認してから`spring_controller`が`FIRE`状態へ遷移するようにする。
-- springで射出するときに、dribbleの回転数を必ず0にしなくてもよい可能性があるため、実機で必要性を確認する。
-
 ## [重大] spring LOAD状態の巻取りタイムアウト
 
 - 現在は`LOAD`状態でリミットスイッチがONになるまで、ばねの巻取り速度を出し続ける。
