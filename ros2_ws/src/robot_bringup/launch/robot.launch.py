@@ -25,7 +25,7 @@ def generate_launch_description():
         launch_arguments={
             "can_interface": LaunchConfiguration("can_interface"),
             "use_vesc": "true",
-            "use_dribble_vesc": "true",
+            "use_dribble_vesc": "false",
         }.items(),
     )
 
