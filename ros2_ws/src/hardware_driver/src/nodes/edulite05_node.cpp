@@ -2,6 +2,8 @@
 #include "can_msgs/msg/frame.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include <array>
+#include <cstdint>
+#include <string>
 #include <vector>
 #include "edulite05_driver/edulite05_protocol.hpp"
 #include <thread>
@@ -21,18 +23,22 @@ public:
     get_parameters();
 
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
-  	.reliable()
-  	.durability_volatile();
-    auto can_qos = rclcpp::QoS(rclcpp::KeepLast(30))
-	  .best_effort()
-	  .durability_volatile();
+      .reliable()
+      .durability_volatile();
+    auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(30))
+      .best_effort()
+      .durability_volatile();
+
     cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
       sub_cmd_topic_name_, 1,
       std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
     can_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_can_topic_name_, can_qos_pub);
+    const auto can_sub_options = make_can_subscription_options();
     can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-      sub_can_topic_name_, can_qos,
-      std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1));
+      sub_can_topic_name_, can_qos_sub,
+      std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1),
+      can_sub_options);
+    log_content_filter_status();
     fb_pub_ = this->create_publisher<std_msgs::msg::Float32>(pub_fb_topic_name_, 10);
 
     init_motor();
@@ -77,6 +83,51 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr fb_pub_;  // Publisher for feedback messages
   std::unique_ptr<Ed05CanframeCreater> motor_;
 
+  rclcpp::SubscriptionOptions make_can_subscription_options() const
+  {
+    constexpr uint32_t BOOT_RESPONSE_COMM_TYPE = 0x00;
+    constexpr uint32_t FEEDBACK_COMM_TYPE = 0x02;
+    constexpr uint32_t HOST_ID = 0xFD;
+
+    rclcpp::SubscriptionOptions options;
+    options.content_filter_options.filter_expression =
+      "id = %0 OR id = %1 OR id = %2 OR id = %3 OR id = %4";
+
+    auto & parameters = options.content_filter_options.expression_parameters;
+    parameters.reserve(5);
+    parameters.push_back(
+      std::to_string(
+        (BOOT_RESPONSE_COMM_TYPE << 24) |
+        (static_cast<uint32_t>(motor_id_) << 8) |
+        HOST_ID));
+
+    // Bits 23..22 contain the motor mode. The callback uses all four modes.
+    // Fault-free feedback has zero in the fault bits (21..16).
+    for (uint32_t mode = 0; mode < 4; ++mode) {
+      parameters.push_back(
+        std::to_string(
+          (FEEDBACK_COMM_TYPE << 24) |
+          (mode << 22) |
+          (static_cast<uint32_t>(motor_id_) << 8) |
+          HOST_ID));
+    }
+    return options;
+  }
+
+  void log_content_filter_status() const
+  {
+    if (can_sub_->is_cft_enabled()) {
+      RCLCPP_INFO(
+        get_logger(), "CAN content filter enabled for motor_id=%u",
+        static_cast<unsigned int>(motor_id_));
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "CAN content filter is not supported by the current RMW; "
+        "motor_id=%u will be filtered in the callback",
+        static_cast<unsigned int>(motor_id_));
+    }
+  }
   void init_motor()
   {
     if (runmode_ == "Velocity") {

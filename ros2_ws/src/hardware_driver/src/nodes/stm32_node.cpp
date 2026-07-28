@@ -53,20 +53,41 @@ public:
 
     const auto timeout_ms = declare_parameter<int64_t>("timeout_ms", 500);
 
- 
+
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
-     
+
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
-  	.reliable()
-  	.durability_volatile();
-    auto can_qos = rclcpp::QoS(rclcpp::KeepLast(30))
-        .best_effort()
-	.durability_volatile();
+      .reliable()
+      .durability_volatile();
+    auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(30))
+      .best_effort()
+      .durability_volatile();
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
 
+    rclcpp::SubscriptionOptions can_sub_options;
+    can_sub_options.content_filter_options.filter_expression =
+      "id = %0 OR id = %1 OR id BETWEEN %2 AND %3";
+
+    can_sub_options.content_filter_options.expression_parameters = {
+      std::to_string(protocol::HEARTBEAT_FROM_STM),
+      std::to_string(protocol::LIMIT_SWITCH_STATE),
+      std::to_string(protocol::MOTOR_CURRENT_RPM_BASE),
+      std::to_string(protocol::MOTOR_CURRENT_RPM_BASE + protocol::MOTOR_NUM - 1)
+    };
+
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      CAN_SUB_TOPIC, can_qos,
-      std::bind(&Stm32Node::can_callback, this, std::placeholders::_1));
+      CAN_SUB_TOPIC, can_qos_sub,
+      std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
+      can_sub_options);
+      
+    if (can_sub_->is_cft_enabled()) {
+      RCLCPP_INFO(get_logger(), "CAN content filter enabled for STM32");
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "CAN content filter is not supported by the current RMW; "
+        "STM32 CAN IDs will be filtered in the callback");
+    }
 
 
     for (std::size_t motor = 0; motor < protocol::MOTOR_NUM; ++motor) {

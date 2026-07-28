@@ -45,17 +45,39 @@ public:
     feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
 
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
-  	.reliable()
-  	.durability_volatile();
-    auto can_qos = rclcpp::QoS(rclcpp::KeepLast(30))
-	.best_effort()
-	.durability_volatile();
+      .reliable()
+      .durability_volatile();
+    auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(30))
+      .best_effort()
+      .durability_volatile();
+
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
     rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
 
+    rclcpp::SubscriptionOptions can_sub_options;
+    can_sub_options.content_filter_options.filter_expression = "id = %0";
+    can_sub_options.content_filter_options.expression_parameters = {
+      std::to_string(
+        (protocol::STATUS_1_ID << 8) |
+        static_cast<uint32_t>(controller_id_))
+    };
+
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      CAN_SUB_TOPIC, can_qos,
-      std::bind(&Node::can_callback, this, std::placeholders::_1));
+      CAN_SUB_TOPIC, can_qos_sub,
+      std::bind(&Node::can_callback, this, std::placeholders::_1),
+      can_sub_options);
+    if (can_sub_->is_cft_enabled()) {
+      RCLCPP_INFO(
+        get_logger(), "CAN content filter enabled for controller_id=%u",
+        static_cast<unsigned int>(controller_id_));
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "CAN content filter is not supported by the current RMW; "
+        "controller_id=%u will be filtered in the callback",
+        static_cast<unsigned int>(controller_id_));
+    }
+
     target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
       target_rpm_topic, 10,
       std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
