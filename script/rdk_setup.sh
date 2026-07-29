@@ -57,7 +57,6 @@ sudo apt install -y \
   vim \
   git \
   gh \
-
   curl \
   wget \
   unzip \
