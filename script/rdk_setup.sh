@@ -1,13 +1,55 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# shが実行できるか確認
 if [ "$EUID" -eq 0 ]; then
   echo "Do not run this script with sudo." >&2
   echo "Run: ./setup.sh" >&2
   exit 1
 fi
-echo "RDK X5 initial setup start."
 
+# RDKのログインパスワードの設定
+read -rp "Change login/SSH password now? [y/N]: " PASS_CONFIRM
+if [[ "$PASS_CONFIRM" =~ ^[Yy]$ ]]; then
+  passwd
+else
+  echo "Skipping password change."
+fi
+
+# Wifiの接続
+echo
+read -rsp "RoDEP-5Ghz Wi-Fi Password: " WIFI_PASS
+echo
+sudo nmcli device wifi connect "RoDEP-5Ghz" password "$WIFI_PASS"
+
+# eth0の設定
+if nmcli connection show eth0-static >/dev/null 2>&1; then
+    echo "Updating eth0-static profile..."
+    sudo nmcli connection modify eth0-static \
+        ipv4.method manual \
+        ipv4.addresses 192.168.127.10/24 \
+        ipv6.method ignore \
+        ipv4.gateway "" \
+        ipv4.dns "" \
+        ipv4.never-default yes \
+        connection.autoconnect yes
+else
+    echo "Creating eth0-static profile..."
+    sudo nmcli connection add \
+        type ethernet \
+        ifname eth0 \
+        con-name eth0-static \
+        ipv4.method manual \
+        ipv4.addresses 192.168.127.10/24 \
+        ipv6.method ignore \
+        ipv4.gateway "" \
+        ipv4.dns "" \
+        ipv4.never-default yes \
+        autoconnect yes
+fi
+
+# 各種パッケージのインストールとアップデート
+echo "RDK X5 initial setup start."
 sudo apt update
 sudo apt install -y \
   ca-certificates \
@@ -70,8 +112,9 @@ sudo apt install -y \
 #usbutils             :lsusbコマンド用
 #can-utils            :candumpなど用
 #device-tree-compiler :dtcコマンド用
+#bluez                :bluetoothの使用
 
-#  SSHサーバの有効化
+# SSHサーバの有効化
 sudo systemctl enable --now ssh
 if sudo systemctl is-active --quiet ssh; then
   echo "SSH server is active."
@@ -79,8 +122,31 @@ else
   echo "Error: SSH server failed to start." >&2
   exit 1
 fi
+# bluetoothの有効化
+sudo systemctl enable --now bluetooth
+if sudo systemctl is-active --quiet bluetooth; then
+  echo "Bluetooth service is active."
+else
+  echo "Warning: Bluetooth service failed to start." >&2
+fi
 
-# CAN
+# Tailscaleのインストール
+# ====================================================
+if ! command -v tailscale >/dev/null 2>&1; then
+    echo "Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+else
+    echo "Tailscale is already installed."
+fi
+sudo systemctl enable --now tailscaled
+if sudo systemctl is-active --quiet tailscaled; then
+    echo "Tailscale service is active."
+else
+    echo "Error: Tailscale service failed to start." >&2
+    exit 1
+fi
+
+# CANについてsystemmdに登録する
 # ====================================================
 CAN_INTERFACE="can0"
 CAN_BITRATE="1000000"
@@ -96,7 +162,7 @@ BITRATE="${CAN_BITRATE}"
 RESTART_MS="${CAN_RESTART_MS}"
 TX_QUEUE_LEN="${CAN_TX_QUEUE_LEN}"
 
-for i in {1..20}; do
+for i in {1..60}; do
   if ip link show "\${INTERFACE}" > /dev/null 2>&1; then
     break
   fi
@@ -147,6 +213,8 @@ else
   exit 1
 fi
 #=======================================================
+
+# ROSが既にインストールされているか確認
 ROS_SETUP="/opt/ros/humble/setup.bash"
 if [ ! -f "$ROS_SETUP" ]; then
   echo "Error: ROS 2 Humble is not installed." >&2
@@ -161,13 +229,12 @@ if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
 fi
 rosdep update
 
-#bashrcへ登録
+#bashrcへROSの環境読み込み，ccacheの定義，CANのエイリアスの登録をする
 BASHRC="$HOME/.bashrc"
 CONFIG_BEGIN="# >>> RDK X5 setup >>>"
 if ! grep -Fq "$CONFIG_BEGIN" "$BASHRC"; then
   cat >>"$BASHRC" <<'EOF'
 # >>> RDK X5 setup >>>
-
 
 if [ -f /opt/ros/humble/setup.bash ]; then
   source /opt/ros/humble/setup.bash
@@ -175,12 +242,16 @@ fi
 if [ -f "$HOME/rox2026/ros2_ws/install/setup.bash" ]; then
   source "$HOME/rox2026/ros2_ws/install/setup.bash"
 fi
+
+# use ccache
 export CCACHE_DIR="$HOME/.ccache"
 
+# CAN
 alias canshow='ip -details -statistics link show can0'
 alias canrestart='sudo systemctl restart can0.service'
 alias canstatus='systemctl status can0.service'
 
+# <<< RDK X5 setup <<<
 EOF
 fi
 
@@ -197,6 +268,24 @@ if [ -d "$ROS2_WS/src" ]; then
     --rosdistro humble \
     -r \
     -y
+fi
+
+echo "Install Finished"
+
+# tailscaleのログインについて任意で行う
+if tailscale status >/dev/null 2>&1; then
+  echo "Tailscale is already connected."
+else
+  echo
+  read -rp "Authenticate Tailscale now? [y/N]: " TS_CONFIRM
+
+  if [[ "$TS_CONFIRM" =~ ^[Yy]$ ]]; then
+    sudo tailscale up --accept-routes=false
+  else
+    echo "Skipping Tailscale authentication."
+    echo "Run later:"
+    echo "  sudo tailscale up --accept-routes=false"
+  fi
 fi
 
 echo "Setup Finished"
