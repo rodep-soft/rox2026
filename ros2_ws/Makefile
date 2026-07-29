@@ -1,7 +1,8 @@
 .PHONY: build launch 
 
-BUILD_JOBS ?= 4
-EXECUTOR ?= sequential
+BUILD_JOBS ?= 3
+EXECUTOR ?= parallel
+PARALLEL_WORKERS ?= 2
 
 CMAKE_ARGS = \
 	-G Ninja \
@@ -12,5 +13,6 @@ build:
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
 	colcon build \
 		--executor $(EXECUTOR) \
+		--parallel-workers $(PARALLEL_WORKERS) \
 		--symlink-install \
 		--cmake-args $(CMAKE_ARGS)
