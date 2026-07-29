@@ -1,8 +1,8 @@
 .PHONY: build launch 
 
-BUILD_JOBS ?= 3
+BUILD_JOBS ?= 2
 EXECUTOR ?= parallel
-PARALLEL_WORKERS ?= 2
+PARALLEL_WORKERS ?= 3
 
 CMAKE_ARGS = \
 	-G Ninja \
