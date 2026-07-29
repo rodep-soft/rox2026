@@ -1,0 +1,74 @@
+# 使用するシェル
+set shell := ["bash", "-cu"]
+
+# 並列ビルド数
+jobs := env_var_or_default("BUILD_JOBS", "4")
+
+# 通常ビルド
+build:
+    CMAKE_BUILD_PARALLEL_LEVEL={{jobs}} colcon build \
+        --symlink-install \
+        --cmake-args \
+            -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+# パッケージを指定してビルド
+build-package package:
+    CMAKE_BUILD_PARALLEL_LEVEL={{jobs}} colcon build \
+        --symlink-install \
+        --packages-select {{package}} \
+        --cmake-args \
+            -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+# 指定パッケージと依存パッケージをビルド
+build-up-to package:
+    CMAKE_BUILD_PARALLEL_LEVEL={{jobs}} colcon build \
+        --symlink-install \
+        --packages-up-to {{package}} \
+        --cmake-args \
+            -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+# パッケージを順番にビルドしてメモリ消費を抑える
+build-safe:
+    CMAKE_BUILD_PARALLEL_LEVEL={{jobs}} colcon build \
+        --executor sequential \
+        --symlink-install \
+        --cmake-args \
+            -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+# テスト
+test:
+    colcon test
+    colcon test-result --verbose
+
+# build、install、logを削除
+clean:
+    rm -rf build install log
+
+# buildとlogのみ削除
+clean-build:
+    rm -rf build log
+
+# ccacheの統計を表示
+cache:
+    ccache --show-stats
+
+# ccacheの統計だけリセット
+cache-reset:
+    ccache --zero-stats
+
+# ccache本体を削除
+cache-clean:
+    ccache --clear
+
+# ROS 2環境を読み込んだシェルを起動
+shell:
+    source install/setup.bash
+    exec bash
