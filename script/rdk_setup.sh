@@ -278,7 +278,11 @@ if [ ! -f "$ROS_SETUP" ]; then
   echo "Missing: $ROS_SETUP" >&2
   exit 1
 fi
+
+set +u
+# shellcheck source=/dev/null
 source "$ROS_SETUP"
+set -u
 
 # rosdepの初期化
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
@@ -317,7 +321,10 @@ ROS2_WS="$HOME/rox2026/ros2_ws"
 if [ -d "$ROS2_WS/src" ]; then
   echo "Installing workspace dependencies..."
 
+  set +u
+  # shellcheck source=/dev/null
   source /opt/ros/humble/setup.bash
+  set -u
 
   rosdep install \
     --from-paths "$ROS2_WS/src" \
