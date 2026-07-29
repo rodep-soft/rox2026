@@ -11,7 +11,7 @@ constexpr int64_t MOTOR_POLES = 14;   // モーターの極数
 struct Status1
 {
   uint8_t controller_id;
-  int32_t current_mA;
+  int32_t current_ma;
   int32_t erpm;
 };
 

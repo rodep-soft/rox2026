@@ -96,6 +96,7 @@ private:
     }
 
     current_rpm_ = static_cast<float>(status.erpm / pole_pairs_);
+    current_ma_ = status.current_ma;
     last_feedback_time_ = std::chrono::steady_clock::now();
     feedback_received_ = true;
   }
@@ -126,7 +127,7 @@ private:
     } else {
       feedback.data = current_rpm_;
       rpm_pub_->publish(feedback);
-      RCLCPP_DEBUG(this->get_logger(),"current_mA : %lf", status.current_mA);
+      RCLCPP_DEBUG(this->get_logger(),"current_mA : %lf", current_ma_);
     }
 
   }
@@ -135,6 +136,7 @@ private:
   double pole_pairs_{7.0};
   double max_rpm_{10000.0};
   float target_rpm_{0.0F};
+  float current_ma_;
   float current_rpm_{std::numeric_limits<float>::quiet_NaN()};
   bool command_received_{false};
   bool feedback_received_{false};
