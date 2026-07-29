@@ -146,7 +146,7 @@ else
     exit 1
 fi
 
-# CANについてsystemmdに登録する
+# CANについてsystemdに登録する
 # ====================================================
 CAN_INTERFACE="can0"
 CAN_BITRATE="1000000"
