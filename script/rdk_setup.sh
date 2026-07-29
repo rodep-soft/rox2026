@@ -344,6 +344,8 @@ else
   read -rp "Authenticate Tailscale now? [y/N]: " TS_CONFIRM
 
   if [[ "$TS_CONFIRM" =~ ^[Yy]$ ]]; then
+    curl -fsSL https://tailscale.com/install.sh | sh
+    sudo hostnamectl set-hostname rdk-rox
     sudo tailscale up --accept-routes=false
   else
     echo "Skipping Tailscale authentication."
