@@ -36,7 +36,10 @@ public:
       declare_parameter<int64_t>("command_timeout_ms", 500);
     const auto feedback_timeout_ms =
       declare_parameter<int64_t>("feedback_timeout_ms", 500);
-    max_rpm_ = declare_parameter<double>("max_rpm", 10000.0);
+    max_rpm_ = declare_parameter<double>("max_rpm", 5600.0);
+    
+    const auto publish_subscribe_interval_ms = declare_parameter<int64_t>("publish_subscribe_interval_ms", 100);
+   
 
     controller_id_ = static_cast<uint8_t>(controller_id);
     pole_pairs_ = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
@@ -47,9 +50,8 @@ public:
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
       .reliable()
       .durability_volatile();
-    auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(30))
-      .best_effort()
-      .durability_volatile();
+       
+    auto can_qos_sub = rclcpp::SensorDataQoS();
 
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
     rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
@@ -66,23 +68,18 @@ public:
       CAN_SUB_TOPIC, can_qos_sub,
       std::bind(&Node::can_callback, this, std::placeholders::_1),
       can_sub_options);
-    if (can_sub_->is_cft_enabled()) {
-      RCLCPP_INFO(
-        get_logger(), "CAN content filter enabled for controller_id=%u",
-        static_cast<unsigned int>(controller_id_));
-    } else {
-      RCLCPP_WARN(
-        get_logger(),
-        "CAN content filter is not supported by the current RMW; "
-        "controller_id=%u will be filtered in the callback",
-        static_cast<unsigned int>(controller_id_));
-    }
 
     target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
-      target_rpm_topic, 10,
+        target_rpm_topic, 10,
       std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
-    timer_ = create_wall_timer(20ms, std::bind(&Node::timer_callback, this));
+    timer_ = create_wall_timer(std::chrono::milliseconds(publish_subscribe_interval_ms), std::bind(&Node::timer_callback, this));
 
+      if (!can_sub_->is_cft_enabled()) {
+          RCLCPP_WARN(get_logger(),
+            "CAN content filter is not supported by the current RMW; "
+            "controller_id=%u will be filtered in the callback",
+            static_cast<unsigned int>(controller_id_));
+      }
     RCLCPP_INFO(
       get_logger(), "VESC driver started: controller_id=%u",
       static_cast<unsigned int>(controller_id_));
@@ -116,9 +113,9 @@ private:
     const auto now = std::chrono::steady_clock::now();
 
     if (command_received_) {
-      const bool command_timed_out = now - last_command_time_ > command_timeout_;
+      const bool command_timed_out = now - last_command_time_ > command_timeout_;//タイムアウトかを判断
       const double mechanical_rpm = command_timed_out ? 0.0 : target_rpm_;
-      const double erpm = mechanical_rpm * pole_pairs_;
+      const double erpm = mechanical_rpm * pole_pairs_;//ESCに送るためのERPM
       can_pub_->publish(protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
       command_received_ = false;
     }
@@ -129,7 +126,9 @@ private:
     } else {
       feedback.data = current_rpm_;
       rpm_pub_->publish(feedback);
+      RCLCPP_DEBUG(this->get_logger(),"current_mA : %lf", status.current_mA);
     }
+
   }
 
   uint8_t controller_id_{1};

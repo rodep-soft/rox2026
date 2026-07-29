@@ -5,7 +5,8 @@ vesc_upper_belt_driver:
     controller_id: 51
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 10000.0
+    publish_subscribe_interval_ms: 50
+    max_rpm: 5600.0
 
 vesc_under_belt_driver:
   ros__parameters:
@@ -14,7 +15,8 @@ vesc_under_belt_driver:
     controller_id: 52
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 10000.0
+    publish_subscribe_interval_ms: 50
+    max_rpm: 5600.0
 
 vesc_dribble_belt_driver:
   ros__parameters:
@@ -23,4 +25,5 @@ vesc_dribble_belt_driver:
     controller_id: 50
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 5000.0
+    publish_subscribe_interval_ms: 50
+    max_rpm: 5600.0

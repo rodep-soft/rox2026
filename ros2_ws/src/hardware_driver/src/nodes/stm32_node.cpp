@@ -84,7 +84,10 @@ private:
 
     if (protocol::is_heartbeat_response(*frame)) {
       last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-      heartbeat_timed_out_ = false;
+      if(heartbeat_timed_out_){
+        RCLCPP_INFO(this->get_logger(),"The STM32 heartbeat has been restored.");
+        heartbeat_timed_out_ = false;
+      }
       return;
     }
 
@@ -162,7 +165,6 @@ private:
   rclcpp::TimerBase::SharedPtr alive_timer_;
 
   std::string imu_frame_id_;
-  double quaternion_scale_{1.0};
   std::chrono::steady_clock::time_point last_heartbeat_from_stm32_;
   std::chrono::milliseconds heartbeat_timeout_{0};
   bool heartbeat_timed_out_{false};

@@ -25,9 +25,7 @@ public:
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
       .reliable()
       .durability_volatile();
-    auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(30))
-      .best_effort()
-      .durability_volatile();
+    auto can_qos_sub = rclcpp::SensorDataQoS();
 
     cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
       sub_cmd_topic_name_, 1,
@@ -116,11 +114,7 @@ private:
 
   void log_content_filter_status() const
   {
-    if (can_sub_->is_cft_enabled()) {
-      RCLCPP_INFO(
-        get_logger(), "CAN content filter enabled for motor_id=%u",
-        static_cast<unsigned int>(motor_id_));
-    } else {
+    if (!can_sub_->is_cft_enabled()) {
       RCLCPP_WARN(
         get_logger(),
         "CAN content filter is not supported by the current RMW; "
