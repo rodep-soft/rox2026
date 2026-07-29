@@ -146,9 +146,7 @@ else
   echo "GitHub authentication is required."
   echo "Follow the instructions displayed below."
   gh auth login \
-    --hostname github.com \
-    --git-protocol ssh \
-    --web
+    --hostname github.com
 fi
 
 # 認証確認
