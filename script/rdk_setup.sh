@@ -54,8 +54,10 @@ sudo apt update
 sudo apt install -y \
   ca-certificates \
   gnupg \
-  git \
   vim \
+  git \
+  gh \
+
   curl \
   wget \
   unzip \
@@ -128,6 +130,64 @@ if sudo systemctl is-active --quiet bluetooth; then
   echo "Bluetooth service is active."
 else
   echo "Warning: Bluetooth service failed to start." >&2
+fi
+
+#githubのレポジトリのクローン
+# GitHub authentication and repository clone
+# ====================================================
+REPO_URL="git@github.com:rodep-soft/rox2026.git"
+REPO_DIR="$HOME/rox2026"
+REPO_BRANCH="main-v2"
+echo
+echo "GitHub setup start."
+# GitHub CLIの認証状態を確認
+if gh auth status --hostname github.com >/dev/null 2>&1; then
+  echo "GitHub CLI is already authenticated."
+else
+  echo "GitHub authentication is required."
+  echo "Follow the instructions displayed below."
+  gh auth login \
+    --hostname github.com \
+    --git-protocol ssh \
+    --web
+fi
+
+# 認証確認
+if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+  echo "Error: GitHub authentication failed." >&2
+  exit 1
+fi
+echo "GitHub authentication successful."
+# Git操作でSSHを使うよう設定
+gh config set git_protocol ssh --host github.com
+# GitHubとのSSH接続確認
+SSH_OUTPUT="$(ssh \
+  -o StrictHostKeyChecking=accept-new \
+  -T git@github.com 2>&1 || true)"
+
+if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
+  echo "GitHub SSH connection successful."
+else
+  echo "$SSH_OUTPUT" >&2
+  echo "Error: GitHub SSH connection failed." >&2
+  exit 1
+fi
+# リポジトリをクローン
+if [ -d "$REPO_DIR/.git" ]; then
+  echo "Repository already exists:"
+  echo "  $REPO_DIR"
+  echo "Skipping clone."
+elif [ -e "$REPO_DIR" ]; then
+  echo "Error: $REPO_DIR exists but is not a Git repository." >&2
+  exit 1
+else
+  echo "Cloning repository..."
+  git clone \
+    --branch "$REPO_BRANCH" \
+    "$REPO_URL" \
+    "$REPO_DIR"
+  echo "Repository cloned successfully:"
+  echo "  $REPO_DIR"
 fi
 
 # Tailscaleのインストール
