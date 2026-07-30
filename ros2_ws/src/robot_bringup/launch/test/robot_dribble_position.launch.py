@@ -34,8 +34,8 @@ def generate_launch_description():
                     "use_vesc": "false",
                 }.items(),
             ),
-            include("joy_controller.launch.py"),
+            include("input/joy_controller.launch.py"),
             # この構成の対象controller
-            include("mecanum_controller.launch.py"),
+            include("controllers/spring_dribble_position.launch.py"),
         ]
     )

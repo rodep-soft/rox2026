@@ -7,4 +7,4 @@ vesc_driver_node:
     controller_id: 1
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 10000
+    max_rpm: 4600

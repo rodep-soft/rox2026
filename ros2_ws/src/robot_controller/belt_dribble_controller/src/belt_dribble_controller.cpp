@@ -138,11 +138,19 @@ void BeltDribbleController::create_interfaces()
   const auto command_qos = rclcpp::QoS(qos_depth_);
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
 
+  // 操作可否を決める状態と安全入力。
   operation_mode_subscription_ = create_subscription<std_msgs::msg::UInt8>(
     operation_mode_topic_, state_qos,
     std::bind(
       &BeltDribbleController::operation_mode_callback, this,
       std::placeholders::_1));
+  emergency_stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
+    emergency_stop_topic_, state_qos,
+    std::bind(
+      &BeltDribbleController::emergency_stop_callback, this,
+      std::placeholders::_1));
+
+  // Joyから受ける機構操作要求。
   belt_mode_subscription_ = create_subscription<std_msgs::msg::UInt8>(
     belt_mode_topic_, command_qos,
     std::bind(
@@ -158,11 +166,8 @@ void BeltDribbleController::create_interfaces()
     std::bind(
       &BeltDribbleController::shot_cycle_request_callback, this,
       std::placeholders::_1));
-  emergency_stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
-    emergency_stop_topic_, state_qos,
-    std::bind(
-      &BeltDribbleController::emergency_stop_callback, this,
-      std::placeholders::_1));
+
+  // 3モータの現在RPM。
   underbelt_feedback_subscription_ = create_subscription<std_msgs::msg::Int16>(
     underbelt_current_rpm_topic_, command_qos,
     std::bind(
@@ -179,12 +184,15 @@ void BeltDribbleController::create_interfaces()
       &BeltDribbleController::dribble_feedback_callback, this,
       std::placeholders::_1));
 
+  // 3モータへ送る目標RPM。
   underbelt_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
     underbelt_target_rpm_topic_, command_qos);
   upperbelt_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
     upperbelt_target_rpm_topic_, command_qos);
   dribble_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
     dribble_target_rpm_topic_, command_qos);
+
+  // shot cycleの開始と実行可能状態。
   shot_cycle_start_publisher_ = create_publisher<std_msgs::msg::Bool>(
     shot_cycle_start_topic_, command_qos);
   shoot_ready_publisher_ =

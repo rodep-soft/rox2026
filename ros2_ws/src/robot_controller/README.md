@@ -104,6 +104,14 @@ joy_controller
 
 非常停止はoperation modeより優先する。
 
+## ゲーム別運用
+
+| ゲーム | modeと操作 | 試合前に確認する設定 |
+|---|---|---|
+| GAME1 | Homeで`DRIVE`へ移動し、L1+○でspringを発射する。 | なし |
+| GAME2 | Optionsで`BELT_ONLY`へ移動し、DPAD上/下でbelt levelを変更する。並進は停止し、旋回だけ可能。 | なし |
+| GAME3 | Homeで`DRIVE`、Createで`SHOT_CYCLE`へ移動する。R1でdribbleを有効化し、DPAD上/下でbelt levelを変更した後、L2+○でshot cycleを要求する。 | `joy_controller.yaml` の `auto_drive_on_shot_cycle_complete`。`true`なら完了後にDRIVEへ戻り、`false`ならSHOT_CYCLEに留まる。 |
+
 ## belt_dribble_controller_node
 
 ### subscribe
@@ -136,7 +144,7 @@ SHOT_CYCLE中に3実RPMが各targetの許容範囲内へ入り、
 
 `/belt/mode`は`0=STOP`、`1〜6=LEVEL_1〜LEVEL_6`として扱う。
 
-## spring_controller_node / dribble_position_controller
+## spring_controller_node
 
 Springは`LOAD`、`READY`、`FIRE`、`ERROR`の状態を持つ。発射要求はDRIVEだけで
 立ち上がりを受け付ける。STOP、Joy通信断、SHOT_CYCLE、BELT_ONLYでは
@@ -144,7 +152,9 @@ Springは`LOAD`、`READY`、`FIRE`、`ERROR`の状態を持つ。発射要求は
 LOADが`load_timeout_sec`を超えた場合はERRORへ入り、`0 rad/s`で停止する。
 リミットスイッチがONになるとREADYへ復帰する。
 
-positionは移動中、`position_command_period_ms`周期で同じ目標radを送り続け、
+## dribble_position_controller
+
+positionは移動中、`command_period_ms`周期で同じ目標radを送り続け、
 `/dribble/position_feedback`が許容範囲内へ入ったことを確認して次へ進む。
 実際にshot cycleを開始したときは`/shot_cycle/running=true`をpublishし、
 完了または中断時に`false`へ戻す。
@@ -193,3 +203,12 @@ mode変更callbackでも直前のcmd_velから再計算するため、次のJoy�
 ```bash
 ros2 launch robot_bringup robot.launch.py
 ```
+
+機構単位で起動する場合は、以下を使う。
+
+```bash
+ros2 launch robot_bringup controllers/spring_dribble_position.launch.py
+```
+
+このlaunchは `spring_controller_node` と
+`dribble_position_controller` を起動する。

@@ -16,9 +16,11 @@ def generate_launch_description():
         [
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, "spring_controller.launch.py"))),
+                    os.path.join(
+                        launch_dir, "controllers", "spring_controller.launch.py"))),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, "dribble_position_controller.launch.py"))),
+                    os.path.join(
+                        launch_dir, "controllers", "dribble_position_controller.launch.py"))),
         ]
     )

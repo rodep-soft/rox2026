@@ -1,20 +1,37 @@
 dribble_position_controller:
   ros__parameters:
-    dribble_position_command_topic: /dribble/position_command  # std_msgs/msg/Float32 [rad]。移動中はcommand_period_ms周期でpublishする。
-    dribble_position_feedback_topic: /dribble/position_feedback  # std_msgs/msg/Float32 [rad]。hardware_driverから受信する実位置。
-    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOOT、3=OPEN。移動中の指令は無視する。
-    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
-    shot_cycle_start_topic: /shot_cycle/start  # std_msgs/msg/Bool。trueでINTAKE→SHOOT→DRIBBLEを開始する。
-    shot_cycle_running_topic: /shot_cycle/running  # std_msgs/msg/Bool。shot cycleの開始・停止状態。
-    shot_cycle_complete_topic: /shot_cycle/complete  # std_msgs/msg/Bool。DRIBBLE復帰完了時にtrueを一度publishする。
-    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。trueで移動中でもDRIBBLE位置を指令する。
-    dribble_position_rad: 0.2  # [rad] DRIBBLE位置。
-    intake_position_rad: -1.0  # [rad] SHOOT動作で最初に移動するINTAKE位置。
-    shoot_position_rad: 1.3  # [rad] INTAKE到達後に移動するSHOOT位置。
-    open_position_rad: -1.3  # [rad] 手動OPEN位置。
-    position_tolerance_rad: 0.02  # [rad] 到達とみなす許容誤差。
-    shoot_to_dribble_delay_sec: 1.0  # [s] SHOOT到達後、DRIBBLEへ戻るまでの保持時間。
-    move_timeout_sec: 3.0  # [s] 位置移動のtimeout。超過時はDRIBBLE位置を指令する。
-    feedback_timeout_sec: 0.5  # [s] feedbackのtimeout。超過時はDRIBBLE位置を指令する。
-    command_period_ms: 20  # [ms] 移動中の目標位置送信とfeedback確認の周期。
-    qos_depth: 1  # ROS 2 QoSのqueue depth。
+    # std_msgs/msg/Float32 [rad]。移動中はcommand_period_ms周期でpublishする。
+    dribble_position_command_topic: /dribble/position_command
+    # std_msgs/msg/Float32 [rad]。hardware_driverから受信する実位置。
+    dribble_position_feedback_topic: /dribble/position_feedback
+    # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOT、3=OPEN。移動中の指令は無視する。
+    dribble_position_mode_topic: /dribble/position_mode
+    # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
+    operation_mode_topic: /operation_mode
+    # std_msgs/msg/Bool。trueでINTAKE→SHOOT→DRIBBLEを開始する。
+    shot_cycle_start_topic: /shot_cycle/start
+    # std_msgs/msg/Bool。shot cycleの開始・停止状態。
+    shot_cycle_running_topic: /shot_cycle/running
+    # std_msgs/msg/Bool。DRIBBLE復帰完了時にtrueを一度publishする。
+    shot_cycle_complete_topic: /shot_cycle/complete
+    # std_msgs/msg/Bool。trueで移動中でもDRIBBLE位置を指令する。
+    emergency_stop_topic: /emergency_stop
+
+    # [rad] それぞれのdribble positinの位置
+    dribble_position_rad: 0.2
+    intake_position_rad: -1.0
+    shoot_position_rad: 1.3
+    open_position_rad: -1.3
+
+    # [rad] 目標との誤差との許容値
+    position_tolerance_rad: 0.02
+    # [s] 長くするとSHOOT位置で保持する時間が延びる。
+    shoot_to_dribble_delay_sec: 0.6
+    # [s] 短くすると位置移動異常から早くDRIBBLE復帰へ移る。
+    move_timeout_sec: 3.0
+    # [s] 短くするとfeedback断を早く検出するが、遅延に敏感になる。
+    feedback_timeout_sec: 0.5
+    # [ms] 移動中の目標位置送信とfeedback確認の周期。
+    command_period_ms: 20
+    # ROS 2 QoSのqueue depth。
+    qos_depth: 1

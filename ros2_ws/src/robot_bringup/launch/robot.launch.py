@@ -32,10 +32,10 @@ def generate_launch_description():
     # controllerと操作系。topic名や各種パラメータはrobot_bringup/config配下のyamlで管理する。
     # beltとdribbleはbelt_dribble.launch.pyで一緒に起動する。
     launch_files = [
-        "belt_dribble.launch.py",
-        "mecanum_controller.launch.py",
-        "spring_position.launch.py",
-        "joy_controller.launch.py",
+        "controllers/belt_dribble.launch.py",
+        "controllers/mecanum_controller.launch.py",
+        "controllers/spring_dribble_position.launch.py",
+        "input/joy_controller.launch.py",
     ]
 
     return LaunchDescription(

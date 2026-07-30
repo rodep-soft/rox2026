@@ -26,16 +26,17 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface used by ros2_socketcan",
             ),
-            # 共通: hardware(vesc除外) + joy + joy_controller
+            # belt用VESC ID 51・52とdribble用STM32 driver + joy + joy_controller
             include(
                 "hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
-                    "use_vesc": "false",
+                    "use_vesc": "true",
+                    "use_dribble_vesc": "false",
                 }.items(),
             ),
-            include("joy_controller.launch.py"),
-            # この構成の対象controller
-            include("spring_position.launch.py"),
+            include("input/joy_controller.launch.py"),
+            # この構成の対象controller(belt + dribble)
+            include("controllers/belt_dribble.launch.py"),
         ]
     )
