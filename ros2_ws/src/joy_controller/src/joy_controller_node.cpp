@@ -74,7 +74,7 @@ JoyControllerNode::JoyControllerNode()
   publish_stop_commands();
   joy_timeout_timer_ = create_wall_timer(
     std::chrono::milliseconds(10),
-    std::bind(&JoyControllerNode::joy_timeout_callback, this));
+    std::bind(&JoyControllerNode::joy_timeout_timer_callback, this));
   state_publish_timer_ = create_wall_timer(
     std::chrono::milliseconds(state_publish_period_ms_),
     std::bind(&JoyControllerNode::state_publish_timer_callback, this));
@@ -315,7 +315,7 @@ void JoyControllerNode::set_operation_mode(OperationMode mode)
   publish_emergency_stop();
 }
 
-void JoyControllerNode::joy_timeout_callback()
+void JoyControllerNode::joy_timeout_timer_callback()
 {
   if (!joy_received_) {
     return;

@@ -67,7 +67,7 @@ private:
   void publish_dribble_enabled();
   void publish_stop_commands();
   void set_operation_mode(OperationMode mode);
-  void joy_timeout_callback();
+  void joy_timeout_timer_callback();
   void state_publish_timer_callback();
   void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
   void handle_operation_mode();
