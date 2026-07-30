@@ -41,7 +41,7 @@ private:
   {
     DRIBBLE,
     INTAKE,
-    SHOOT,
+    SHOT,
     OPEN,
   };
 
@@ -134,7 +134,7 @@ private:
   bool create_button_on_{false};
   bool options_button_on_{false};
   bool shot_cycle_chord_on_{false};
-  bool manual_shoot_chord_on_{false};
+  bool manual_dribble_chord_on_{false};
   bool manual_open_chord_on_{false};
   bool forward_reverse_button_on_{false};
 
@@ -145,7 +145,7 @@ private:
   bool pre_create_button_on_{false};
   bool pre_options_button_on_{false};
   bool pre_shot_cycle_chord_on_{false};
-  bool pre_manual_shoot_chord_on_{false};
+  bool pre_manual_dribble_chord_on_{false};
   bool pre_manual_open_chord_on_{false};
   bool pre_forward_reverse_button_on_{false};
 

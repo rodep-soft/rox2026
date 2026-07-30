@@ -337,6 +337,9 @@ void JoyControllerNode::state_publish_timer_callback()
     publish_belt_mode();
     publish_dribble_enabled();
     publish_operation_mode();
+    const bool spring_fire_requested =
+      spring_fire_chord_on_ && operation_mode_ == OperationMode::DRIVE;
+    publish_spring_fire_request(spring_fire_requested);
   }
 }
 
@@ -375,13 +378,20 @@ void JoyControllerNode::update_chord_inputs(const sensor_msgs::msg::Joy & msg)
   create_button_on_ = button_pressed(msg, create_button_);
   options_button_on_ = button_pressed(msg, options_button_);
   shot_cycle_chord_on_ = l2 && button_pressed(msg, circle_button_);
-  manual_shoot_chord_on_ = r2 && dpad_horizontal >= axis_on_threshold_;
+  manual_dribble_chord_on_ = r2 && dpad_horizontal >= axis_on_threshold_;
   manual_open_chord_on_ = r2 && dpad_horizontal <= -axis_on_threshold_;
   forward_reverse_button_on_ = button_pressed(msg, ps_button_);
 }
 
+// modeとしてSTOP, DRIVE, SHOT_CYCLE, BELT_ONLYがある
+// home button->STOP
+// create button->SHOT_CYCLE
+// option button->BELT_ONLY
+// それぞれのボタンをもう一回押したらDRIVEに移行
+// sycleでmode移行するのではなくbuttonによって移行
 void JoyControllerNode::handle_operation_mode()
 {
+  // STOP
   if (home_button_on_ && !pre_home_button_on_) {
     if (operation_mode_ == OperationMode::STOP) {
       set_operation_mode(OperationMode::DRIVE);
@@ -392,10 +402,12 @@ void JoyControllerNode::handle_operation_mode()
     return;
   }
 
+  // stopを押されてなくてdribble->intake->shotをしてるときはmodeの変更などもなし
   if (shot_cycle_running_) {
     return;
   }
 
+  // SHOT_CYCLE
   if (create_button_on_ && !pre_create_button_on_) {
     if (operation_mode_ == OperationMode::STOP ||
       operation_mode_ == OperationMode::DRIVE)
@@ -407,6 +419,7 @@ void JoyControllerNode::handle_operation_mode()
     return;
   }
 
+  // BELT_ONLY
   if (options_button_on_ && !pre_options_button_on_) {
     if (operation_mode_ == OperationMode::STOP ||
       operation_mode_ == OperationMode::DRIVE)
@@ -433,7 +446,7 @@ void JoyControllerNode::update_previous_chord_inputs()
   pre_create_button_on_ = create_button_on_;
   pre_options_button_on_ = options_button_on_;
   pre_shot_cycle_chord_on_ = shot_cycle_chord_on_;
-  pre_manual_shoot_chord_on_ = manual_shoot_chord_on_;
+  pre_manual_dribble_chord_on_ = manual_dribble_chord_on_;
   pre_manual_open_chord_on_ = manual_open_chord_on_;
   pre_forward_reverse_button_on_ = forward_reverse_button_on_;
 }
@@ -441,15 +454,16 @@ void JoyControllerNode::update_previous_chord_inputs()
 void JoyControllerNode::joy_callback(
   const sensor_msgs::msg::Joy::SharedPtr msg)
 {
+  // joyを受けているか
   joy_timeout_active_ = false;
+  // joyがとぎれて停止状態に入っているか
   joy_received_ = true;
-  last_joy_received_time_ = std::chrono::steady_clock::now();
-  update_chord_inputs(*msg);
-  handle_operation_mode();
 
-  const bool spring_fire_requested =
-    spring_fire_chord_on_ && operation_mode_ == OperationMode::DRIVE;
-  publish_spring_fire_request(spring_fire_requested);
+  last_joy_received_time_ = std::chrono::steady_clock::now();
+  // button のupdate
+  update_chord_inputs(*msg);
+  // operation_modeの変更
+  handle_operation_mode();
 
   if (belt_mode_up_chord_on_ && !pre_belt_mode_up_chord_on_ &&
     operation_mode_ != OperationMode::STOP)
@@ -466,23 +480,28 @@ void JoyControllerNode::joy_callback(
 
   const bool dribble_mode = operation_mode_ == OperationMode::DRIVE ||
     operation_mode_ == OperationMode::SHOT_CYCLE;
+  // dribbleのon, offの判定
   if (dribble_enable_button_on_ && !pre_dribble_enable_button_on_ &&
     dribble_mode)
   {
     dribble_enabled_ = !dribble_enabled_;
   }
+  // 前後逆転の判定
   if (forward_reverse_button_on_ && !pre_forward_reverse_button_on_) {
     forward_reverse_ = !forward_reverse_;
   }
+  // SHOT CYCLEのmodeでのcycle中か判断し、cycle中ではなかったら
+  // shot cycle(dribble->intake->shot->dribble)をrequest
   if (shot_cycle_chord_on_ && !pre_shot_cycle_chord_on_ &&
     operation_mode_ == OperationMode::SHOT_CYCLE && !shot_cycle_running_)
   {
     publish_shot_cycle_request();
   }
-  if (manual_shoot_chord_on_ && !pre_manual_shoot_chord_on_ &&
+  // dribbleのpositionを手でボールを入れられる場所に戻す
+  if (manual_dribble_chord_on_ && !pre_manual_dribble_chord_on_ &&
     is_manual_position_allowed())
   {
-    publish_position(Position::SHOOT);
+    publish_position(Position::DRIBBLE);
   }
   if (manual_open_chord_on_ && !pre_manual_open_chord_on_ &&
     is_manual_position_allowed())

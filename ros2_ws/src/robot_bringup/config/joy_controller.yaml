@@ -10,11 +10,11 @@ joy_controller:
     shot_cycle_complete_topic: /shot_cycle/complete  # std_msgs/msg/Bool。trueでSHOT_CYCLEからDRIVEへ戻る。
     shot_cycle_request_topic: /shot_cycle/request  # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
     shot_cycle_running_topic: /shot_cycle/running  # std_msgs/msg/Bool。shot cycleが実際に動作している状態。
-    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOOT、3=OPEN。
+    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOT、3=OPEN。
     joy_qos_depth: 3  # Joy入力のQoS queue depth。
     command_qos_depth: 1  # 指令topicのQoS queue depth。
     joy_timeout_ms: 200  # [ms] Joy入力断でSTOPへ移るまでの時間。
-    state_publish_period_ms: 20  # [ms] 状態指令とoperation modeの再送周期。
+    state_publish_period_ms: 20  # [ms] belt mode、dribble enabled、operation mode、spring fire requestの再送周期。
     auto_drive_on_shot_cycle_complete: true  # trueならshot cycle完了時にDRIVEへ自動復帰する。
 
     spring_fire_enable_button: 4  # L1。
