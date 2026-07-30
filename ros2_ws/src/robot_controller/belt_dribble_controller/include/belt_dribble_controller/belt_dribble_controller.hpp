@@ -9,23 +9,29 @@
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class BeltDribbleController : public rclcpp::Node {
- public:
+class BeltDribbleController : public rclcpp::Node
+{
+public:
   BeltDribbleController();
 
- private:
-  enum class OperationMode : uint8_t {
-    STOP = 0,
+private:
+  enum class OperationMode : uint8_t
+  {
+    STOP,
     DRIVE,
-    INTAKE_AND_SHOOT,
-    GAME2_MODE,
+    SHOT_CYCLE,
+    BELT_ONLY,
   };
 
-  enum class BeltMode : uint8_t {
-    STOP = 1,
+  enum class BeltMode : uint8_t
+  {
+    STOP,
     LEVEL_1,
     LEVEL_2,
     LEVEL_3,
+    LEVEL_4,
+    LEVEL_5,
+    LEVEL_6,
   };
 
   void declare_parameters();
@@ -36,7 +42,7 @@ class BeltDribbleController : public rclcpp::Node {
   void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void game2_command_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void shot_cycle_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void underbelt_feedback_callback(const std_msgs::msg::Int16::SharedPtr msg);
   void upperbelt_feedback_callback(const std_msgs::msg::Int16::SharedPtr msg);
@@ -45,8 +51,9 @@ class BeltDribbleController : public rclcpp::Node {
 
   int belt_target_rpm() const;
   int dribble_target_rpm() const;
-  bool update_shoot_ready(int current_belt_target, int current_dribble_target,
-                          const rclcpp::Time& current_time);
+  bool update_shoot_ready(
+    int current_belt_target, int current_dribble_target,
+    const rclcpp::Time & current_time);
   bool is_rpm_valid(int rpm) const;
   void reset_shoot_ready();
 
@@ -64,8 +71,11 @@ class BeltDribbleController : public rclcpp::Node {
   int dribble_current_rpm_{0};
   int stop_rpm_{0};
   int level_1_rpm_{3000};
-  int level_2_rpm_{4000};
-  int level_3_rpm_{5000};
+  int level_2_rpm_{3500};
+  int level_3_rpm_{4000};
+  int level_4_rpm_{4500};
+  int level_5_rpm_{5000};
+  int level_6_rpm_{5500};
   int dribble_on_rpm_{2000};
   int belt_rpm_tolerance_{100};
   int dribble_rpm_tolerance_{100};
@@ -77,7 +87,7 @@ class BeltDribbleController : public rclcpp::Node {
   std::string operation_mode_topic_;
   std::string belt_mode_topic_;
   std::string dribble_enabled_topic_;
-  std::string game2_command_topic_;
+  std::string shot_cycle_request_topic_;
   std::string emergency_stop_topic_;
   std::string underbelt_target_rpm_topic_;
   std::string upperbelt_target_rpm_topic_;
@@ -85,30 +95,30 @@ class BeltDribbleController : public rclcpp::Node {
   std::string underbelt_current_rpm_topic_;
   std::string upperbelt_current_rpm_topic_;
   std::string dribble_current_rpm_topic_;
-  std::string intake_and_shoot_topic_;
+  std::string shot_cycle_start_topic_;
   std::string shoot_ready_topic_;
 
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr
-      operation_mode_subscription_;
+    operation_mode_subscription_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      dribble_enabled_subscription_;
+    dribble_enabled_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      game2_command_subscription_;
+    shot_cycle_request_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      emergency_stop_subscription_;
+    emergency_stop_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      underbelt_feedback_subscription_;
+    underbelt_feedback_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      upperbelt_feedback_subscription_;
+    upperbelt_feedback_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      dribble_feedback_subscription_;
+    dribble_feedback_subscription_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr
-      underbelt_target_publisher_;
+    underbelt_target_publisher_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr
-      upperbelt_target_publisher_;
+    upperbelt_target_publisher_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr dribble_target_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr intake_and_shoot_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_start_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_ready_publisher_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

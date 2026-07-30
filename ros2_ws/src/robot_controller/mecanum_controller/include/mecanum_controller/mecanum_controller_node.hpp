@@ -12,19 +12,22 @@
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class MecanumControllerNode : public rclcpp::Node {
- public:
+class MecanumControllerNode : public rclcpp::Node
+{
+public:
   MecanumControllerNode();
 
- private:
-  enum class OperationMode : uint8_t {
-    STOP = 0,
+private:
+  enum class OperationMode : uint8_t
+  {
+    STOP,
     DRIVE,
-    INTAKE_AND_SHOOT,
-    GAME2_MODE,
+    SHOT_CYCLE,
+    BELT_ONLY,
   };
 
-  enum WheelIndex {
+  enum WheelIndex
+  {
     FL = 0,
     FR = 1,
     RL = 2,
@@ -43,7 +46,7 @@ class MecanumControllerNode : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4>
-      wheel_velocity_pubs_;
+  wheel_velocity_pubs_;
 
   std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
   geometry_msgs::msg::Twist last_cmd_vel_;

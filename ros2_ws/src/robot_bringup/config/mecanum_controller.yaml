@@ -2,7 +2,7 @@ mecanum_controller_node:
   ros__parameters:
     # subscribeする操作指令topic。geometry_msgs/msg/Twist。
     cmd_vel_topic: /mecanum/cmd_vel
-    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=INTAKE_AND_SHOOT、3=GAME2_MODE。
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
     emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。trueで全輪を0 rad/sにする。
     # 各ホイールへpublishする角速度command topic。std_msgs/msg/Float32、単位はrad/s。
     front_left_velocity_topic: /mecanum/fl/vel_command

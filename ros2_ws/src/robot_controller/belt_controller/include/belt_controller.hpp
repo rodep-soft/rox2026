@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <limits>
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
@@ -15,10 +14,16 @@ public:
   BeltControllerNode();
 
 private:
-  static constexpr uint8_t stop_mode_{1};
-  static constexpr uint8_t level_1_mode_{2};
-  static constexpr uint8_t level_2_mode_{3};
-  static constexpr uint8_t level_3_mode_{4};
+  enum class BeltMode : uint8_t
+  {
+    STOP,
+    LEVEL_1,
+    LEVEL_2,
+    LEVEL_3,
+    LEVEL_4,
+    LEVEL_5,
+    LEVEL_6,
+  };
 
   void declare_parameters();
   void get_parameters();
@@ -26,18 +31,19 @@ private:
   void underbelt_feedback_callback(const std_msgs::msg::Int16::SharedPtr msg);
   void upperbelt_feedback_callback(const std_msgs::msg::Int16::SharedPtr msg);
   void timer_callback();
-  int target_rpm_from_mode(uint8_t mode);
+  int target_rpm_from_mode(BeltMode mode);
   bool is_rpm_valid(int rpm) const;
-  bool is_belt_ready(
-    int underbelt_target_rpm, int upperbelt_target_rpm,
-    const rclcpp::Time & current_time);
+  bool is_belt_ready(int target_rpm, const rclcpp::Time & current_time);
 
   bool is_configuration_valid_{true};
-  uint8_t belt_mode_{stop_mode_};
+  BeltMode belt_mode_{BeltMode::STOP};
   int stop_rpm_{0};
-  int level_1_rpm_{1000};
-  int level_2_rpm_{2000};
-  int level_3_rpm_{3000};
+  int level_1_rpm_{3000};
+  int level_2_rpm_{3500};
+  int level_3_rpm_{4000};
+  int level_4_rpm_{4500};
+  int level_5_rpm_{5000};
+  int level_6_rpm_{5500};
   int command_period_ms_{10};
   int ready_tolerance_rpm_{100};
   double ready_hold_sec_{0.1};
@@ -62,3 +68,4 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr belt_ready_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
+#include <chrono>

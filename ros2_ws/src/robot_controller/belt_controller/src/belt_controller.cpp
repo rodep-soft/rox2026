@@ -1,8 +1,8 @@
 #include "belt_controller.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <cstdint>
-#include <cstdlib>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -19,11 +19,10 @@ BeltControllerNode::BeltControllerNode()
     is_configuration_valid_ = false;
   }
   if (!is_rpm_valid(level_1_rpm_) || !is_rpm_valid(level_2_rpm_) ||
-    !is_rpm_valid(level_3_rpm_))
+    !is_rpm_valid(level_3_rpm_) || !is_rpm_valid(level_4_rpm_) ||
+    !is_rpm_valid(level_5_rpm_) || !is_rpm_valid(level_6_rpm_))
   {
-    RCLCPP_ERROR(
-      get_logger(),
-      "Each level RPM must fit in std_msgs/msg/Int16 and be non-negative");
+    RCLCPP_ERROR(get_logger(), "Each level RPM must fit in std_msgs/msg/Int16");
     is_configuration_valid_ = false;
   }
   if (command_period_ms_ <= 0) {
@@ -90,9 +89,12 @@ void BeltControllerNode::declare_parameters()
     "/upperbelt/current/rpm");
   declare_parameter<std::string>("belt_ready_topic", "/belt/ready");
   declare_parameter<int>("stop_rpm", 0);
-  declare_parameter<int>("level_1_rpm", 1000);
-  declare_parameter<int>("level_2_rpm", 2000);
-  declare_parameter<int>("level_3_rpm", 3000);
+  declare_parameter<int>("level_1_rpm", 3000);
+  declare_parameter<int>("level_2_rpm", 3500);
+  declare_parameter<int>("level_3_rpm", 4000);
+  declare_parameter<int>("level_4_rpm", 4500);
+  declare_parameter<int>("level_5_rpm", 5000);
+  declare_parameter<int>("level_6_rpm", 5500);
   declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("ready_tolerance_rpm", 100);
   declare_parameter<double>("ready_hold_sec", 0.1);
@@ -111,6 +113,9 @@ void BeltControllerNode::get_parameters()
   get_parameter("level_1_rpm", level_1_rpm_);
   get_parameter("level_2_rpm", level_2_rpm_);
   get_parameter("level_3_rpm", level_3_rpm_);
+  get_parameter("level_4_rpm", level_4_rpm_);
+  get_parameter("level_5_rpm", level_5_rpm_);
+  get_parameter("level_6_rpm", level_6_rpm_);
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("ready_tolerance_rpm", ready_tolerance_rpm_);
   get_parameter("ready_hold_sec", ready_hold_sec_);
@@ -120,7 +125,11 @@ void BeltControllerNode::get_parameters()
 void BeltControllerNode::belt_mode_callback(
   const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  belt_mode_ = msg->data;
+  if (msg->data > static_cast<uint8_t>(BeltMode::LEVEL_6)) {
+    belt_mode_ = BeltMode::STOP;
+    return;
+  }
+  belt_mode_ = static_cast<BeltMode>(msg->data);
 }
 
 void BeltControllerNode::underbelt_feedback_callback(
@@ -140,32 +149,28 @@ void BeltControllerNode::upperbelt_feedback_callback(
 void BeltControllerNode::timer_callback()
 {
   std_msgs::msg::Int16 rpm_command;
-  rpm_command.data = static_cast<int16_t>(
-    is_configuration_valid_ ? target_rpm_from_mode(belt_mode_) : 0);
+  int target_rpm = stop_rpm_;
+  if (is_configuration_valid_) {
+    target_rpm = target_rpm_from_mode(belt_mode_);
+  }
+  rpm_command.data = static_cast<int16_t>(target_rpm);
+  // under/upperの2モータへ同一RPMを送る。
   underbelt_rpm_pub_->publish(rpm_command);
-
-  const int underbelt_target_rpm = rpm_command.data;
-  rpm_command.data = -rpm_command.data;
   upperbelt_rpm_pub_->publish(rpm_command);
-
   std_msgs::msg::Bool ready;
-  ready.data = is_belt_ready(underbelt_target_rpm, rpm_command.data, now());
+  ready.data = is_belt_ready(rpm_command.data, now());
   belt_ready_pub_->publish(ready);
 }
 
 bool BeltControllerNode::is_belt_ready(
-  int underbelt_target_rpm,
-  int upperbelt_target_rpm,
+  int target_rpm,
   const rclcpp::Time & current_time)
 {
   const bool within_tolerance =
-    underbelt_target_rpm != stop_rpm_ && underbelt_feedback_received_ &&
+    target_rpm != stop_rpm_ && underbelt_feedback_received_ &&
     upperbelt_feedback_received_ &&
-    std::abs(underbelt_current_rpm_ - underbelt_target_rpm) <=
-    ready_tolerance_rpm_ &&
-    std::abs(upperbelt_current_rpm_ - upperbelt_target_rpm) <=
-    ready_tolerance_rpm_;
-
+    std::abs(underbelt_current_rpm_ - target_rpm) <= ready_tolerance_rpm_ &&
+    std::abs(upperbelt_current_rpm_ - target_rpm) <= ready_tolerance_rpm_;
   if (!within_tolerance) {
     ready_since_ = rclcpp::Time(0, 0, get_clock()->get_clock_type());
     return false;
@@ -176,32 +181,38 @@ bool BeltControllerNode::is_belt_ready(
   return (current_time - ready_since_).seconds() >= ready_hold_sec_;
 }
 
-int BeltControllerNode::target_rpm_from_mode(uint8_t mode)
+int BeltControllerNode::target_rpm_from_mode(BeltMode mode)
 {
+  // joy_controllerから受けた速度段階を、configで設定した実RPMへ変換する。
   switch (mode) {
-    case stop_mode_:
+    case BeltMode::STOP:
       return stop_rpm_;
 
-    case level_1_mode_:
+    case BeltMode::LEVEL_1:
       return level_1_rpm_;
 
-    case level_2_mode_:
+    case BeltMode::LEVEL_2:
       return level_2_rpm_;
 
-    case level_3_mode_:
+    case BeltMode::LEVEL_3:
       return level_3_rpm_;
 
-    default:
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 1000,
-        "Unsupported belt_mode %u. Stopping belt.", mode);
-      return stop_rpm_;
+    case BeltMode::LEVEL_4:
+      return level_4_rpm_;
+
+    case BeltMode::LEVEL_5:
+      return level_5_rpm_;
+
+    case BeltMode::LEVEL_6:
+      return level_6_rpm_;
   }
+  return stop_rpm_;
 }
 
 bool BeltControllerNode::is_rpm_valid(int rpm) const
 {
-  return rpm >= 0 && rpm <= std::numeric_limits<int16_t>::max();
+  return rpm >= std::numeric_limits<int16_t>::min() &&
+         rpm <= std::numeric_limits<int16_t>::max();
 }
 
 int main(int argc, char * argv[])
