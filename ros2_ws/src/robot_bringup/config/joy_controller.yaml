@@ -2,28 +2,29 @@ joy_controller:
   ros__parameters:
     joy_topic: /joy  # sensor_msgs/msg/Joy。
     mecanum_cmd_vel_topic: /mecanum/cmd_vel  # geometry_msgs/msg/Twist。
-    spring_fire_request_topic: /spring/fire_request  # std_msgs/msg/Bool。
-    belt_mode_topic: /belt/mode  # std_msgs/msg/UInt8。
-    dribble_enabled_topic: /dribble/enabled  # std_msgs/msg/Bool。
-    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。
-    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=INTAKE_AND_SHOOT、3=GAME2_MODE。
-    operation_mode_complete_topic: /operation_mode_complete  # std_msgs/msg/Bool。trueでINTAKE_AND_SHOOTからDRIVEへ戻る。
-    game2_command_topic: /game2_command  # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
-    position_sequence_active_topic: /position_sequence_active  # std_msgs/msg/Bool。positionが実際にシーケンスを開始した状態。
-    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
+    spring_fire_request_topic: /spring/fire_request  # std_msgs/msg/Bool。L1+○の押下中だけtrue。
+    belt_mode_topic: /belt/mode  # std_msgs/msg/UInt8。0=STOP、1〜6=LEVEL_1〜LEVEL_6。
+    dribble_enabled_topic: /dribble/enabled  # std_msgs/msg/Bool。R1で切り替える。
+    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。STOP中はtrue。
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
+    shot_cycle_complete_topic: /shot_cycle/complete  # std_msgs/msg/Bool。trueでSHOT_CYCLEからDRIVEへ戻る。
+    shot_cycle_request_topic: /shot_cycle/request  # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
+    shot_cycle_running_topic: /shot_cycle/running  # std_msgs/msg/Bool。shot cycleが実際に動作している状態。
+    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOOT、3=OPEN。
     joy_qos_depth: 3  # Joy入力のQoS queue depth。
     command_qos_depth: 1  # 指令topicのQoS queue depth。
     joy_timeout_ms: 200  # [ms] Joy入力断でSTOPへ移るまでの時間。
     state_publish_period_ms: 20  # [ms] 状態指令とoperation modeの再送周期。
+    auto_drive_on_shot_cycle_complete: true  # trueならshot cycle完了時にDRIVEへ自動復帰する。
 
     spring_fire_enable_button: 4  # L1。
     spring_fire_button: 2  # ○。
-    create_button: 8  # Create。
-    ps_button: 12  # PS。
-    options_button: 9  # Options。
-    home_button: 13  # タッチパッドをHomeとして扱う。
+    create_button: 8  # Create。SHOT_CYCLEへ移動・解除する。
+    ps_button: 12  # PS。前後左右の並進操作を反転する。
+    options_button: 9  # Options。BELT_ONLYへ移動・解除する。
+    home_button: 13  # タッチパッドをHomeとして扱う。STOPへ移動・解除する。
     circle_button: 2  # ○。
-    dribble_enable_button: 5  # R1。
+    dribble_enable_button: 5  # R1。dribble ON/OFFを切り替える。
 
     left_trigger_axis: 3  # L2。通常=1、押下=-1。
     right_trigger_axis: 4  # R2。通常=1、押下=-1。
