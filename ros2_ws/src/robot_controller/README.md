@@ -17,7 +17,8 @@ flowchart LR
   subgraph controllers["robot_controller"]
     mecanum["mecanum_controller"]
     belt_dribble["belt_dribble_controller"]
-    spring_position["spring_position_controller"]
+    spring["spring_controller"]
+    dribble_position["dribble_position_controller"]
   end
 
   subgraph drivers["hardware_driver"]
@@ -42,22 +43,24 @@ flowchart LR
   joy_controller -->|"/operation_mode<br/>std_msgs/msg/UInt8"| belt_dribble
   joy_controller -->|"/emergency_stop<br/>std_msgs/msg/Bool"| belt_dribble
 
-  joy_controller -->|"/spring/fire_request<br/>std_msgs/msg/Bool"| spring_position
-  joy_controller -->|"/dribble/position_mode<br/>std_msgs/msg/UInt8"| spring_position
-  joy_controller -->|"/operation_mode<br/>std_msgs/msg/UInt8"| spring_position
-  joy_controller -->|"/emergency_stop<br/>std_msgs/msg/Bool"| spring_position
-  belt_dribble -->|"/shot_cycle/start<br/>std_msgs/msg/Bool"| spring_position
-  spring_position -->|"/shot_cycle/running<br/>std_msgs/msg/Bool"| joy_controller
-  spring_position -->|"/shot_cycle/complete<br/>std_msgs/msg/Bool"| joy_controller
+  joy_controller -->|"/spring/fire_request<br/>std_msgs/msg/Bool"| spring
+  joy_controller -->|"/dribble/position_mode<br/>std_msgs/msg/UInt8"| dribble_position
+  joy_controller -->|"/operation_mode<br/>std_msgs/msg/UInt8"| spring
+  joy_controller -->|"/operation_mode<br/>std_msgs/msg/UInt8"| dribble_position
+  joy_controller -->|"/emergency_stop<br/>std_msgs/msg/Bool"| spring
+  joy_controller -->|"/emergency_stop<br/>std_msgs/msg/Bool"| dribble_position
+  belt_dribble -->|"/shot_cycle/start<br/>std_msgs/msg/Bool"| dribble_position
+  dribble_position -->|"/shot_cycle/running<br/>std_msgs/msg/Bool"| joy_controller
+  dribble_position -->|"/shot_cycle/complete<br/>std_msgs/msg/Bool"| joy_controller
 
   belt_dribble -->|"/underbelt・upperbelt・dribble/target/rpm<br/>std_msgs/msg/Int16"| stm32
   stm32 -->|"/underbelt・upperbelt・dribble/current/rpm<br/>std_msgs/msg/Int16"| belt_dribble
-  stm32 -->|"/limit_switches<br/>std_msgs/msg/UInt8MultiArray"| spring_position
+  stm32 -->|"/limit_switches<br/>std_msgs/msg/UInt8MultiArray"| spring
 
   mecanum -->|"/mecanum/*/vel_command<br/>std_msgs/msg/Float32"| edulite
-  spring_position -->|"/spring/vel_command<br/>std_msgs/msg/Float32"| edulite
-  spring_position -->|"/dribble/position_command<br/>std_msgs/msg/Float32"| edulite
-  edulite -->|"/dribble/position_feedback<br/>std_msgs/msg/Float32"| spring_position
+  spring -->|"/spring/vel_command<br/>std_msgs/msg/Float32"| edulite
+  dribble_position -->|"/dribble/position_command<br/>std_msgs/msg/Float32"| edulite
+  edulite -->|"/dribble/position_feedback<br/>std_msgs/msg/Float32"| dribble_position
 
   stm32 <-->|"/socketcan_bridge/tx・rx<br/>can_msgs/msg/Frame"| socketcan
   edulite <-->|"/socketcan_bridge/tx・rx<br/>can_msgs/msg/Frame"| socketcan
@@ -74,17 +77,20 @@ flowchart LR
 ```text
 joy_controller
   ├─ operation_mode ──────────┬─ belt_dribble_controller
-  │                           ├─ spring_position_controller
+  │                           ├─ spring_controller
+  │                           ├─ dribble_position_controller
   │                           └─ mecanum_controller
   ├─ belt / dribble指令 ─────── belt_dribble_controller
-  ├─ Spring / position指令 ──── spring_position_controller
+  ├─ Spring指令 ─────────────── spring_controller
+  ├─ position指令 ───────────── dribble_position_controller
   └─ cmd_vel ───────────────── mecanum_controller
 ```
 
 | node | 主な責務 | config |
 |---|---|---|
 | `belt_dribble_controller_node` | belt・dribbleの目標RPM送信、3実RPMの到達判定 | `belt_dribble_controller.yaml` |
-| `spring_position_controller_node` | Spring状態遷移、position feedbackによる位置遷移 | `spring_position_controller.yaml` |
+| `spring_controller_node` | Spring状態遷移と発射制御 | `spring_controller.yaml` |
+| `dribble_position_controller` | position feedbackによる位置遷移とshot cycle | `dribble_position_controller.yaml` |
 | `mecanum_controller_node` | mode制限と4輪メカナム逆運動学 | `mecanum_controller.yaml` |
 
 ## operation mode
@@ -130,7 +136,7 @@ SHOT_CYCLE中に3実RPMが各targetの許容範囲内へ入り、
 
 `/belt/mode`は`0=STOP`、`1〜6=LEVEL_1〜LEVEL_6`として扱う。
 
-## spring_position_controller_node
+## spring_controller_node / dribble_position_controller
 
 Springは`LOAD`、`READY`、`FIRE`、`ERROR`の状態を持つ。発射要求はDRIVEだけで
 立ち上がりを受け付ける。STOP、Joy通信断、SHOT_CYCLE、BELT_ONLYでは

@@ -24,15 +24,6 @@ target_include_directories(
 ament_target_dependencies(
   spring_controller_node rclcpp std_msgs)
 
-add_executable(
-  spring_position_controller_node
-  spring_position_controller/src/spring_position_controller.cpp)
-target_include_directories(
-  spring_position_controller_node
-  PRIVATE spring_position_controller/include)
-ament_target_dependencies(
-  spring_position_controller_node rclcpp std_msgs)
-
 add_executable(dribble_controller_node dribble_controller/src/dribble_controller.cpp)
 target_include_directories(
   dribble_controller_node
@@ -67,7 +58,6 @@ install(
   TARGETS
     mecanum_controller_node
     spring_controller_node
-    spring_position_controller_node
     dribble_controller_node
     belt_controller_node
     belt_dribble_controller_node
@@ -77,8 +67,6 @@ install(
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
 
 install(DIRECTORY spring_controller/include/ DESTINATION include)
-
-install(DIRECTORY spring_position_controller/include/ DESTINATION include)
 
 install(DIRECTORY dribble_controller/include/ DESTINATION include)
 

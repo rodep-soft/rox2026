@@ -8,22 +8,19 @@
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class DribblePositionController : public rclcpp::Node
-{
-public:
+class DribblePositionController : public rclcpp::Node {
+ public:
   DribblePositionController();
 
-private:
-  enum class Position : uint8_t
-  {
+ private:
+  enum class Position : uint8_t {
     DRIBBLE,
     INTAKE,
     SHOOT,
     OPEN,
   };
 
-  enum class State : uint8_t
-  {
+  enum class State : uint8_t {
     IDLE,
     MANUAL_MOVE,
     INTAKE,
@@ -32,14 +29,26 @@ private:
     RETURN_TO_DRIBBLE
   };
 
+  enum class OperationMode : uint8_t {
+    STOP,
+    DRIVE,
+    SHOT_CYCLE,
+    BELT_ONLY,
+  };
+
   void declare_parameters();
   void get_parameters();
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void shot_cycle_start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void position_feedback_callback(const std_msgs::msg::Float32::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void watchdog_callback();
   void set_target_position(double position_rad, State state);
+  void stop_shot_cycle();
+  void publish_shot_cycle_running(bool running);
+  void publish_shot_cycle_complete();
+  bool manual_position_allowed() const;
 
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
@@ -53,19 +62,27 @@ private:
   int qos_depth_{1};
   double target_position_rad_{0.0};
   State state_{State::IDLE};
+  OperationMode operation_mode_{OperationMode::STOP};
   bool emergency_stop_active_{false};
+  bool shot_cycle_running_{false};
   rclcpp::Time phase_start_time_;
   rclcpp::Time last_feedback_time_;
   std::string dribble_position_command_topic_;
   std::string dribble_position_feedback_topic_;
   std::string dribble_position_mode_topic_;
+  std::string operation_mode_topic_;
   std::string shot_cycle_start_topic_;
+  std::string shot_cycle_running_topic_;
+  std::string shot_cycle_complete_topic_;
   std::string emergency_stop_topic_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_start_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr
-    position_feedback_sub_;
+      position_feedback_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_running_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_complete_pub_;
   rclcpp::TimerBase::SharedPtr command_timer_;
 };

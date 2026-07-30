@@ -16,6 +16,7 @@ DribbleController::DribbleController()
   if (command_period_ms_ <= 0) {
     RCLCPP_ERROR(get_logger(), "command_period_ms must be greater than zero");
     is_configuration_valid_ = false;
+    command_period_ms_ = 10;
   }
   if (
     on_rpm_ < std::numeric_limits<int16_t>::min() ||

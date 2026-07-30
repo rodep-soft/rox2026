@@ -3,7 +3,10 @@ dribble_position_controller:
     dribble_position_command_topic: /dribble/position_command  # std_msgs/msg/Float32 [rad]。移動中はcommand_period_ms周期でpublishする。
     dribble_position_feedback_topic: /dribble/position_feedback  # std_msgs/msg/Float32 [rad]。hardware_driverから受信する実位置。
     dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOOT、3=OPEN。移動中の指令は無視する。
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
     shot_cycle_start_topic: /shot_cycle/start  # std_msgs/msg/Bool。trueでINTAKE→SHOOT→DRIBBLEを開始する。
+    shot_cycle_running_topic: /shot_cycle/running  # std_msgs/msg/Bool。shot cycleの開始・停止状態。
+    shot_cycle_complete_topic: /shot_cycle/complete  # std_msgs/msg/Bool。DRIBBLE復帰完了時にtrueを一度publishする。
     emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。trueで移動中でもDRIBBLE位置を指令する。
     dribble_position_rad: 0.2  # [rad] DRIBBLE位置。
     intake_position_rad: -1.0  # [rad] SHOOT動作で最初に移動するINTAKE位置。

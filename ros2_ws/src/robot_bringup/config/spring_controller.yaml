@@ -1,5 +1,6 @@
 spring_controller_node:
   ros__parameters:
+    operation_mode_topic: /operation_mode  # std_msgs/msg/UInt8。DRIVE以外では発射を禁止する。
     # 操作指令を受信するtopic。
     fire_request_topic: /spring/fire_request
     # 非常停止状態topic。std_msgs/msg/Bool。trueの間は状態遷移せず0 rad/sを維持する。
@@ -20,6 +21,7 @@ spring_controller_node:
 
     # FIRE状態を維持する時間[s]。
     fire_duration_sec: 0.5
+    load_timeout_sec: 5.0  # [s] LOAD開始から停止するまでの上限。
 
     # 速度指令をpublishする周期[ms]。
     command_period_ms: 10

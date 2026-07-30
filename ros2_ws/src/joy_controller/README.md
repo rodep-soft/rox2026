@@ -77,6 +77,16 @@ STOPへ入った場合とJoy通信が途切れた場合は、belt mode・dribble
 位置シーケンス状態を保持せず初期化する。
 Joy通信が途切れた場合はSTOPへ移動し、Joy入力が復帰するまで状態の周期publishを止める。
 
+## callbackの役割
+
+| callback | 実行契機 | 役割 |
+|---|---|---|
+| `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/mecanum/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
+| `state_publish_timer_callback` | `state_publish_period_ms`周期 | belt mode、dribble enabled、operation mode、spring fire requestを再送する。spring fire requestはDRIVE中かつL1+○を押している間だけtrueにする。 |
+| `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視する。最後の入力から`joy_timeout_ms`を超えた場合は、STOPと各停止指令を即時publishする。 |
+| `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
+| `shot_cycle_complete_callback` | `/shot_cycle/complete`受信時 | shot cycle完了を受け取り、`auto_drive_on_shot_cycle_complete`に従ってDRIVEへ復帰する。 |
+
 ## 主なparameter
 
 | parameter | 型 | 説明 |
