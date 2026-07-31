@@ -2,7 +2,6 @@
 #define BELT_DRIBBLE_CONTROLLER__BELT_DRIBBLE_CONTROLLER_HPP_
 
 #include <cstdint>
-#include <string>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -101,20 +100,6 @@ class BeltDribbleController : public rclcpp::Node {
   rclcpp::Time underbelt_feedback_received_at_{};
   rclcpp::Time upperbelt_feedback_received_at_{};
   rclcpp::Time dribble_feedback_received_at_{};
-
-  std::string operation_mode_topic_;
-  std::string belt_mode_topic_;
-  std::string dribble_enabled_topic_;
-  std::string shot_cycle_request_topic_;
-  std::string emergency_stop_topic_;
-  std::string underbelt_target_rpm_topic_;
-  std::string upperbelt_target_rpm_topic_;
-  std::string dribble_target_rpm_topic_;
-  std::string underbelt_current_rpm_topic_;
-  std::string upperbelt_current_rpm_topic_;
-  std::string dribble_current_rpm_topic_;
-  std::string shot_cycle_start_topic_;
-  std::string shoot_ready_topic_;
 
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr
       operation_mode_subscription_;

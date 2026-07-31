@@ -17,24 +17,30 @@ MecanumControllerNode::MecanumControllerNode()
 void MecanumControllerNode::create_interfaces()
 {
   cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-    cmd_vel_topic_, rclcpp::QoS(qos_depth_),
+    "/mecanum/cmd_vel", rclcpp::QoS(qos_depth_),
     std::bind(
       &MecanumControllerNode::cmd_vel_callback, this,
       std::placeholders::_1));
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   operation_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    operation_mode_topic_, state_qos,
+    "/operation_mode", state_qos,
     std::bind(
       &MecanumControllerNode::operation_mode_callback, this,
       std::placeholders::_1));
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    emergency_stop_topic_, state_qos,
+    "/emergency_stop", state_qos,
     std::bind(
       &MecanumControllerNode::emergency_stop_callback, this,
       std::placeholders::_1));
+  constexpr std::array<const char *, 4> wheel_velocity_topics = {
+    "/mecanum/fl/vel_command",
+    "/mecanum/fr/vel_command",
+    "/mecanum/rl/vel_command",
+    "/mecanum/rr/vel_command",
+  };
   for (std::size_t index = 0; index < wheel_velocity_pubs_.size(); ++index) {
     wheel_velocity_pubs_[index] = create_publisher<std_msgs::msg::Float32>(
-      wheel_velocity_topics_[index], rclcpp::QoS(qos_depth_));
+      wheel_velocity_topics[index], rclcpp::QoS(qos_depth_));
   }
 }
 
@@ -50,21 +56,6 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<double>("vx_sign", 1.0);
   declare_parameter<double>("vy_sign", 1.0);
   declare_parameter<double>("angular_z_sign", 1.0);
-  declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
-  declare_parameter<std::string>("operation_mode_topic", "/operation_mode");
-  declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  declare_parameter<std::string>(
-    "front_left_velocity_topic",
-    "/mecanum/front_left/vel_command");
-  declare_parameter<std::string>(
-    "front_right_velocity_topic",
-    "/mecanum/front_right/vel_command");
-  declare_parameter<std::string>(
-    "rear_left_velocity_topic",
-    "/mecanum/rear_left/vel_command");
-  declare_parameter<std::string>(
-    "rear_right_velocity_topic",
-    "/mecanum/rear_right/vel_command");
   declare_parameter<int>("qos_depth", 1);
 }
 
@@ -78,13 +69,6 @@ void MecanumControllerNode::get_parameters()
   get_parameter("vx_sign", vx_sign_);
   get_parameter("vy_sign", vy_sign_);
   get_parameter("angular_z_sign", angular_z_sign_);
-  get_parameter("cmd_vel_topic", cmd_vel_topic_);
-  get_parameter("operation_mode_topic", operation_mode_topic_);
-  get_parameter("emergency_stop_topic", emergency_stop_topic_);
-  get_parameter("front_left_velocity_topic", wheel_velocity_topics_[FL]);
-  get_parameter("front_right_velocity_topic", wheel_velocity_topics_[FR]);
-  get_parameter("rear_left_velocity_topic", wheel_velocity_topics_[RL]);
-  get_parameter("rear_right_velocity_topic", wheel_velocity_topics_[RR]);
   get_parameter("qos_depth", qos_depth_);
 
   if (velocity_corrections_.size() != wheel_vels_.size()) {

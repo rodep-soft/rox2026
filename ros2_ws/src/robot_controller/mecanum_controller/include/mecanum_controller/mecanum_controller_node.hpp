@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cstdint>
-#include <string>
 #include <vector>
 
 #include "geometry_msgs/msg/twist.hpp"
@@ -63,10 +62,6 @@ private:
   double vx_sign_{1.0};
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};
-  std::string cmd_vel_topic_;
-  std::string operation_mode_topic_;
-  std::string emergency_stop_topic_;
-  std::array<std::string, 4> wheel_velocity_topics_;
   int qos_depth_{1};
 };
 

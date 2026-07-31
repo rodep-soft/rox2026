@@ -32,44 +32,44 @@ DribblePositionController::DribblePositionController()
 
   // EduLite 05 driverへ送る目標位置 [rad]。
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
-      dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
+      "/dribble/position_command", rclcpp::QoS(qos_depth_));
 
   // joy_controllerからの手動位置選択。std_msgs/msg/UInt8。
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-      dribble_position_mode_topic_, rclcpp::QoS(qos_depth_),
+      "/dribble/position_mode", rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::position_mode_callback, this,
                 std::placeholders::_1));
 
   // joy_controllerからの運転モード。STOP時の停止とBELT_ONLY時のOPEN移動を判断する。
   // std_msgs/msg/UInt8、状態topicのためtransient local QoSを使う。
   operation_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-      operation_mode_topic_, rclcpp::QoS(1).reliable().transient_local(),
+      "/operation_mode", rclcpp::QoS(1).reliable().transient_local(),
       std::bind(&DribblePositionController::operation_mode_callback, this,
                 std::placeholders::_1));
 
   // belt_dribble_controllerからのshot cycle開始要求。std_msgs/msg/Bool。
   shot_cycle_start_sub_ = create_subscription<std_msgs::msg::Bool>(
-      shot_cycle_start_topic_, rclcpp::QoS(qos_depth_),
+      "/shot_cycle/start", rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::shot_cycle_start_callback, this,
                 std::placeholders::_1));
 
   // EduLite 05 driverから受ける現在位置 [rad]。std_msgs/msg/Float32。
   position_feedback_sub_ = create_subscription<std_msgs::msg::Float32>(
-      dribble_position_feedback_topic_, rclcpp::QoS(qos_depth_),
+      "/dribble/position_feedback", rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::position_feedback_callback, this,
                 std::placeholders::_1));
 
   // joy_controllerからの非常停止。std_msgs/msg/Bool、状態topicのためtransient local QoSを使う。
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-      emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local(),
+      "/emergency_stop", rclcpp::QoS(1).reliable().transient_local(),
       std::bind(&DribblePositionController::emergency_stop_callback, this,
                 std::placeholders::_1));
 
   // joy_controllerへshot cycle実行中・完了を通知する。どちらもstd_msgs/msg/Bool。
   shot_cycle_running_pub_ = create_publisher<std_msgs::msg::Bool>(
-      shot_cycle_running_topic_, rclcpp::QoS(qos_depth_));
+      "/shot_cycle/running", rclcpp::QoS(qos_depth_));
   shot_cycle_complete_pub_ = create_publisher<std_msgs::msg::Bool>(
-      shot_cycle_complete_topic_, rclcpp::QoS(qos_depth_));
+      "/shot_cycle/complete", rclcpp::QoS(qos_depth_));
   command_timer_ = create_wall_timer(
       std::chrono::milliseconds(command_period_ms_),
       std::bind(&DribblePositionController::watchdog_callback, this));
@@ -79,19 +79,6 @@ DribblePositionController::DribblePositionController()
 }
 
 void DribblePositionController::declare_parameters() {
-  declare_parameter<std::string>("dribble_position_command_topic",
-                                 "/dribble/position_command");
-  declare_parameter<std::string>("dribble_position_feedback_topic",
-                                 "/dribble/position_feedback");
-  declare_parameter<std::string>("dribble_position_mode_topic",
-                                 "/dribble/position_mode");
-  declare_parameter<std::string>("operation_mode_topic", "/operation_mode");
-  declare_parameter<std::string>("shot_cycle_start_topic", "/shot_cycle/start");
-  declare_parameter<std::string>("shot_cycle_running_topic",
-                                 "/shot_cycle/running");
-  declare_parameter<std::string>("shot_cycle_complete_topic",
-                                 "/shot_cycle/complete");
-  declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
   declare_parameter<double>("dribble_position_rad", 0.0);
   declare_parameter<double>("intake_position_rad", 1.5);
   declare_parameter<double>("shoot_position_rad", 2.0);
@@ -105,16 +92,6 @@ void DribblePositionController::declare_parameters() {
 }
 
 void DribblePositionController::get_parameters() {
-  get_parameter("dribble_position_command_topic",
-                dribble_position_command_topic_);
-  get_parameter("dribble_position_feedback_topic",
-                dribble_position_feedback_topic_);
-  get_parameter("dribble_position_mode_topic", dribble_position_mode_topic_);
-  get_parameter("operation_mode_topic", operation_mode_topic_);
-  get_parameter("shot_cycle_start_topic", shot_cycle_start_topic_);
-  get_parameter("shot_cycle_running_topic", shot_cycle_running_topic_);
-  get_parameter("shot_cycle_complete_topic", shot_cycle_complete_topic_);
-  get_parameter("emergency_stop_topic", emergency_stop_topic_);
   get_parameter("dribble_position_rad", dribble_position_rad_);
   get_parameter("intake_position_rad", intake_position_rad_);
   get_parameter("shoot_position_rad", shoot_position_rad_);

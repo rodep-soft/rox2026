@@ -1,33 +1,5 @@
 joy_controller:
   ros__parameters:
-    # sensor_msgs/msg/Joy。
-    joy_topic: /joy
-
-    # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
-    operation_mode_topic: /operation_mode
-    # std_msgs/msg/Bool。STOP中はtrue。
-    emergency_stop_topic: /emergency_stop
-
-    # geometry_msgs/msg/Twist。
-    mecanum_cmd_vel_topic: /mecanum/cmd_vel
-
-    # std_msgs/msg/UInt8。0=STOP、1〜6=LEVEL_1〜LEVEL_6。
-    belt_mode_topic: /belt/mode
-    # std_msgs/msg/Bool。R1で切り替える。
-    dribble_enabled_topic: /dribble/enabled
-
-    # std_msgs/msg/Bool。L1+○の押下中だけtrue。
-    spring_fire_request_topic: /spring/fire_request
-
-    # std_msgs/msg/Bool。trueでSHOT_CYCLEからDRIVEへ戻る。
-    shot_cycle_complete_topic: /shot_cycle/complete
-    # std_msgs/msg/Bool。L2+○の押下開始でtrueを一度publishする。
-    shot_cycle_request_topic: /shot_cycle/request
-    # std_msgs/msg/Bool。shot cycleが実際に動作している状態。
-    shot_cycle_running_topic: /shot_cycle/running
-    # std_msgs/msg/UInt8。0=DRIBBLE、1=INTAKE、2=SHOT、3=OPEN。
-    dribble_position_mode_topic: /dribble/position_mode
-
     # Joy入力を保持する件数。
     joy_qos_depth: 3
     # 機構指令を保持する件数。
@@ -72,6 +44,8 @@ joy_controller:
 
     # スティック中心ずれを無効化する範囲。大きすぎると小さい操作も無効になる。
     axis_deadzone: 0.05
+    # 左スティック左右を-1/0/+1へ切り替えるしきい値。横移動中は前後入力を0にする。
+    lateral_axis_threshold: 0.7
     # トリガー・DPAD軸をONとみなすしきい値。大きすぎると深い操作が必要になる。
     axis_on_threshold: 0.7
 

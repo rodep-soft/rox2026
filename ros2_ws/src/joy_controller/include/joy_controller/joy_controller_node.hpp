@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -54,6 +53,7 @@ private:
   static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
   static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
   double apply_axis_deadzone(double value) const;
+  double apply_lateral_axis_direction(double value) const;
   static double apply_axis_limit(double value, double limit);
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
@@ -74,18 +74,6 @@ private:
   void update_previous_chord_inputs();
   bool is_manual_position_allowed() const;
 
-  std::string joy_topic_;
-  std::string mecanum_cmd_vel_topic_;
-  std::string spring_fire_request_topic_;
-  std::string belt_mode_topic_;
-  std::string dribble_enabled_topic_;
-  std::string emergency_stop_topic_;
-  std::string operation_mode_topic_;
-  std::string shot_cycle_complete_topic_;
-  std::string shot_cycle_request_topic_;
-  std::string shot_cycle_running_topic_;
-  std::string dribble_position_mode_topic_;
-
   int joy_qos_depth_{1};
   int command_qos_depth_{1};
   int joy_timeout_ms_{200};
@@ -97,6 +85,7 @@ private:
   double linear_y_limit_{2.0};
   double angular_z_limit_{2.0};
   double axis_deadzone_{0.05};
+  double lateral_axis_threshold_{0.7};
   double axis_on_threshold_{0.7};
 
   int spring_fire_enable_button_{4};

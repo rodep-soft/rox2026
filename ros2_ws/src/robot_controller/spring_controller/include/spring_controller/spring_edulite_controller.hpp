@@ -2,7 +2,6 @@
 #define SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 
 #include <cstdint>
-#include <string>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -30,6 +29,9 @@ class SpringEduliteController : public rclcpp::Node {
   void start_loading();
   void start_fire();
   void timer_callback();
+  const char* state_name(State state) const;
+  const char* operation_mode_name(OperationMode mode) const;
+  void log_fire_request_rejection() const;
 
   State now_state_{State::LOAD};
   OperationMode operation_mode_{OperationMode::STOP};
@@ -39,6 +41,8 @@ class SpringEduliteController : public rclcpp::Node {
   bool emergency_stop_active_{false};
   bool previous_fire_request_{false};
   bool fire_pending_{false};
+  bool limit_switch_received_{false};
+  uint8_t last_limit_switch_value_{0};
   double loading_velocity_rad_s_{0.0};
   double fire_velocity_rad_s_{0.0};
   double fire_duration_sec_{0.0};
@@ -47,12 +51,6 @@ class SpringEduliteController : public rclcpp::Node {
   int qos_depth_{1};
   rclcpp::Time fire_start_time_;
   rclcpp::Time load_start_time_;
-  std::string operation_mode_topic_;
-  std::string fire_request_topic_;
-  std::string emergency_stop_topic_;
-  std::string limit_switch_topic_;
-  std::string spring_velocity_command_topic_;
-
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;

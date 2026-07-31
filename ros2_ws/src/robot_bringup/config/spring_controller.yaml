@@ -1,19 +1,7 @@
 spring_controller_node:
   ros__parameters:
-    # std_msgs/msg/UInt8。DRIVE以外では発射を禁止する。
-    operation_mode_topic: /operation_mode
-    # std_msgs/msg/Bool。発射要求。
-    fire_request_topic: /spring/fire_request
-    # 非常停止状態topic。std_msgs/msg/Bool。trueの間は状態遷移せず0 rad/sを維持する。
-    emergency_stop_topic: /emergency_stop
-
-    # std_msgs/msg/UInt8MultiArray。装填完了を判定するリミットスイッチ配列。
-    limit_switch_topic: /limit_switches
     # 変更すると装填完了に使うリミットスイッチのdata indexが変わる。
     limit_switch_index: 1
-
-    # std_msgs/msg/Float32 [rad/s]。EduLite 05へ送る速度指令。
-    spring_velocity_command_topic: /spring/vel_command
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 

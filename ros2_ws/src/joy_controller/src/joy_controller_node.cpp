@@ -23,53 +23,62 @@ JoyControllerNode::JoyControllerNode()
   if (state_publish_period_ms_ <= 0) {
     state_publish_period_ms_ = 20;
   }
+  if (!std::isfinite(lateral_axis_threshold_) ||
+    lateral_axis_threshold_ <= 0.0 || lateral_axis_threshold_ > 1.0)
+  {
+    RCLCPP_WARN(
+      get_logger(),
+      "lateral_axis_threshold must be in (0.0, 1.0]: %.3f. Using 0.7.",
+      lateral_axis_threshold_);
+    lateral_axis_threshold_ = 0.7;
+  }
 
   auto joy_qos = rclcpp::SensorDataQoS();
   joy_qos.keep_last(joy_qos_depth_);
 
   // Joy入力を受け取る。
   joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
-    joy_topic_, joy_qos,
+    "/joy", joy_qos,
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
   // shot cycleが動作中かを受け取る。
   shot_cycle_running_subscription_ = create_subscription<std_msgs::msg::Bool>(
-    shot_cycle_running_topic_, rclcpp::QoS(command_qos_depth_),
+    "/shot_cycle/running", rclcpp::QoS(command_qos_depth_),
     std::bind(
       &JoyControllerNode::shot_cycle_running_callback, this,
       std::placeholders::_1));
   // shot cycleの完了通知を受け取る。
   shot_cycle_complete_subscription_ = create_subscription<std_msgs::msg::Bool>(
-    shot_cycle_complete_topic_, rclcpp::QoS(command_qos_depth_),
+    "/shot_cycle/complete", rclcpp::QoS(command_qos_depth_),
     std::bind(
       &JoyControllerNode::shot_cycle_complete_callback, this,
       std::placeholders::_1));
 
   // 各controllerへ現在の操作モードを送る。
   operation_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
-    operation_mode_topic_, rclcpp::QoS(1).reliable().transient_local());
+    "/operation_mode", rclcpp::QoS(1).reliable().transient_local());
   // 各controllerへ停止状態を送る。
   emergency_stop_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local());
+    "/emergency_stop", rclcpp::QoS(1).reliable().transient_local());
 
   // mecanum_controllerへ走行速度指令を送る。
   mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
-    mecanum_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+    "/mecanum/cmd_vel", rclcpp::QoS(command_qos_depth_));
 
   // spring_controllerへ発射要求を送る。
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
+    "/spring/fire_request", rclcpp::QoS(command_qos_depth_));
   // belt_dribble_controllerへベルト回転モードを送る。
   belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
-    belt_mode_topic_, rclcpp::QoS(command_qos_depth_));
+    "/belt/mode", rclcpp::QoS(command_qos_depth_));
   // belt_dribble_controllerへドリブル有効状態を送る。
   dribble_enabled_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    dribble_enabled_topic_, rclcpp::QoS(command_qos_depth_));
+    "/dribble/enabled", rclcpp::QoS(command_qos_depth_));
   // belt_dribble_controllerへshot cycle開始要求を送る。
   shot_cycle_request_publisher_ = create_publisher<std_msgs::msg::Bool>(
-    shot_cycle_request_topic_, rclcpp::QoS(command_qos_depth_));
+    "/shot_cycle/request", rclcpp::QoS(command_qos_depth_));
   // dribble_position_controllerへ手動位置指令を送る。
   dribble_position_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
-    dribble_position_mode_topic_, rclcpp::QoS(command_qos_depth_));
+    "/dribble/position_mode", rclcpp::QoS(command_qos_depth_));
 
   publish_stop_commands();
   joy_timeout_timer_ = create_wall_timer(
@@ -82,24 +91,6 @@ JoyControllerNode::JoyControllerNode()
 
 void JoyControllerNode::declare_parameters()
 {
-  // Topic名
-  declare_parameter<std::string>("joy_topic", "/joy");
-  declare_parameter<std::string>("mecanum_cmd_vel_topic", "/mecanum/cmd_vel");
-  declare_parameter<std::string>("spring_fire_request_topic",
-    "/spring/fire_request");
-  declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
-  declare_parameter<std::string>("dribble_enabled_topic", "/dribble/enabled");
-  declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  declare_parameter<std::string>("operation_mode_topic", "/operation_mode");
-  declare_parameter<std::string>("shot_cycle_complete_topic",
-    "/shot_cycle/complete");
-  declare_parameter<std::string>("shot_cycle_request_topic",
-    "/shot_cycle/request");
-  declare_parameter<std::string>("shot_cycle_running_topic",
-    "/shot_cycle/running");
-  declare_parameter<std::string>("dribble_position_mode_topic",
-    "/dribble/position_mode");
-
   // QoSと周期
   declare_parameter<int>("joy_qos_depth", 1);
   declare_parameter<int>("command_qos_depth", 1);
@@ -117,6 +108,7 @@ void JoyControllerNode::declare_parameters()
 
   // 入力判定
   declare_parameter<double>("axis_deadzone", 0.05);
+  declare_parameter<double>("lateral_axis_threshold", 0.7);
   declare_parameter<double>("axis_on_threshold", 0.7);
 
   // ボタン番号
@@ -141,19 +133,6 @@ void JoyControllerNode::declare_parameters()
 
 void JoyControllerNode::get_parameters()
 {
-  // Topic名
-  get_parameter("joy_topic", joy_topic_);
-  get_parameter("mecanum_cmd_vel_topic", mecanum_cmd_vel_topic_);
-  get_parameter("spring_fire_request_topic", spring_fire_request_topic_);
-  get_parameter("belt_mode_topic", belt_mode_topic_);
-  get_parameter("dribble_enabled_topic", dribble_enabled_topic_);
-  get_parameter("emergency_stop_topic", emergency_stop_topic_);
-  get_parameter("operation_mode_topic", operation_mode_topic_);
-  get_parameter("shot_cycle_complete_topic", shot_cycle_complete_topic_);
-  get_parameter("shot_cycle_request_topic", shot_cycle_request_topic_);
-  get_parameter("shot_cycle_running_topic", shot_cycle_running_topic_);
-  get_parameter("dribble_position_mode_topic", dribble_position_mode_topic_);
-
   // QoSと周期
   get_parameter("joy_qos_depth", joy_qos_depth_);
   get_parameter("command_qos_depth", command_qos_depth_);
@@ -173,6 +152,7 @@ void JoyControllerNode::get_parameters()
 
   // 入力判定
   get_parameter("axis_deadzone", axis_deadzone_);
+  get_parameter("lateral_axis_threshold", lateral_axis_threshold_);
   get_parameter("axis_on_threshold", axis_on_threshold_);
 
   // ボタン番号
@@ -221,6 +201,17 @@ double JoyControllerNode::apply_axis_deadzone(double value) const
     return 0.0;
   }
   return value;
+}
+
+double JoyControllerNode::apply_lateral_axis_direction(double value) const
+{
+  if (value <= -lateral_axis_threshold_) {
+    return -1.0;
+  }
+  if (value >= lateral_axis_threshold_) {
+    return 1.0;
+  }
+  return 0.0;
 }
 
 double JoyControllerNode::apply_axis_limit(double value, double limit)
@@ -509,10 +500,13 @@ void JoyControllerNode::joy_callback(
     publish_position(Position::OPEN);
   }
 
-  const double linear_x =
+  double linear_x =
     apply_axis_deadzone(axis_value(*msg, left_stick_y_axis_));
   const double linear_y =
-    apply_axis_deadzone(axis_value(*msg, left_stick_x_axis_));
+    apply_lateral_axis_direction(axis_value(*msg, left_stick_x_axis_));
+  if (linear_y != 0.0) {
+    linear_x = 0.0;
+  }
   const double angular_z =
     apply_axis_deadzone(axis_value(*msg, right_stick_x_axis_));
 

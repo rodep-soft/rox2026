@@ -19,28 +19,6 @@ BeltDribbleController::BeltDribbleController()
 }
 
 void BeltDribbleController::declare_parameters() {
-  // Topic名
-  declare_parameter<std::string>("operation_mode_topic", "/operation_mode");
-  declare_parameter<std::string>("belt_mode_topic", "/belt/mode");
-  declare_parameter<std::string>("dribble_enabled_topic", "/dribble/enabled");
-  declare_parameter<std::string>("shot_cycle_request_topic",
-                                 "/shot_cycle/request");
-  declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  declare_parameter<std::string>("underbelt_target_rpm_topic",
-                                 "/underbelt/target/rpm");
-  declare_parameter<std::string>("upperbelt_target_rpm_topic",
-                                 "/upperbelt/target/rpm");
-  declare_parameter<std::string>("dribble_target_rpm_topic",
-                                 "/dribble/target/rpm");
-  declare_parameter<std::string>("underbelt_current_rpm_topic",
-                                 "/underbelt/current/rpm");
-  declare_parameter<std::string>("upperbelt_current_rpm_topic",
-                                 "/upperbelt/current/rpm");
-  declare_parameter<std::string>("dribble_current_rpm_topic",
-                                 "/dribble/current/rpm");
-  declare_parameter<std::string>("shot_cycle_start_topic", "/shot_cycle/start");
-  declare_parameter<std::string>("shoot_ready_topic", "/shoot_ready");
-
   // RPMと到達判定
   declare_parameter<int>("level_1_rpm", 3000);
   declare_parameter<int>("level_2_rpm", 3500);
@@ -58,21 +36,6 @@ void BeltDribbleController::declare_parameters() {
 }
 
 void BeltDribbleController::get_parameters() {
-  // Topic名
-  get_parameter("operation_mode_topic", operation_mode_topic_);
-  get_parameter("belt_mode_topic", belt_mode_topic_);
-  get_parameter("dribble_enabled_topic", dribble_enabled_topic_);
-  get_parameter("shot_cycle_request_topic", shot_cycle_request_topic_);
-  get_parameter("emergency_stop_topic", emergency_stop_topic_);
-  get_parameter("underbelt_target_rpm_topic", underbelt_target_rpm_topic_);
-  get_parameter("upperbelt_target_rpm_topic", upperbelt_target_rpm_topic_);
-  get_parameter("dribble_target_rpm_topic", dribble_target_rpm_topic_);
-  get_parameter("underbelt_current_rpm_topic", underbelt_current_rpm_topic_);
-  get_parameter("upperbelt_current_rpm_topic", upperbelt_current_rpm_topic_);
-  get_parameter("dribble_current_rpm_topic", dribble_current_rpm_topic_);
-  get_parameter("shot_cycle_start_topic", shot_cycle_start_topic_);
-  get_parameter("shoot_ready_topic", shoot_ready_topic_);
-
   // RPMと到達判定
   get_parameter("level_1_rpm", level_1_rpm_);
   get_parameter("level_2_rpm", level_2_rpm_);
@@ -137,55 +100,55 @@ void BeltDribbleController::create_interfaces() {
 
   // 操作可否を決める状態と安全入力。
   operation_mode_subscription_ = create_subscription<std_msgs::msg::UInt8>(
-      operation_mode_topic_, state_qos,
+      "/operation_mode", state_qos,
       std::bind(&BeltDribbleController::operation_mode_callback, this,
                 std::placeholders::_1));
   emergency_stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
-      emergency_stop_topic_, state_qos,
+      "/emergency_stop", state_qos,
       std::bind(&BeltDribbleController::emergency_stop_callback, this,
                 std::placeholders::_1));
 
   // Joyから受ける機構操作要求。
   belt_mode_subscription_ = create_subscription<std_msgs::msg::UInt8>(
-      belt_mode_topic_, command_qos,
+      "/belt/mode", command_qos,
       std::bind(&BeltDribbleController::belt_mode_callback, this,
                 std::placeholders::_1));
   dribble_enabled_subscription_ = create_subscription<std_msgs::msg::Bool>(
-      dribble_enabled_topic_, command_qos,
+      "/dribble/enabled", command_qos,
       std::bind(&BeltDribbleController::dribble_enabled_callback, this,
                 std::placeholders::_1));
   shot_cycle_request_subscription_ = create_subscription<std_msgs::msg::Bool>(
-      shot_cycle_request_topic_, command_qos,
+      "/shot_cycle/request", command_qos,
       std::bind(&BeltDribbleController::shot_cycle_request_callback, this,
                 std::placeholders::_1));
 
   // 3モータの現在RPM。
   underbelt_feedback_subscription_ = create_subscription<std_msgs::msg::Int16>(
-      underbelt_current_rpm_topic_, command_qos,
+      "/underbelt/current/rpm", command_qos,
       std::bind(&BeltDribbleController::underbelt_feedback_callback, this,
                 std::placeholders::_1));
   upperbelt_feedback_subscription_ = create_subscription<std_msgs::msg::Int16>(
-      upperbelt_current_rpm_topic_, command_qos,
+      "/upperbelt/current/rpm", command_qos,
       std::bind(&BeltDribbleController::upperbelt_feedback_callback, this,
                 std::placeholders::_1));
   dribble_feedback_subscription_ = create_subscription<std_msgs::msg::Int16>(
-      dribble_current_rpm_topic_, command_qos,
+      "/dribble/current/rpm", command_qos,
       std::bind(&BeltDribbleController::dribble_feedback_callback, this,
                 std::placeholders::_1));
 
   // 3モータへ送る目標RPM。
   underbelt_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
-      underbelt_target_rpm_topic_, command_qos);
+      "/underbelt/target/rpm", command_qos);
   upperbelt_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
-      upperbelt_target_rpm_topic_, command_qos);
+      "/upperbelt/target/rpm", command_qos);
   dribble_target_publisher_ = create_publisher<std_msgs::msg::Int16>(
-      dribble_target_rpm_topic_, command_qos);
+      "/dribble/target/rpm", command_qos);
 
   // shot cycleの開始と実行可能状態。
   shot_cycle_start_publisher_ = create_publisher<std_msgs::msg::Bool>(
-      shot_cycle_start_topic_, command_qos);
+      "/shot_cycle/start", command_qos);
   shoot_ready_publisher_ =
-      create_publisher<std_msgs::msg::Bool>(shoot_ready_topic_, state_qos);
+      create_publisher<std_msgs::msg::Bool>("/shoot_ready", state_qos);
 }
 
 // operation mode変更時にshot cycleの準備状態をリセットする。

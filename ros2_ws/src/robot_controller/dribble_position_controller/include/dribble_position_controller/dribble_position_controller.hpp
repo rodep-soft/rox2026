@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -73,14 +72,6 @@ class DribblePositionController : public rclcpp::Node {
   bool has_position_feedback_{false};
   rclcpp::Time phase_start_time_;
   rclcpp::Time last_feedback_time_;
-  std::string dribble_position_command_topic_;
-  std::string dribble_position_feedback_topic_;
-  std::string dribble_position_mode_topic_;
-  std::string operation_mode_topic_;
-  std::string shot_cycle_start_topic_;
-  std::string shot_cycle_running_topic_;
-  std::string shot_cycle_complete_topic_;
-  std::string emergency_stop_topic_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;

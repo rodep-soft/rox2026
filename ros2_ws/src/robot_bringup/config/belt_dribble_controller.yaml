@@ -1,29 +1,5 @@
 belt_dribble_controller_node:
   ros__parameters:
-    # std_msgs/msg/UInt8。0=STOP、1=DRIVE、2=SHOT_CYCLE、3=BELT_ONLY。
-    operation_mode_topic: /operation_mode
-    # std_msgs/msg/UInt8。0=STOP、1〜6=LEVEL_1〜LEVEL_6。
-    belt_mode_topic: /belt/mode
-    # std_msgs/msg/Bool。
-    dribble_enabled_topic: /dribble/enabled
-    # std_msgs/msg/Bool。true受信時にshoot_readyなら実行する。
-    shot_cycle_request_topic: /shot_cycle/request
-    # std_msgs/msg/Bool。
-    emergency_stop_topic: /emergency_stop
-
-    # std_msgs/msg/Int16 [RPM]。
-    underbelt_target_rpm_topic: /underbelt/target/rpm
-    upperbelt_target_rpm_topic: /upperbelt/target/rpm
-    dribble_target_rpm_topic: /dribble/target/rpm
-    underbelt_current_rpm_topic: /underbelt/current/rpm
-    upperbelt_current_rpm_topic: /upperbelt/current/rpm
-    dribble_current_rpm_topic: /dribble/current/rpm
-
-    # std_msgs/msg/Bool。trueでshot cycleを開始する。
-    shot_cycle_start_topic: /shot_cycle/start
-    # std_msgs/msg/Bool。3モータのRPM到達状態。
-    shoot_ready_topic: /shoot_ready
-
     # [RPM] beltの各操作levelで送る目標回転数。
     # 最初に1000くらいをかませないとbeltが回らない時がある
     # MAX rpmの値は4500くらい
