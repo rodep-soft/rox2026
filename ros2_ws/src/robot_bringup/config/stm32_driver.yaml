@@ -1,7 +1,5 @@
 stm32_driver_node:
   ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"  #CANBUSへ送信するトピック
-    can_sub_topic: "/socketcan_bridge/rx"  #CANBUSから受信するトピック
     motor_target_rpm_topics:
       - /stm32/underbelt/target/rpm
       - /stm32/upperbelt/target/rpm
@@ -10,8 +8,7 @@ stm32_driver_node:
       - /stm32/underbelt/current/rpm
       - /stm32/upperbelt/current/rpm
       - /stm32/dribble/current/rpm
-    led_cmd_topic: "/led/cmd"              #ledのコマンドを制御ノードから受信するトピック
-    limit_sw_topic: "/limit_switches"      #limitswのデータを制御ノードへ送信するトピック(std_msgs/msg/UInt8MultiArray、bitごとに1スイッチ)
-    timeout_ms: 500                        #タイムアウト検知時間
-    keep_alive_period_ms: 100              #heartbeatの送信と判断周期
-    publish_period_ms: 10                  #制御ノードに送る現在のrpm送信周期
+    led_cmd_topic: "/led/cmd"  # std_msgs/msg/UInt8
+    limit_sw_topic: "/limit_switches"  # std_msgs/msg/UInt8MultiArray、bitごとに1スイッチ
+    timeout_ms: 500  # heartbeatのタイムアウト検知時間
+    keep_alive_period_ms: 100  # heartbeatの送信・判定周期

@@ -3,22 +3,20 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
-from launch.launch_description_sources import (
-    AnyLaunchDescriptionSource,
-    PythonLaunchDescriptionSource,
-)
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    stm32_parameter_file = os.path.join(
-        get_package_share_directory("robot_bringup"),
-        "config",
-        "stm32_driver.yaml",
+    stm32_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("robot_bringup"),
+                "launch",
+                "stm32.launch.py",
+            )
+        )
     )
-
     edulite05_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -28,20 +26,32 @@ def generate_launch_description():
             )
         )
     )
-
-    socketcan_launch = IncludeLaunchDescription(
-        AnyLaunchDescriptionSource(
+    vesc_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory("ros2_socketcan"),
+                get_package_share_directory("robot_bringup"),
                 "launch",
-                "socket_can_bridge.launch.xml",
+                "vesc.launch.py",
             )
         ),
         launch_arguments={
-            "interface": LaunchConfiguration("can_interface"),
-            "enable_can_fd": "false",
-            "from_can_bus_topic": "/socketcan_bridge/rx",
-            "to_can_bus_topic": "/socketcan_bridge/tx",
+            "use_vesc": LaunchConfiguration("use_vesc"),
+            "use_dribble_vesc": LaunchConfiguration("use_dribble_vesc"),
+            "vesc_1_controller_id": LaunchConfiguration("vesc_1_controller_id"),
+            "vesc_2_controller_id": LaunchConfiguration("vesc_2_controller_id"),
+            "vesc_3_controller_id": LaunchConfiguration("vesc_3_controller_id"),
+        }.items(),
+    )
+    socketcan_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("robot_bringup"),
+                "launch",
+                "ros2_socketcan.launch.py",
+            )
+        ),
+        launch_arguments={
+            "can_interface": LaunchConfiguration("can_interface"),
         }.items(),
     )
 
@@ -65,68 +75,21 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "vesc_1_controller_id",
                 default_value="51",
-                description="CAN controller ID of VESC 1",
+                description="CAN controller ID of the underbelt VESC",
             ),
             DeclareLaunchArgument(
                 "vesc_2_controller_id",
                 default_value="52",
-                description="CAN controller ID of VESC 2",
+                description="CAN controller ID of the upperbelt VESC",
             ),
             DeclareLaunchArgument(
                 "vesc_3_controller_id",
                 default_value="50",
-                description="CAN controller ID of VESC 3",
+                description="CAN controller ID of the dribble VESC",
             ),
-            socketcan_launch,
-            Node(
-                package="hardware_driver",
-                executable="stm32_node",
-                name="stm32_driver_node",
-                output="screen",
-                parameters=[stm32_parameter_file],
-            ),
+            stm32_launch,
             edulite05_launch,
-            Node(
-                package="hardware_driver",
-                executable="vesc_node",
-                name="vesc_driver_1",
-                output="screen",
-                condition=IfCondition(LaunchConfiguration("use_vesc")),
-                parameters=[
-                    {
-                        "controller_id": LaunchConfiguration("vesc_1_controller_id"),
-                        "target_rpm_topic": "/underbelt/target/rpm",
-                        "current_rpm_topic": "/underbelt/current/rpm",
-                    }
-                ],
-            ),
-            Node(
-                package="hardware_driver",
-                executable="vesc_node",
-                name="vesc_driver_2",
-                output="screen",
-                condition=IfCondition(LaunchConfiguration("use_vesc")),
-                parameters=[
-                    {
-                        "controller_id": LaunchConfiguration("vesc_2_controller_id"),
-                        "target_rpm_topic": "/upperbelt/target/rpm",
-                        "current_rpm_topic": "/upperbelt/current/rpm",
-                    }
-                ],
-            ),
-            Node(
-                package="hardware_driver",
-                executable="vesc_node",
-                name="vesc_driver_3",
-                output="screen",
-                condition=IfCondition(LaunchConfiguration("use_dribble_vesc")),
-                parameters=[
-                    {
-                        "controller_id": LaunchConfiguration("vesc_3_controller_id"),
-                        "target_rpm_topic": "/dribble/target/rpm",
-                        "current_rpm_topic": "/dribble/current/rpm",
-                    }
-                ],
-            ),
+            vesc_launch,
+            socketcan_launch,
         ]
     )

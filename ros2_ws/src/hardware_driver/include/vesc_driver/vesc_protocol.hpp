@@ -4,8 +4,8 @@
 
 namespace vesc_driver::protocol
 {
-constexpr uint32_t SET_RPM = 3;
-constexpr uint32_t STATUS_1 = 9;
+constexpr uint32_t SET_RPM_ID = 3;
+constexpr uint32_t STATUS_1_ID = 9;
 constexpr int64_t MOTOR_POLES = 14;   // モーターの極数
 
 struct Status1
@@ -21,7 +21,7 @@ struct Status1
 can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
 {
   can_msgs::msg::Frame frame{};
-  frame.id = (SET_RPM << 8) | id;
+  frame.id = (SET_RPM_ID << 8) | id;
   frame.is_extended = true;
   frame.dlc = 4;
 
@@ -39,7 +39,7 @@ can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
 bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status)
 {
   if (!frame.is_extended || frame.is_rtr || frame.is_error || frame.dlc != 8 ||
-    (frame.id >> 8) != STATUS_1)
+    (frame.id >> 8) != STATUS_1_ID)
   {
     return false;
   }

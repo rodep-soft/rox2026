@@ -13,21 +13,21 @@ constexpr uint32_t HEARTBEAT_FROM_STM = 0x100;
 // rdkから送るタイムアウト検知信号
 constexpr uint32_t HEARTBEAT_TO_STM = 0x101;
 
-//LED点灯用のコマンド送信
+// LED点灯用のコマンド送信
 constexpr uint32_t LED_CMD = 0x201;
-//ブラシレスモータRPM送信用ベース [0x230 , 0x231 , 0x232]
+// ブラシレスモータRPM送信用ベース [0x230 , 0x231 , 0x232]
 constexpr uint32_t MOTOR_TARGET_RPM_BASE = 0x230;
-//PIDゲイン送信用
+// PIDゲイン送信用
 constexpr uint32_t MOTOR_PID_BASE = 0x240;
 
-//リミットスイッチデータ受け取り(STM32ファームの送信IDに合わせる)
+// リミットスイッチデータ受け取り(STM32ファームの送信IDに合わせる)
 constexpr uint32_t LIMIT_SWITCH_STATE = 0x310;
-//ブラシレスモータPRM受信用ベース [0x230 , 0x231 , 0x232]
+// ブラシレスモータPRM受信用ベース [0x230 , 0x231 , 0x232]
 constexpr uint32_t MOTOR_CURRENT_RPM_BASE = 0x330;
-//PIDゲイン設定完了ACK
+// PIDゲイン設定完了ACK
 constexpr uint32_t PID_ACK_BASE = 0x340;
 
-//モーター数
+// モーター数
 constexpr std::size_t MOTOR_NUM = 3;
 
 /// @brief ブラシレスモーター用のcanFrameの生成
@@ -57,7 +57,8 @@ bool is_standard_data_frame(const can_msgs::msg::Frame & frame);
 /// @param rpm デコードした現在RPM
 /// @return true: IDとDLCが正しい、false: それ以外
 bool decode_motor_current(
-  const can_msgs::msg::Frame & frame, std::size_t & motor, int16_t & rpm);
+  const can_msgs::msg::Frame & frame, std::size_t & motor,
+  int16_t & rpm);
 
 /// @brief リミットスイッチの状態をデコードする
 /// @pre is_standard_data_frame(frame)がtrueであること

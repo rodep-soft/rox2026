@@ -1,10 +1,26 @@
-vesc_driver_node:
+vesc_upper_belt_driver:
   ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/vesc/target/rpm"
-    current_rpm_topic: "/vesc/current/rpm"
-    controller_id: 1
+    target_rpm_topic: "/upperbelt/target/rpm"
+    current_rpm_topic: "/upperbelt/current/rpm"
+    controller_id: 52
     command_timeout_ms: 500
     feedback_timeout_ms: 500
     max_rpm: 10000.0
+
+vesc_under_belt_driver:
+  ros__parameters:
+    target_rpm_topic: "/underbelt/target/rpm"
+    current_rpm_topic: "/underbelt/current/rpm"
+    controller_id: 51
+    command_timeout_ms: 500
+    feedback_timeout_ms: 500
+    max_rpm: 10000.0
+
+vesc_dribble_belt_driver:
+  ros__parameters:
+    target_rpm_topic: "/dribble/target/rpm"
+    current_rpm_topic: "/dribble/current/rpm"
+    controller_id: 50
+    command_timeout_ms: 500
+    feedback_timeout_ms: 500
+    max_rpm: 5000.0
