@@ -164,6 +164,49 @@ positionは移動中、`command_period_ms`周期で同じ目標radを送り続�
 実際にshot cycleを開始したときは`/shot_cycle/running=true`をpublishし、
 完了または中断時に`false`へ戻す。
 
+### subscribe
+
+| topic | 型 | 内容 |
+|---|---|---|
+| `/dribble/position_mode` | `std_msgs/msg/UInt8` | 手動で移動する位置 |
+| `/operation_mode` | `std_msgs/msg/UInt8` | 現在のoperation mode |
+| `/shot_cycle/start` | `std_msgs/msg/Bool` | belt・dribbleのRPM到達後に送られるshot cycle開始要求 |
+| `/dribble/position_feedback` | `std_msgs/msg/Float32` | EduLite 05から受け取る現在位置[rad] |
+| `/emergency_stop` | `std_msgs/msg/Bool` | 非常停止 |
+
+### publish
+
+| topic | 型 | 内容 |
+|---|---|---|
+| `/dribble/position_command` | `std_msgs/msg/Float32` | EduLite 05へ送る目標位置[rad] |
+| `/shot_cycle/running` | `std_msgs/msg/Bool` | shot cycleの実行中状態 |
+| `/shot_cycle/complete` | `std_msgs/msg/Bool` | DRIBBLE位置へ戻った後に送る完了通知 |
+
+### parameter
+
+| parameter | 内容 |
+|---|---|
+| `dribble_position_rad` | 通常のDRIBBLE位置[rad] |
+| `intake_position_rad` | shot cycleでボールを取り込む位置[rad] |
+| `shoot_position_rad` | shot時の位置[rad] |
+| `open_position_rad` | BELT_ONLY中と手動OPEN操作で使う位置[rad] |
+| `position_tolerance_rad` | 目標位置へ到達したと判定する許容誤差[rad] |
+| `shoot_to_dribble_delay_sec` | SHOOT位置へ到達してからDRIBBLEへ戻し始めるまでの保持時間[s] |
+| `move_timeout_sec` | 位置移動が完了しない場合に異常と判断する時間[s] |
+| `feedback_timeout_sec` | position feedbackが更新されない場合に通信異常と判断する時間[s] |
+| `command_period_ms` | 移動中に目標位置を再送する周期[ms] |
+| `qos_depth` | command・feedback・shot cycle topicのQoS queue depth |
+
+### shot cycleを開始しない条件
+
+`/shot_cycle/start=true`を受けても、以下のいずれかに該当する場合は開始しない。
+
+- controllerのparameter設定が不正
+- 非常停止中
+- operation modeがSHOT_CYCLEではない
+- 手動位置移動やDRIBBLE復帰など、別の位置移動を実行中
+- shot cycleがすでに実行中
+
 位置移動がtimeoutした場合はシーケンスを失敗終了し、DRIBBLE位置へ一度だけ戻す。
 DRIBBLEへの復帰もtimeoutした場合は位置指令を停止する。この場合は
 `/shot_cycle/complete`をpublishしないため、SHOT_CYCLEの待機状態に残る。
