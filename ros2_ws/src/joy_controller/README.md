@@ -77,6 +77,47 @@ STOPへ入った場合とJoy通信が途切れた場合は、belt mode・dribble
 位置シーケンス状態を保持せず初期化する。
 Joy通信が途切れた場合はSTOPへ移動し、Joy入力が復帰するまで状態の周期publishを止める。
 
+## Joy入力の処理順
+
+`/joy`を受けるたびに次の順で処理する。
+
+1. Joy受信時刻を更新し、timeout状態を解除する。
+2. buttonとaxisから同時押し状態を作る。
+3. Home、Create、Optionsの立ち上がりでoperation modeを更新する。
+4. DPAD上下の立ち上がりでbelt levelを1段階変更する。
+5. R1の立ち上がりでdribble ON/OFFを切り替える。
+6. PSの立ち上がりで並進方向反転を切り替える。
+7. shot・手動positionの同時押しを必要なmodeでだけpublishする。
+8. stick入力を`cmd_vel`へ変換してpublishする。
+9. 現在の入力を前回値として保存する。
+
+button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
+SpringだけはL1+○を押している間、周期timerからtrueを送り続ける。Spring controller側は
+そのtrueの立ち上がりだけを発射要求として扱う。
+
+## stick処理
+
+- 左stick上下はdeadzone適用後の連続値を前後速度へ使う。
+- 左stick左右は`lateral_axis_threshold`以上で`-1`または`+1`へ丸める。
+- 左右移動が成立した周期は、前後速度を必ず0にする。
+- 右stick左右はdeadzone適用後の連続値を旋回速度へ使う。
+- 各値へlimitとscaleを掛け、PS反転は並進2軸だけへ適用する。
+
+入力indexが配列外の場合はbutton=false、axis=0として扱う。NaNやInfのaxisも0として
+扱うため、短いJoy messageや壊れたaxis値で範囲外アクセスしない。
+
+## STOPと通信断
+
+起動直後は`publish_stop_commands()`を実行し、走行0、Spring false、belt STOP、
+dribble false、operation STOP、emergency stop trueをpublishする。
+
+最後のJoy受信から`joy_timeout_ms`を超えると同じ停止指令を即時publishし、その後は
+Joyが復帰するまで状態の周期publishを止める。controller側には最後に送ったSTOPと
+emergency stopがtransient local QoSで残る。
+
+ここでの`/emergency_stop`は専用ハードウェアE-stop入力ではなく、
+`operation_mode == STOP`をBoolへ変換したものになる。
+
 ## callbackの役割
 
 | callback | 実行契機 | 役割 |
@@ -87,13 +128,28 @@ Joy通信が途切れた場合はSTOPへ移動し、Joy入力が復帰するま�
 | `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
 | `shot_cycle_complete_callback` | `/shot_cycle/complete`受信時 | shot cycle完了を受け取り、`auto_drive_on_shot_cycle_complete`に従ってDRIVEへ復帰する。 |
 
-## 主なparameter
+## parameter
 
 | parameter | 型 | 説明 |
 |---|---|---|
+| `joy_qos_depth` | int | SensorDataQoSで保持するJoy入力件数。0以下なら1 |
+| `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | `int` | belt mode、dribble enabled、operation mode、spring fire requestの再送周期[ms] |
 | `auto_drive_on_shot_cycle_complete` | `bool` | `true`ならshot cycle完了時にDRIVEへ自動復帰する |
+| `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
+| `lateral_axis_threshold` | double | 左右を`-1/0/+1`へ丸める閾値。`(0, 1]`、不正時0.7 |
+| `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
+| `linear_x_limit` | double | 前後速度係数[m/s]。負値・非finiteなら2.0 |
+| `linear_y_limit` | double | 左右速度係数[m/s]。負値・非finiteなら2.0 |
+| `angular_z_limit` | double | 旋回速度係数[rad/s]。負値・非finiteなら2.0 |
+| `linear_x_scale` | double | 前後速度へ追加で掛ける倍率。非finiteなら1 |
+| `linear_y_scale` | double | 左右速度へ追加で掛ける倍率。非finiteなら1 |
+| `angular_z_scale` | double | 旋回速度へ追加で掛ける倍率。非finiteなら1 |
+
+button・axis indexもすべてparameterである。対応表を変更する場合は
+`sensor_msgs/msg/Joy`の実データを確認し、README先頭の配置表と
+`robot_bringup/config/joy_controller.yaml`を同時に更新する。
 
 ### belt mode
 

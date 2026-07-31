@@ -112,6 +112,24 @@ joy_controller
 
 非常停止はoperation modeより優先する。
 
+## 安全入力の優先順位
+
+controllerは概ね次の順で指令を制限する。
+
+1. parameter不正時の安全処理
+2. `/emergency_stop=true`
+3. `operation_mode=STOP`
+4. mode固有の制限
+5. 通常の機構指令
+
+Joy通信断は`joy_controller`がSTOPと`emergency_stop=true`をpublishすることで各
+controllerへ伝わる。controller自身はJoyの生存を直接監視しない。
+
+「停止」の意味は機構ごとに異なる。belt・dribbleとmecanumは0指令になる。
+dribble位置はDRIBBLE位置へ復帰する。Springは発射を中断するが、未装填なら
+limit switchがONになるまでLOADを続ける。これは現在の実装仕様であり、
+Spring motorを即時0にする非常停止ではない。
+
 ## ゲーム別運用
 
 | ゲーム | modeと操作 | 試合前に確認する設定 |
@@ -151,6 +169,46 @@ SHOT_CYCLE中に3実RPMが各targetの許容範囲内へ入り、
 
 `/belt/mode`は`0=STOP`、`1〜6=LEVEL_1〜LEVEL_6`として扱う。
 
+### 周期処理
+
+`command_period_ms`ごとに次を行う。
+
+1. parameter不正、非常停止、STOPなら3台すべて0 RPMにする。
+2. それ以外ではbelt levelからunder・upper共通targetを求める。
+3. dribble無効またはBELT_ONLYならdribble targetを0にする。
+4. 3つのtarget RPMをpublishする。
+5. feedbackの更新時刻を検査する。
+6. SHOT_CYCLE中だけ、3台の到達誤差と保持時間からshot可能状態を更新する。
+
+belt level、dribble ON/OFF、operation modeが変わると、それまでの到達保持時間は
+破棄される。feedbackは3台すべてが`feedback_timeout_sec`以内に更新されている
+必要がある。
+
+### parameter
+
+| parameter | 単位 | 内容・不正時動作 |
+|---|---|---|
+| `level_1_rpm`〜`level_6_rpm` | RPM | belt level別target。Int16範囲外なら全指令を0に固定 |
+| `dribble_on_rpm` | RPM | dribble有効時target。Int16範囲外なら全指令を0に固定 |
+| `belt_rpm_tolerance` | RPM | under・upperの到達許容差。負値は設定不正 |
+| `dribble_rpm_tolerance` | RPM | dribbleの到達許容差。負値は設定不正 |
+| `ready_hold_sec` | s | 3台が許容内を維持する時間。負値・非finiteは設定不正 |
+| `feedback_timeout_sec` | s | feedbackをfreshとみなす時間。0以下・非finiteは設定不正 |
+| `command_period_ms` | ms | target再送周期。0以下なら10 msへ戻すが設定不正 |
+| `qos_depth` | 件 | command QoS depth。0以下なら1へ補正 |
+
+### shot要求を拒否する条件
+
+上から最初に該当した理由をWARNまたはINFOで出す。
+
+- 非常停止中
+- operation modeがSHOT_CYCLEではない
+- controller parameterが不正
+- beltまたはdribble targetが0 RPM
+- いずれかのfeedbackが未受信または古い
+- いずれかのRPMが許容範囲外
+- RPMは許容内だが`ready_hold_sec`の保持中
+
 ## spring_controller_node
 
 Springは`LOAD`、`READY`、`FIRE`、`ERROR`の状態を持つ。発射要求はDRIVEだけで
@@ -158,6 +216,37 @@ Springは`LOAD`、`READY`、`FIRE`、`ERROR`の状態を持つ。発射要求は
 発射を中断し、リミットスイッチがONになるまでLOAD速度で巻き取ってから停止する。
 LOADが`load_timeout_sec`を超えた場合はERRORへ入り、`0 rad/s`で停止する。
 リミットスイッチがONになるとREADYへ復帰する。
+
+### 入出力
+
+| 種別 | topic | 型 | 内容 |
+|---|---|---|---|
+| subscribe | `/operation_mode` | `std_msgs/msg/UInt8` | operation mode |
+| subscribe | `/spring/fire_request` | `std_msgs/msg/Bool` | L1+○の発射要求 |
+| subscribe | `/emergency_stop` | `std_msgs/msg/Bool` | 停止状態 |
+| subscribe | `/limit_switches` | `std_msgs/msg/UInt8MultiArray` | STM32が展開した8スイッチ |
+| publish | `/spring/vel_command` | `std_msgs/msg/Float32` | EduLiteへのrad/s指令 |
+
+発射要求はfalse→trueの立ち上がりだけを予約する。DRIVE、設定正常、READY、
+limit switch ONのすべてを満たした場合だけFIREへ進む。FIREは
+`fire_duration_sec`だけ発射速度を送り、その後LOADへ戻る。
+
+LOAD中に`load_timeout_sec`を超えるとERRORになり0 rad/sを送る。ERRORは
+limit switchがONになったときだけREADYへ自動復帰する。
+
+### parameter
+
+| parameter | 単位 | 内容 |
+|---|---|---|
+| `limit_switch_index` | index | `/limit_switches.data[]`で装填完了に使う位置 |
+| `loading_velocity_rad_s` | rad/s | LOAD時速度。絶対値50以下 |
+| `fire_velocity_rad_s` | rad/s | FIRE時速度。絶対値50以下 |
+| `fire_duration_sec` | s | 発射速度を維持する時間。0より大きい有限値 |
+| `load_timeout_sec` | s | ERRORへ移るまでのLOAD上限時間。0より大きい有限値 |
+| `command_period_ms` | ms | 速度指令の周期 |
+| `qos_depth` | 件 | command QoS depth |
+
+設定不正時はnode自体は動作するが、速度指令を常に0 rad/sへ固定する。
 
 ## dribble_position_controller
 
@@ -246,6 +335,45 @@ STOPと非常停止でもDRIBBLE位置へ復帰する。
 
 mode変更callbackでも直前のcmd_velから再計算するため、次のJoy入力を待たず制限を反映する。
 
+### 入出力
+
+| 種別 | topic | 型 | 内容 |
+|---|---|---|---|
+| subscribe | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体座標の並進・旋回指令 |
+| subscribe | `/operation_mode` | `std_msgs/msg/UInt8` | 走行可能成分の制限 |
+| subscribe | `/emergency_stop` | `std_msgs/msg/Bool` | 全輪停止 |
+| publish | `/mecanum/fl/vel_command` | `std_msgs/msg/Float32` | 左前輪rad/s |
+| publish | `/mecanum/fr/vel_command` | `std_msgs/msg/Float32` | 右前輪rad/s |
+| publish | `/mecanum/rl/vel_command` | `std_msgs/msg/Float32` | 左後輪rad/s |
+| publish | `/mecanum/rr/vel_command` | `std_msgs/msg/Float32` | 右後輪rad/s |
+
+### 計算手順
+
+1. `vx_sign`、`vy_sign`、`angular_z_sign`で機体座標の符号を補正する。
+2. STOP・非常停止なら3成分を0にする。
+3. SHOT_CYCLE・BELT_ONLYなら並進だけ0にし、旋回を残す。
+4. mecanum逆運動学でFL、FR、RL、RRのrad/sを求める。
+5. `velocity_corrections`を車輪ごとに掛ける。
+6. 最大絶対値が`max_wheel_velocity_rad_s`を超えた場合、全輪へ同じ比率を掛ける。
+7. 比率を保った4輪指令を`std_msgs/msg/Float32`でpublishする。
+
+全輪へ同じ縮小率を使うため、斜め移動や旋回合成で1輪だけ50 rad/sを超えても、
+移動ベクトルと車輪間の速度比を維持できる。
+
+### parameter
+
+| parameter | 単位 | 内容・不正時の補正 |
+|---|---|---|
+| `wheel_radius` | m | 0より大きい有限値。違反時0.05 |
+| `robot_length` | m | 0以上の有限値。違反時0.47 |
+| `robot_width` | m | 0以上の有限値。違反時0.41 |
+| `max_wheel_velocity_rad_s` | rad/s | `(0, 50]`。違反時50 |
+| `velocity_corrections` | 倍率 | FL、FR、RL、RR順の4要素。要素数不正時すべて1 |
+| `vx_sign` | 倍率 | 前後方向の符号。0・非finiteなら1 |
+| `vy_sign` | 倍率 | 左右方向の符号。0・非finiteなら1 |
+| `angular_z_sign` | 倍率 | 旋回方向の符号。0・非finiteなら1 |
+| `qos_depth` | 件 | 0以下なら1 |
+
 ## 起動
 
 全controllerとhardware、Joyは以下で起動する。
@@ -257,3 +385,19 @@ ros2 launch robot_bringup robot.launch.py
 個別node用のlaunchは `robot_bringup/launch/controllers/`、入力系は
 `robot_bringup/launch/input/`、hardware用は `robot_bringup/launch/hardware/` に分けている。
 通常運用では、これらをまとめて起動する `robot.launch.py` を入口とする。
+
+## 異常時の見方
+
+| ログ・症状 | 意味 | 確認先 |
+|---|---|---|
+| `Shot rejected: target RPM is zero` | belt levelまたはdribbleがOFF | Joyのbelt mode・R1 |
+| `feedback unavailable` | VESC current RPMが未受信または古い | VESC ID、STATUS_1、timeout |
+| `RPM not ready` | 実RPMが許容差外 | target、回転方向、tolerance |
+| `Spring fire request rejected` | mode、READY、limit switchなどが不成立 | 続く理由ログ |
+| `Spring loading timed out` | LOAD中にswitchがONにならない | switch index、機構、回転方向 |
+| `Position feedback timed out` | EduLite位置feedback断 | motor ID `0x38`、CAN |
+| `Position move timed out` | feedbackはあるが目標へ未到達 | 位置、方向、許容差 |
+| `Failed to return to dribble position` | 安全復帰も失敗 | 実機を止め、位置機構を確認 |
+
+shot cycleの調査は、`/operation_mode`、3つのtarget/current RPM、
+`/shot_cycle/running`、`/dribble/position_feedback`を同時に確認すると追いやすい。
