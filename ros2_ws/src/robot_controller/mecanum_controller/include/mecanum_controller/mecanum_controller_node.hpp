@@ -58,6 +58,7 @@ private:
   double wheel_radius_{0.0};
   double robot_length_{0.0};
   double robot_width_{0.0};
+  double max_wheel_velocity_rad_s_{50.0};
   std::vector<double> velocity_corrections_;
   double vx_sign_{1.0};
   double vy_sign_{1.0};

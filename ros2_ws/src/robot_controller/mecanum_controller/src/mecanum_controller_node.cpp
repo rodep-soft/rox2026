@@ -1,5 +1,7 @@
 #include "mecanum_controller/mecanum_controller_node.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 #include <memory>
 
@@ -41,6 +43,7 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<double>("wheel_radius", 0.05);
   declare_parameter<double>("robot_length", 0.47);
   declare_parameter<double>("robot_width", 0.41);
+  declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
   declare_parameter<std::vector<double>>(
     "velocity_corrections",
     {1.0, 1.0, 1.0, 1.0});
@@ -70,6 +73,7 @@ void MecanumControllerNode::get_parameters()
   get_parameter("wheel_radius", wheel_radius_);
   get_parameter("robot_length", robot_length_);
   get_parameter("robot_width", robot_width_);
+  get_parameter("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
   get_parameter("velocity_corrections", velocity_corrections_);
   get_parameter("vx_sign", vx_sign_);
   get_parameter("vy_sign", vy_sign_);
@@ -95,6 +99,12 @@ void MecanumControllerNode::get_parameters()
       get_logger(),
       "qos_depth must be positive. Using the default value of 1.");
     qos_depth_ = 1;
+  }
+  if (max_wheel_velocity_rad_s_ <= 0.0) {
+    RCLCPP_WARN(
+      get_logger(),
+      "max_wheel_velocity_rad_s must be greater than zero. Using 50.0 rad/s.");
+    max_wheel_velocity_rad_s_ = 50.0;
   }
 }
 
@@ -151,11 +161,28 @@ void MecanumControllerNode::publish_wheel_commands()
   wheel_vels_[RR] =
     (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
 
-  // 車輪ごとの補正係数をかけて、hardware_driverへ渡す速度指令をpublishする。
+  // 車輪ごとの補正係数をかける。
+  std::array<double, 4> corrected_wheel_vels;
+  double maximum_wheel_velocity = 0.0;
+  for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
+    corrected_wheel_vels[index] =
+      wheel_vels_[index] * velocity_corrections_[index];
+    maximum_wheel_velocity = std::max(
+      maximum_wheel_velocity, std::abs(corrected_wheel_vels[index]));
+  }
+
+  // いずれかの車輪が上限を超える場合は、全輪へ同じ比率をかけて
+  // 速度ベクトルと車輪間の比率を保ったまま上限内へ収める。
+  double velocity_scale = 1.0;
+  if (maximum_wheel_velocity > max_wheel_velocity_rad_s_) {
+    velocity_scale = max_wheel_velocity_rad_s_ / maximum_wheel_velocity;
+  }
+
+  // 上限適用後の車輪速度をhardware_driverへpublishする。
   for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
     cmd_msg.data =
-      static_cast<float>(wheel_vels_[index] * velocity_corrections_[index]);
+      static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
     wheel_velocity_pubs_[index]->publish(cmd_msg);
   }
 }
