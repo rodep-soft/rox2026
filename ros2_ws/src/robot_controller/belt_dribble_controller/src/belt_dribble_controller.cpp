@@ -336,6 +336,30 @@ void BeltDribbleController::timer_callback() {
   dribble_command.data = static_cast<int16_t>(current_dribble_target);
   dribble_target_publisher_->publish(dribble_command);
 
+  if (!command_log_initialized_ ||
+      operation_mode_ != last_logged_operation_mode_ ||
+      belt_mode_ != last_logged_belt_mode_ ||
+      dribble_enabled_ != last_logged_dribble_enabled_ ||
+      emergency_stop_active_ != last_logged_emergency_stop_active_ ||
+      current_belt_target != last_logged_belt_target_rpm_ ||
+      current_dribble_target != last_logged_dribble_target_rpm_) {
+    RCLCPP_INFO(
+        get_logger(),
+        "RPM command: operation_mode=%s, belt_mode=%s, dribble=%s, "
+        "emergency_stop=%s, underbelt=%d RPM, upperbelt=%d RPM, dribble=%d RPM",
+        operation_mode_name(operation_mode_), belt_mode_name(belt_mode_),
+        dribble_enabled_ ? "ON" : "OFF",
+        emergency_stop_active_ ? "ON" : "OFF", current_belt_target,
+        current_belt_target, current_dribble_target);
+    command_log_initialized_ = true;
+    last_logged_operation_mode_ = operation_mode_;
+    last_logged_belt_mode_ = belt_mode_;
+    last_logged_dribble_enabled_ = dribble_enabled_;
+    last_logged_emergency_stop_active_ = emergency_stop_active_;
+    last_logged_belt_target_rpm_ = current_belt_target;
+    last_logged_dribble_target_rpm_ = current_dribble_target;
+  }
+
   const auto current_time = now();
   update_feedback_timeout_state(current_time);
   shoot_ready_ = update_shoot_ready(current_belt_target, current_dribble_target,
@@ -513,6 +537,41 @@ void BeltDribbleController::update_feedback_timeout_state(
                  upperbelt_feedback_timed_out_);
   update_timeout("Dribble", dribble_feedback_received_,
                  dribble_feedback_received_at_, dribble_feedback_timed_out_);
+}
+
+const char* BeltDribbleController::operation_mode_name(
+    OperationMode mode) const {
+  switch (mode) {
+    case OperationMode::STOP:
+      return "STOP";
+    case OperationMode::DRIVE:
+      return "DRIVE";
+    case OperationMode::SHOT_CYCLE:
+      return "SHOT_CYCLE";
+    case OperationMode::BELT_ONLY:
+      return "BELT_ONLY";
+  }
+  return "UNKNOWN";
+}
+
+const char* BeltDribbleController::belt_mode_name(BeltMode mode) const {
+  switch (mode) {
+    case BeltMode::STOP:
+      return "STOP";
+    case BeltMode::LEVEL_1:
+      return "LEVEL_1";
+    case BeltMode::LEVEL_2:
+      return "LEVEL_2";
+    case BeltMode::LEVEL_3:
+      return "LEVEL_3";
+    case BeltMode::LEVEL_4:
+      return "LEVEL_4";
+    case BeltMode::LEVEL_5:
+      return "LEVEL_5";
+    case BeltMode::LEVEL_6:
+      return "LEVEL_6";
+  }
+  return "UNKNOWN";
 }
 
 // RPMがpublishするInt16の範囲に収まるかを確認する。

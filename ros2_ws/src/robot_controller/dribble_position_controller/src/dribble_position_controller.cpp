@@ -28,6 +28,7 @@ DribblePositionController::DribblePositionController()
         position_tolerance_rad_);
     position_tolerance_rad_ = 0.02;
   }
+  validate_parameters();
 
   // EduLite 05 driverへ送る目標位置 [rad]。
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
@@ -72,7 +73,9 @@ DribblePositionController::DribblePositionController()
   command_timer_ = create_wall_timer(
       std::chrono::milliseconds(command_period_ms_),
       std::bind(&DribblePositionController::watchdog_callback, this));
-  set_target_position(dribble_position_rad_, State::IDLE);
+  if (configuration_valid_) {
+    set_target_position(dribble_position_rad_, State::IDLE);
+  }
 }
 
 void DribblePositionController::declare_parameters() {
@@ -124,16 +127,56 @@ void DribblePositionController::get_parameters() {
   get_parameter("qos_depth", qos_depth_);
 }
 
+void DribblePositionController::validate_parameters() {
+  if (!std::isfinite(dribble_position_rad_) ||
+      !std::isfinite(intake_position_rad_) ||
+      !std::isfinite(shoot_position_rad_) || !std::isfinite(open_position_rad_)) {
+    RCLCPP_ERROR(
+        get_logger(),
+        "Position parameters must be finite: dribble=%.6f, intake=%.6f, shoot=%.6f, open=%.6f",
+        dribble_position_rad_, intake_position_rad_, shoot_position_rad_,
+        open_position_rad_);
+    configuration_valid_ = false;
+  }
+  if (shoot_to_dribble_delay_sec_ < 0.0) {
+    RCLCPP_ERROR(get_logger(),
+                 "shoot_to_dribble_delay_sec must be zero or greater: %.3f",
+                 shoot_to_dribble_delay_sec_);
+    configuration_valid_ = false;
+  }
+  if (move_timeout_sec_ <= 0.0) {
+    RCLCPP_ERROR(get_logger(), "move_timeout_sec must be greater than zero: %.3f",
+                 move_timeout_sec_);
+    configuration_valid_ = false;
+  }
+  if (feedback_timeout_sec_ <= 0.0) {
+    RCLCPP_ERROR(get_logger(),
+                 "feedback_timeout_sec must be greater than zero: %.3f",
+                 feedback_timeout_sec_);
+    configuration_valid_ = false;
+  }
+}
+
 void DribblePositionController::position_mode_callback(
     const std_msgs::msg::UInt8::SharedPtr msg) {
+  if (!configuration_valid_) {
+    RCLCPP_WARN(get_logger(),
+                "Ignoring dribble position command: controller configuration is invalid.");
+    return;
+  }
   if (!manual_position_allowed()) {
     RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 1000,
-        "Ignoring dribble position command while moving or stopped");
+        "Ignoring dribble position command: emergency_stop=%s, state=%s, "
+        "shot_cycle_running=%s, operation_mode=%u",
+        emergency_stop_active_ ? "ON" : "OFF", state_name(state_),
+        shot_cycle_running_ ? "true" : "false",
+        static_cast<uint8_t>(operation_mode_));
     return;
   }
 
   if (msg->data > static_cast<uint8_t>(Position::OPEN)) {
+    RCLCPP_WARN(get_logger(), "Ignoring invalid dribble position mode: %u.", msg->data);
     return;
   }
 
@@ -156,9 +199,13 @@ void DribblePositionController::position_mode_callback(
 
 void DribblePositionController::shot_cycle_start_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
-  if (!msg->data || emergency_stop_active_ ||
+  if (!msg->data) {
+    return;
+  }
+  if (!configuration_valid_ || emergency_stop_active_ ||
       operation_mode_ != OperationMode::SHOT_CYCLE || state_ != State::IDLE ||
       shot_cycle_running_) {
+    log_shot_cycle_start_rejection();
     return;
   }
   shot_cycle_running_ = true;
@@ -169,9 +216,13 @@ void DribblePositionController::shot_cycle_start_callback(
 void DribblePositionController::operation_mode_callback(
     const std_msgs::msg::UInt8::SharedPtr msg) {
   const auto previous_mode = operation_mode_;
-  operation_mode_ = msg->data <= static_cast<uint8_t>(OperationMode::BELT_ONLY)
-                        ? static_cast<OperationMode>(msg->data)
-                        : OperationMode::STOP;
+  if (msg->data <= static_cast<uint8_t>(OperationMode::BELT_ONLY)) {
+    operation_mode_ = static_cast<OperationMode>(msg->data);
+  } else {
+    RCLCPP_WARN(get_logger(), "Invalid operation mode received: %u. Treating as STOP.",
+                msg->data);
+    operation_mode_ = OperationMode::STOP;
+  }
   if (operation_mode_ == OperationMode::STOP) {
     stop_shot_cycle();
     set_target_position(dribble_position_rad_, State::RETURN_TO_DRIBBLE);
@@ -190,6 +241,8 @@ void DribblePositionController::position_feedback_callback(
     return;
   }
   last_feedback_time_ = now();
+  last_feedback_position_rad_ = msg->data;
+  has_position_feedback_ = true;
   if (std::abs(static_cast<double>(msg->data) - target_position_rad_) >
       position_tolerance_rad_) {
     return;
@@ -213,6 +266,9 @@ void DribblePositionController::emergency_stop_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
   emergency_stop_active_ = msg->data;
   if (emergency_stop_active_) {
+    RCLCPP_WARN(get_logger(),
+                "Emergency stop: interrupting state=%s and returning to dribble position.",
+                state_name(state_));
     stop_shot_cycle();
     set_target_position(dribble_position_rad_, State::RETURN_TO_DRIBBLE);
   }
@@ -230,16 +286,53 @@ void DribblePositionController::watchdog_callback() {
   position_command_pub_->publish(command);
 
   const auto current_time = now();
-  if ((current_time - last_feedback_time_).seconds() > feedback_timeout_sec_ ||
-      (state_ != State::HOLD_SHOOT &&
-       (current_time - phase_start_time_).seconds() > move_timeout_sec_)) {
+  const double feedback_elapsed_sec =
+      (current_time - last_feedback_time_).seconds();
+  const double move_elapsed_sec = (current_time - phase_start_time_).seconds();
+  const bool feedback_timed_out = feedback_elapsed_sec > feedback_timeout_sec_;
+  const bool move_timed_out =
+      state_ != State::HOLD_SHOOT && move_elapsed_sec > move_timeout_sec_;
+  if (feedback_timed_out || move_timed_out) {
     stop_shot_cycle();
     if (state_ == State::RETURN_TO_DRIBBLE) {
+      RCLCPP_ERROR(
+          get_logger(),
+          "Failed to return to dribble position: state=%s, target=%.6f rad, "
+          "feedback_timeout=%s, move_timeout=%s. Shot cycle completion is not published.",
+          state_name(state_), target_position_rad_,
+          feedback_timed_out ? "true" : "false", move_timed_out ? "true" : "false");
       state_ = State::IDLE;
       return;
     }
+    if (feedback_timed_out) {
+      RCLCPP_WARN(
+          get_logger(),
+          "Position feedback timed out after %.3f s: state=%s, target=%.6f rad. "
+          "Returning to dribble position.",
+          feedback_elapsed_sec, state_name(state_), target_position_rad_);
+    }
+    if (move_timed_out) {
+      RCLCPP_WARN(
+          get_logger(),
+          "Position move timed out after %.3f s: state=%s, target=%.6f rad, "
+          "last_feedback=%.6f rad. Returning to dribble position.",
+          move_elapsed_sec, state_name(state_), target_position_rad_,
+          last_feedback_position_rad_);
+    }
     set_target_position(dribble_position_rad_, State::RETURN_TO_DRIBBLE);
     return;
+  }
+  if (state_ != State::HOLD_SHOOT && has_position_feedback_ &&
+      move_elapsed_sec >= move_timeout_sec_ * 0.5 &&
+      std::abs(last_feedback_position_rad_ - target_position_rad_) >
+          position_tolerance_rad_) {
+    RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "Position is not converging: state=%s, target=%.6f rad, current=%.6f rad, "
+        "error=%.6f rad, tolerance=%.6f rad, elapsed=%.3f s",
+        state_name(state_), target_position_rad_, last_feedback_position_rad_,
+        last_feedback_position_rad_ - target_position_rad_, position_tolerance_rad_,
+        move_elapsed_sec);
   }
   if (state_ == State::HOLD_SHOOT &&
       (current_time - phase_start_time_).seconds() >=
@@ -249,10 +342,20 @@ void DribblePositionController::watchdog_callback() {
 }
 
 bool DribblePositionController::manual_position_allowed() const {
-  return !emergency_stop_active_ && state_ == State::IDLE &&
-         !shot_cycle_running_ &&
-         (operation_mode_ == OperationMode::DRIVE ||
-          operation_mode_ == OperationMode::SHOT_CYCLE);
+  if (emergency_stop_active_) {
+    return false;
+  }
+  if (state_ != State::IDLE) {
+    return false;
+  }
+  if (shot_cycle_running_) {
+    return false;
+  }
+  if (operation_mode_ != OperationMode::DRIVE &&
+      operation_mode_ != OperationMode::SHOT_CYCLE) {
+    return false;
+  }
+  return true;
 }
 
 void DribblePositionController::stop_shot_cycle() {
@@ -277,13 +380,68 @@ void DribblePositionController::publish_shot_cycle_complete() {
 
 void DribblePositionController::set_target_position(double position_rad,
                                                     State state) {
+  if (!std::isfinite(position_rad)) {
+    RCLCPP_ERROR(get_logger(),
+                 "Refusing to publish a non-finite position command: %.6f rad.",
+                 position_rad);
+    return;
+  }
+  if (!configuration_valid_) {
+    RCLCPP_ERROR(get_logger(),
+                 "Refusing to publish position command: controller configuration is invalid.");
+    return;
+  }
   target_position_rad_ = position_rad;
   state_ = state;
   phase_start_time_ = now();
   last_feedback_time_ = phase_start_time_;
+  has_position_feedback_ = false;
   std_msgs::msg::Float32 command;
   command.data = static_cast<float>(position_rad);
   position_command_pub_->publish(command);
+  RCLCPP_INFO(get_logger(), "Position command published: state=%s, target=%.6f rad",
+              state_name(state_), target_position_rad_);
+}
+
+const char* DribblePositionController::state_name(State state) const {
+  switch (state) {
+    case State::IDLE:
+      return "IDLE";
+    case State::MANUAL_MOVE:
+      return "MANUAL_MOVE";
+    case State::INTAKE:
+      return "INTAKE";
+    case State::SHOOT:
+      return "SHOOT";
+    case State::HOLD_SHOOT:
+      return "HOLD_SHOOT";
+    case State::RETURN_TO_DRIBBLE:
+      return "RETURN_TO_DRIBBLE";
+  }
+  return "UNKNOWN";
+}
+
+void DribblePositionController::log_shot_cycle_start_rejection() const {
+  if (!configuration_valid_) {
+    RCLCPP_WARN(get_logger(), "Shot cycle rejected: controller configuration is invalid.");
+    return;
+  }
+  if (emergency_stop_active_) {
+    RCLCPP_WARN(get_logger(), "Shot cycle rejected: emergency stop is active.");
+    return;
+  }
+  if (operation_mode_ != OperationMode::SHOT_CYCLE) {
+    RCLCPP_WARN(get_logger(), "Shot cycle rejected: operation mode is not SHOT_CYCLE.");
+    return;
+  }
+  if (state_ != State::IDLE) {
+    RCLCPP_WARN(get_logger(), "Shot cycle rejected: state is %s, not IDLE.",
+                state_name(state_));
+    return;
+  }
+  if (shot_cycle_running_) {
+    RCLCPP_WARN(get_logger(), "Shot cycle rejected: it is already running.");
+  }
 }
 
 int main(int argc, char* argv[]) {

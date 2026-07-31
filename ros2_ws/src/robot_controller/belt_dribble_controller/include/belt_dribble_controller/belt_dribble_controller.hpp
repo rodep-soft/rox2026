@@ -57,6 +57,8 @@ class BeltDribbleController : public rclcpp::Node {
   bool feedback_is_fresh(bool received, const rclcpp::Time& received_at,
                          const rclcpp::Time& current_time) const;
   void update_feedback_timeout_state(const rclcpp::Time& current_time);
+  const char* operation_mode_name(OperationMode mode) const;
+  const char* belt_mode_name(BeltMode mode) const;
   bool is_rpm_valid(int rpm) const;
   void reset_shoot_ready();
 
@@ -70,11 +72,18 @@ class BeltDribbleController : public rclcpp::Node {
   bool upperbelt_feedback_timed_out_{false};
   bool dribble_feedback_timed_out_{false};
   bool shoot_ready_{false};
+  bool command_log_initialized_{false};
   OperationMode operation_mode_{OperationMode::STOP};
   BeltMode belt_mode_{BeltMode::STOP};
+  OperationMode last_logged_operation_mode_{OperationMode::STOP};
+  BeltMode last_logged_belt_mode_{BeltMode::STOP};
+  bool last_logged_dribble_enabled_{false};
+  bool last_logged_emergency_stop_active_{false};
   int underbelt_current_rpm_{0};
   int upperbelt_current_rpm_{0};
   int dribble_current_rpm_{0};
+  int last_logged_belt_target_rpm_{0};
+  int last_logged_dribble_target_rpm_{0};
   int level_1_rpm_{3000};
   int level_2_rpm_{3500};
   int level_3_rpm_{4000};

@@ -38,6 +38,7 @@ class DribblePositionController : public rclcpp::Node {
 
   void declare_parameters();
   void get_parameters();
+  void validate_parameters();
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void shot_cycle_start_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -49,6 +50,8 @@ class DribblePositionController : public rclcpp::Node {
   void publish_shot_cycle_running(bool running);
   void publish_shot_cycle_complete();
   bool manual_position_allowed() const;
+  const char* state_name(State state) const;
+  void log_shot_cycle_start_rejection() const;
 
   double dribble_position_rad_{0.0};
   double intake_position_rad_{0.0};
@@ -61,10 +64,13 @@ class DribblePositionController : public rclcpp::Node {
   int command_period_ms_{20};
   int qos_depth_{1};
   double target_position_rad_{0.0};
+  double last_feedback_position_rad_{0.0};
   State state_{State::IDLE};
   OperationMode operation_mode_{OperationMode::STOP};
+  bool configuration_valid_{true};
   bool emergency_stop_active_{false};
   bool shot_cycle_running_{false};
+  bool has_position_feedback_{false};
   rclcpp::Time phase_start_time_;
   rclcpp::Time last_feedback_time_;
   std::string dribble_position_command_topic_;
