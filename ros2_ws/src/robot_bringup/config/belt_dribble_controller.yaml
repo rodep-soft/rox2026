@@ -24,8 +24,6 @@ belt_dribble_controller_node:
     # std_msgs/msg/Bool。3モータのRPM到達状態。
     shoot_ready_topic: /shoot_ready
 
-    # [RPM] 停止時に送る目標回転数。
-    stop_rpm: 0
     # [RPM] beltの各操作levelで送る目標回転数。
     # 最初に1000くらいをかませないとbeltが回らない時がある
     # MAX rpmの値は4500くらい
@@ -45,6 +43,8 @@ belt_dribble_controller_node:
 
     # [s] 3モータが到達状態を維持してshot cycle可能とするまでの時間。
     ready_hold_sec: 0.1
+    # [s] 現在RPM feedbackがこの時間を超えて更新されない場合、shotを拒否する。
+    feedback_timeout_sec: 0.5
 
     # [ms] 3モータの目標RPM送信周期。
     command_period_ms: 20

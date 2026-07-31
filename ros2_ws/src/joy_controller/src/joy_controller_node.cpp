@@ -55,7 +55,7 @@ JoyControllerNode::JoyControllerNode()
   mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
     mecanum_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
 
-  // spring_position_controllerへ発射要求を送る。
+  // spring_controllerへ発射要求を送る。
   spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
     spring_fire_request_topic_, rclcpp::QoS(command_qos_depth_));
   // belt_dribble_controllerへベルト回転モードを送る。
@@ -67,7 +67,7 @@ JoyControllerNode::JoyControllerNode()
   // belt_dribble_controllerへshot cycle開始要求を送る。
   shot_cycle_request_publisher_ = create_publisher<std_msgs::msg::Bool>(
     shot_cycle_request_topic_, rclcpp::QoS(command_qos_depth_));
-  // spring_position_controllerへ手動位置指令を送る。
+  // dribble_position_controllerへ手動位置指令を送る。
   dribble_position_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
     dribble_position_mode_topic_, rclcpp::QoS(command_qos_depth_));
 

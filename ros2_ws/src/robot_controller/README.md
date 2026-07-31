@@ -204,11 +204,6 @@ mode変更callbackでも直前のcmd_velから再計算するため、次のJoy�
 ros2 launch robot_bringup robot.launch.py
 ```
 
-機構単位で起動する場合は、以下を使う。
-
-```bash
-ros2 launch robot_bringup controllers/spring_dribble_position.launch.py
-```
-
-このlaunchは `spring_controller_node` と
-`dribble_position_controller` を起動する。
+個別node用のlaunchは `robot_bringup/launch/controllers/`、入力系は
+`robot_bringup/launch/input/`、hardware用は `robot_bringup/launch/hardware/` に分けている。
+通常運用では、これらをまとめて起動する `robot.launch.py` を入口とする。
