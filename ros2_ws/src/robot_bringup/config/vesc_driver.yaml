@@ -4,7 +4,7 @@ vesc_driver_1:
     can_sub_topic: "/socketcan_bridge/rx"
     target_rpm_topic: "/underbelt/target/rpm"  # std_msgs/msg/Int16 [RPM]。
     current_rpm_topic: "/underbelt/current/rpm"  # std_msgs/msg/Int16 [RPM]。
-    controller_id: 50  # underbelt VESCのCAN ID
+    controller_id: 52  # underbelt VESCのCAN ID
     command_timeout_ms: 500
     feedback_timeout_ms: 500
     max_rpm: 4600
@@ -26,7 +26,7 @@ vesc_driver_3:
     can_sub_topic: "/socketcan_bridge/rx"
     target_rpm_topic: "/dribble/target/rpm"  # std_msgs/msg/Int16 [RPM]。
     current_rpm_topic: "/dribble/current/rpm"  # std_msgs/msg/Int16 [RPM]。
-    controller_id: 52  # dribble VESCのCAN ID
+    controller_id: 50  # dribble VESCのCAN ID
     command_timeout_ms: 500
     feedback_timeout_ms: 500
     max_rpm: 4600
