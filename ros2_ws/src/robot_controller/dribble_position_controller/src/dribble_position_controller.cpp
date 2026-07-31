@@ -10,38 +10,61 @@ DribblePositionController::DribblePositionController()
   declare_parameters();
   get_parameters();
   if (command_period_ms_ <= 0) {
+    RCLCPP_WARN(
+        get_logger(), "command_period_ms must be greater than zero: %d. Using 20 ms.",
+        command_period_ms_);
     command_period_ms_ = 20;
   }
   if (qos_depth_ <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive: %d. Using 1.",
+                qos_depth_);
     qos_depth_ = 1;
   }
   if (!std::isfinite(position_tolerance_rad_) ||
       position_tolerance_rad_ <= 0.0) {
+    RCLCPP_WARN(
+        get_logger(),
+        "position_tolerance_rad must be finite and greater than zero: %.6f. Using 0.020000 rad.",
+        position_tolerance_rad_);
     position_tolerance_rad_ = 0.02;
   }
 
+  // EduLite 05 driverへ送る目標位置 [rad]。
   position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
       dribble_position_command_topic_, rclcpp::QoS(qos_depth_));
+
+  // joy_controllerからの手動位置選択。std_msgs/msg/UInt8。
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
       dribble_position_mode_topic_, rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::position_mode_callback, this,
                 std::placeholders::_1));
+
+  // joy_controllerからの運転モード。STOP時の停止とBELT_ONLY時のOPEN移動を判断する。
+  // std_msgs/msg/UInt8、状態topicのためtransient local QoSを使う。
   operation_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
       operation_mode_topic_, rclcpp::QoS(1).reliable().transient_local(),
       std::bind(&DribblePositionController::operation_mode_callback, this,
                 std::placeholders::_1));
+
+  // belt_dribble_controllerからのshot cycle開始要求。std_msgs/msg/Bool。
   shot_cycle_start_sub_ = create_subscription<std_msgs::msg::Bool>(
       shot_cycle_start_topic_, rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::shot_cycle_start_callback, this,
                 std::placeholders::_1));
+
+  // EduLite 05 driverから受ける現在位置 [rad]。std_msgs/msg/Float32。
   position_feedback_sub_ = create_subscription<std_msgs::msg::Float32>(
       dribble_position_feedback_topic_, rclcpp::QoS(qos_depth_),
       std::bind(&DribblePositionController::position_feedback_callback, this,
                 std::placeholders::_1));
+
+  // joy_controllerからの非常停止。std_msgs/msg/Bool、状態topicのためtransient local QoSを使う。
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
       emergency_stop_topic_, rclcpp::QoS(1).reliable().transient_local(),
       std::bind(&DribblePositionController::emergency_stop_callback, this,
                 std::placeholders::_1));
+
+  // joy_controllerへshot cycle実行中・完了を通知する。どちらもstd_msgs/msg/Bool。
   shot_cycle_running_pub_ = create_publisher<std_msgs::msg::Bool>(
       shot_cycle_running_topic_, rclcpp::QoS(qos_depth_));
   shot_cycle_complete_pub_ = create_publisher<std_msgs::msg::Bool>(
