@@ -10,7 +10,6 @@ from launch.launch_description_sources import (
 )
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -18,6 +17,11 @@ def generate_launch_description():
         get_package_share_directory("robot_bringup"),
         "config",
         "stm32_driver.yaml",
+    )
+    vesc_parameter_file = os.path.join(
+        get_package_share_directory("robot_bringup"),
+        "config",
+        "vesc_driver.yaml",
     )
 
     edulite05_launch = IncludeLaunchDescription(
@@ -86,21 +90,6 @@ def generate_launch_description():
                 default_value="true",
                 description="Launch the dribble-position EduLite driver node",
             ),
-            DeclareLaunchArgument(
-                "vesc_1_controller_id",
-                default_value="51",
-                description="CAN controller ID of VESC 1",
-            ),
-            DeclareLaunchArgument(
-                "vesc_2_controller_id",
-                default_value="2",
-                description="CAN controller ID of VESC 2",
-            ),
-            DeclareLaunchArgument(
-                "vesc_3_controller_id",
-                default_value="3",
-                description="CAN controller ID of VESC 3",
-            ),
             socketcan_launch,
             Node(
                 package="hardware_driver",
@@ -117,17 +106,7 @@ def generate_launch_description():
                 name="vesc_driver_1",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
-                parameters=[
-                    {
-                        "controller_id": ParameterValue(
-                            LaunchConfiguration("vesc_1_controller_id"),
-                            value_type=int,
-                        ),
-                        "target_rpm_topic": "/underbelt/target/rpm",
-                        "current_rpm_topic": "/underbelt/current/rpm",
-                        "max_rpm": 4600,
-                    }
-                ],
+                parameters=[vesc_parameter_file],
             ),
             Node(
                 package="hardware_driver",
@@ -135,17 +114,7 @@ def generate_launch_description():
                 name="vesc_driver_2",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
-                parameters=[
-                    {
-                        "controller_id": ParameterValue(
-                            LaunchConfiguration("vesc_2_controller_id"),
-                            value_type=int,
-                        ),
-                        "target_rpm_topic": "/upperbelt/target/rpm",
-                        "current_rpm_topic": "/upperbelt/current/rpm",
-                        "max_rpm": 4600,
-                    }
-                ],
+                parameters=[vesc_parameter_file],
             ),
             Node(
                 package="hardware_driver",
@@ -153,17 +122,7 @@ def generate_launch_description():
                 name="vesc_driver_3",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
-                parameters=[
-                    {
-                        "controller_id": ParameterValue(
-                            LaunchConfiguration("vesc_3_controller_id"),
-                            value_type=int,
-                        ),
-                        "target_rpm_topic": "/dribble/target/rpm",
-                        "current_rpm_topic": "/dribble/current/rpm",
-                        "max_rpm": 4600,
-                    }
-                ],
+                parameters=[vesc_parameter_file],
             ),
         ]
     )
