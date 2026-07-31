@@ -4,6 +4,16 @@ Joyから受けた機構指令と`/operation_mode`を制御判断へ変換し、
 機構として意味のある目標値をpublishする。CAN ID、フレーム形式、エンディアンは
 hardware_driverが担当する。
 
+## node別の詳細資料
+
+- [belt_dribble_controller_node](belt_dribble_controller/README.md)
+- [spring_controller_node](spring_controller/README.md)
+- [dribble_position_controller](dribble_position_controller/README.md)
+- [mecanum_controller_node](mecanum_controller/README.md)
+
+このREADMEはnode間の接続とシステム全体の動作を説明する。callback、timer、
+内部状態、安全動作を確認してからsourceを読む場合は、上記の個別READMEを参照する。
+
 ## node・topic構成
 
 ```mermaid

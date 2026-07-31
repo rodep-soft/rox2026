@@ -2,6 +2,22 @@
 
 `sensor_msgs/msg/Joy`を機構指令と4つのoperation modeへ変換する。
 
+## コードを読む順序
+
+`joy_controller`は1パッケージ1nodeのため、このREADMEを個別node資料として扱う。
+実装を読むときは次の順が分かりやすい。
+
+1. `include/joy_controller/joy_controller_node.hpp`のenumと内部状態
+2. constructorのparameter検証とpub/sub作成
+3. `update_chord_inputs()`の同時押し判定
+4. `handle_operation_mode()`のmode遷移
+5. `joy_callback()`の機構指令とstick変換
+6. 2つのtimer callbackの周期publish・通信断処理
+7. shot cycleのrunning・complete callback
+
+Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ変換するところまでを
+責務とする。
+
 ## Joy配置
 
 ### buttons

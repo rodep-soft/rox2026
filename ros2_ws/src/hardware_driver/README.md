@@ -4,6 +4,15 @@
 ROS 2のfeedbackへ戻すパッケージである。CAN ID、フレーム形式、エンディアン、
 モーター固有のERPM変換はこのパッケージ内で扱う。
 
+## node別の詳細資料
+
+- [vesc_node](docs/vesc_node/README.md)
+- [stm32_node](docs/stm32_node/README.md)
+- [edulite05_node](docs/edulite05_node/README.md)
+
+このREADMEはhardware全体の割り当てを示す。CAN処理を追ってsourceを読む場合は、
+各nodeの詳細READMEを先に参照する。
+
 ## 接続構成
 
 | node | 実機 | 台数 | 主な役割 |

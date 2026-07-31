@@ -120,3 +120,6 @@ ip -details link show can0
 
 処理内容と安全動作は`robot_controller/README.md`、CAN変換と実機driverは
 `hardware_driver/README.md`、Joy操作は`joy_controller/README.md`を参照する。
+
+さらに詳しいcallback・timer処理は、各パッケージREADME冒頭の
+「node別の詳細資料」から個別READMEを参照する。
