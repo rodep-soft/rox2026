@@ -9,11 +9,12 @@
 #include "std_msgs/msg/u_int8.hpp"
 #include "std_msgs/msg/u_int8_multi_array.hpp"
 
-class SpringEduliteController : public rclcpp::Node {
- public:
+class SpringEduliteController : public rclcpp::Node
+{
+public:
   SpringEduliteController();
 
- private:
+private:
   enum class State : uint8_t { READY, LOAD, FIRE, ERROR };
   enum class OperationMode : uint8_t { STOP, DRIVE, SHOT_CYCLE, BELT_ONLY };
 
@@ -23,14 +24,14 @@ class SpringEduliteController : public rclcpp::Node {
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(
-      const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
+    const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
   bool spring_fire_allowed() const;
   void prepare_spring_for_stop();
   void start_loading();
   void start_fire();
   void timer_callback();
-  const char* state_name(State state) const;
-  const char* operation_mode_name(OperationMode mode) const;
+  const char * state_name(State state) const;
+  const char * operation_mode_name(OperationMode mode) const;
   void log_fire_request_rejection() const;
 
   State now_state_{State::LOAD};
@@ -55,7 +56,7 @@ class SpringEduliteController : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr
-      limit_switch_sub_;
+    limit_switch_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

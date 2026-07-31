@@ -23,6 +23,7 @@ flowchart LR
 
   subgraph drivers["hardware_driver"]
     stm32["stm32_driver"]
+    vesc["vesc_driver × 3"]
     edulite["edulite05_driver × 6"]
     socketcan["ros2_socketcan_bridge"]
   end
@@ -30,6 +31,7 @@ flowchart LR
   subgraph hardware["CAN・実機"]
     can["CAN bus"]
     stm32_board["STM32"]
+    belt_motors["underbelt・upperbelt・dribble"]
     edulite_motors["EduLite 05"]
   end
 
@@ -53,8 +55,8 @@ flowchart LR
   dribble_position -->|"/shot_cycle/running<br/>std_msgs/msg/Bool"| joy_controller
   dribble_position -->|"/shot_cycle/complete<br/>std_msgs/msg/Bool"| joy_controller
 
-  belt_dribble -->|"/underbelt・upperbelt・dribble/target/rpm<br/>std_msgs/msg/Int16"| stm32
-  stm32 -->|"/underbelt・upperbelt・dribble/current/rpm<br/>std_msgs/msg/Int16"| belt_dribble
+  belt_dribble -->|"/underbelt・upperbelt・dribble/target/rpm<br/>std_msgs/msg/Int16"| vesc
+  vesc -->|"/underbelt・upperbelt・dribble/current/rpm<br/>std_msgs/msg/Int16"| belt_dribble
   stm32 -->|"/limit_switches<br/>std_msgs/msg/UInt8MultiArray"| spring
 
   mecanum -->|"/mecanum/*/vel_command<br/>std_msgs/msg/Float32"| edulite
@@ -63,13 +65,17 @@ flowchart LR
   edulite -->|"/dribble/position_feedback<br/>std_msgs/msg/Float32"| dribble_position
 
   stm32 <-->|"/socketcan_bridge/tx・rx<br/>can_msgs/msg/Frame"| socketcan
+  vesc <-->|"/socketcan_bridge/tx・rx<br/>can_msgs/msg/Frame"| socketcan
   edulite <-->|"/socketcan_bridge/tx・rx<br/>can_msgs/msg/Frame"| socketcan
   socketcan <--> can
   can <--> stm32_board
+  can <--> belt_motors
   can <--> edulite_motors
 ```
 
-`vesc_driver`は`robot.launch.py`の通常起動では無効で、必要な場合だけ起動する。
+`vesc_driver_1`はunderbelt、`vesc_driver_2`はupperbelt、
+`vesc_driver_3`はdribbleを担当する。
+STM32はリミットスイッチ、LED、heartbeatを担当し、belt・dribbleのRPM通信は行わない。
 目標RPMと実RPMのtopic型はどちらも`std_msgs/msg/Int16`とする。
 
 ## node構成
@@ -134,11 +140,10 @@ joy_controller
 | `/underbelt/target/rpm` | `std_msgs/msg/Int16` | underbelt目標RPM |
 | `/upperbelt/target/rpm` | `std_msgs/msg/Int16` | upperbelt目標RPM |
 | `/dribble/target/rpm` | `std_msgs/msg/Int16` | dribble目標RPM |
-| `/shoot_ready` | `std_msgs/msg/Bool` | 3モータのRPM到達状態 |
 | `/shot_cycle/start` | `std_msgs/msg/Bool` | shot cycle開始 |
 
 SHOT_CYCLE中に3実RPMが各targetの許容範囲内へ入り、
-`ready_hold_sec`継続すると`/shoot_ready=true`になる。この状態で
+`ready_hold_sec`継続すると内部のRPM到達状態がtrueになる。この状態で
 `/shot_cycle/request=true`を受けた場合だけ`/shot_cycle/start=true`を一度publishする。
 未到達時の要求は予約せず無視する。
 

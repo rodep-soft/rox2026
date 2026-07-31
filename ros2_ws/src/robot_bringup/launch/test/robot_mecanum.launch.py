@@ -26,13 +26,16 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface used by ros2_socketcan",
             ),
-            # STM32 driver + joy + joy_controller
+            # mecanum用EduLite 4台だけを起動する。
             include(
                 "hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
                     "use_vesc": "false",
-                    "use_dribble_vesc": "false",
+                    "use_stm32": "false",
+                    "use_edulite_mecanum": "true",
+                    "use_edulite_spring": "false",
+                    "use_edulite_dribble_position": "false",
                 }.items(),
             ),
             include("input/joy_controller.launch.py"),

@@ -26,12 +26,16 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface used by ros2_socketcan",
             ),
-            # 共通: hardware(vesc除外) + joy + joy_controller
+            # spring・dribble position用hardwareだけを起動する。
             include(
                 "hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
                     "use_vesc": "false",
+                    "use_stm32": "true",
+                    "use_edulite_mecanum": "false",
+                    "use_edulite_spring": "true",
+                    "use_edulite_dribble_position": "true",
                 }.items(),
             ),
             include("input/joy_controller.launch.py"),

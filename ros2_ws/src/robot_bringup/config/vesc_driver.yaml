@@ -1,10 +1,32 @@
-vesc_driver_node:
+vesc_driver_1:
   ros__parameters:
     can_pub_topic: "/socketcan_bridge/tx"
     can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/vesc/target/rpm"  # std_msgs/msg/Int16 [RPM]。
-    current_rpm_topic: "/vesc/current/rpm"  # std_msgs/msg/Int16 [RPM]。
-    controller_id: 1
+    target_rpm_topic: "/underbelt/target/rpm"  # std_msgs/msg/Int16 [RPM]。
+    current_rpm_topic: "/underbelt/current/rpm"  # std_msgs/msg/Int16 [RPM]。
+    controller_id: 51
+    command_timeout_ms: 500
+    feedback_timeout_ms: 500
+    max_rpm: 4600
+
+vesc_driver_2:
+  ros__parameters:
+    can_pub_topic: "/socketcan_bridge/tx"
+    can_sub_topic: "/socketcan_bridge/rx"
+    target_rpm_topic: "/upperbelt/target/rpm"  # std_msgs/msg/Int16 [RPM]。
+    current_rpm_topic: "/upperbelt/current/rpm"  # std_msgs/msg/Int16 [RPM]。
+    controller_id: 2
+    command_timeout_ms: 500
+    feedback_timeout_ms: 500
+    max_rpm: 4600
+
+vesc_driver_3:
+  ros__parameters:
+    can_pub_topic: "/socketcan_bridge/tx"
+    can_sub_topic: "/socketcan_bridge/rx"
+    target_rpm_topic: "/dribble/target/rpm"  # std_msgs/msg/Int16 [RPM]。
+    current_rpm_topic: "/dribble/current/rpm"  # std_msgs/msg/Int16 [RPM]。
+    controller_id: 3
     command_timeout_ms: 500
     feedback_timeout_ms: 500
     max_rpm: 4600

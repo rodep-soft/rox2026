@@ -78,23 +78,82 @@ void MecanumControllerNode::get_parameters()
       wheel_vels_.size(), velocity_corrections_.size());
     velocity_corrections_.assign(wheel_vels_.size(), 1.0);
   }
+  for (std::size_t index = 0; index < velocity_corrections_.size(); ++index) {
+    if (!std::isfinite(velocity_corrections_[index])) {
+      RCLCPP_WARN(
+        get_logger(),
+        "velocity_corrections[%zu] must be finite: %.6f. Using 1.0.",
+        index, velocity_corrections_[index]);
+      velocity_corrections_[index] = 1.0;
+    }
+  }
   if (qos_depth_ <= 0) {
     RCLCPP_WARN(
       get_logger(),
       "qos_depth must be positive. Using the default value of 1.");
     qos_depth_ = 1;
   }
-  if (max_wheel_velocity_rad_s_ <= 0.0) {
+  if (!std::isfinite(wheel_radius_) || wheel_radius_ <= 0.0) {
     RCLCPP_WARN(
       get_logger(),
-      "max_wheel_velocity_rad_s must be greater than zero. Using 50.0 rad/s.");
-    max_wheel_velocity_rad_s_ = 50.0;
+      "wheel_radius must be finite and greater than zero: %.6f. Using 0.05 m.",
+      wheel_radius_);
+    wheel_radius_ = 0.05;
   }
+  if (!std::isfinite(robot_length_) || robot_length_ < 0.0) {
+    RCLCPP_WARN(
+      get_logger(),
+      "robot_length must be finite and zero or greater: %.6f. Using 0.47 m.",
+      robot_length_);
+    robot_length_ = 0.47;
+  }
+  if (!std::isfinite(robot_width_) || robot_width_ < 0.0) {
+    RCLCPP_WARN(
+      get_logger(),
+      "robot_width must be finite and zero or greater: %.6f. Using 0.41 m.",
+      robot_width_);
+    robot_width_ = 0.41;
+  }
+  constexpr double edulite_velocity_limit_rad_s = 50.0;
+  if (!std::isfinite(max_wheel_velocity_rad_s_) ||
+    max_wheel_velocity_rad_s_ <= 0.0 ||
+    max_wheel_velocity_rad_s_ > edulite_velocity_limit_rad_s)
+  {
+    RCLCPP_WARN(
+      get_logger(),
+      "max_wheel_velocity_rad_s must be in (0.0, 50.0]: %.6f. "
+      "Using 50.0 rad/s.",
+      max_wheel_velocity_rad_s_);
+    max_wheel_velocity_rad_s_ = edulite_velocity_limit_rad_s;
+  }
+  const auto validate_sign =
+    [this](const char * name, double & value) {
+      if (std::isfinite(value) && value != 0.0) {
+        return;
+      }
+      RCLCPP_WARN(
+        get_logger(),
+        "%s must be finite and nonzero: %.6f. Using 1.0.", name, value);
+      value = 1.0;
+    };
+  validate_sign("vx_sign", vx_sign_);
+  validate_sign("vy_sign", vy_sign_);
+  validate_sign("angular_z_sign", angular_z_sign_);
 }
 
 void MecanumControllerNode::cmd_vel_callback(
   const geometry_msgs::msg::Twist::SharedPtr msg)
 {
+  if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
+    !std::isfinite(msg->angular.z))
+  {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "Non-finite cmd_vel received. Publishing zero wheel velocity.");
+    last_cmd_vel_ = geometry_msgs::msg::Twist{};
+    publish_wheel_commands();
+    return;
+  }
   last_cmd_vel_ = *msg;
   publish_wheel_commands();
 }

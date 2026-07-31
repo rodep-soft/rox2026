@@ -7,19 +7,22 @@
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class DribblePositionController : public rclcpp::Node {
- public:
+class DribblePositionController : public rclcpp::Node
+{
+public:
   DribblePositionController();
 
- private:
-  enum class Position : uint8_t {
+private:
+  enum class Position : uint8_t
+  {
     DRIBBLE,
     INTAKE,
     SHOOT,
     OPEN,
   };
 
-  enum class State : uint8_t {
+  enum class State : uint8_t
+  {
     IDLE,
     MANUAL_MOVE,
     INTAKE,
@@ -28,7 +31,8 @@ class DribblePositionController : public rclcpp::Node {
     RETURN_TO_DRIBBLE
   };
 
-  enum class OperationMode : uint8_t {
+  enum class OperationMode : uint8_t
+  {
     STOP,
     DRIVE,
     SHOT_CYCLE,
@@ -49,7 +53,7 @@ class DribblePositionController : public rclcpp::Node {
   void publish_shot_cycle_running(bool running);
   void publish_shot_cycle_complete();
   bool manual_position_allowed() const;
-  const char* state_name(State state) const;
+  const char * state_name(State state) const;
   void log_shot_cycle_start_rejection() const;
 
   double dribble_position_rad_{0.0};
@@ -77,7 +81,7 @@ class DribblePositionController : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_start_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr
-      position_feedback_sub_;
+    position_feedback_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_running_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_complete_pub_;

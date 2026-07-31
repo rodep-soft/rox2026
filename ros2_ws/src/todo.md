@@ -11,6 +11,8 @@
 
 - `belt_dribble_controller.yaml`: `level_1_rpm`から`level_6_rpm`、`dribble_on_rpm`。
 - `belt_dribble_controller.yaml`: `belt_rpm_tolerance`、`dribble_rpm_tolerance`、`ready_hold_sec`。
+- `hardware.launch.py`: underbelt / upperbelt / dribbleに割り当てたVESC 1 / 2 / 3の
+  `controller_id`が実機ID（現在の初期値は`51` / `2` / `3`）と一致すること。
 
 ## Spring
 

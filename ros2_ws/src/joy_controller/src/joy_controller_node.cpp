@@ -12,16 +12,38 @@ JoyControllerNode::JoyControllerNode()
   get_parameters();
 
   if (joy_qos_depth_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(), "joy_qos_depth must be positive: %d. Using 1.",
+      joy_qos_depth_);
     joy_qos_depth_ = 1;
   }
   if (command_qos_depth_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(), "command_qos_depth must be positive: %d. Using 1.",
+      command_qos_depth_);
     command_qos_depth_ = 1;
   }
   if (joy_timeout_ms_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(), "joy_timeout_ms must be positive: %d. Using 200 ms.",
+      joy_timeout_ms_);
     joy_timeout_ms_ = 200;
   }
   if (state_publish_period_ms_ <= 0) {
+    RCLCPP_WARN(
+      get_logger(),
+      "state_publish_period_ms must be positive: %d. Using 20 ms.",
+      state_publish_period_ms_);
     state_publish_period_ms_ = 20;
+  }
+  if (!std::isfinite(axis_deadzone_) ||
+    axis_deadzone_ < 0.0 || axis_deadzone_ > 1.0)
+  {
+    RCLCPP_WARN(
+      get_logger(),
+      "axis_deadzone must be in [0.0, 1.0]: %.3f. Using 0.05.",
+      axis_deadzone_);
+    axis_deadzone_ = 0.05;
   }
   if (!std::isfinite(lateral_axis_threshold_) ||
     lateral_axis_threshold_ <= 0.0 || lateral_axis_threshold_ > 1.0)
@@ -32,6 +54,43 @@ JoyControllerNode::JoyControllerNode()
       lateral_axis_threshold_);
     lateral_axis_threshold_ = 0.7;
   }
+  if (!std::isfinite(axis_on_threshold_) ||
+    axis_on_threshold_ <= 0.0 || axis_on_threshold_ > 1.0)
+  {
+    RCLCPP_WARN(
+      get_logger(),
+      "axis_on_threshold must be in (0.0, 1.0]: %.3f. Using 0.7.",
+      axis_on_threshold_);
+    axis_on_threshold_ = 0.7;
+  }
+
+  const auto validate_scale =
+    [this](const char * name, double & value) {
+      if (std::isfinite(value)) {
+        return;
+      }
+      RCLCPP_WARN(
+        get_logger(), "%s must be finite: %.3f. Using 1.0.", name, value);
+      value = 1.0;
+    };
+  validate_scale("linear_x_scale", linear_x_scale_);
+  validate_scale("linear_y_scale", linear_y_scale_);
+  validate_scale("angular_z_scale", angular_z_scale_);
+
+  const auto validate_limit =
+    [this](const char * name, double & value) {
+      if (std::isfinite(value) && value >= 0.0) {
+        return;
+      }
+      RCLCPP_WARN(
+        get_logger(),
+        "%s must be finite and zero or greater: %.3f. Using 2.0.",
+        name, value);
+      value = 2.0;
+    };
+  validate_limit("linear_x_limit", linear_x_limit_);
+  validate_limit("linear_y_limit", linear_y_limit_);
+  validate_limit("angular_z_limit", angular_z_limit_);
 
   auto joy_qos = rclcpp::SensorDataQoS();
   joy_qos.keep_last(joy_qos_depth_);
@@ -192,7 +251,11 @@ double JoyControllerNode::axis_value(
   if (index < 0 || static_cast<std::size_t>(index) >= msg.axes.size()) {
     return 0.0;
   }
-  return msg.axes[static_cast<std::size_t>(index)];
+  const double value = msg.axes[static_cast<std::size_t>(index)];
+  if (!std::isfinite(value)) {
+    return 0.0;
+  }
+  return value;
 }
 
 double JoyControllerNode::apply_axis_deadzone(double value) const

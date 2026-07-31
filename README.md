@@ -13,57 +13,43 @@ ROX2026用レポジトリ
 
 | Package | 説明 |
 |---------|------|
-| mecanum_controller | 足回りのモーター速度の計算  |
-| wheel_to_can | 足回りeduliteのcanframe生成 |
-| motor_can_bridge | stm32向けにMAD用のcan frame生成とroller/belt frameの集約 |
-| ros2socketcan_bridge | canframeからcanデータ生成と送受信 |
+| joy_controller | Joy入力を機構指令とoperation modeへ変換 |
+| robot_controller | 各機構の状態遷移と制御判断 |
+| hardware_driver | 機構指令とVESC・EduLite 05・STM32のCAN frameを相互変換 |
+| robot_bringup | 通常起動・機構別test用のlaunchとparameter |
 
 ---
 
-### Topic一覧
+### 制御経路
 
-| topic名 | 型 | publishing_node | subscribed_node |
-| --------|----|-----|-----|
-| /joy | sensor_msgs/msg/joy | joy_node | - |
-| /cmd_vel | geometory_msgs/msg/Twist | base_controller | mecanum_controller_node
-| /motor_vel | std_msgs/msg/Float32MultiArray | mecanum_controller_node | wheel_to_can_node |
-| /CAN/can0/transmit | can_msgs/msg/Frame | wheel_to_can_node, motor_can_packer_node | *ros2socketcan* |
-| /mad_motor/pwm_value | - | - | - |
-| /can_tx | can_msgs/msg/Frame | motor_can_command_node | - |
-| /roller/can_frame | can_msgs/msg/Frame | roller_controller_node | motor_can_packer_node |
-| /belt/can_frame | can_msgs/msg/Frame | belt_controller_node | motor_can_packer_node |
+```text
+joy_controller → robot_controller → hardware_driver → CAN機器
+```
 
-*斜体は外部パッケージのノード
+- mecanum・spring・dribble positionはEduLite 05で制御する。
+- underbelt・upperbelt・dribble回転はVESCで制御する。
+- STM32はlimit switch、LED、heartbeatを担当する。
+- CAN送受信は`ros2_socketcan`の`/socketcan_bridge/tx`と
+  `/socketcan_bridge/rx`を使用する。
 
-詳細： `docs/topic.md`
+topic名・型の詳細は以下を正とする。
 
----
+- [`joy_controller/README.md`](ros2_ws/src/joy_controller/README.md)
+- [`robot_controller/README.md`](ros2_ws/src/robot_controller/README.md)
+- `robot_bringup/config`内のYAMLコメント
 
 ### コントローラボタン配置
 
-| ボタン名 | 機能 |
-| --------|------|
-| left_stick | ロボットの移動のx,y軸 |
-| right_stick | ロボットの旋回 |
-| L2 | ばね発射，ベルト投射の安全装置キー |
-| R1 | ばね投射の発射キー |
-| △ | ベルト投射の発射キー |
-| 〇 | - |
-| ✕ | - |
+ボタン・軸の番号と操作方法は
+[`joy_controller/README.md`](ros2_ws/src/joy_controller/README.md)を正とする。
 
 ## stm32f303k8
 
-### 接続するセンサー,アクチュエータ一覧
+### 担当する入出力
 
-| センサ，アクチュエータ名 | 役割 |
-| -----------------------|------|
-| encoder0 | ベルト投射上部MADモータ回転速度読み取り |
-| encoder1 | ベルト投射上部MADモータ回転速度読み取り |
-| limitSw0 | ばね投射装填読み取り |
-| limitSw1 | ドリブル機構移動下限読み取り |
-| limitSw2 | ベルト投射機構角度上限読み取り |
-| limitSw3 | ベルト投射機構角度下限読み取り |
-| LED | ロボット装飾用LEDテープ |
-| MadMotor0 | ベルト投射上部MADモータ |
-| MadMotor1 | ベルト投射下部MADモータ |
-| MadMotor2 | ドリブル機構回転用MADモータ |
+- limit switch状態の送信
+- LED指令の受信
+- RDK X5とのheartbeat
+
+ベルト・dribble回転数の指令とfeedbackはSTM32を経由せず、VESC driverが
+直接担当する。
