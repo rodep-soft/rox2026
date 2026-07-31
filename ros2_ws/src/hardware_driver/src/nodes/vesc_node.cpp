@@ -56,20 +56,17 @@ public:
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
     rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
 
-    // rclcpp::SubscriptionOptions can_sub_options;
-    // can_sub_options.content_filter_options.filter_expression = "id = %0";
-    // can_sub_options.content_filter_options.expression_parameters = {
-    //   std::to_string(
-    //     (protocol::STATUS_1_ID << 8) |
-    //     static_cast<uint32_t>(controller_id_))
-    // };
-    // can_sub_ = create_subscription<can_msgs::msg::Frame>(
-    //   CAN_SUB_TOPIC, can_qos_sub,
-    //   std::bind(&Node::can_callback, this, std::placeholders::_1),
-    //   can_sub_options);
-      can_sub_ = create_subscription<can_msgs::msg::Frame>(
+    rclcpp::SubscriptionOptions can_sub_options;
+    can_sub_options.content_filter_options.filter_expression = "id = %0";
+    can_sub_options.content_filter_options.expression_parameters = {
+      std::to_string(
+        (protocol::STATUS_1_ID << 8) |
+        static_cast<uint32_t>(controller_id_))
+    };
+    can_sub_ = create_subscription<can_msgs::msg::Frame>(
       CAN_SUB_TOPIC, can_qos_sub,
-      std::bind(&Node::can_callback, this, std::placeholders::_1));
+      std::bind(&Node::can_callback, this, std::placeholders::_1),
+      can_sub_options);
 
     target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
         target_rpm_topic, 10,
