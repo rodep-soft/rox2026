@@ -42,7 +42,7 @@ public:
     can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
       sub_can_topic_name_, can_qos_sub,
       std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1));
-      
+
     fb_pub_ = this->create_publisher<std_msgs::msg::Float32>(pub_fb_topic_name_, 10);
 
     init_motor();

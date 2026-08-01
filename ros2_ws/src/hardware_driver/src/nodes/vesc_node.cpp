@@ -40,9 +40,10 @@ public:
     max_rpm_ = declare_parameter<double>("max_rpm", 5600.0);
     rpm_slew_rate_ = declare_parameter<double>("rpm_slew_rate", 4000.0);
 
-    const auto publish_subscribe_interval_ms = declare_parameter<int64_t>("publish_subscribe_interval_ms", 100);
+    const auto publish_subscribe_interval_ms = declare_parameter<int64_t>(
+      "publish_subscribe_interval_ms", 100);
 
-    
+
     controller_id_ = static_cast<uint8_t>(controller_id);
     pole_pairs_ = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
 
@@ -52,7 +53,7 @@ public:
     auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
       .reliable()
       .durability_volatile();
-       
+
     auto can_qos_sub = rclcpp::SensorDataQoS();
 
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
@@ -78,12 +79,13 @@ public:
       std::chrono::milliseconds(publish_subscribe_interval_ms),
       std::bind(&Node::timer_callback, this));
 
-      if (!can_sub_->is_cft_enabled()) {
-          RCLCPP_WARN(get_logger(),
-            "CAN content filter is not supported by the current RMW; "
-            "controller_id=%u will be filtered in the callback",
-            static_cast<unsigned int>(controller_id_));
-      }
+    if (!can_sub_->is_cft_enabled()) {
+      RCLCPP_WARN(
+        get_logger(),
+        "CAN content filter is not supported by the current RMW; "
+        "controller_id=%u will be filtered in the callback",
+        static_cast<unsigned int>(controller_id_));
+    }
     RCLCPP_INFO(
       get_logger(), "VESC driver started: controller_id=%u",
       static_cast<unsigned int>(controller_id_));
@@ -141,7 +143,7 @@ private:
     } else {
       feedback.data = current_rpm_;
       rpm_pub_->publish(feedback);
-      RCLCPP_DEBUG(this->get_logger(),"current_mA : %lf", current_ma_);
+      RCLCPP_DEBUG(this->get_logger(), "current_mA : %lf", current_ma_);
     }
 
   }

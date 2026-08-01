@@ -84,8 +84,8 @@ private:
 
     if (protocol::is_heartbeat_response(*frame)) {
       last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-      if(heartbeat_timed_out_){
-        RCLCPP_INFO(this->get_logger(),"The STM32 heartbeat has been restored.");
+      if (heartbeat_timed_out_) {
+        RCLCPP_INFO(this->get_logger(), "The STM32 heartbeat has been restored.");
         heartbeat_timed_out_ = false;
       }
       return;

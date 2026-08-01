@@ -19,7 +19,7 @@ constexpr uint32_t LIMIT_SWITCH_STATE = 0x310;
 // クォータニオン（X, Y, Z, W）
 constexpr uint32_t QUATERNION = 0x320;
 
-constexpr double QUATERNION_SCALE_INV =  1.0 / 16384.0;
+constexpr double QUATERNION_SCALE_INV = 1.0 / 16384.0;
 
 /// @brief 生存報告用CANフレームを生成する
 /// @return 送信用CANフレーム
