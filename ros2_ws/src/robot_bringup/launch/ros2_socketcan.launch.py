@@ -13,34 +13,24 @@ def generate_launch_description():
         "launch",
     )
 
-    socketcan_receiver_launch = IncludeLaunchDescription(
+    receiver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                socketcan_launch_directory,
-                "socket_can_receiver.launch.py",
-            )
+            os.path.join(socketcan_launch_directory, "socket_can_receiver.launch.py")
         ),
         launch_arguments={
             "interface": LaunchConfiguration("can_interface"),
             "enable_can_fd": "false",
             "interval_sec": "0.1",
-            "use_bus_time": "false",
             "from_can_bus_topic": "/socketcan_bridge/rx",
-            # "filters": "",
         }.items(),
     )
-
-    socketcan_sender_launch = IncludeLaunchDescription(
+    sender_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                socketcan_launch_directory,
-                "socket_can_sender.launch.py",
-            )
+            os.path.join(socketcan_launch_directory, "socket_can_sender.launch.py")
         ),
         launch_arguments={
             "interface": LaunchConfiguration("can_interface"),
             "enable_can_fd": "false",
-            "enable_frame_loopback": "false",
             "timeout_sec": "0.01",
             "to_can_bus_topic": "/socketcan_bridge/tx",
         }.items(),
@@ -48,12 +38,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "can_interface",
-                default_value="can0",
-                description="SocketCAN interface",
-            ),
-            socketcan_receiver_launch,
-            socketcan_sender_launch,
+            DeclareLaunchArgument("can_interface", default_value="can0"),
+            receiver_launch,
+            sender_launch,
         ]
     )
