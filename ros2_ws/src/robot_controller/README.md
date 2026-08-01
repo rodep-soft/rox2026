@@ -28,10 +28,10 @@ flowchart LR
   mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| edulite_driver
   spring -->|/spring/vel_command\nstd_msgs/msg/Float32| edulite_driver
   dribble -->|/stm32/dribble/target/rpm\nstd_msgs/msg/Int16| stm_driver
-  belt -->|/underbelt/target/rpm\nstd_msgs/msg/Float32| under_vesc
-  belt -->|/upperbelt/target/rpm\nstd_msgs/msg/Float32| upper_vesc
-  under_vesc -->|/underbelt/current/rpm\nstd_msgs/msg/Float32| belt
-  upper_vesc -->|/upperbelt/current/rpm\nstd_msgs/msg/Float32| belt
+  belt -->|/underbelt/target/rpm\nstd_msgs/msg/Int16| under_vesc
+  belt -->|/upperbelt/target/rpm\nstd_msgs/msg/Int16| upper_vesc
+  under_vesc -->|/underbelt/current/rpm\nstd_msgs/msg/Int16| belt
+  upper_vesc -->|/upperbelt/current/rpm\nstd_msgs/msg/Int16| belt
   position -->|/dribble/position_command\nstd_msgs/msg/Float32| edulite_driver
   edulite_driver -->|/dribble/position_feedback\nstd_msgs/msg/Float32| position
   stm_driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
@@ -104,10 +104,10 @@ topic名、リミットスイッチのindex、各速度、発射時間は`robot_
 | 種別 | topic名（既定値） | 型 | 内容 |
 | --- | --- | --- | --- |
 | subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
-| subscribe | `/underbelt/current/rpm` | `std_msgs/msg/Float32` | VESC ID 51から受けるunder側実回転数 `[RPM]` |
-| subscribe | `/upperbelt/current/rpm` | `std_msgs/msg/Float32` | VESC ID 52から受けるupper側実回転数 `[RPM]` |
-| publish | `/underbelt/target/rpm` | `std_msgs/msg/Float32` | VESC ID 51へ送るunder側目標回転数 `[RPM]` |
-| publish | `/upperbelt/target/rpm` | `std_msgs/msg/Float32` | VESC ID 52へ送るupper側目標回転数 `[RPM]` |
+| subscribe | `/underbelt/current/rpm` | `std_msgs/msg/Int16` | VESC ID 51から受けるunder側実回転数 `[RPM]` |
+| subscribe | `/upperbelt/current/rpm` | `std_msgs/msg/Int16` | VESC ID 52から受けるupper側実回転数 `[RPM]` |
+| publish | `/underbelt/target/rpm` | `std_msgs/msg/Int16` | VESC ID 51へ送るunder側目標回転数 `[RPM]` |
+| publish | `/upperbelt/target/rpm` | `std_msgs/msg/Int16` | VESC ID 52へ送るupper側目標回転数 `[RPM]` |
 | publish | `/belt/ready` | `std_msgs/msg/Bool` | 両ベルトが目標RPM付近に一定時間到達した状態 |
 
 `belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_mode`が`STOP`の場合は`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
