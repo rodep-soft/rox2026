@@ -141,7 +141,7 @@ private:
     if (!feedback_received_ || now - last_feedback_time_ > feedback_timeout_) {
       feedback.data = 0.0;
     } else {
-      feedback.data = static_cast<Int16>(current_rpm_);
+      feedback.data = static_cast<int16_t>(current_rpm_);
       rpm_pub_->publish(feedback);
       RCLCPP_DEBUG(this->get_logger(), "current_mA : %lf", current_ma_);
     }

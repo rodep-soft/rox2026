@@ -1,7 +1,7 @@
 dribble_position_controller:
   ros__parameters:
     # [rad] それぞれのdribble positinの位置
-    dribble_position_rad: 0.2
+    dribble_position_rad: 0.35
     intake_position_rad: -1.0
     shoot_position_rad: 1.3
     open_position_rad: -1.3

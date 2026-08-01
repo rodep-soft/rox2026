@@ -13,7 +13,7 @@ belt_dribble_controller_node:
     belt_rpm_tolerance: 100
 
     # [RPM] dribble有効時に送る目標回転数。
-    dribble_on_rpm: 2000
+    dribble_on_rpm: -1500
     # [RPM] dribbleが目標RPMに到達したと判定する誤差。
     dribble_rpm_tolerance: 100
 
