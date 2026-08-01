@@ -10,12 +10,13 @@ def generate_launch_description():
     )
 
     node_names = [
-        "vesc_upper_belt_driver" "vesc_under_belt_driver",
-        "vesc_dribble_belt_driver",
+        "vesc_upper_belt_driver",
+        "vesc_under_belt_driver",
+        "vesc_dribble_driver",
     ]
 
     nodes = []
-    for node_name in nodes:
+    for node_name in node_names:
         nodes.append(
             Node(
                 package="hardware_driver",

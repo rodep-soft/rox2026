@@ -1,15 +1,9 @@
 stm32_driver_node:
   ros__parameters:
-    motor_target_rpm_topics:
-    #  - /underbelt/target/rpm 
-    #  - /upperbelt/target/rpm
-      - /dribble/target/rpm
-    motor_current_rpm_topics:
-    #  - /underbelt/current/rpm 
-    #  - /upperbelt/current/rpm
-      - /dribble/current/rpm
-    led_cmd_topic: "/led/cmd"              #ledのコマンドを制御ノードから受信するトピック
-    limit_sw_topic: "/limitsw"             #limitswのデータを制御ノードへ送信するトピック
-    timeout_ms: 500                        #タイムアウト検知時間
-    keep_alive_period_ms: 100              #heartbeatの送信と判断周期
-    publish_period_ms: 10                  #制御ノードに送る現在のrpm送信周期
+    imu_topic: /imu/data        # STM32が送るint16のクォータニオン成分に掛ける係数
+    imu_frame_id: imu_link
+    led_cmd_topic: "/led/cmd"   # LEDのコマンドを制御ノードから受信するトピック
+    limit_sw_topic: "/limitsw"  # limitswのデータを制御ノードへ送信するトピック
+    timeout_ms: 500             # タイムアウト検知時間
+    keep_alive_period_ms: 100   # heartbeatの送信と判断周期
+   # publish_period_ms: 10       # 制御ノードに送るimudataの現在の送信周期

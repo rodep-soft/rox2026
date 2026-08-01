@@ -6,7 +6,7 @@ edulite05_fl_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/fl/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x01
+    motor_id: 0x20
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -16,7 +16,7 @@ edulite05_fr_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/fr/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x02
+    motor_id: 0x21
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -26,7 +26,7 @@ edulite05_rl_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/rl/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x03
+    motor_id: 0x22
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -36,7 +36,7 @@ edulite05_rr_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/mecanum/rr/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x04
+    motor_id: 0x23
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
@@ -46,7 +46,7 @@ edulite05_spring_driver:
     pub_can_topic_name: "socketcan_bridge/tx"
     sub_can_topic_name: "socketcan_bridge/rx"
     pub_fb_topic_name: "/spring/feedback"         # std_msgs/msg/Float32
-    motor_id: 0x0A
+    motor_id: 0x28
     runmode: "Velocity"                           # "Velocity" or "Position"
     is_requested_fb_pub: false                    # Publish feedback if true
 
