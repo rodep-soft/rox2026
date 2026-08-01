@@ -20,7 +20,7 @@ vesc_under_belt_driver:
     max_rpm: 5600.0
     rpm_slew_rate: 1000.0  #一秒間での加速量
 
-vesc_dribble_belt_driver:
+vesc_dribble_driver:
   ros__parameters:
     target_rpm_topic: "/dribble/target/rpm"
     current_rpm_topic: "/dribble/current/rpm"

@@ -12,7 +12,7 @@ def generate_launch_description():
     node_names = [
         "vesc_upper_belt_driver",
         "vesc_under_belt_driver",
-        "vesc_dribble_belt_driver",
+        "vesc_dribble_driver",
     ]
 
     nodes = []
