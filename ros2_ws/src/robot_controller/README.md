@@ -67,7 +67,7 @@ flowchart LR
 
   belt_dribble -->|"/underbelt・upperbelt・dribble/target/rpm<br/>std_msgs/msg/Int16"| vesc
   vesc -->|"/underbelt・upperbelt・dribble/current/rpm<br/>std_msgs/msg/Int16"| belt_dribble
-  stm32 -->|"/limit_switches<br/>std_msgs/msg/UInt8MultiArray"| spring
+  stm32 -->|"/limit_switchs<br/>std_msgs/msg/UInt8"| spring
 
   mecanum -->|"/mecanum/*/vel_command<br/>std_msgs/msg/Float32"| edulite
   spring -->|"/spring/vel_command<br/>std_msgs/msg/Float32"| edulite
@@ -234,7 +234,7 @@ LOADが`load_timeout_sec`を超えた場合はERRORへ入り、`0 rad/s`で停�
 | subscribe | `/operation_mode` | `std_msgs/msg/UInt8` | operation mode |
 | subscribe | `/spring/fire_request` | `std_msgs/msg/Bool` | L1+○の発射要求 |
 | subscribe | `/emergency_stop` | `std_msgs/msg/Bool` | 停止状態 |
-| subscribe | `/limit_switches` | `std_msgs/msg/UInt8MultiArray` | STM32が展開した8スイッチ |
+| subscribe | `/limit_switchs` | `std_msgs/msg/UInt8` | STM32からの状態（0=OFF、それ以外=ON） |
 | publish | `/spring/vel_command` | `std_msgs/msg/Float32` | EduLiteへのrad/s指令 |
 
 発射要求はfalse→trueの立ち上がりだけを予約する。DRIVE、設定正常、READY、
@@ -248,11 +248,11 @@ limit switchがONになったときだけREADYへ自動復帰する。
 
 | parameter | 単位 | 内容 |
 |---|---|---|
-| `limit_switch_index` | index | `/limit_switches.data[]`で装填完了に使う位置 |
 | `loading_velocity_rad_s` | rad/s | LOAD時速度。絶対値50以下 |
 | `fire_velocity_rad_s` | rad/s | FIRE時速度。絶対値50以下 |
 | `fire_duration_sec` | s | 発射速度を維持する時間。0より大きい有限値 |
 | `load_timeout_sec` | s | ERRORへ移るまでのLOAD上限時間。0より大きい有限値 |
+| `limit_switch_bit_offset` | bit | `/limit_switchs`で装填完了に使うbit位置（0〜7） |
 | `command_period_ms` | ms | 速度指令の周期 |
 | `qos_depth` | 件 | command QoS depth |
 

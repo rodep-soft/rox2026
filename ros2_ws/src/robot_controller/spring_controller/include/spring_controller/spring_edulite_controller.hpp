@@ -7,7 +7,6 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
-#include "std_msgs/msg/u_int8_multi_array.hpp"
 
 class SpringEduliteController : public rclcpp::Node
 {
@@ -23,8 +22,7 @@ private:
   void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void limit_switch_callback(
-    const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
+  void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   bool spring_fire_allowed() const;
   void prepare_spring_for_stop();
   void start_loading();
@@ -36,7 +34,7 @@ private:
 
   State now_state_{State::LOAD};
   OperationMode operation_mode_{OperationMode::STOP};
-  int limit_switch_index_{0};
+  int limit_switch_bit_offset_{0};
   bool is_configuration_valid_{true};
   bool is_loaded_{false};
   bool emergency_stop_active_{false};
@@ -55,8 +53,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr
-    limit_switch_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

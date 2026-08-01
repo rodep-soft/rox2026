@@ -1,7 +1,6 @@
 #include "spring_controller/spring_edulite_controller.hpp"
 
 #include <chrono>
-#include <cstddef>
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -11,10 +10,11 @@ SpringEduliteController::SpringEduliteController()
 {
   declare_parameters();
   get_parameters();
-  if (limit_switch_index_ < 0) {
+
+  if (limit_switch_bit_offset_ < 0 || limit_switch_bit_offset_ >= 8) {
     RCLCPP_ERROR(
-      get_logger(), "limit_switch_index must be zero or greater: %d",
-      limit_switch_index_);
+      get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d",
+      limit_switch_bit_offset_);
     is_configuration_valid_ = false;
   }
   if (!std::isfinite(fire_duration_sec_) || fire_duration_sec_ <= 0.0) {
@@ -87,8 +87,8 @@ SpringEduliteController::SpringEduliteController()
     std::bind(
       &SpringEduliteController::emergency_stop_callback, this,
       std::placeholders::_1));
-  limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8MultiArray>(
-    "/limit_switches", command_qos,
+  limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    "/limit_switchs", command_qos,
     std::bind(
       &SpringEduliteController::limit_switch_callback, this,
       std::placeholders::_1));
@@ -108,7 +108,7 @@ SpringEduliteController::SpringEduliteController()
 
 void SpringEduliteController::declare_parameters()
 {
-  declare_parameter<int>("limit_switch_index", 0);
+  declare_parameter<int>("limit_switch_bit_offset", 0);
   declare_parameter<double>("loading_velocity_rad_s", -5.0);
   declare_parameter<double>("fire_velocity_rad_s", -20.0);
   declare_parameter<double>("fire_duration_sec", 5.0);
@@ -119,7 +119,7 @@ void SpringEduliteController::declare_parameters()
 
 void SpringEduliteController::get_parameters()
 {
-  get_parameter("limit_switch_index", limit_switch_index_);
+  get_parameter("limit_switch_bit_offset", limit_switch_bit_offset_);
   get_parameter("loading_velocity_rad_s", loading_velocity_rad_s_);
   get_parameter("fire_velocity_rad_s", fire_velocity_rad_s_);
   get_parameter("fire_duration_sec", fire_duration_sec_);
@@ -191,29 +191,19 @@ void SpringEduliteController::emergency_stop_callback(
   }
 }
 
-void SpringEduliteController::limit_switch_callback(
-  const std_msgs::msg::UInt8MultiArray::SharedPtr msg)
+void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  if (limit_switch_index_ < 0) {
-    return;
-  }
-  const auto index = static_cast<std::size_t>(limit_switch_index_);
-  if (index >= msg->data.size()) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 1000,
-      "Limit switch data is too short: index=%d, size=%zu.",
-      limit_switch_index_, msg->data.size());
-    return;
-  }
-
   const bool previous_loaded = is_loaded_;
-  last_limit_switch_value_ = msg->data[index];
-  is_loaded_ = last_limit_switch_value_ != 0;
+  last_limit_switch_value_ = msg->data;
+  const auto selected_bit = static_cast<uint8_t>(
+    (last_limit_switch_value_ >> limit_switch_bit_offset_) & 0x01U);
+  const bool limit_switch_active = selected_bit != 0U;
+  is_loaded_ = limit_switch_active;
   if (!limit_switch_received_ || is_loaded_ != previous_loaded) {
     RCLCPP_INFO(
-      get_logger(), "Spring limit switch[%d] is %s (value=%u).",
-      limit_switch_index_, is_loaded_ ? "ON" : "OFF",
-      last_limit_switch_value_);
+      get_logger(), "Spring limit switch is %s (value=%u).",
+      is_loaded_ ? "ON" : "OFF",
+      static_cast<unsigned int>(last_limit_switch_value_));
   }
   limit_switch_received_ = true;
 }
@@ -288,9 +278,9 @@ void SpringEduliteController::timer_callback()
         now_state_ = State::ERROR;
         RCLCPP_ERROR(
           get_logger(),
-          "Spring loading timed out after %.3f s: limit_switch_index=%d, value=%u, "
+          "Spring loading timed out after %.3f s: value=%u, "
           "velocity=%.3f rad/s. Stopping spring motor.",
-          load_timeout_sec_, limit_switch_index_, last_limit_switch_value_,
+          load_timeout_sec_, static_cast<unsigned int>(last_limit_switch_value_),
           loading_velocity_rad_s_);
       } else {
         command.data = static_cast<float>(loading_velocity_rad_s_);

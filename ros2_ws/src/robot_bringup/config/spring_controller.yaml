@@ -1,7 +1,7 @@
 spring_controller_node:
   ros__parameters:
-    # 変更すると装填完了に使うリミットスイッチのdata indexが変わる。
-    limit_switch_index: 1
+    # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）。
+    limit_switch_bit_offset: 0
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 

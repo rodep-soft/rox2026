@@ -139,11 +139,10 @@ STM32はbelt・dribbleのRPM制御には使用しない。
 | RDK → STM32 | `0x101` | heartbeat。dataなし |
 | STM32 → RDK | `0x100` | heartbeat応答。dataなし |
 | RDK → STM32 | `0x201` | LED指令。1 byte |
-| STM32 → RDK | `0x202` | limit switch。1 byte |
+| STM32 → RDK | `0x310` | limit switch。指定byteを使用 |
 
-limit switchの1 byteはbitごとに8要素へ展開し、
-`std_msgs/msg/UInt8MultiArray`として`/limit_switches`へpublishする。
-`data[i]`がスイッチindex `i`に対応し、値は0または1になる。
+STM32 nodeはCANデータ先頭byteを`std_msgs/msg/UInt8`として`/limit_switchs`へpublishする。
+spring controllerは`limit_switch_bit_offset`で指定したbitを取り出し、0ならOFF、1ならONとして扱う。
 
 `keep_alive_period_ms`周期でheartbeatを送り、最後の応答から`timeout_ms`を超えると
 WARNを1回出す。現在はtimeoutを通知するROS topicや、他機構を直接停止する処理はない。
@@ -159,7 +158,7 @@ WARNを1回出す。現在はtimeoutを通知するROS topicや、他機構を�
 | current RPMが出ない | VESC STATUS_1、feedback timeout WARN、極数設定 |
 | EduLiteが動かない | motor ID、runmode、起動時初期化frame、CAN extended ID |
 | dribble位置feedbackがない | `is_requested_fb_pub=true`、motor ID `0x38` |
-| limit switchが出ない | STM32 CAN ID `0x202`、DLC 1、`/limit_switches` |
+| limit switchが出ない | STM32 CAN ID `0x310`、CANデータ先頭byte、`/limit_switchs` |
 | STM32 timeout WARN | `0x100` heartbeat応答と`timeout_ms` |
 
 実機を動かす前に、同一CAN bus上でVESC IDとEduLite IDが意図した実機へ割り当てられて

@@ -1,7 +1,7 @@
 # spring_controller_node
 
 Springの装填、待機、発射、異常停止を管理し、EduLite 05へ速度指令を送るnodeである。
-装填完了はSTM32がpublishするlimit switch配列から判断する。
+装填完了はSTM32がpublishするlimit switch状態から判断する。
 
 ## 関連ファイル
 
@@ -20,7 +20,7 @@ constructorの設定検証後、mode・fire・emergency・limit callbackを読�
 | sub | `/operation_mode` | `UInt8` | 発射可否 |
 | sub | `/emergency_stop` | `Bool` | 発射中断 |
 | sub | `/spring/fire_request` | `Bool` | 発射要求 |
-| sub | `/limit_switches` | `UInt8MultiArray` | 装填switch配列 |
+| sub | `/limit_switchs` | `UInt8` | STM32からのリミットスイッチbit列 |
 | pub | `/spring/vel_command` | `Float32` | EduLite速度[rad/s] |
 
 ## 状態遷移
@@ -52,13 +52,13 @@ STOP、SHOT_CYCLE、BELT_ONLY、emergency stopではFIREを中断する。ただ
 速度は有限かつ絶対値50 rad/s以下、duration・timeoutは0より大きい必要がある。
 設定不正ではnodeは動作を続けるが、毎周期0 rad/sをpublishする。
 
-`limit_switch_index`が配列外ならWARNを1秒間隔で出し、そのmessageを無視する。
-LOADが`load_timeout_sec`を超える場合はERRORログにindex、switch値、速度を出す。
+`limit_switch_bit_offset`で、受信した`/limit_switchs`のbyte内から装填判定に使うbit位置を指定する。
+LOADが`load_timeout_sec`を超える場合はERRORログにswitch値と速度を出す。
 
 ## 確認方法
 
 ```bash
-ros2 topic echo /limit_switches
+ros2 topic echo /limit_switchs
 ros2 topic echo /spring/vel_command
 ros2 topic pub --once /spring/fire_request std_msgs/msg/Bool "{data: true}"
 ```

@@ -23,8 +23,8 @@ standard data frameだけを受け、上記受信ID以外は早期returnする�
 
 ## limit switch
 
-受信byteのbit 0〜7を`UInt8MultiArray.data[0]`〜`[7]`へ展開する。各要素は0か1。
-Spring controllerはYAMLの`limit_switch_index`で使用するbitを選ぶ。
+CANデータ先頭byteを`UInt8`として`/limit_switchs`へpublishする。Spring controllerが
+`limit_switch_bit_offset`で指定したbitを取り出し、0ならOFF、1ならONとして扱う。
 
 ## heartbeat
 
@@ -40,5 +40,5 @@ RPM topicを作成せず、そのencode/decode関数も呼ばない。新しい�
 
 ## 調査
 
-limit switchが出ない場合は`candump can0`でID `0x202`とDLC 1を確認し、その後
-`ros2 topic echo /limit_switches`でbit展開を確認する。
+limit switchが出ない場合は`candump can0`でID `0x310`と対象byteを確認し、その後
+`ros2 topic echo /limit_switchs`で値を確認する。

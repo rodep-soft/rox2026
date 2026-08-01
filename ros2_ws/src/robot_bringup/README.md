@@ -100,7 +100,7 @@ ros2 node list
 ros2 topic list -t
 ros2 topic echo /operation_mode
 ros2 topic echo /underbelt/current/rpm
-ros2 topic echo /limit_switches
+ros2 topic echo /limit_switchs
 ros2 topic hz /dribble/position_feedback
 ```
 

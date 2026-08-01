@@ -16,7 +16,8 @@
 
 ## Spring
 
-- `spring_controller.yaml`: `limit_switch_index`、`loading_velocity_rad_s`、`fire_velocity_rad_s`、`fire_duration_sec`。
+- `spring_controller.yaml`: `limit_switch_bit_offset`がSTM32から受けたbyte内の実機のリミットスイッチ位置と一致すること。
+- `spring_controller.yaml`: `loading_velocity_rad_s`、`fire_velocity_rad_s`、`fire_duration_sec`。
 - `spring_controller.yaml`: `load_timeout_sec`が機構の通常装填時間より十分長く、安全な値であること。
 
 ## Dribble position

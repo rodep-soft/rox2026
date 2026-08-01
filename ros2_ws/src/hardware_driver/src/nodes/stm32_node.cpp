@@ -33,7 +33,7 @@ public:
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now())
   {
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
-    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
+    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limit_switchs");
     const auto imu_topic = declare_parameter<std::string>("imu_topic", "/imu/data");
     imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "imu_link");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
