@@ -4,9 +4,9 @@ mecanum_controller_node:
     qos_depth: 3
 
     # [m] 大きくすると同じ車体速度に必要な車輪角速度が小さくなる。
-    wheel_radius: 0.05
-    robot_length: 0.47
-    robot_width: 0.41
+    wheel_radius: 0.15
+    robot_length: 0.355
+    robot_width: 0.353
     # [rad/s] 4輪の補正後指令の最大絶対値。超過時は全輪を同じ比率で縮小する。
     max_wheel_velocity_rad_s: 50.0
 
