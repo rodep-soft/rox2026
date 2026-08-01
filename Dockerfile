@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     htop \
     lsof \
     build-essential \
+    ninja-build \
     python3-pip \
     python3-colcon-common-extensions \
     python3-vcstool \

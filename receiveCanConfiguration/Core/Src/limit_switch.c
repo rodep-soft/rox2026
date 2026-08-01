@@ -7,8 +7,10 @@ static uint32_t last_send_time = 0;
 static uint32_t last_pushed_time = 0;
 // 送信回数を記録するデバッグ用変数
 volatile uint32_t debug_tx_count = 0;
+
+
 uint8_t TxData[8] = {0};
-HAL_StatusTypeDef ret;
+HAL_StatusTypeDef ret = HAL_ERROR;
 uint32_t can_error;
 uint32_t mailbox_free;
 
@@ -26,19 +28,19 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         // 4つのピンの状態を読み取る
         GPIO_PinState sw1 = HAL_GPIO_ReadPin(LIMIT_SW1_GPIO_Port, LIMIT_SW1_Pin);
         GPIO_PinState sw2 = HAL_GPIO_ReadPin(LIMIT_SW2_GPIO_Port, LIMIT_SW2_Pin);
-        GPIO_PinState sw3 = HAL_GPIO_ReadPin(LIMIT_SW3_GPIO_Port, LIMIT_SW3_Pin);
-        GPIO_PinState sw4 = HAL_GPIO_ReadPin(LIMIT_SW4_GPIO_Port, LIMIT_SW4_Pin);
+       // GPIO_PinState sw3 = HAL_GPIO_ReadPin(LIMIT_SW3_GPIO_Port, LIMIT_SW3_Pin);
+       // GPIO_PinState sw4 = HAL_GPIO_ReadPin(LIMIT_SW4_GPIO_Port, LIMIT_SW4_Pin);
 
-        CAN_TxHeaderTypeDef TxHeader;
+        CAN_TxHeaderTypeDef TxHeader = {0};
 
         uint32_t TxMailbox;
 
-        TxHeader.StdId = 0x202;
+        TxHeader.StdId = 0x310;
         TxHeader.ExtId = 0;
         TxHeader.RTR = CAN_RTR_DATA;
         TxHeader.IDE = CAN_ID_STD;
         TxHeader.DLC = 1; // 1バイト送信で十分
-
+        TxHeader.TransmitGlobalTime = DISABLE;
         // TxData[0] を一度 0 で初期化
         TxData[0] = 0;
 
@@ -46,24 +48,29 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         // (離されている時は 0 のままになる)
         if (sw1 == GPIO_PIN_RESET) { TxData[0] |= (1 << 0); } // 0ビット目を立てる
         if (sw2 == GPIO_PIN_RESET) { TxData[0] |= (1 << 1); } // 1ビット目を立てる
-        if (sw3 == GPIO_PIN_RESET) { TxData[0] |= (1 << 2); } // 2ビット目を立てる
-        if (sw4 == GPIO_PIN_RESET) { TxData[0] |= (1 << 3); } // 3ビット目を立てる
+        //if (sw3 == GPIO_PIN_RESET) { TxData[0] |= (1 << 2); } // 2ビット目を立てる
+        //if (sw4 == GPIO_PIN_RESET) { TxData[0] |= (1 << 3); } // 3ビット目を立てる
+
+        mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
 
         // 送信をリクエストし、無事にバッファに入った場合のみカウントを増やす
-//        if (HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox) == HAL_OK) {
-//            debug_tx_count++;
-//        }
-
-
+        if(mailbox_free >0){
         ret = HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox);
 
+        if(ret == HAL_OK){
+        	debug_tx_count++;
+         }
+        }
+        // HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox);
+
         can_error = HAL_CAN_GetError(hcan);
-        mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
     }
+
+
 
     if((current_time - last_pushed_time) >= 100) {
     	last_pushed_time = current_time;
-    	CAN_TxHeaderTypeDef HbTxHeader;
+    	CAN_TxHeaderTypeDef HbTxHeader = {0};
     	uint32_t HbTxMailbox;
 
         HbTxHeader.StdId = 0x100/* 空信号用のID (0x30nなど) */;
@@ -71,6 +78,7 @@ void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
         HbTxHeader.RTR = CAN_RTR_DATA;
         HbTxHeader.IDE = CAN_ID_STD;
         HbTxHeader.DLC = 0; // 空信号
+        HbTxHeader.TransmitGlobalTime = DISABLE;
         HAL_CAN_AddTxMessage(hcan, &HbTxHeader, TxData, &HbTxMailbox);
     }
 }
