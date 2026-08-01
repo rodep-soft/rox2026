@@ -8,7 +8,11 @@ def generate_launch_description():
     params = os.path.join(
         get_package_share_directory("robot_bringup"), "config", "vesc_driver.yaml"
     )
-    node_names = ["vesc_driver_1", "vesc_driver_2", "vesc_driver_3"]
+    node_names = [
+        "vesc_upper_belt_driver",
+        "vesc_under_belt_driver",
+        "vesc_dribble_driver",
+    ]
     nodes = []
     for node_name in node_names:
         nodes.append(

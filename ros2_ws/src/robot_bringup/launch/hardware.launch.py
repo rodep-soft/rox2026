@@ -103,7 +103,7 @@ def generate_launch_description():
             Node(
                 package="hardware_driver",
                 executable="vesc_node",
-                name="vesc_driver_1",
+                name="vesc_upper_belt_driver",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[vesc_parameter_file],
@@ -111,7 +111,7 @@ def generate_launch_description():
             Node(
                 package="hardware_driver",
                 executable="vesc_node",
-                name="vesc_driver_2",
+                name="vesc_under_belt_driver",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[vesc_parameter_file],
@@ -119,7 +119,7 @@ def generate_launch_description():
             Node(
                 package="hardware_driver",
                 executable="vesc_node",
-                name="vesc_driver_3",
+                name="vesc_dribble_driver",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("use_vesc")),
                 parameters=[vesc_parameter_file],

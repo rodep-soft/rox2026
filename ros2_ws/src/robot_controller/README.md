@@ -83,8 +83,8 @@ flowchart LR
   can <--> edulite_motors
 ```
 
-`vesc_driver_1`はunderbelt、`vesc_driver_2`はupperbelt、
-`vesc_driver_3`はdribbleを担当する。
+`vesc_upper_belt_driver`はupperbelt、`vesc_under_belt_driver`はunderbelt、
+`vesc_dribble_driver`はdribbleを担当する。
 各VESCのCAN ID、RPM topic、最大RPM、timeoutは
 `robot_bringup/config/vesc_driver.yaml`で設定する。
 STM32はリミットスイッチ、LED、heartbeatを担当し、belt・dribbleのRPM通信は行わない。

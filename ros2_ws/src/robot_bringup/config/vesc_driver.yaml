@@ -1,15 +1,4 @@
-vesc_driver_1:
-  ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/underbelt/target/rpm"  # std_msgs/msg/Int16 [RPM]。
-    current_rpm_topic: "/underbelt/current/rpm"  # std_msgs/msg/Int16 [RPM]。
-    controller_id: 52  # underbelt VESCのCAN ID
-    command_timeout_ms: 500
-    feedback_timeout_ms: 500
-    max_rpm: 4600
-
-vesc_driver_2:
+vesc_upper_belt_driver:
   ros__parameters:
     can_pub_topic: "/socketcan_bridge/tx"
     can_sub_topic: "/socketcan_bridge/rx"
@@ -18,9 +7,22 @@ vesc_driver_2:
     controller_id: 51  # upperbelt VESCのCAN ID
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 4600
+    max_rpm: 5600
+    rpm_slew_rate: 1000.0
 
-vesc_driver_3:
+vesc_under_belt_driver:
+  ros__parameters:
+    can_pub_topic: "/socketcan_bridge/tx"
+    can_sub_topic: "/socketcan_bridge/rx"
+    target_rpm_topic: "/underbelt/target/rpm"  # std_msgs/msg/Int16 [RPM]。
+    current_rpm_topic: "/underbelt/current/rpm"  # std_msgs/msg/Int16 [RPM]。
+    controller_id: 52  # underbelt VESCのCAN ID
+    command_timeout_ms: 500
+    feedback_timeout_ms: 500
+    max_rpm: 5600
+    rpm_slew_rate: 1000.0
+
+vesc_dribble_driver:
   ros__parameters:
     can_pub_topic: "/socketcan_bridge/tx"
     can_sub_topic: "/socketcan_bridge/rx"
@@ -29,4 +31,5 @@ vesc_driver_3:
     controller_id: 50  # dribble VESCのCAN ID
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 4600
+    max_rpm: 5600
+    rpm_slew_rate: 4000.0

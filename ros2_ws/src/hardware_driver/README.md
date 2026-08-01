@@ -29,9 +29,9 @@ ROS 2のfeedbackへ戻すパッケージである。CAN ID、フレーム形式�
 
 | 機構 | driver node | ID | mode | command | feedback |
 |---|---|---:|---|---|---|
-| underbelt | `vesc_driver_1` | 50 | RPM | `/underbelt/target/rpm` | `/underbelt/current/rpm` |
-| upperbelt | `vesc_driver_2` | 51 | RPM | `/upperbelt/target/rpm` | `/upperbelt/current/rpm` |
-| dribble回転 | `vesc_driver_3` | 52 | RPM | `/dribble/target/rpm` | `/dribble/current/rpm` |
+| upperbelt | `vesc_upper_belt_driver` | 51 | RPM | `/upperbelt/target/rpm` | `/upperbelt/current/rpm` |
+| underbelt | `vesc_under_belt_driver` | 52 | RPM | `/underbelt/target/rpm` | `/underbelt/current/rpm` |
+| dribble回転 | `vesc_dribble_driver` | 50 | RPM | `/dribble/target/rpm` | `/dribble/current/rpm` |
 | mecanum FL | `edulite05_fl_driver` | `0x01` | Velocity | `/mecanum/fl/vel_command` | feedback非publish |
 | mecanum FR | `edulite05_fr_driver` | `0x02` | Velocity | `/mecanum/fr/vel_command` | feedback非publish |
 | mecanum RL | `edulite05_rl_driver` | `0x03` | Velocity | `/mecanum/rl/vel_command` | feedback非publish |
@@ -60,7 +60,7 @@ VESC CAN上のERPMへ送るときは、コード内のモーター極数14から
 
 1. target RPMを受ける。
 2. `abs(target) > max_rpm`ならWARNを出して破棄する。
-3. 有効な指令を保持し、20 ms周期でVESCへ再送する。
+3. 有効な指令を保持し、20 ms周期で`rpm_slew_rate`の範囲内でVESCへ再送する。
 4. 最後の有効指令から`command_timeout_ms`を超えた場合は0 RPMを送る。
 5. 新しい指令が来れば通常のRPM送信へ復帰する。
 
@@ -85,6 +85,7 @@ INFOを出し、current RPMの周期publishを再開する。
 | `command_timeout_ms` | int | 指令断で0 RPMへ移る時間。1以上 |
 | `feedback_timeout_ms` | int | feedback publishを止めるまでの時間。1以上 |
 | `max_rpm` | int | 受理するRPM絶対値の上限。1〜32767 |
+| `rpm_slew_rate` | double | 1秒あたりのRPM変化量 |
 
 範囲外parameterはnode起動時に例外となり、nodeは起動しない。
 

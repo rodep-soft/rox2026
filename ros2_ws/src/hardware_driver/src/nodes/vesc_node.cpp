@@ -37,7 +37,8 @@ public:
       declare_parameter<int64_t>("command_timeout_ms", 500);
     const auto feedback_timeout_ms =
       declare_parameter<int64_t>("feedback_timeout_ms", 500);
-    max_rpm_ = declare_parameter<int>("max_rpm", 10000);
+    max_rpm_ = declare_parameter<int>("max_rpm", 5600);
+    rpm_slew_rate_ = declare_parameter<double>("rpm_slew_rate", 4000.0);
 
     if (controller_id < 0 ||
       controller_id > std::numeric_limits<uint8_t>::max())
@@ -62,16 +63,37 @@ public:
     feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
     started_at_ = std::chrono::steady_clock::now();
 
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(can_pub_topic, 10);
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
+      .reliable()
+      .durability_volatile();
+    auto can_qos_sub = rclcpp::SensorDataQoS();
+
+    can_pub_ = create_publisher<can_msgs::msg::Frame>(can_pub_topic, can_qos_pub);
     rpm_pub_ = create_publisher<std_msgs::msg::Int16>(current_rpm_topic, 10);
 
+    rclcpp::SubscriptionOptions can_sub_options;
+    can_sub_options.content_filter_options.filter_expression = "id = %0";
+    can_sub_options.content_filter_options.expression_parameters = {
+      std::to_string(
+        (protocol::STATUS_1_ID << 8) |
+        static_cast<uint32_t>(controller_id_))};
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      can_sub_topic, 10,
-      std::bind(&Node::can_callback, this, std::placeholders::_1));
+      can_sub_topic, can_qos_sub,
+      std::bind(&Node::can_callback, this, std::placeholders::_1),
+      can_sub_options);
     target_rpm_sub_ = create_subscription<std_msgs::msg::Int16>(
       target_rpm_topic, 10,
       std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
+    last_ramp_update_time_ = std::chrono::steady_clock::now();
     timer_ = create_wall_timer(20ms, std::bind(&Node::timer_callback, this));
+
+    if (!can_sub_->is_cft_enabled()) {
+      RCLCPP_WARN(
+        get_logger(),
+        "CAN content filter is not supported by the current RMW; "
+        "controller_id=%u will be filtered in the callback",
+        static_cast<unsigned int>(controller_id_));
+    }
 
     RCLCPP_INFO(
       get_logger(), "VESC driver started: controller_id=%u",
@@ -118,23 +140,17 @@ private:
     if (command_received_) {
       const bool command_timed_out =
         now - last_command_time_ > command_timeout_;
-      int mechanical_rpm = target_rpm_;
-      if (command_timed_out) {
-        mechanical_rpm = 0;
-        if (!command_timed_out_) {
-          RCLCPP_WARN(
-            get_logger(),
-            "Target RPM command timed out. Sending 0 RPM to VESC.");
-          command_timed_out_ = true;
-        }
-      } else if (command_timed_out_) {
-        RCLCPP_INFO(get_logger(), "Target RPM command resumed.");
-        command_timed_out_ = false;
-      }
-      const double erpm = mechanical_rpm * pole_pairs_;
+      const double desired_rpm = command_timed_out ? 0.0 : target_rpm_;
+      const double elapsed_seconds =
+        std::chrono::duration<double>(now - last_ramp_update_time_).count();
+      const double max_step = rpm_slew_rate_ * elapsed_seconds;
+      commanded_rpm_ += std::clamp(
+        desired_rpm - commanded_rpm_, -max_step, max_step);
+      const double erpm = commanded_rpm_ * pole_pairs_;
       can_pub_->publish(
         protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
     }
+    last_ramp_update_time_ = now;
 
     const auto feedback_reference_time =
       feedback_received_ ? last_feedback_time_ : started_at_;
@@ -171,16 +187,18 @@ private:
   uint8_t controller_id_{1};
   double pole_pairs_{7.0};
   int max_rpm_{10000};
+  double rpm_slew_rate_{4000.0};
   int16_t target_rpm_{0};
+  double commanded_rpm_{0.0};
   int16_t current_rpm_{0};
   bool command_received_{false};
   bool feedback_received_{false};
-  bool command_timed_out_{false};
   bool feedback_timed_out_{false};
 
   std::chrono::steady_clock::time_point started_at_;
   std::chrono::steady_clock::time_point last_command_time_;
   std::chrono::steady_clock::time_point last_feedback_time_;
+  std::chrono::steady_clock::time_point last_ramp_update_time_;
 
   std::chrono::milliseconds command_timeout_{500};
   std::chrono::milliseconds feedback_timeout_{500};
