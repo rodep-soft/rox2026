@@ -40,6 +40,8 @@ void MX_CAN_Init(void)
   hcan.Instance = CAN;
   hcan.Init.Prescaler = 2;
   hcan.Init.Mode = CAN_MODE_NORMAL;
+//  hcan.Init.Mode = CAN_MODE_SILENT;
+  //hcan.Init.Mode = CAN_MODE_LOOPBACK;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan.Init.TimeSeg1 = CAN_BS1_13TQ;
   hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
