@@ -15,7 +15,6 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>lifecycle_msgs</exec_depend>
-  <exec_depend>nobleo_socketcan_bridge</exec_depend>
   <exec_depend>robot_controller</exec_depend>
   <exec_depend>ros2_socketcan</exec_depend>
 

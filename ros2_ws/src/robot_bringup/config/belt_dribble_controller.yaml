@@ -3,11 +3,11 @@ belt_dribble_controller_node:
     # [RPM] beltの各操作levelで送る目標回転数。
     # 最初に1000くらいをかませないとbeltが回らない時がある
     # MAX rpmの値は4500くらい
-    level_1_rpm: 1000
-    level_2_rpm: 1900
-    level_3_rpm: 2600
-    level_4_rpm: 3700
-    level_5_rpm: 4000
+    level_1_rpm: 200
+    level_2_rpm: 400
+    level_3_rpm: 600
+    level_4_rpm: 800
+    level_5_rpm: 1000
     level_6_rpm: 4500
     # [RPM] beltが目標RPMに到達したと判定する誤差。
     belt_rpm_tolerance: 100
