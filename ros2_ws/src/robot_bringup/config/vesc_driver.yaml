@@ -1,32 +1,32 @@
 vesc_upper_belt_driver:
   ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/upperbelt/target/rpm"
-    current_rpm_topic: "/upperbelt/current/rpm"
-    controller_id: 52
-    command_timeout_ms: 500
-    feedback_timeout_ms: 500
-    max_rpm: 5600
+    target_rpm_topic: "/upper/belt/target/rpm"
+    current_rpm_topic: "/upper/belt/current/rpm"
+    controller_id: 51                 # モータID(10進数)
+    command_timeout_ms: 500           # コマンドが来ているかのタイムアウト用
+    feedback_timeout_ms: 500          # フィードバックが返ってきているかのタイムアウト用
+    publish_subscribe_interval_ms: 50 # pub,subをする周期
+    max_rpm: 5600.0                   # 最大回転数(モータ固有)
+    rpm_slew_rate: 1000.0             # 一秒間での加速量
 
 vesc_under_belt_driver:
   ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/underbelt/target/rpm"
-    current_rpm_topic: "/underbelt/current/rpm"
-    controller_id: 51
+    target_rpm_topic: "/under/belt/target/rpm"
+    current_rpm_topic: "/under/belt/current/rpm"
+    controller_id: 52
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 5600
+    publish_subscribe_interval_ms: 50
+    max_rpm: 5600.0
+    rpm_slew_rate: 1000.0  #一秒間での加速量
 
 vesc_dribble_driver:
   ros__parameters:
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
-    target_rpm_topic: "/vesc/target/rpm"
-    current_rpm_topic: "/vesc/current/rpm"
+    target_rpm_topic: "/dribble/target/rpm"
+    current_rpm_topic: "/dribble/current/rpm"
     controller_id: 50
     command_timeout_ms: 500
     feedback_timeout_ms: 500
-    max_rpm: 5600
+    publish_subscribe_interval_ms: 50
+    max_rpm: 5600.0
+    rpm_slew_rate: 4000.0  #一秒間での加速量

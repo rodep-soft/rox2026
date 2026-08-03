@@ -9,15 +9,15 @@ def generate_launch_description():
     parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
-        "dribble_controller.yaml",
+        "stm32_driver.yaml",
     )
 
     return LaunchDescription(
         [
             Node(
-                package="robot_controller",
-                executable="dribble_controller_node",
-                name="dribble_controller_node",
+                package="hardware_driver",
+                executable="stm32_node",
+                name="stm32_driver_node",
                 output="screen",
                 parameters=[parameter_file],
             ),

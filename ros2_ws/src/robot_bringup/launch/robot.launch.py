@@ -19,33 +19,20 @@ def generate_launch_description():
             launch_arguments=launch_arguments,
         )
 
-    # hardware(driver類)。belt用のVESC ID 51・52を含めて起動する。
-    hardware_launch = include(
-        "hardware.launch.py",
-        launch_arguments={
-            "can_interface": LaunchConfiguration("can_interface"),
-            "use_vesc": "true",
-            "use_dribble_vesc": "false",
-        }.items(),
-    )
+    # hardware(driver類)。belt・dribble用のVESC 3台も起動する。
+    hardware_launch = include("hardware.launch.py")
 
-    # controllerと操作系。topic名や各種パラメータはrobot_bringup/config配下のyamlで管理する。
+    # controllerと操作系。調整値はrobot_bringup/config配下のyamlで管理する。
     # beltとdribbleはbelt_dribble.launch.pyで一緒に起動する。
     launch_files = [
-        "belt_dribble.launch.py",
-        "mecanum_controller.launch.py",
-        "spring_controller.launch.py",
-        "dribble_position_controller.launch.py",
-        "joy_controller.launch.py",
+        "controllers/belt_dribble.launch.py",
+        "controllers/mecanum_controller.launch.py",
+        "controllers/spring_dribble_position.launch.py",
+        "input/joy_controller.launch.py",
     ]
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "can_interface",
-                default_value="can0",
-                description="SocketCAN interface used by ros2_socketcan",
-            ),
             hardware_launch,
             *[include(launch_file) for launch_file in launch_files],
         ]

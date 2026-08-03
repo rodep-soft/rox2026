@@ -1,44 +1,57 @@
 joy_controller:
   ros__parameters:
-    joy_topic: /joy  # sensor_msgs/msg/Joy。
-    mecanum_cmd_vel_topic: /mecanum/cmd_vel  # geometry_msgs/msg/Twist。
-    spring_fire_request_topic: /spring/fire_request  # std_msgs/msg/Bool。
-    belt_mode_topic: /belt/mode  # std_msgs/msg/UInt8。
-    dribble_enabled_topic: /dribble/enabled  # std_msgs/msg/Bool。
-    emergency_stop_topic: /emergency_stop  # std_msgs/msg/Bool。
-    dribble_position_mode_topic: /dribble/position_mode  # std_msgs/msg/UInt8。0=DRIBBLE、1=SHOOT、2=MAX_OPEN。
-    intake_shoot_request_topic: /dribble/intake_shoot_request  # std_msgs/msg/Bool。ベルト到達後に一度だけtrueをpublishする。
-    belt_ready_topic: /belt/ready  # std_msgs/msg/Bool。belt_controllerが両ベルトの実RPMからpublishする。
-    joy_qos_depth: 3  # Joy入力のQoS queue depth。
-    command_qos_depth: 1  # 指令topicのQoS queue depth。
-    joy_timeout_ms: 200  # [ms] Joy入力断で停止するまでの時間。
-    control_period_ms: 10  # [ms] 最新Joy入力の判定、計算、各指令topicのpublish周期。
+    # Joy入力を保持する件数。
+    joy_qos_depth: 3
+    # 機構指令を保持する件数。
+    command_qos_depth: 1
+    # [ms] Joy入力断と判定してSTOPへ移るまでの時間。
+    joy_timeout_ms: 200
+    # [ms] 状態指令を再送する周期。
+    state_publish_period_ms: 20
+    # shot cycle完了時にDRIVEへ自動復帰するか。
+    auto_drive_on_shot_cycle_complete: true
 
-    # L1 + ○: spring ON/OFF。
+    # STOP・DRIVEでSHOT_CYCLEへ移動し、SHOT_CYCLE待機中はDRIVEへ戻す。
+    create_button: 8
+    # STOP・DRIVEでBELT_ONLYへ移動し、BELT_ONLY中はDRIVEへ戻す。
+    options_button: 9
+    # タッチパッドをHomeとして扱う。STOPへ移動し、STOP中はDRIVEへ戻す。
+    home_button: 13
+
+    # DRIVE中にL1+○でspring発射を要求する。両方を押している間だけ有効。
     spring_fire_enable_button: 4
     spring_fire_button: 2
-    # Create + Home: 非常停止ON/OFF。Homeはタッチパッド(index 13)。
-    create_button: 8
-    home_button: 13
-    # PS: 前後反転ON/OFF（linear.xのみ）。
-    ps_button: 12
-    # L2 + Options: 最大開放ON/OFF。解除時はDRIBBLE位置へ戻す。
-    options_button: 9
-    # DPAD上/下(axis 7): belt modeを増減。
-    mode_change_axis: 7
-    # L2 + ○: ベルト到達後にINTAKE→SHOOT→DRIBBLEを要求。
-    circle_button: 2
-    # L2のaxis。通常=1、押下=-1。
+
+    # SHOT_CYCLE中にL2+○でshot cycleの実行を要求する。
     left_trigger_axis: 3
-    # R1: ドリブルON。R1 + Home: ドリブルOFF。
+    circle_button: 2
+
+    # DRIVE・SHOT_CYCLEでR1を押すたびにdribbleをON/OFFする。
     dribble_enable_button: 5
+    # DPAD上/下でbelt levelを上げ下げする。
+    dpad_vertical_axis: 7
 
-    left_stick_x_axis: 0  # 左スティック左右。
-    left_stick_y_axis: 1  # 左スティック上下。
-    right_stick_x_axis: 2  # 右スティック左右。
-    axis_deadzone: 0.05  # スティック中心ずれを無効化する範囲。
-    axis_on_threshold: 0.7  # DPAD軸を押下とみなすしきい値。
+    # DRIVE・SHOT_CYCLEでR2+DPAD左はDRIBBLE、R2+DPAD右はOPEN位置へ移動する。
+    right_trigger_axis: 4
+    dpad_horizontal_axis: 6
 
-    linear_x_limit: 2.0  # [m/s] 前後方向の速度上限。絶対値を使用する。
-    linear_y_limit: 2.0  # [m/s] 左右方向の速度上限。絶対値を使用する。
-    angular_z_limit: 2.0  # [rad/s] 回転方向の角速度上限。絶対値を使用する。
+    # 左スティックで並進、右スティック左右で旋回する。
+    left_stick_x_axis: 0
+    left_stick_y_axis: 1
+    right_stick_x_axis: 2
+    # PSを押すと前後左右の並進方向を反転する。
+    ps_button: 12
+
+    # スティック中心ずれを無効化する範囲。大きすぎると小さい操作も無効になる。
+    axis_deadzone: 0.05
+    # 左スティック左右を-1/0/+1へ切り替えるしきい値。横移動中は前後入力を0にする。
+    lateral_axis_threshold: 0.7
+    # トリガー・DPAD軸をONとみなすしきい値。大きすぎると深い操作が必要になる。
+    axis_on_threshold: 0.7
+
+    # [m/s] 前後方向の速度上限。
+    linear_x_limit: 2.0
+    # [m/s] 左右方向の速度上限。
+    linear_y_limit: 2.0
+    # [rad/s] 回転方向の角速度上限。
+    angular_z_limit: 2.0
