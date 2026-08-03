@@ -14,6 +14,5 @@ build:
 	colcon build \
 		--executor $(EXECUTOR) \
 		--parallel-workers $(PARALLEL_WORKERS) \
-		--event-handlers console_direct+ \
 		--symlink-install \
 		--cmake-args $(CMAKE_ARGS)

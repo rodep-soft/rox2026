@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     htop \
     lsof \
     build-essential \
+    ninja-build \
     python3-pip \
     python3-colcon-common-extensions \
     python3-vcstool \
@@ -28,14 +29,8 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     usbutils \
     can-utils \
-    ros-humble-ros2-socketcan \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
-    ros-humble-navigation2 \
-    ros-humble-nav2-bringup \
-    ros-humble-robot-localization \
-    ros-humble-robot-state-publisher \
-    ros-humble-xacro \
     evtest \
     libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*

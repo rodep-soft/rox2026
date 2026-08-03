@@ -11,6 +11,9 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} "action/DribblePosition.action")
 
@@ -22,11 +25,8 @@ ament_target_dependencies(
   mecanum_controller_node geometry_msgs rclcpp std_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
-target_include_directories(
-  mecanum_odometry_node
-  PRIVATE mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_odometry_node geometry_msgs rclcpp std_msgs)
+  mecanum_odometry_node geometry_msgs rclcpp std_msgs nav_msgs tf2 tf2_ros)
 
 add_executable(spring_controller_node spring_controller/src/spring_edulite_controller.cpp)
 target_include_directories(
@@ -68,7 +68,7 @@ target_link_libraries(
 target_link_libraries(
   dribble_position_controller_node "${cpp_typesupport_target}")
 
-install(TARGETS mecanum_controller_node spring_controller_node dribble_controller_node belt_controller_node
+install(TARGETS mecanum_controller_node mecanum_odometry_node spring_controller_node dribble_controller_node belt_controller_node
                 dribble_position_controller_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
@@ -80,6 +80,7 @@ install(DIRECTORY dribble_controller/include/ DESTINATION include)
 install(DIRECTORY belt_controller/include/ DESTINATION include)
 
 install(DIRECTORY dribble_position_controller/include/ DESTINATION include)
+
 
 ament_export_dependencies(rosidl_default_runtime)
 

@@ -3,7 +3,9 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -29,6 +31,10 @@ public:
     const auto topics = declare_parameter<std::vector<std::string>>(
       "wheel_feedback_topics", {"/mecanum/fl/feedback", "/mecanum/fr/feedback",
         "/mecanum/rl/feedback", "/mecanum/rr/feedback"});
+
+    if (topics.size() != subscriptions_.size()) {
+      throw std::invalid_argument("wheel_feedback_topics must contain exactly 4 topics");
+    }
 
     for (std::size_t i = 0; i < 4; ++i) {
       subscriptions_[i] = create_subscription<std_msgs::msg::Float32>(
