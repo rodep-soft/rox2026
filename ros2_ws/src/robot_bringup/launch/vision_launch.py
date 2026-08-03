@@ -5,8 +5,8 @@ stereonet_launch_file = os.path.join(
         'stereonet_model_web_visual_v2.4_int16.launch.py'
     )
     
-    stereonet_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(stereonet_launch_file),
+stereonet_launch = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(stereonet_launch_file),
         launch_arguments={
             'mipi_rotation': '0.0', 
             'publish_visual_enabled': 'True',
