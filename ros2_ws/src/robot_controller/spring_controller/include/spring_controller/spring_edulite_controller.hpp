@@ -10,26 +10,50 @@
 
 class SpringEduliteController : public rclcpp::Node
 {
-public:
+ public:
   SpringEduliteController();
 
-private:
-  enum class State : uint8_t { READY, LOAD, FIRE, ERROR };
-  enum class OperationMode : uint8_t { STOP, DRIVE, SHOT_CYCLE, BELT_ONLY };
+ private:
+  enum class State : uint8_t
+  {
+    READY,
+    LOAD,
+    FIRE,
+    ERROR
+  };
+  enum class OperationMode : uint8_t
+  {
+    STOP,
+    DRIVE,
+    SHOT_CYCLE,
+    BELT_ONLY
+  };
 
   void declare_parameters();
   void get_parameters();
+
+  // /operation_mode受信時に呼ばれる。不正値はSTOPとし、DRIVE以外になった場合は発射を中断してLOAD/READYへ戻す。
   void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  // /spring/fire_requestの立上りで呼ばれる。設定正常・非常停止なし・DRIVE・READY・装填完了の
+  // 全条件を満たす場合だけ発射待ちにする。それ以外は理由をログに出して無視する。
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  // /emergency_stop受信時に呼ばれる。trueならFIREを中断し、次のtimerでLOAD/READYに対応する速度を出す。
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+
+  // 設定周期で呼ばれる。設定不正なら0 rad/sを出し、正常時はLOAD/READY/FIRE/ERRORを遷移して
+  // /spring/vel_commandへ速度をpublishする。LOAD timeout時はERRORへ移行する。
+  void timer_callback();
+
+  // 設定正常・非常停止なし・operation_modeがDRIVEのときだけtrueを返す。
   bool spring_fire_allowed() const;
+  // 発射待ちを解除し、装填済みならREADY、未装填ならLOADへ戻す。ERRORは維持する。
   void prepare_spring_for_stop();
   void start_loading();
   void start_fire();
-  void timer_callback();
-  const char * state_name(State state) const;
-  const char * operation_mode_name(OperationMode mode) const;
+  // ログ表示や拒否理由判定のための小さな補助関数。
+  const char* state_name(State state) const;
+  const char* operation_mode_name(OperationMode mode) const;
   void log_fire_request_rejection() const;
 
   State now_state_{State::LOAD};
