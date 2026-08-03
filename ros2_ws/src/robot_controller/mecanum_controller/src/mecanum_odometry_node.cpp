@@ -29,10 +29,7 @@ public:
     const auto topics = declare_parameter<std::vector<std::string>>(
       "wheel_feedback_topics", {"/mecanum/fl/feedback", "/mecanum/fr/feedback",
         "/mecanum/rl/feedback", "/mecanum/rr/feedback"});
-    if (topics.size() != 4 || wheel_radius_ <= 0.0 || publish_rate_ <= 0.0) {
-      throw std::invalid_argument(
-              "wheel topics must have 4 entries and dimensions/rate must be positive");
-    }
+
     for (std::size_t i = 0; i < 4; ++i) {
       subscriptions_[i] = create_subscription<std_msgs::msg::Float32>(
         topics[i], 10, [this, i](std_msgs::msg::Float32::SharedPtr msg) {
@@ -41,6 +38,7 @@ public:
           wheel_received_[i] = true;
         });
     }
+    
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/wheel/odometry", 20);
     last_update_ = now();
     timer_ = create_wall_timer(

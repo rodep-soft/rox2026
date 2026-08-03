@@ -21,6 +21,13 @@ target_include_directories(
 ament_target_dependencies(
   mecanum_controller_node geometry_msgs rclcpp std_msgs)
 
+add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
+target_include_directories(
+  mecanum_odometry_node
+  PRIVATE mecanum_controller/include)
+ament_target_dependencies(
+  mecanum_odometry_node geometry_msgs rclcpp std_msgs)
+
 add_executable(spring_controller_node spring_controller/src/spring_edulite_controller.cpp)
 target_include_directories(
   spring_controller_node
