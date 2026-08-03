@@ -10,13 +10,14 @@ from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
-    share = get_package_share_directory("rox_navigation")
+    bringup_share = get_package_share_directory("robot_bringup")
+    navigation_share = get_package_share_directory("rox_navigation")
     nav2_share = get_package_share_directory("nav2_bringup")
     use_sim_time = LaunchConfiguration("use_sim_time")
     autostart = LaunchConfiguration("autostart")
     map_yaml = LaunchConfiguration("map")
     params_file = LaunchConfiguration("params_file")
-    bt_xml = os.path.join(share, "behavior_trees", "navigate_to_pose.xml")
+    bt_xml = os.path.join(navigation_share, "behavior_trees", "navigate_to_pose.xml")
 
     configured_params = RewrittenYaml(
         source_file=params_file,
@@ -59,10 +60,12 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("use_sim_time", default_value="false"),
             DeclareLaunchArgument("autostart", default_value="true"),
-            DeclareLaunchArgument("map", default_value=os.path.join(share, "maps", "arena.yaml")),
+            DeclareLaunchArgument(
+                "map", default_value=os.path.join(navigation_share, "maps", "arena.yaml")
+            ),
             DeclareLaunchArgument(
                 "params_file",
-                default_value=os.path.join(share, "config", "nav2.yaml"),
+                default_value=os.path.join(bringup_share, "config", "navigate", "nav2.yaml"),
             ),
             GroupAction(
                 [

@@ -24,8 +24,8 @@ public:
     wheel_radius_ = declare_parameter("wheel_radius", 0.05);
     robot_length_ = declare_parameter("robot_length", 0.47);
     robot_width_ = declare_parameter("robot_width", 0.41);
-    publish_rate_ = declare_parameter("publish_rate", 50.0);
-    feedback_timeout_ = declare_parameter("feedback_timeout", 0.25);
+    publish_rate_ = declare_parameter("publish_rate_ms", 50.0);
+    feedback_timeout_ = declare_parameter("feedback_timeout_ms", 250.0) / 1000.0;
     odom_frame_ = declare_parameter("odom_frame", "odom");
     base_frame_ = declare_parameter("base_frame", "base_link");
     const auto topics = declare_parameter<std::vector<std::string>>(

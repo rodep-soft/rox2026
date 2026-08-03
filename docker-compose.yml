@@ -20,10 +20,19 @@ services:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       #- ROS_LOCALHOST_ONLY=0
       - DEBIAN_FRONTEND=noninteractive #for apt-get install without user interaction
+      # Forward GUI applications such as RViz2 through WSLg.
+      - DISPLAY=${DISPLAY}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
+      - XDG_RUNTIME_DIR=/tmp/wslg-runtime
+      - PULSE_SERVER=unix:/mnt/wslg/PulseServer
+      - QT_X11_NO_MITSHM=1
 
     volumes:
       - ./ros2_ws:/root/ros2_ws
       - ~/.ccache:/root/.ccache #for buikding ros2 packages with ccache
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /mnt/wslg:/mnt/wslg:rw
+      - /mnt/wslg/runtime-dir:/tmp/wslg-runtime:rw
 
       #- /var/run/dbus:/var/run/dbus #bluetoothをROS2内で使用する場合
       # udev

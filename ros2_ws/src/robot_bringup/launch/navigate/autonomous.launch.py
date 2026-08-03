@@ -8,7 +8,7 @@ from launch.substitutions import LaunchConfiguration
 
 
 def include_launch(filename, arguments):
-    share = get_package_share_directory("rox_navigation")
+    share = get_package_share_directory("robot_bringup")
     return IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(share, "launch", filename)),
         launch_arguments=arguments.items(),
@@ -17,13 +17,20 @@ def include_launch(filename, arguments):
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
+    use_rviz = LaunchConfiguration("use_rviz")
     map_yaml = LaunchConfiguration("map")
-    share = get_package_share_directory("rox_navigation")
+    navigation_share = get_package_share_directory("rox_navigation")
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="false"),
-            DeclareLaunchArgument("map", default_value=os.path.join(share, "maps", "arena.yaml")),
-            include_launch("localization.launch.py", {"use_sim_time": use_sim_time}),
+            DeclareLaunchArgument("use_rviz", default_value="true"),
+            DeclareLaunchArgument(
+                "map", default_value=os.path.join(navigation_share, "maps", "arena.yaml")
+            ),
+            include_launch(
+                "localization.launch.py",
+                {"use_sim_time": use_sim_time, "use_rviz": use_rviz},
+            ),
             include_launch(
                 "navigation.launch.py",
                 {"use_sim_time": use_sim_time, "map": map_yaml, "autostart": "true"},
