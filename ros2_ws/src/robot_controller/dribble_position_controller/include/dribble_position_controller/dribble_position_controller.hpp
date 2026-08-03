@@ -9,10 +9,10 @@
 
 class DribblePositionController : public rclcpp::Node
 {
- public:
+public:
   DribblePositionController();
 
- private:
+private:
   enum class Position : uint8_t
   {
     DRIBBLE,
@@ -66,7 +66,7 @@ class DribblePositionController : public rclcpp::Node
   void publish_shot_cycle_complete();
   // 非常停止でなく、IDLE、cycle未実行、かつDRIVEまたはSHOT_CYCLEのときだけtrueを返す。
   bool manual_position_allowed() const;
-  const char* state_name(State state) const;
+  const char * state_name(State state) const;
   void log_shot_cycle_start_rejection() const;
 
   double dribble_position_rad_{0.0};
@@ -94,7 +94,7 @@ class DribblePositionController : public rclcpp::Node
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_start_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr
-      position_feedback_sub_;
+    position_feedback_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_running_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_complete_pub_;

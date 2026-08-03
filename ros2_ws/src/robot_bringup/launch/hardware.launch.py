@@ -49,10 +49,5 @@ def generate_launch_description():
     )
 
     return LaunchDescription(
-        [
-            socketcan_launch,
-            stm32_launch,
-            edulite05_launch,
-            vesc_launch
-        ]
+        [socketcan_launch, stm32_launch, edulite05_launch, vesc_launch]
     )

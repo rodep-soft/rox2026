@@ -13,10 +13,10 @@
 
 class JoyControllerNode : public rclcpp::Node
 {
- public:
+public:
   JoyControllerNode();
 
- private:
+private:
   enum class BeltRpmMode : uint8_t
   {
     STOP,
@@ -83,7 +83,7 @@ class JoyControllerNode : public rclcpp::Node
   // operation_mode_を変更し、operation_modeとemergency_stopの状態topicを直ちにpublishする。
   void set_operation_mode(OperationMode mode);
   // 現在のJoy配列から複数ボタンのコード状態を作る。立上り判定は前回値との比較で行う。
-  void update_chord_inputs(const sensor_msgs::msg::Joy& msg);
+  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
   // HOMEはSTOP/DRIVEを切替、CREATEはSHOT_CYCLE、OPTIONSはBELT_ONLYを切替える。
   // shot cycle実行中はHOME以外のモード切替を受け付けない。
   void handle_operation_mode();
@@ -93,8 +93,8 @@ class JoyControllerNode : public rclcpp::Node
   void update_previous_chord_inputs();
 
   // Joy配列の安全な参照、値変換、モードの増減を行う小さな補助関数。
-  static bool button_pressed(const sensor_msgs::msg::Joy& msg, int index);
-  static double axis_value(const sensor_msgs::msg::Joy& msg, int index);
+  static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
+  static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
   double apply_axis_deadzone(double value) const;
   double apply_lateral_axis_direction(double value) const;
   static double apply_axis_limit(double value, double limit);
@@ -167,20 +167,20 @@ class JoyControllerNode : public rclcpp::Node
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      shot_cycle_running_subscription_;
+    shot_cycle_running_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      shot_cycle_complete_subscription_;
+    shot_cycle_complete_subscription_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr operation_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
-      mecanum_cmd_vel_publisher_;
+    mecanum_cmd_vel_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr
-      shot_cycle_request_publisher_;
+    shot_cycle_request_publisher_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr
-      dribble_position_mode_publisher_;
+    dribble_position_mode_publisher_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
 };

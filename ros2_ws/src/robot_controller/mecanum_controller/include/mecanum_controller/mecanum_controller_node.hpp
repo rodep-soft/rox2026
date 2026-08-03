@@ -13,10 +13,10 @@
 
 class MecanumControllerNode : public rclcpp::Node
 {
- public:
+public:
   MecanumControllerNode();
 
- private:
+private:
   enum class OperationMode : uint8_t
   {
     STOP,
@@ -52,7 +52,7 @@ class MecanumControllerNode : public rclcpp::Node
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4>
-      wheel_velocity_pubs_;
+  wheel_velocity_pubs_;
 
   std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
   geometry_msgs::msg::Twist last_cmd_vel_;

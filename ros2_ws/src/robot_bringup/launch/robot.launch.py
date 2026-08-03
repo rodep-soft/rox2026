@@ -20,9 +20,7 @@ def generate_launch_description():
         )
 
     # hardware(driver類)。belt・dribble用のVESC 3台も起動する。
-    hardware_launch = include(
-        "hardware.launch.py"
-    )
+    hardware_launch = include("hardware.launch.py")
 
     # controllerと操作系。調整値はrobot_bringup/config配下のyamlで管理する。
     # beltとdribbleはbelt_dribble.launch.pyで一緒に起動する。

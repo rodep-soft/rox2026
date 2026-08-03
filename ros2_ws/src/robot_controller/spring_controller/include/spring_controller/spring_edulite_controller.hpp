@@ -10,10 +10,10 @@
 
 class SpringEduliteController : public rclcpp::Node
 {
- public:
+public:
   SpringEduliteController();
 
- private:
+private:
   enum class State : uint8_t
   {
     READY,
@@ -52,8 +52,8 @@ class SpringEduliteController : public rclcpp::Node
   void start_loading();
   void start_fire();
   // ログ表示や拒否理由判定のための小さな補助関数。
-  const char* state_name(State state) const;
-  const char* operation_mode_name(OperationMode mode) const;
+  const char * state_name(State state) const;
+  const char * operation_mode_name(OperationMode mode) const;
   void log_fire_request_rejection() const;
 
   State now_state_{State::LOAD};

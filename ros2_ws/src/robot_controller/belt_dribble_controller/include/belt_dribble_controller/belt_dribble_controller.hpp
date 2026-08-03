@@ -10,10 +10,10 @@
 
 class BeltDribbleController : public rclcpp::Node
 {
- public:
+public:
   BeltDribbleController();
 
- private:
+private:
   static constexpr int stop_rpm = 0;
 
   enum class OperationMode : uint8_t
@@ -65,16 +65,19 @@ class BeltDribbleController : public rclcpp::Node
   int dribble_target_rpm() const;
   // SHOT_CYCLE中、非常停止でなく、3つのfeedbackがfreshで、全RPMが許容誤差内の状態を
   // ready_hold_sec継続したときだけtrueを返す。途中で条件が崩れたら保持時間をリセットする。
-  bool update_shoot_ready(int current_belt_target, int current_dribble_target,
-                          const rclcpp::Time& current_time);
-  void log_shot_rejection(int current_belt_target, int current_dribble_target,
-                          const rclcpp::Time& current_time) const;
+  bool update_shoot_ready(
+    int current_belt_target, int current_dribble_target,
+    const rclcpp::Time & current_time);
+  void log_shot_rejection(
+    int current_belt_target, int current_dribble_target,
+    const rclcpp::Time & current_time) const;
   // feedbackを一度でも受信し、受信からfeedback_timeout_sec以内ならtrueを返す。
-  bool feedback_is_fresh(bool received, const rclcpp::Time& received_at,
-                         const rclcpp::Time& current_time) const;
-  void update_feedback_timeout_state(const rclcpp::Time& current_time);
-  const char* operation_mode_name(OperationMode mode) const;
-  const char* belt_mode_name(BeltMode mode) const;
+  bool feedback_is_fresh(
+    bool received, const rclcpp::Time & received_at,
+    const rclcpp::Time & current_time) const;
+  void update_feedback_timeout_state(const rclcpp::Time & current_time);
+  const char * operation_mode_name(OperationMode mode) const;
+  const char * belt_mode_name(BeltMode mode) const;
   bool is_rpm_valid(int rpm) const;
   // shot cycleの開始許可とRPM到達保持開始時刻を消去する。
   void reset_shoot_ready();
@@ -120,24 +123,24 @@ class BeltDribbleController : public rclcpp::Node
   rclcpp::Time dribble_feedback_received_at_{};
 
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr
-      operation_mode_subscription_;
+    operation_mode_subscription_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      dribble_enabled_subscription_;
+    dribble_enabled_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      shot_cycle_request_subscription_;
+    shot_cycle_request_subscription_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      emergency_stop_subscription_;
+    emergency_stop_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      underbelt_feedback_subscription_;
+    underbelt_feedback_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      upperbelt_feedback_subscription_;
+    upperbelt_feedback_subscription_;
   rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr
-      dribble_feedback_subscription_;
+    dribble_feedback_subscription_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr
-      underbelt_target_publisher_;
+    underbelt_target_publisher_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr
-      upperbelt_target_publisher_;
+    upperbelt_target_publisher_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr dribble_target_publisher_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_start_publisher_;
   rclcpp::TimerBase::SharedPtr timer_;

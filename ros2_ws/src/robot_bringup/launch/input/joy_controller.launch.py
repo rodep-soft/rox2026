@@ -28,7 +28,8 @@ def generate_launch_description():
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
-                    os.path.join(launch_dir, "input", "joy.launch.py")),
+                    os.path.join(launch_dir, "input", "joy.launch.py")
+                ),
                 launch_arguments={"device": LaunchConfiguration("device")}.items(),
             ),
             Node(
