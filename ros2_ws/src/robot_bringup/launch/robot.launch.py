@@ -2,9 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
@@ -13,21 +12,21 @@ def generate_launch_description():
         "launch",
     )
 
-    def include(launch_file, launch_arguments=None):
+    def include(launch_file):
         return IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file)),
-            launch_arguments=launch_arguments,
+            PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file))
         )
 
-    # hardware(driver類)。belt・dribble用のVESC 3台も起動する。
+    # hardware (ドライバ類・VESC・CAN等)
     hardware_launch = include("hardware.launch.py")
 
-    # controllerと操作系。調整値はrobot_bringup/config配下のyamlで管理する。
-    # beltとdribbleはbelt_dribble.launch.pyで一緒に起動する。
+    # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
-        "controllers/belt_dribble.launch.py",
+        "controllers/belt_controller.launch.py",
+        "controllers/dribbler_controller.launch.py",
+        "controllers/arm_position_controller.launch.py",
+        "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
-        "controllers/spring_dribble_position.launch.py",
         "input/joy_controller.launch.py",
     ]
 
