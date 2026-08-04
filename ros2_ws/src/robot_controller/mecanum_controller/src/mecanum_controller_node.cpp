@@ -142,7 +142,6 @@ void MecanumControllerNode::create_interfaces()
 void MecanumControllerNode::cmd_vel_callback(
   const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-  // /mecanum/cmd_vel受信時に値を保存し、直ちに4輪の速度指令をpublishする。
   if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
     !std::isfinite(msg->angular.z))
   {
@@ -160,15 +159,12 @@ void MecanumControllerNode::cmd_vel_callback(
 void MecanumControllerNode::emergency_stop_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
-  // /emergency_stop受信時に安全停止状態を更新し、停止を含む4輪の速度指令をpublishする。
   emergency_stop_active_ = msg->data;
   publish_wheel_commands();
 }
 
 void MecanumControllerNode::publish_wheel_commands()
 {
-  // 最新の走行状態を逆運動学で4輪へ変換し、各/mecanum/*/vel_commandへ出力する。
-  // 機体座標系の速度指令に、配線や機構に合わせた符号補正をかける。
   vx_ = last_cmd_vel_.linear.x * vx_sign_;
   vy_ = last_cmd_vel_.linear.y * vy_sign_;
   wz_ = last_cmd_vel_.angular.z * angular_z_sign_;
@@ -179,7 +175,6 @@ void MecanumControllerNode::publish_wheel_commands()
     wz_ = 0.0;
   }
 
-  // mecanumの逆運動学で、機体速度から各車輪の目標角速度を計算する。
   wheel_vels_[FL] =
     -(vx_ + vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
   wheel_vels_[FR] =
@@ -189,7 +184,6 @@ void MecanumControllerNode::publish_wheel_commands()
   wheel_vels_[RR] =
     (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
 
-  // 車輪ごとの補正係数をかける。
   std::array<double, 4> corrected_wheel_vels;
   double maximum_wheel_velocity = 0.0;
   for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
@@ -199,26 +193,15 @@ void MecanumControllerNode::publish_wheel_commands()
       std::max(maximum_wheel_velocity, std::abs(corrected_wheel_vels[index]));
   }
 
-  // いずれかの車輪が上限を超える場合は、全輪へ同じ比率をかけて
-  // 速度ベクトルと車輪間の比率を保ったまま上限内へ収める。
   double velocity_scale = 1.0;
   if (maximum_wheel_velocity > max_wheel_velocity_rad_s_) {
     velocity_scale = max_wheel_velocity_rad_s_ / maximum_wheel_velocity;
   }
 
-  // 上限適用後の車輪速度をhardware_driverへpublishする。
   for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
     cmd_msg.data =
       static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
     wheel_velocity_pubs_[index]->publish(cmd_msg);
   }
-}
-
-int main(int argc, char ** argv)
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<MecanumControllerNode>());
-  rclcpp::shutdown();
-  return 0;
 }
