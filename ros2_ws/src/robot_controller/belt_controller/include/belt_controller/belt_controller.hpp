@@ -1,6 +1,7 @@
 #ifndef BELT_CONTROLLER__BELT_CONTROLLER_HPP_
 #define BELT_CONTROLLER__BELT_CONTROLLER_HPP_
 
+#include <array>
 #include <cstdint>
 
 #include "rclcpp/rclcpp.hpp"
@@ -14,6 +15,8 @@ public:
   BeltControllerNode();
 
 private:
+  static constexpr std::size_t kNumLevels = 6;  ///< ベルト速度レベル数（LEVEL_1〜6）
+
   enum class BeltMode : uint8_t
   {
     STOP = 0,
@@ -32,17 +35,14 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void timer_callback();
 
+  /// @brief 現在のベルトモードに対応する目標RPMを返す
   int belt_target_rpm() const;
 
   bool emergency_stop_active_{false};
   BeltMode belt_mode_{BeltMode::STOP};
 
-  int level_1_rpm_{3000};
-  int level_2_rpm_{3500};
-  int level_3_rpm_{4000};
-  int level_4_rpm_{4500};
-  int level_5_rpm_{5000};
-  int level_6_rpm_{5500};
+  /// @brief LEVEL_1〜6 の目標RPMテーブル（インデックス0=LEVEL_1, ..., 5=LEVEL_6）
+  std::array<int, kNumLevels> level_rpms_{3000, 3500, 4000, 4500, 5000, 5500};
   int command_period_ms_{10};
   int qos_depth_{1};
 

@@ -29,29 +29,26 @@ private:
   void get_parameters();
   void create_interfaces();
 
-  // /mecanum/cmd_vel受信時に呼ばれる。非有限値ならゼロ速度へ置換し、どちらの場合も4輪指令をpublishする。
+  /// @brief /mecanum/cmd_vel 受信時に呼ばれる。非有限値はゼロ速度へ置換して publish する。
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
-  // /emergency_stop受信時に呼ばれる。trueなら全輪ゼロ、falseなら最新cmd_velに基づく指令をpublishする。
+  /// @brief /emergency_stop 受信時に呼ばれる。全輪ゼロ or 最新 cmd_vel に基づく指令を publish する。
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
-  // 最新cmd_velを符号補正後に逆運動学で4輪速度へ変換する。非常停止は全軸ゼロ。
-  // 上限超過時は全輪を同率で縮小してpublishする。
+  /// @brief 最新 cmd_vel を逆運動学で4輪速度へ変換して publish する。
+  /// 上限超過時は全輪を同率で縮小する。非常停止中は全輪ゼロ。
   void publish_wheel_commands();
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4>
-  wheel_velocity_pubs_;
+  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
 
-  std::array<double, 4> wheel_vels_{0.0, 0.0, 0.0, 0.0};
   geometry_msgs::msg::Twist last_cmd_vel_;
   bool emergency_stop_active_{false};
-  double vx_{0.0};
-  double vy_{0.0};
-  double wz_{0.0};
-  double wheel_radius_{0.0};
-  double robot_length_{0.0};
-  double robot_width_{0.0};
+
+  // ロボット機構パラメータ
+  double wheel_radius_{0.05};
+  double robot_length_{0.47};
+  double robot_width_{0.41};
   double max_wheel_velocity_rad_s_{50.0};
   std::vector<double> velocity_corrections_;
   double vx_sign_{1.0};

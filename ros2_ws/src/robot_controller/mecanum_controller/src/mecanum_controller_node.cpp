@@ -41,12 +41,13 @@ void MecanumControllerNode::get_parameters()
   get_parameter("angular_z_sign", angular_z_sign_);
   get_parameter("qos_depth", qos_depth_);
 
-  if (velocity_corrections_.size() != wheel_vels_.size()) {
+  constexpr std::size_t kNumWheels = 4;
+  if (velocity_corrections_.size() != kNumWheels) {
     RCLCPP_ERROR(
       get_logger(),
       "velocity_corrections must contain %zu elements, but %zu were provided",
-      wheel_vels_.size(), velocity_corrections_.size());
-    velocity_corrections_.assign(wheel_vels_.size(), 1.0);
+      kNumWheels, velocity_corrections_.size());
+    velocity_corrections_.assign(kNumWheels, 1.0);
   }
   for (std::size_t index = 0; index < velocity_corrections_.size(); ++index) {
     if (!std::isfinite(velocity_corrections_[index])) {
@@ -165,43 +166,37 @@ void MecanumControllerNode::emergency_stop_callback(
 
 void MecanumControllerNode::publish_wheel_commands()
 {
-  vx_ = last_cmd_vel_.linear.x * vx_sign_;
-  vy_ = last_cmd_vel_.linear.y * vy_sign_;
-  wz_ = last_cmd_vel_.angular.z * angular_z_sign_;
+  double vx = last_cmd_vel_.linear.x * vx_sign_;
+  double vy = last_cmd_vel_.linear.y * vy_sign_;
+  double wz = last_cmd_vel_.angular.z * angular_z_sign_;
 
   if (emergency_stop_active_) {
-    vx_ = 0.0;
-    vy_ = 0.0;
-    wz_ = 0.0;
+    vx = 0.0;
+    vy = 0.0;
+    wz = 0.0;
   }
 
-  wheel_vels_[FL] =
-    -(vx_ + vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[FR] =
-    (vx_ - vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[RL] =
-    -(vx_ - vy_ - (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
-  wheel_vels_[RR] =
-    (vx_ + vy_ + (robot_length_ + robot_width_) / 2.0 * wz_) / wheel_radius_;
+  const double half_lw = (robot_length_ + robot_width_) / 2.0;
+  std::array<double, 4> wheel_vels;
+  wheel_vels[FL] = -(vx + vy - half_lw * wz) / wheel_radius_;
+  wheel_vels[FR] = (vx - vy + half_lw * wz) / wheel_radius_;
+  wheel_vels[RL] = -(vx - vy - half_lw * wz) / wheel_radius_;
+  wheel_vels[RR] = (vx + vy + half_lw * wz) / wheel_radius_;
 
-  std::array<double, 4> corrected_wheel_vels;
   double maximum_wheel_velocity = 0.0;
-  for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
-    corrected_wheel_vels[index] =
-      wheel_vels_[index] * velocity_corrections_[index];
+  std::array<double, 4> corrected_wheel_vels;
+  for (std::size_t index = 0; index < wheel_vels.size(); ++index) {
+    corrected_wheel_vels[index] = wheel_vels[index] * velocity_corrections_[index];
     maximum_wheel_velocity =
       std::max(maximum_wheel_velocity, std::abs(corrected_wheel_vels[index]));
   }
 
-  double velocity_scale = 1.0;
-  if (maximum_wheel_velocity > max_wheel_velocity_rad_s_) {
-    velocity_scale = max_wheel_velocity_rad_s_ / maximum_wheel_velocity;
-  }
+  const double velocity_scale = (maximum_wheel_velocity > max_wheel_velocity_rad_s_) ?
+    (max_wheel_velocity_rad_s_ / maximum_wheel_velocity) : 1.0;
 
-  for (std::size_t index = 0; index < wheel_vels_.size(); ++index) {
+  for (std::size_t index = 0; index < wheel_vels.size(); ++index) {
     std_msgs::msg::Float32 cmd_msg;
-    cmd_msg.data =
-      static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
+    cmd_msg.data = static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
     wheel_velocity_pubs_[index]->publish(cmd_msg);
   }
 }

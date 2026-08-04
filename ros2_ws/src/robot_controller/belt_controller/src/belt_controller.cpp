@@ -46,12 +46,14 @@ void BeltControllerNode::declare_parameters()
 
 void BeltControllerNode::get_parameters()
 {
-  get_parameter("level_1_rpm", level_1_rpm_);
-  get_parameter("level_2_rpm", level_2_rpm_);
-  get_parameter("level_3_rpm", level_3_rpm_);
-  get_parameter("level_4_rpm", level_4_rpm_);
-  get_parameter("level_5_rpm", level_5_rpm_);
-  get_parameter("level_6_rpm", level_6_rpm_);
+  // 既存のyamlキー名との後方互換性を保つため個別に読み込んで配列に詰める
+  int rpm = 0;
+  get_parameter("level_1_rpm", rpm); level_rpms_[0] = rpm;
+  get_parameter("level_2_rpm", rpm); level_rpms_[1] = rpm;
+  get_parameter("level_3_rpm", rpm); level_rpms_[2] = rpm;
+  get_parameter("level_4_rpm", rpm); level_rpms_[3] = rpm;
+  get_parameter("level_5_rpm", rpm); level_rpms_[4] = rpm;
+  get_parameter("level_6_rpm", rpm); level_rpms_[5] = rpm;
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
 }
@@ -78,13 +80,9 @@ void BeltControllerNode::timer_callback()
 
 int BeltControllerNode::belt_target_rpm() const
 {
-  switch (belt_mode_) {
-    case BeltMode::LEVEL_1: return level_1_rpm_;
-    case BeltMode::LEVEL_2: return level_2_rpm_;
-    case BeltMode::LEVEL_3: return level_3_rpm_;
-    case BeltMode::LEVEL_4: return level_4_rpm_;
-    case BeltMode::LEVEL_5: return level_5_rpm_;
-    case BeltMode::LEVEL_6: return level_6_rpm_;
-    default: return 0;
+  const auto level = static_cast<uint8_t>(belt_mode_);
+  if (level == 0 || level > kNumLevels) {
+    return 0;
   }
+  return level_rpms_[level - 1];  // LEVEL_1=インデックス0, ..., LEVEL_6=インデックス5
 }
