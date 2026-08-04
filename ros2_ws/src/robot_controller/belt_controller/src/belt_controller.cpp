@@ -9,8 +9,23 @@ BeltControllerNode::BeltControllerNode()
 {
   declare_parameters();
   get_parameters();
-  validate_parameters();
-  create_interfaces();
+  if (command_period_ms_ <= 0) command_period_ms_ = 10;
+
+  const auto command_qos = rclcpp::QoS(qos_depth_);
+  const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
+
+  emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/emergency_stop", state_qos,
+    std::bind(&BeltControllerNode::emergency_stop_callback, this, std::placeholders::_1));
+
+  belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    "/belt/mode", command_qos,
+    std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
+
+  underbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
+    "/underbelt/target/rpm", command_qos);
+  upperbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
+    "/upperbelt/target/rpm", command_qos);
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -41,37 +56,11 @@ void BeltControllerNode::get_parameters()
   get_parameter("qos_depth", qos_depth_);
 }
 
-void BeltControllerNode::validate_parameters()
-{
-  if (command_period_ms_ <= 0) command_period_ms_ = 10;
-}
-
-void BeltControllerNode::create_interfaces()
-{
-  const auto command_qos = rclcpp::QoS(qos_depth_);
-  const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
-
-  emergency_stop_subscription_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", state_qos,
-    std::bind(&BeltControllerNode::emergency_stop_callback, this, std::placeholders::_1));
-
-  belt_mode_subscription_ = create_subscription<std_msgs::msg::UInt8>(
-    "/belt/mode", command_qos,
-    std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
-
-  underbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
-    "/underbelt/target/rpm", command_qos);
-  upperbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
-    "/upperbelt/target/rpm", command_qos);
-}
-
 void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  if (msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_6)) {
-    belt_mode_ = static_cast<BeltMode>(msg->data);
-  } else {
-    belt_mode_ = BeltMode::STOP;
-  }
+  belt_mode_ = (msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_6))
+                 ? static_cast<BeltMode>(msg->data)
+                 : BeltMode::STOP;
 }
 
 void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -81,29 +70,23 @@ void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::Shar
 
 void BeltControllerNode::timer_callback()
 {
-  int current_belt_target = stop_rpm;
-  if (configuration_valid_ && !emergency_stop_active_) {
-    current_belt_target = belt_target_rpm();
-  }
-
-  std_msgs::msg::Int16 belt_command;
-  belt_command.data = static_cast<int16_t>(current_belt_target);
-  underbelt_command_pub_->publish(belt_command);
-  upperbelt_command_pub_->publish(belt_command);
+  std_msgs::msg::Int16 cmd;
+  cmd.data = static_cast<int16_t>(emergency_stop_active_ ? 0 : belt_target_rpm());
+  underbelt_command_pub_->publish(cmd);
+  upperbelt_command_pub_->publish(cmd);
 }
 
 int BeltControllerNode::belt_target_rpm() const
 {
   switch (belt_mode_) {
-    case BeltMode::STOP: return stop_rpm;
     case BeltMode::LEVEL_1: return level_1_rpm_;
     case BeltMode::LEVEL_2: return level_2_rpm_;
     case BeltMode::LEVEL_3: return level_3_rpm_;
     case BeltMode::LEVEL_4: return level_4_rpm_;
     case BeltMode::LEVEL_5: return level_5_rpm_;
     case BeltMode::LEVEL_6: return level_6_rpm_;
+    default: return 0;
   }
-  return stop_rpm;
 }
 
 int main(int argc, char * argv[])

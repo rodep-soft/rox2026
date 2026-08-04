@@ -14,23 +14,19 @@ public:
   BeltControllerNode();
 
 private:
-  static constexpr int stop_rpm = 0;
-
   enum class BeltMode : uint8_t
   {
-    STOP,
-    LEVEL_1,
-    LEVEL_2,
-    LEVEL_3,
-    LEVEL_4,
-    LEVEL_5,
-    LEVEL_6,
+    STOP = 0,
+    LEVEL_1 = 1,
+    LEVEL_2 = 2,
+    LEVEL_3 = 3,
+    LEVEL_4 = 4,
+    LEVEL_5 = 5,
+    LEVEL_6 = 6,
   };
 
   void declare_parameters();
   void get_parameters();
-  void validate_parameters();
-  void create_interfaces();
 
   void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -38,9 +34,7 @@ private:
 
   int belt_target_rpm() const;
 
-  bool configuration_valid_{true};
   bool emergency_stop_active_{false};
-
   BeltMode belt_mode_{BeltMode::STOP};
 
   int level_1_rpm_{3000};
@@ -52,8 +46,8 @@ private:
   int command_period_ms_{10};
   int qos_depth_{1};
 
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_subscription_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_subscription_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr underbelt_command_pub_;
   rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr upperbelt_command_pub_;
