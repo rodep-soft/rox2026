@@ -1,0 +1,5 @@
+dribbler_controller:
+  ros__parameters:
+    dribble_on_rpm: 2000
+    command_period_ms: 20
+    qos_depth: 1

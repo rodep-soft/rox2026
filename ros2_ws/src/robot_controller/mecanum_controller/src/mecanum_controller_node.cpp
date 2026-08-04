@@ -121,13 +121,6 @@ void MecanumControllerNode::create_interfaces()
       &MecanumControllerNode::cmd_vel_callback, this,
       std::placeholders::_1));
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
-  // /operation_mode:
-  // joy_controllerから受け、走行を許可するモードを決める状態topic。
-  operation_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    "/operation_mode", state_qos,
-    std::bind(
-      &MecanumControllerNode::operation_mode_callback, this,
-      std::placeholders::_1));
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/emergency_stop", state_qos,
     std::bind(
@@ -164,18 +157,6 @@ void MecanumControllerNode::cmd_vel_callback(
   publish_wheel_commands();
 }
 
-void MecanumControllerNode::operation_mode_callback(
-  const std_msgs::msg::UInt8::SharedPtr msg)
-{
-  // /operation_mode受信時に走行可否を更新し、停止を含む4輪の速度指令をpublishする。
-  if (msg->data > static_cast<uint8_t>(OperationMode::BELT_ONLY)) {
-    operation_mode_ = OperationMode::STOP;
-  } else {
-    operation_mode_ = static_cast<OperationMode>(msg->data);
-  }
-  publish_wheel_commands();
-}
-
 void MecanumControllerNode::emergency_stop_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
@@ -192,15 +173,10 @@ void MecanumControllerNode::publish_wheel_commands()
   vy_ = last_cmd_vel_.linear.y * vy_sign_;
   wz_ = last_cmd_vel_.angular.z * angular_z_sign_;
 
-  if (emergency_stop_active_ || operation_mode_ == OperationMode::STOP) {
+  if (emergency_stop_active_) {
     vx_ = 0.0;
     vy_ = 0.0;
     wz_ = 0.0;
-  } else if (operation_mode_ == OperationMode::SHOT_CYCLE ||
-    operation_mode_ == OperationMode::BELT_ONLY)
-  {
-    vx_ = 0.0;
-    vy_ = 0.0;
   }
 
   // mecanumの逆運動学で、機体速度から各車輪の目標角速度を計算する。

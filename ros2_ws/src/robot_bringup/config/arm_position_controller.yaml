@@ -1,0 +1,11 @@
+arm_position_controller:
+  ros__parameters:
+    # [rad] 各アーム目標位置
+    dribble_position_rad: 0.35
+    open_position_rad: -1.0
+    feed_position_rad: 1.3
+
+    # [ms] 指令再送周期
+    command_period_ms: 20
+    # ROS 2 QoS queue depth
+    qos_depth: 1

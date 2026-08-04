@@ -24,29 +24,39 @@ target_include_directories(
 ament_target_dependencies(
   spring_controller_node rclcpp std_msgs)
 
-add_executable(belt_dribble_controller_node belt_dribble_controller/src/belt_dribble_controller.cpp)
+add_executable(belt_controller_node belt_controller/src/belt_controller.cpp)
 target_include_directories(
-  belt_dribble_controller_node
-  PRIVATE belt_dribble_controller/include)
+  belt_controller_node
+  PRIVATE belt_controller/include)
 ament_target_dependencies(
-  belt_dribble_controller_node rclcpp std_msgs)
+  belt_controller_node rclcpp std_msgs)
 
-add_executable(dribble_position_controller_node dribble_position_controller/src/dribble_position_controller.cpp)
+add_executable(dribbler_controller_node dribbler_controller/src/dribbler_controller.cpp)
 target_include_directories(
-  dribble_position_controller_node
-  PRIVATE dribble_position_controller/include)
+  dribbler_controller_node
+  PRIVATE dribbler_controller/include)
 ament_target_dependencies(
-  dribble_position_controller_node rclcpp std_msgs)
-install(TARGETS mecanum_controller_node spring_controller_node belt_dribble_controller_node
-                dribble_position_controller_node DESTINATION lib/${PROJECT_NAME})
+  dribbler_controller_node rclcpp std_msgs)
+
+add_executable(arm_position_controller_node arm_position_controller/src/arm_position_controller.cpp)
+target_include_directories(
+  arm_position_controller_node
+  PRIVATE arm_position_controller/include)
+ament_target_dependencies(
+  arm_position_controller_node rclcpp std_msgs)
+
+install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node
+                dribbler_controller_node arm_position_controller_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
 
 install(DIRECTORY spring_controller/include/ DESTINATION include)
 
-install(DIRECTORY belt_dribble_controller/include/ DESTINATION include)
+install(DIRECTORY belt_controller/include/ DESTINATION include)
 
-install(DIRECTORY dribble_position_controller/include/ DESTINATION include)
+install(DIRECTORY dribbler_controller/include/ DESTINATION include)
+
+install(DIRECTORY arm_position_controller/include/ DESTINATION include)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

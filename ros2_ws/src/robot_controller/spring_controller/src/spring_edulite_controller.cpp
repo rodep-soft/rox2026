@@ -75,12 +75,6 @@ SpringEduliteController::SpringEduliteController()
 
   const auto command_qos = rclcpp::QoS(qos_depth_);
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
-  // /operation_mode: joy_controllerから受ける発射可否を決める状態topic。
-  operation_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    "/operation_mode", state_qos,
-    std::bind(
-      &SpringEduliteController::operation_mode_callback, this,
-      std::placeholders::_1));
   // /spring/fire_request: joy_controllerから受ける発射要求。
   fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos,
@@ -137,29 +131,7 @@ void SpringEduliteController::get_parameters()
   get_parameter("qos_depth", qos_depth_);
 }
 
-void SpringEduliteController::operation_mode_callback(
-  const std_msgs::msg::UInt8::SharedPtr msg)
-{
-  // /operation_mode受信時に発射可否を更新し、不許可なら停止準備へ遷移する。publishはtimerが行う。
-  if (msg->data <= static_cast<uint8_t>(OperationMode::BELT_ONLY)) {
-    operation_mode_ = static_cast<OperationMode>(msg->data);
-  } else {
-    RCLCPP_WARN(
-      get_logger(),
-      "Invalid operation mode received: %u. Treating as STOP.",
-      msg->data);
-    operation_mode_ = OperationMode::STOP;
-  }
-  if (!spring_fire_allowed()) {
-    if (now_state_ == State::FIRE) {
-      RCLCPP_WARN(
-        get_logger(),
-        "Spring fire interrupted: operation mode is %s.",
-        operation_mode_name(operation_mode_));
-    }
-    prepare_spring_for_stop();
-  }
-}
+
 
 void SpringEduliteController::fire_request_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
@@ -294,8 +266,7 @@ void SpringEduliteController::timer_callback()
 
 bool SpringEduliteController::spring_fire_allowed() const
 {
-  return is_configuration_valid_ && !emergency_stop_active_ &&
-         operation_mode_ == OperationMode::DRIVE;
+  return is_configuration_valid_ && !emergency_stop_active_;
 }
 
 void SpringEduliteController::prepare_spring_for_stop()
@@ -314,7 +285,7 @@ void SpringEduliteController::prepare_spring_for_stop()
 void SpringEduliteController::start_loading()
 {
   const bool was_loading = now_state_ == State::LOAD;
-  if (!was_loading) {
+  if (!was_loading || load_start_time_.nanoseconds() == 0) {
     load_start_time_ = now();
   }
   now_state_ = State::LOAD;
@@ -352,22 +323,6 @@ const char * SpringEduliteController::state_name(State state) const
   return "UNKNOWN";
 }
 
-const char * SpringEduliteController::operation_mode_name(
-  OperationMode mode) const
-{
-  switch (mode) {
-    case OperationMode::STOP:
-      return "STOP";
-    case OperationMode::DRIVE:
-      return "DRIVE";
-    case OperationMode::SHOT_CYCLE:
-      return "SHOT_CYCLE";
-    case OperationMode::BELT_ONLY:
-      return "BELT_ONLY";
-  }
-  return "UNKNOWN";
-}
-
 void SpringEduliteController::log_fire_request_rejection() const
 {
   if (!is_configuration_valid_) {
@@ -380,13 +335,6 @@ void SpringEduliteController::log_fire_request_rejection() const
     RCLCPP_WARN(
       get_logger(),
       "Spring fire request rejected: emergency stop is active.");
-    return;
-  }
-  if (operation_mode_ != OperationMode::DRIVE) {
-    RCLCPP_WARN(
-      get_logger(),
-      "Spring fire request rejected: operation mode is %s, not DRIVE.",
-      operation_mode_name(operation_mode_));
     return;
   }
   if (now_state_ != State::READY) {

@@ -1,57 +1,47 @@
 joy_controller:
   ros__parameters:
-    # Joy入力を保持する件数。
+    # Joy入力を保持する件数
     joy_qos_depth: 3
-    # 機構指令を保持する件数。
+    # 機構指令を保持する件数
     command_qos_depth: 1
-    # [ms] Joy入力断と判定してSTOPへ移るまでの時間。
+    # [ms] Joy入力断と判定してSTOPへ移るまでの時間
     joy_timeout_ms: 200
-    # [ms] 状態指令を再送する周期。
+    # [ms] 状態指令を再送する周期
     state_publish_period_ms: 20
-    # shot cycle完了時にDRIVEへ自動復帰するか。
-    auto_drive_on_shot_cycle_complete: true
 
-    # STOP・DRIVEでSHOT_CYCLEへ移動し、SHOT_CYCLE待機中はDRIVEへ戻す。
-    create_button: 8
-    # STOP・DRIVEでBELT_ONLYへ移動し、BELT_ONLY中はDRIVEへ戻す。
-    options_button: 9
-    # タッチパッドをHomeとして扱う。STOPへ移動し、STOP中はDRIVEへ戻す。
+    # タッチパッドをHomeとして扱う (非常停止切替)
     home_button: 13
 
-    # DRIVE中にL1+○でspring発射を要求する。両方を押している間だけ有効。
+    # L1+○でspring発射を要求する
     spring_fire_enable_button: 4
     spring_fire_button: 2
 
-    # SHOT_CYCLE中にL2+○でshot cycleの実行を要求する。
+    # L2+○で自動シュートサイクルを要求する
     left_trigger_axis: 3
     circle_button: 2
 
-    # DRIVE・SHOT_CYCLEでR1を押すたびにdribbleをON/OFFする。
+    # R1でdribble回転をON/OFFする
     dribble_enable_button: 5
-    # DPAD上/下でbelt levelを上げ下げする。
+    # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
-    # DRIVE・SHOT_CYCLEでR2+DPAD左はDRIBBLE、R2+DPAD右はOPEN位置へ移動する。
+    # R2+DPAD右はDRIBBLE、R2+DPAD左はOPEN位置へ移動する
     right_trigger_axis: 4
     dpad_horizontal_axis: 6
 
-    # 左スティックで並進、右スティック左右で旋回する。
+    # 左スティックで前後左右並進、右スティック左右で旋回
     left_stick_x_axis: 0
     left_stick_y_axis: 1
     right_stick_x_axis: 2
-    # PSを押すと前後左右の並進方向を反転する。
+    # PSボタンで前後左右の並進方向を反転
     ps_button: 12
 
-    # スティック中心ずれを無効化する範囲。大きすぎると小さい操作も無効になる。
+    # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
-    # 左スティック左右を-1/0/+1へ切り替えるしきい値。横移動中は前後入力を0にする。
-    lateral_axis_threshold: 0.7
-    # トリガー・DPAD軸をONとみなすしきい値。大きすぎると深い操作が必要になる。
+    # トリガー・DPAD軸をONとみなすしきい値
     axis_on_threshold: 0.7
 
-    # [m/s] 前後方向の速度上限。
+    # [m/s] 速度上限
     linear_x_limit: 2.0
-    # [m/s] 左右方向の速度上限。
     linear_y_limit: 2.0
-    # [rad/s] 回転方向の角速度上限。
     angular_z_limit: 2.0
