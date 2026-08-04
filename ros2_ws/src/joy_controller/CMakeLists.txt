@@ -12,7 +12,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(joy_controller_node src/joy_controller_node.cpp src/main.cpp)
+add_executable(joy_controller_node src/joy_controller_node.cpp)
 target_include_directories(
   joy_controller_node
   PRIVATE include)
