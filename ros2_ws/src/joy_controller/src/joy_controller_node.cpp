@@ -140,23 +140,25 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 
   // 非常停止中でない場合のみ、各種操作を受け付ける
   if (!is_emergency_stop_) {
-    // 2. 十字キー上下でベルトレベル昇降 (Level 0〜6)
-    if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
-      belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_6));
-      RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
-      publish_belt_mode();
-    }
-    if (is_axis_just_triggered(*msg, dpad_vertical_axis_, false)) {
-      belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
-      RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
-      publish_belt_mode();
+    // 2. R2 が押されていない時は、DPAD 上/下でベルトレベル昇降 (Level 0〜6)
+    const bool is_r2_active = get_axis_value(*msg, right_trigger_axis_) <= -axis_on_threshold_;
+    if (!is_r2_active) {
+      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
+        belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_6));
+        RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
+        publish_belt_mode();
+      }
+      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, false)) {
+        belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
+        RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
+        publish_belt_mode();
+      }
     }
 
     // 3. R1ボタンでドリブル回転ON/OFF
     if (is_button_just_pressed(*msg, dribble_enable_button_)) {
       dribble_enabled_ = !dribble_enabled_;
-      RCLCPP_INFO(
-        get_logger(), "Dribble toggled: %s",
+      RCLCPP_INFO(get_logger(), "Dribble toggled: %s",
         dribble_enabled_ ? "ON (2000 RPM)" : "OFF (0 RPM)");
       publish_dribble_enabled();
     }
@@ -178,20 +180,27 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
       shot_cycle_request_pub_->publish(req);
     }
 
-    // 6. R2 + DPAD で手動アーム位置切替 (R2+DPAD右: DRIBBLE / R2+DPAD左: OPEN)
-    if (get_axis_value(*msg, right_trigger_axis_) <= -axis_on_threshold_) {
+    // 6. R2 + DPAD で手動アーム位置切替 (R2+DPAD右: DRIBBLE / R2+DPAD左: OPEN / R2+DPAD上: FEED)
+    if (is_r2_active) {
       std_msgs::msg::UInt8 arm_msg;
       if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, true)) {
         arm_msg.data = static_cast<uint8_t>(ArmPositionMode::DRIBBLE);
+        RCLCPP_INFO(get_logger(), "Manual Arm Position: DRIBBLE (0.35 rad)");
         arm_position_mode_pub_->publish(arm_msg);
       }
       if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, false)) {
         arm_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
+        RCLCPP_INFO(get_logger(), "Manual Arm Position: OPEN (-1.0 rad)");
+        arm_position_mode_pub_->publish(arm_msg);
+      }
+      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
+        arm_msg.data = static_cast<uint8_t>(ArmPositionMode::FEED);
+        RCLCPP_INFO(get_logger(), "Manual Arm Position: FEED (1.3 rad)");
         arm_position_mode_pub_->publish(arm_msg);
       }
     }
 
-    // 7. スティックでの足回り走行制御 (Y軸符号を反転して左右の向きを正反転)
+    // 7. スティックでの足回り走行制御
     double linear_x = apply_axis_deadzone(get_axis_value(*msg, left_stick_y_axis_));
     double linear_y = -apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
     double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
