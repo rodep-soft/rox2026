@@ -100,9 +100,15 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
 
 void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  const bool prev_estop = emergency_stop_active_;
   emergency_stop_active_ = msg->data;
-  if (emergency_stop_active_) {
+
+  // 非常停止が解除された（ACTIVEになった）時、巻き下げ時間をリセットして巻き下げを開始
+  if (prev_estop && !emergency_stop_active_) {
+    RCLCPP_INFO(get_logger(), "Emergency stop released. Resetting spring load timer.");
     reset_spring_state();
+  } else if (emergency_stop_active_) {
+    fire_pending_ = false;
   }
 }
 
@@ -128,44 +134,44 @@ void SpringEduliteController::timer_callback()
   if (!config_valid_ || !is_fire_allowed()) {
     fire_pending_ = false;
     if (current_state_ == State::FIRE) {start_loading();}
-  }
+  } else {
+    switch (current_state_) {
+      case State::LOAD:
+        if (is_loaded_) {
+          current_state_ = State::READY;
+          RCLCPP_INFO(get_logger(), "Spring loading completed. Ready to fire.");
+        } else if ((now() - load_start_time_).seconds() >= load_timeout_sec_) {
+          current_state_ = State::ERROR;
+          RCLCPP_ERROR(get_logger(), "Spring loading timed out. Stopping spring motor.");
+        } else {
+          command.data = static_cast<float>(loading_velocity_rad_s_);
+        }
+        break;
 
-  switch (current_state_) {
-    case State::LOAD:
-      if (is_loaded_) {
-        current_state_ = State::READY;
-        RCLCPP_INFO(get_logger(), "Spring loading completed. Ready to fire.");
-      } else if ((now() - load_start_time_).seconds() >= load_timeout_sec_) {
-        current_state_ = State::ERROR;
-        RCLCPP_ERROR(get_logger(), "Spring loading timed out. Stopping spring motor.");
-      } else {
-        command.data = static_cast<float>(loading_velocity_rad_s_);
-      }
-      break;
+      case State::READY:
+        if (!is_loaded_) {
+          start_loading();
+          command.data = static_cast<float>(loading_velocity_rad_s_);
+        } else if (fire_pending_ && is_fire_allowed()) {
+          start_fire();
+          command.data = static_cast<float>(fire_velocity_rad_s_);
+        }
+        break;
 
-    case State::READY:
-      if (!is_loaded_) {
-        start_loading();
-        command.data = static_cast<float>(loading_velocity_rad_s_);
-      } else if (fire_pending_ && is_fire_allowed()) {
-        start_fire();
+      case State::FIRE:
         command.data = static_cast<float>(fire_velocity_rad_s_);
-      }
-      break;
+        if ((now() - fire_start_time_).seconds() >= fire_duration_sec_) {
+          RCLCPP_INFO(get_logger(), "Spring fire completed. Restarting loading.");
+          start_loading();
+        }
+        break;
 
-    case State::FIRE:
-      command.data = static_cast<float>(fire_velocity_rad_s_);
-      if ((now() - fire_start_time_).seconds() >= fire_duration_sec_) {
-        RCLCPP_INFO(get_logger(), "Spring fire completed. Restarting loading.");
-        start_loading();
-      }
-      break;
-
-    case State::ERROR:
-      if (is_loaded_) {
-        current_state_ = State::READY;
-      }
-      break;
+      case State::ERROR:
+        if (is_loaded_) {
+          current_state_ = State::READY;
+        }
+        break;
+    }
   }
 
   spring_velocity_pub_->publish(command);
@@ -179,7 +185,6 @@ bool SpringEduliteController::is_fire_allowed() const
 void SpringEduliteController::reset_spring_state()
 {
   fire_pending_ = false;
-  if (current_state_ == State::ERROR) {return;}
   if (is_loaded_) {
     current_state_ = State::READY;
   } else {
@@ -189,10 +194,7 @@ void SpringEduliteController::reset_spring_state()
 
 void SpringEduliteController::start_loading()
 {
-  const bool was_loading = current_state_ == State::LOAD;
-  if (!was_loading || load_start_time_.nanoseconds() == 0) {
-    load_start_time_ = now();
-  }
+  load_start_time_ = now();
   current_state_ = State::LOAD;
   fire_pending_ = false;
 }
