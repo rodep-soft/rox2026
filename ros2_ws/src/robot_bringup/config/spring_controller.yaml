@@ -5,9 +5,9 @@ spring_controller_node:
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
-    # [rad/s] 装填時に出す速度。正負の向きは機構に合わせる（プラスで引き込み）。
-    loading_velocity_rad_s: 10.0
-    # [rad/s] 発射時に出す速度。正負の向きは機構に合わせる（マイナスで発射）。
+    # [rad/s] 装填時に出す速度。オーバーシュート防止のためマイルドな速度(-5.0 rad/s)に設定。
+    loading_velocity_rad_s: -5.0
+    # [rad/s] 発射時に出す速度。
     fire_velocity_rad_s: -20.0
 
     # [s] 発射速度を維持する時間。
