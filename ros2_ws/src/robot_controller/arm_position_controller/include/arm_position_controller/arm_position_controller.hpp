@@ -28,6 +28,8 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void timer_callback();
 
+  const char * mode_name(PositionMode mode) const;
+
   double dribble_position_rad_{0.35};
   double open_position_rad_{-1.0};
   double feed_position_rad_{1.3};

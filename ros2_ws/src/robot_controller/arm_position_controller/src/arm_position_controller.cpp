@@ -50,12 +50,25 @@ void ArmPositionControllerNode::get_parameters()
 void ArmPositionControllerNode::position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
   if (msg->data <= static_cast<uint8_t>(PositionMode::FEED)) {
-    current_position_mode_ = static_cast<PositionMode>(msg->data);
+    const auto new_mode = static_cast<PositionMode>(msg->data);
+    if (new_mode != current_position_mode_) {
+      RCLCPP_INFO(
+        get_logger(), "Arm Mode Changed: %s -> %s",
+        mode_name(current_position_mode_), mode_name(new_mode));
+      current_position_mode_ = new_mode;
+    }
   }
 }
 
 void ArmPositionControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (msg->data != emergency_stop_active_) {
+    if (msg->data) {
+      RCLCPP_WARN(get_logger(), "Emergency Stop Activated in ArmPositionController!");
+    } else {
+      RCLCPP_INFO(get_logger(), "Emergency Stop Released in ArmPositionController.");
+    }
+  }
   emergency_stop_active_ = msg->data;
 }
 
@@ -74,10 +87,12 @@ void ArmPositionControllerNode::timer_callback()
   position_command_pub_->publish(pos_msg);
 }
 
-int main(int argc, char * argv[])
+const char * ArmPositionControllerNode::mode_name(PositionMode mode) const
 {
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<ArmPositionControllerNode>());
-  rclcpp::shutdown();
-  return 0;
+  switch (mode) {
+    case PositionMode::DRIBBLE: return "DRIBBLE";
+    case PositionMode::OPEN:    return "OPEN";
+    case PositionMode::FEED:    return "FEED";
+  }
+  return "UNKNOWN";
 }

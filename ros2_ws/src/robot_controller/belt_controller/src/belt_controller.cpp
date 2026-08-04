@@ -88,11 +88,3 @@ int BeltControllerNode::belt_target_rpm() const
     default: return 0;
   }
 }
-
-int main(int argc, char * argv[])
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<BeltControllerNode>());
-  rclcpp::shutdown();
-  return 0;
-}
