@@ -19,29 +19,29 @@ JoyControllerNode::JoyControllerNode()
   auto joy_qos = rclcpp::SensorDataQoS();
   joy_qos.keep_last(joy_qos_depth_);
 
-  joy_subscription_ = create_subscription<sensor_msgs::msg::Joy>(
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
     "/joy", joy_qos,
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
-  emergency_stop_publisher_ = create_publisher<std_msgs::msg::Bool>(
+  emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/emergency_stop", rclcpp::QoS(1).reliable().transient_local());
 
-  mecanum_cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
+  mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/mecanum/cmd_vel", rclcpp::QoS(command_qos_depth_));
 
-  spring_fire_publisher_ = create_publisher<std_msgs::msg::Bool>(
+  spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", rclcpp::QoS(command_qos_depth_));
 
-  belt_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
+  belt_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
     "/belt/mode", rclcpp::QoS(command_qos_depth_));
 
-  dribble_enabled_publisher_ = create_publisher<std_msgs::msg::Bool>(
+  dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/enabled", rclcpp::QoS(command_qos_depth_));
 
-  shot_cycle_request_publisher_ = create_publisher<std_msgs::msg::Bool>(
+  shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/shot_cycle/request", rclcpp::QoS(command_qos_depth_));
 
-  dribble_position_mode_publisher_ = create_publisher<std_msgs::msg::UInt8>(
+  arm_position_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
     "/dribble/position_mode", rclcpp::QoS(command_qos_depth_));
 
   publish_stop_commands();
@@ -156,14 +156,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 
   // 4. PSボタンで前後反転
   if (is_button_just_pressed(*msg, ps_button_)) {
-    forward_reverse_ = !forward_reverse_;
-    RCLCPP_INFO(get_logger(), "Forward/Reverse toggled: %s", forward_reverse_ ? "REVERSE" : "FORWARD");
+    is_drive_reversed_ = !is_drive_reversed_;
+    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s", is_drive_reversed_ ? "REVERSED" : "FORWARD");
   }
 
   // 5. L2 + ○ ボタンで自動シュートサイクル要求
   if (!is_emergency_stop_ && get_axis_value(*msg, left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_)) {
     std_msgs::msg::Bool req; req.data = true;
-    shot_cycle_request_publisher_->publish(req);
+    shot_cycle_request_pub_->publish(req);
   }
 
   // 6. R2 + DPAD で手動アーム位置切替 (R2+DPAD右: DRIBBLE / R2+DPAD左: OPEN)
@@ -171,11 +171,11 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     std_msgs::msg::UInt8 arm_msg;
     if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, true)) {
       arm_msg.data = static_cast<uint8_t>(ArmPositionMode::DRIBBLE);
-      dribble_position_mode_publisher_->publish(arm_msg);
+      arm_position_mode_pub_->publish(arm_msg);
     }
     if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, false)) {
       arm_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
-      dribble_position_mode_publisher_->publish(arm_msg);
+      arm_position_mode_pub_->publish(arm_msg);
     }
   }
 
@@ -185,14 +185,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     double linear_y = apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
     double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
 
-    cmd_vel_.linear.x = apply_axis_limit(linear_x, linear_x_limit_) * linear_x_scale_ * (forward_reverse_ ? -1.0 : 1.0);
-    cmd_vel_.linear.y = apply_axis_limit(linear_y, linear_y_limit_) * linear_y_scale_ * (forward_reverse_ ? -1.0 : 1.0);
+    cmd_vel_.linear.x = apply_axis_limit(linear_x, linear_x_limit_) * linear_x_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
+    cmd_vel_.linear.y = apply_axis_limit(linear_y, linear_y_limit_) * linear_y_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
     cmd_vel_.angular.z = apply_axis_limit(angular_z, angular_z_limit_) * angular_z_scale_;
   } else {
     cmd_vel_ = geometry_msgs::msg::Twist{};
   }
 
-  mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+  mecanum_cmd_vel_pub_->publish(cmd_vel_);
   last_joy_msg_ = msg;
 }
 
@@ -219,7 +219,7 @@ void JoyControllerNode::state_publish_timer_callback()
                                        is_button_down(*last_joy_msg_, spring_fire_button_) &&
                                        !is_emergency_stop_;
     std_msgs::msg::Bool spring_msg; spring_msg.data = spring_fire_requested;
-    spring_fire_publisher_->publish(spring_msg);
+    spring_fire_pub_->publish(spring_msg);
   }
 }
 
@@ -227,21 +227,21 @@ void JoyControllerNode::publish_emergency_stop()
 {
   std_msgs::msg::Bool message;
   message.data = is_emergency_stop_;
-  emergency_stop_publisher_->publish(message);
+  emergency_stop_pub_->publish(message);
 }
 
 void JoyControllerNode::publish_belt_mode()
 {
   std_msgs::msg::UInt8 belt;
   belt.data = belt_rpm_mode_;
-  belt_mode_publisher_->publish(belt);
+  belt_mode_pub_->publish(belt);
 }
 
 void JoyControllerNode::publish_dribble_enabled()
 {
   std_msgs::msg::Bool dribble;
   dribble.data = dribble_enabled_;
-  dribble_enabled_publisher_->publish(dribble);
+  dribble_enabled_pub_->publish(dribble);
 }
 
 void JoyControllerNode::publish_stop_commands()
@@ -250,10 +250,10 @@ void JoyControllerNode::publish_stop_commands()
   belt_rpm_mode_ = static_cast<uint8_t>(BeltRpmMode::STOP);
   dribble_enabled_ = false;
   is_emergency_stop_ = true;
-  mecanum_cmd_vel_publisher_->publish(cmd_vel_);
+  mecanum_cmd_vel_pub_->publish(cmd_vel_);
 
   std_msgs::msg::Bool spring_msg; spring_msg.data = false;
-  spring_fire_publisher_->publish(spring_msg);
+  spring_fire_pub_->publish(spring_msg);
   publish_belt_mode();
   publish_dribble_enabled();
   publish_emergency_stop();

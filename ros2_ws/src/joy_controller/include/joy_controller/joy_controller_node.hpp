@@ -46,7 +46,7 @@ private:
   void publish_dribble_enabled();
   void publish_stop_commands();
 
-  // エッジ検出・入力判定ヘルパー
+  // 直感的なエッジ検出・入力判定ヘルパー
   bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
   bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
   double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
@@ -89,22 +89,22 @@ private:
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
   bool dribble_enabled_{false};
-  bool forward_reverse_{false};
+  bool is_drive_reversed_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
   sensor_msgs::msg::Joy::SharedPtr last_joy_msg_{nullptr};
 
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr dribble_position_mode_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
 
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
