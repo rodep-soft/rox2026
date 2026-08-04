@@ -39,9 +39,9 @@ public:
 
     init_motor();
 
-    // モータがEnable（トルクON）になるまで1秒おきに自動再試行
+    // 最初のイネーブル完了まで2秒間隔でチェック
     retry_timer_ = this->create_wall_timer(
-      std::chrono::seconds(1),
+      std::chrono::seconds(2),
       std::bind(&Ed05DriverNode::retry_init_timer_callback, this));
   }
 
@@ -109,8 +109,7 @@ private:
     if (!motor_enabled_ && should_be_enabled_) {
       RCLCPP_WARN(
         this->get_logger(),
-        "Motor ID %u feedback not confirmed in enabled state. Retrying enable frames...",
-        motor_id_);
+        "Motor ID %u feedback not confirmed in enabled state. Retrying enable frames...", motor_id_);
       send_init_frames();
     }
   }
@@ -139,7 +138,9 @@ private:
       return;
     }
 
-    if (id_info.comm_type == 0x02) {  // Feedback data
+    if (id_info.comm_type == 0x02) {  // Feedback data (0x02受信＝イネーブル応答成功)
+      motor_enabled_ = true;
+
       std::array<uint8_t, 8> data_array{};
       std::copy(msg->data.begin(), msg->data.end(), data_array.begin());
 
@@ -156,18 +157,8 @@ private:
       if (is_requested_fb_pub_) {
         fb_pub_->publish(fb_msg_);
       }
-
-      if (id_info.mode_status != 0) {
-        motor_enabled_ = true;
-      } else if (should_be_enabled_) {
-        // モーターがdisableになっていたら自動復帰初期化
-        motor_enabled_ = false;
-        RCLCPP_WARN(this->get_logger(), "Motor ID %u disabled unexpectedly! Re-initializing...",
-          motor_id_);
-        send_init_frames();
-      }
     } else if (id_info.comm_type == 0x00) {
-      // 電源投入直後のレスポンス時に自動初期化
+      // 電源投入直後の再起動通知を受けた時のみ初期化
       motor_enabled_ = false;
       send_init_frames();
     }
