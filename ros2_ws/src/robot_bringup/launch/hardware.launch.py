@@ -10,11 +10,21 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
+    socketcan_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("robot_bringup"),
+                "launch/hardware",
+                "ros2_socketcan.launch.py",
+            )
+        )
+    )
+
     stm32_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("robot_bringup"),
-                "launch",
+                "launch/hardware",
                 "stm32.launch.py",
             )
         )
@@ -23,7 +33,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("robot_bringup"),
-                "launch",
+                "launch/hardware",
                 "edulite05.launch.py",
             )
         )
@@ -32,26 +42,12 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("robot_bringup"),
-                "launch",
+                "launch/hardware",
                 "vesc.launch.py",
-            )
-        )
-    )
-    socketcan_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("robot_bringup"),
-                "launch",
-                "ros2_socketcan.launch.py",
             )
         )
     )
 
     return LaunchDescription(
-        [
-            stm32_launch,
-            edulite05_launch,
-            vesc_launch,
-            socketcan_launch,
-        ]
+        [socketcan_launch, stm32_launch, edulite05_launch, vesc_launch]
     )

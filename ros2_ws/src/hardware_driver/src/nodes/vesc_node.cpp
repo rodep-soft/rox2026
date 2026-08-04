@@ -11,7 +11,7 @@
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
-
+#include "std_msgs/msg/int16.hpp"
 #include "vesc_driver/vesc_protocol.hpp"
 
 namespace vesc_driver
@@ -57,7 +57,7 @@ public:
     auto can_qos_sub = rclcpp::SensorDataQoS();
 
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
-    rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
+    rpm_pub_ = create_publisher<std_msgs::msg::Int16>(current_rpm_topic, 10);
 
     rclcpp::SubscriptionOptions can_sub_options;
     can_sub_options.content_filter_options.filter_expression = "id = %0";
@@ -71,7 +71,7 @@ public:
       std::bind(&Node::can_callback, this, std::placeholders::_1),
       can_sub_options);
 
-    target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
+    target_rpm_sub_ = create_subscription<std_msgs::msg::Int16>(
       target_rpm_topic, 10,
       std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
     last_ramp_update_time_ = std::chrono::steady_clock::now();
@@ -107,7 +107,7 @@ private:
     feedback_received_ = true;
   }
 
-  void target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
+  void target_rpm_callback(const std_msgs::msg::Int16::SharedPtr msg)
   {
     if (!std::isfinite(msg->data)) {
       RCLCPP_WARN(get_logger(), "Ignoring non-finite target RPM");
@@ -126,7 +126,7 @@ private:
 
     if (command_received_) {
       const bool command_timed_out = now - last_command_time_ > command_timeout_;
-      const double desired_rpm = command_timed_out ? 0.0 : target_rpm_;
+      const double desired_rpm = command_timed_out ? 0.0 : static_cast<double>(target_rpm_);
       const double elapsed_seconds =
         std::chrono::duration<double>(now - last_ramp_update_time_).count();
       const double max_step = rpm_slew_rate_ * elapsed_seconds;
@@ -137,11 +137,11 @@ private:
     }
     last_ramp_update_time_ = now;
 
-    std_msgs::msg::Float32 feedback;
+    std_msgs::msg::Int16 feedback;
     if (!feedback_received_ || now - last_feedback_time_ > feedback_timeout_) {
       feedback.data = 0.0;
     } else {
-      feedback.data = current_rpm_;
+      feedback.data = static_cast<int16_t>(current_rpm_);
       rpm_pub_->publish(feedback);
       RCLCPP_DEBUG(this->get_logger(), "current_mA : %lf", current_ma_);
     }
@@ -167,9 +167,9 @@ private:
   std::chrono::milliseconds feedback_timeout_{500};
 
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr rpm_pub_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-  rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr target_rpm_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr target_rpm_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

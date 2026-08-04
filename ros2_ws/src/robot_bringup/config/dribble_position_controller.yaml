@@ -1,15 +1,20 @@
 dribble_position_controller:
   ros__parameters:
-    # hardware_driverへ送る目標位置topic。std_msgs/msg/Float32、単位はrad。
-    dribble_position_command_topic: /dribble/position_command
-    # hardware_driverから受ける実位置topic。std_msgs/msg/Float32、単位はrad。
-    dribble_position_feedback_topic: /dribble/position_feedback
-    # 位置移動を受け付けるAction名。robot_controller/action/DribblePosition。
-    dribble_position_action: /dribble/position
-    dribble_position_rad: 0.0
-    intake_position_rad: 1.5
-    shoot_position_rad: 2.0
+    # [rad] それぞれのdribble positinの位置
+    dribble_position_rad: 0.35
+    intake_position_rad: -1.0
+    shoot_position_rad: 1.3
+    open_position_rad: -1.3
+
+    # [rad] 目標との誤差との許容値
     position_tolerance_rad: 0.02
-    # cancelまたは中断時にDRIBBLE位置へ戻るまでの待機時間[s]。
-    return_timeout_sec: 3.0
+    # [s] 長くするとSHOOT位置で保持する時間が延びる。
+    shoot_to_dribble_delay_sec: 0.6
+    # [s] 短くすると位置移動異常から早くDRIBBLE復帰へ移る。
+    move_timeout_sec: 3.0
+    # [s] 短くするとfeedback断を早く検出するが、遅延に敏感になる。
+    feedback_timeout_sec: 0.5
+    # [ms] 移動中の目標位置送信とfeedback確認の周期。
+    command_period_ms: 20
+    # ROS 2 QoSのqueue depth。
     qos_depth: 1
