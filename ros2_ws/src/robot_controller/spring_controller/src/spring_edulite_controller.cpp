@@ -66,10 +66,10 @@ SpringEduliteController::SpringEduliteController()
 void SpringEduliteController::declare_parameters()
 {
   declare_parameter<int>("limit_switch_bit_offset", 0);
-  declare_parameter<double>("loading_velocity_rad_s", -5.0);
+  declare_parameter<double>("loading_velocity_rad_s", -10.0);
   declare_parameter<double>("fire_velocity_rad_s", -20.0);
-  declare_parameter<double>("fire_duration_sec", 5.0);
-  declare_parameter<double>("load_timeout_sec", 5.0);
+  declare_parameter<double>("fire_duration_sec", 0.3);
+  declare_parameter<double>("load_timeout_sec", 18.0);
   declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("qos_depth", 1);
 }
@@ -89,7 +89,7 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
 {
   const bool is_rising_edge = msg->data && !previous_fire_request_;
   if (is_rising_edge) {
-    if (is_fire_allowed() && current_state_ == State::READY && is_loaded_) {
+    if (is_fire_allowed() && current_state_ == State::READY) {
       fire_pending_ = true;
     } else {
       log_fire_request_rejection();
@@ -103,7 +103,6 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
   const bool prev_estop = emergency_stop_active_;
   emergency_stop_active_ = msg->data;
 
-  // 非常停止が解除された（ACTIVEになった）時、巻き下げ時間をリセットして巻き下げを開始
   if (prev_estop && !emergency_stop_active_) {
     RCLCPP_INFO(get_logger(), "Emergency stop released. Resetting spring load timer.");
     reset_spring_state();
@@ -139,9 +138,11 @@ void SpringEduliteController::timer_callback()
       case State::LOAD:
         if (is_loaded_) {
           current_state_ = State::READY;
+          command.data = 0.0F;
           RCLCPP_INFO(get_logger(), "Spring loading completed. Ready to fire.");
         } else if ((now() - load_start_time_).seconds() >= load_timeout_sec_) {
           current_state_ = State::ERROR;
+          command.data = 0.0F;
           RCLCPP_ERROR(get_logger(), "Spring loading timed out. Stopping spring motor.");
         } else {
           command.data = static_cast<float>(loading_velocity_rad_s_);
@@ -149,10 +150,8 @@ void SpringEduliteController::timer_callback()
         break;
 
       case State::READY:
-        if (!is_loaded_) {
-          start_loading();
-          command.data = static_cast<float>(loading_velocity_rad_s_);
-        } else if (fire_pending_ && is_fire_allowed()) {
+        command.data = 0.0F; // 装填完了姿勢を保持 (0.0 rad/s)
+        if (fire_pending_ && is_fire_allowed()) {
           start_fire();
           command.data = static_cast<float>(fire_velocity_rad_s_);
         }
@@ -167,6 +166,7 @@ void SpringEduliteController::timer_callback()
         break;
 
       case State::ERROR:
+        command.data = 0.0F;
         if (is_loaded_) {
           current_state_ = State::READY;
         }
