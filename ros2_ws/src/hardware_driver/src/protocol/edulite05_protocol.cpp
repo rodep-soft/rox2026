@@ -1,8 +1,9 @@
 #include "edulite05_driver/edulite05_protocol.hpp"
-
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
+#include <vector>
 
 Ed05CanframeCreater::Ed05CanframeCreater(uint8_t motor_id)
 : motor_id_(motor_id)
@@ -12,37 +13,29 @@ Ed05CanframeCreater::Ed05CanframeCreater(uint8_t motor_id)
 Velocity::Velocity(uint8_t motor_id)
 : Ed05CanframeCreater(motor_id)
 {
-  targets_info = {
-    {"target_velocity", 0x700A, 0.0f},
-    {"max_current", 0x7018, 20.0f},
-  };
+}
+
+Position::Position(uint8_t motor_id)
+: Ed05CanframeCreater(motor_id)
+{
 }
 
 std::vector<Canframe> Velocity::create_init_frame()
 {
   std::vector<Canframe> frames;
 
-  // disable
-  frames.push_back(set_disable());
-  // runmode: velocity
-  frames.push_back(set_runmode(2));
-  // enable
+  // runmode
+  frames.push_back(set_runmode(2)); // runmode: velocity
+
+  // motor enable
   frames.push_back(set_enable());
+
+  // その他制御量の設定
   for (size_t i = 1; i < targets_info.size(); i++) {
     frames.push_back(set_target_value(targets_info[i]));
   }
 
   return frames;
-}
-
-Position::Position(uint8_t motor_id)
-: Ed05CanframeCreater(motor_id)
-{
-  targets_info = {
-    {"target_position", 0x7016, 0.0f},
-    {"max_velocity", 0x7017, 10.0f},
-    {"max_current", 0x7018, 20.0f},
-  };
 }
 
 std::vector<Canframe> Position::create_init_frame()
@@ -55,7 +48,8 @@ std::vector<Canframe> Position::create_init_frame()
   frames.push_back(set_runmode(0)); // runmode: operation
   // enable
   frames.push_back(set_enable());
-  // ※ 原点上書き(set_mechanicalzero)は自動送信しない（原点がズレるのを防止）
+  // mechanical zero (コメントアウトして自動原点書き換えを無効化)
+  // frames.push_back(set_mechanicalzero());
   frames.push_back(set_disable());
   frames.push_back(set_runmode(1)); // runmode: position
   frames.push_back(set_enable());
@@ -105,16 +99,19 @@ std::array<uint8_t, 8> Ed05CanframeCreater::encode_commtype18_data(ControlTarget
   return data;
 }
 
-Canframe Ed05CanframeCreater::set_runmode(uint8_t mode)
+Canframe Ed05CanframeCreater::set_runmode(int value)
 {
   Canframe frame{};
   frame.id = encode_can_id(0x12);
   frame.dlc = dlc_;
+  //ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
+  //auto data = encode_commtype18_data(info);
+  //std::memcpy(frame.data.data(), data.data(), 8);
   frame.data[0] = 0x05;   // index low byte
   frame.data[1] = 0x70;   // index high byte
   frame.data[2] = 0x00;   // subindex
   frame.data[3] = 0x00;   // reserved
-  frame.data[4] = static_cast<uint8_t>(mode & 0xFF);   // value low byte
+  frame.data[4] = static_cast<uint8_t>(value & 0xFF);   // value low byte
   frame.data[5] = 0x00;   // value high byte
   frame.data[6] = 0x00;   // reserved
   frame.data[7] = 0x00;   // reserved
@@ -183,9 +180,9 @@ Canframe Ed05CanframeCreater::set_angle_range()
 CanIdInfo decode_can_id(uint32_t can_id)
 {
   CanIdInfo info{};
-  info.comm_type = static_cast<uint8_t>((can_id >> 24) & 0xFF);
+  info.comm_type = static_cast<uint8_t>((can_id >> 24) & 0x1F);
   info.mode_status = static_cast<uint8_t>((can_id >> 22) & 0x03);
-  info.fault = static_cast<uint8_t>((can_id >> 16) & 0x3F);
+  info.fault_info = static_cast<uint8_t>((can_id >> 16) & 0x3F);
   info.motor_id = static_cast<uint8_t>((can_id >> 8) & 0xFF);
   info.host_id = static_cast<uint8_t>(can_id & 0xFF);
   return info;
@@ -195,16 +192,15 @@ MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data)
 {
   MotorFeedbackData fb_data{};
 
-  uint16_t raw_angle = (static_cast<uint16_t>(data[1]) << 8) | data[0];
-  int16_t raw_vel = (static_cast<int16_t>(data[3]) << 8) | data[2];
-  int16_t raw_cur = (static_cast<int16_t>(data[5]) << 8) | data[4];
-  uint8_t raw_temp = data[6];
+  uint16_t raw_angle = (static_cast<uint16_t>(data[0]) << 8) | data[1];
+  uint16_t raw_vel = (static_cast<uint16_t>(data[2]) << 8) | data[3];
+  uint16_t raw_torque = (static_cast<uint16_t>(data[4]) << 8) | data[5];
+  uint16_t raw_temp = (static_cast<uint16_t>(data[6]) << 8) | data[7];
 
-  fb_data.angle = (static_cast<float>(raw_angle) / 65535.0f) * 2.0f * static_cast<float>(M_PI) -
-    static_cast<float>(M_PI);
-  fb_data.velocity = (static_cast<float>(raw_vel) / 32767.0f) * 50.0f;
-  fb_data.current = (static_cast<float>(raw_cur) / 32767.0f) * 20.0f;
-  fb_data.temperature = static_cast<float>(raw_temp);
+  fb_data.angle = -4.0f * M_PI + (static_cast<float>(raw_angle) / 65535.0f) * (8.0f * M_PI);
+  fb_data.velocity = -50.0f + (static_cast<float>(raw_vel) / 65535.0f) * 100.0f;
+  fb_data.torque = -6.0f + (static_cast<float>(raw_torque) / 65535.0f) * 12.0f;
+  fb_data.temperature = static_cast<float>(raw_temp) / 10.0f;
 
   return fb_data;
 }
