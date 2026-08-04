@@ -1,4 +1,4 @@
-belt_controller:
+belt_controller_node:
   ros__parameters:
     level_1_rpm: 3000
     level_2_rpm: 3500

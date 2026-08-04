@@ -1,4 +1,4 @@
-dribbler_controller:
+dribbler_controller_node:
   ros__parameters:
     dribble_on_rpm: 2000
     command_period_ms: 20
