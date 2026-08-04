@@ -109,7 +109,8 @@ private:
     if (!motor_enabled_ && should_be_enabled_) {
       RCLCPP_WARN(
         this->get_logger(),
-        "Motor ID %u feedback not confirmed in enabled state. Retrying enable frames...", motor_id_);
+        "Motor ID %u feedback not confirmed in enabled state. Retrying enable frames...",
+        motor_id_);
       send_init_frames();
     }
   }

@@ -158,7 +158,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     // 3. R1ボタンでドリブル回転ON/OFF
     if (is_button_just_pressed(*msg, dribble_enable_button_)) {
       dribble_enabled_ = !dribble_enabled_;
-      RCLCPP_INFO(get_logger(), "Dribble toggled: %s",
+      RCLCPP_INFO(
+        get_logger(), "Dribble toggled: %s",
         dribble_enabled_ ? "ON (2000 RPM)" : "OFF (0 RPM)");
       publish_dribble_enabled();
     }
