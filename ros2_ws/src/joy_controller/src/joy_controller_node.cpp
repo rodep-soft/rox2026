@@ -11,10 +11,10 @@ JoyControllerNode::JoyControllerNode()
   declare_parameters();
   get_parameters();
 
-  if (joy_qos_depth_ <= 0) joy_qos_depth_ = 1;
-  if (command_qos_depth_ <= 0) command_qos_depth_ = 1;
-  if (joy_timeout_ms_ <= 0) joy_timeout_ms_ = 200;
-  if (state_publish_period_ms_ <= 0) state_publish_period_ms_ = 20;
+  if (joy_qos_depth_ <= 0) {joy_qos_depth_ = 1;}
+  if (command_qos_depth_ <= 0) {command_qos_depth_ = 1;}
+  if (joy_timeout_ms_ <= 0) {joy_timeout_ms_ = 200;}
+  if (state_publish_period_ms_ <= 0) {state_publish_period_ms_ = 20;}
 
   auto joy_qos = rclcpp::SensorDataQoS();
   joy_qos.keep_last(joy_qos_depth_);
@@ -157,11 +157,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   // 4. PSボタンで前後反転
   if (is_button_just_pressed(*msg, ps_button_)) {
     is_drive_reversed_ = !is_drive_reversed_;
-    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s", is_drive_reversed_ ? "REVERSED" : "FORWARD");
+    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s",
+      is_drive_reversed_ ? "REVERSED" : "FORWARD");
   }
 
   // 5. L2 + ○ ボタンで自動シュートサイクル要求
-  if (!is_emergency_stop_ && get_axis_value(*msg, left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_)) {
+  if (!is_emergency_stop_ && get_axis_value(*msg,
+    left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_))
+  {
     std_msgs::msg::Bool req; req.data = true;
     shot_cycle_request_pub_->publish(req);
   }
@@ -185,8 +188,10 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     double linear_y = apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
     double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
 
-    cmd_vel_.linear.x = apply_axis_limit(linear_x, linear_x_limit_) * linear_x_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
-    cmd_vel_.linear.y = apply_axis_limit(linear_y, linear_y_limit_) * linear_y_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
+    cmd_vel_.linear.x = apply_axis_limit(linear_x,
+      linear_x_limit_) * linear_x_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
+    cmd_vel_.linear.y = apply_axis_limit(linear_y,
+      linear_y_limit_) * linear_y_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
     cmd_vel_.angular.z = apply_axis_limit(angular_z, angular_z_limit_) * angular_z_scale_;
   } else {
     cmd_vel_ = geometry_msgs::msg::Twist{};
@@ -198,8 +203,10 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 
 void JoyControllerNode::joy_timeout_timer_callback()
 {
-  if (!joy_received_) return;
-  if (std::chrono::steady_clock::now() - last_joy_received_time_ > std::chrono::milliseconds(joy_timeout_ms_)) {
+  if (!joy_received_) {return;}
+  if (std::chrono::steady_clock::now() - last_joy_received_time_ >
+    std::chrono::milliseconds(joy_timeout_ms_))
+  {
     joy_timeout_active_ = true;
     publish_stop_commands();
   } else if (joy_timeout_active_) {
@@ -216,8 +223,8 @@ void JoyControllerNode::state_publish_timer_callback()
 
     // L1 + ○ ボタンでばね発射要求
     const bool spring_fire_requested = is_button_down(*last_joy_msg_, spring_fire_enable_button_) &&
-                                       is_button_down(*last_joy_msg_, spring_fire_button_) &&
-                                       !is_emergency_stop_;
+      is_button_down(*last_joy_msg_, spring_fire_button_) &&
+      !is_emergency_stop_;
     std_msgs::msg::Bool spring_msg; spring_msg.data = spring_fire_requested;
     spring_fire_pub_->publish(spring_msg);
   }
@@ -261,7 +268,7 @@ void JoyControllerNode::publish_stop_commands()
 
 bool JoyControllerNode::is_button_down(const sensor_msgs::msg::Joy & msg, int index) const
 {
-  if (index < 0 || static_cast<std::size_t>(index) >= msg.buttons.size()) return false;
+  if (index < 0 || static_cast<std::size_t>(index) >= msg.buttons.size()) {return false;}
   return msg.buttons[static_cast<std::size_t>(index)] != 0;
 }
 
@@ -274,23 +281,25 @@ bool JoyControllerNode::is_button_just_pressed(const sensor_msgs::msg::Joy & msg
 
 double JoyControllerNode::get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const
 {
-  if (index < 0 || static_cast<std::size_t>(index) >= msg.axes.size()) return 0.0;
+  if (index < 0 || static_cast<std::size_t>(index) >= msg.axes.size()) {return 0.0;}
   const double value = msg.axes[static_cast<std::size_t>(index)];
   return std::isfinite(value) ? value : 0.0;
 }
 
-bool JoyControllerNode::is_axis_just_triggered(const sensor_msgs::msg::Joy & msg, int index, bool positive) const
+bool JoyControllerNode::is_axis_just_triggered(
+  const sensor_msgs::msg::Joy & msg, int index,
+  bool positive) const
 {
   const double val = get_axis_value(msg, index);
   const double prev_val = last_joy_msg_ ? get_axis_value(*last_joy_msg_, index) : 0.0;
-  return positive ? (val >= axis_on_threshold_ && prev_val < axis_on_threshold_)
-                  : (val <= -axis_on_threshold_ && prev_val > -axis_on_threshold_);
+  return positive ? (val >= axis_on_threshold_ && prev_val < axis_on_threshold_) :
+         (val <= -axis_on_threshold_ && prev_val > -axis_on_threshold_);
 }
 
 double JoyControllerNode::apply_axis_deadzone(double value) const
 {
   const double abs_val = std::abs(value);
-  if (abs_val < axis_deadzone_ || axis_deadzone_ >= 1.0) return 0.0;
+  if (abs_val < axis_deadzone_ || axis_deadzone_ >= 1.0) {return 0.0;}
   const double scaled = (abs_val - axis_deadzone_) / (1.0 - axis_deadzone_);
   return (value > 0.0) ? scaled : -scaled;
 }
@@ -307,7 +316,9 @@ uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode)
 
 uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
 {
-  return (mode > static_cast<uint8_t>(BeltRpmMode::STOP)) ? static_cast<uint8_t>(mode - 1) : static_cast<uint8_t>(BeltRpmMode::STOP);
+  return (mode >
+         static_cast<uint8_t>(BeltRpmMode::STOP)) ? static_cast<uint8_t>(mode -
+         1) : static_cast<uint8_t>(BeltRpmMode::STOP);
 }
 
 int main(int argc, char * argv[])

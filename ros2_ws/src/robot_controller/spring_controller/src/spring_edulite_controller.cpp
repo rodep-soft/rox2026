@@ -12,7 +12,8 @@ SpringEduliteController::SpringEduliteController()
   get_parameters();
 
   if (limit_switch_bit_offset_ < 0 || limit_switch_bit_offset_ >= 8) {
-    RCLCPP_ERROR(get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d", limit_switch_bit_offset_);
+    RCLCPP_ERROR(get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d",
+      limit_switch_bit_offset_);
     config_valid_ = false;
   }
   if (!std::isfinite(fire_duration_sec_) || fire_duration_sec_ <= 0.0) {
@@ -27,11 +28,11 @@ SpringEduliteController::SpringEduliteController()
     command_period_ms_ = 10;
     config_valid_ = false;
   }
-  if (qos_depth_ <= 0) qos_depth_ = 1;
+  if (qos_depth_ <= 0) {qos_depth_ = 1;}
 
   constexpr double edulite_velocity_limit_rad_s = 50.0;
   if (std::abs(loading_velocity_rad_s_) > edulite_velocity_limit_rad_s ||
-      std::abs(fire_velocity_rad_s_) > edulite_velocity_limit_rad_s)
+    std::abs(fire_velocity_rad_s_) > edulite_velocity_limit_rad_s)
   {
     RCLCPP_ERROR(get_logger(), "Spring velocity magnitude must not exceed 50 rad/s");
     config_valid_ = false;
@@ -125,7 +126,7 @@ void SpringEduliteController::timer_callback()
 
   if (!config_valid_ || !is_fire_allowed()) {
     fire_pending_ = false;
-    if (current_state_ == State::FIRE) start_loading();
+    if (current_state_ == State::FIRE) {start_loading();}
   }
 
   switch (current_state_) {
@@ -177,7 +178,7 @@ bool SpringEduliteController::is_fire_allowed() const
 void SpringEduliteController::reset_spring_state()
 {
   fire_pending_ = false;
-  if (current_state_ == State::ERROR) return;
+  if (current_state_ == State::ERROR) {return;}
   if (is_loaded_) {
     current_state_ = State::READY;
   } else {
@@ -221,7 +222,8 @@ void SpringEduliteController::log_fire_request_rejection() const
   } else if (emergency_stop_active_) {
     RCLCPP_WARN(get_logger(), "Spring fire rejected: emergency stop active.");
   } else if (current_state_ != State::READY) {
-    RCLCPP_WARN(get_logger(), "Spring fire rejected: state is %s, not READY.", state_name(current_state_));
+    RCLCPP_WARN(get_logger(), "Spring fire rejected: state is %s, not READY.",
+      state_name(current_state_));
   } else if (!is_loaded_) {
     RCLCPP_WARN(get_logger(), "Spring fire rejected: limit switch is OFF.");
   }

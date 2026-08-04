@@ -9,7 +9,7 @@ BeltControllerNode::BeltControllerNode()
 {
   declare_parameters();
   get_parameters();
-  if (command_period_ms_ <= 0) command_period_ms_ = 10;
+  if (command_period_ms_ <= 0) {command_period_ms_ = 10;}
 
   const auto command_qos = rclcpp::QoS(qos_depth_);
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
@@ -58,9 +58,9 @@ void BeltControllerNode::get_parameters()
 
 void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  belt_mode_ = (msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_6))
-                 ? static_cast<BeltMode>(msg->data)
-                 : BeltMode::STOP;
+  belt_mode_ = (msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_6)) ?
+    static_cast<BeltMode>(msg->data) :
+    BeltMode::STOP;
 }
 
 void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
