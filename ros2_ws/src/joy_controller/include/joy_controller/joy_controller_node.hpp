@@ -49,11 +49,12 @@ private:
   void publish_dribble_enabled();
   void publish_stop_commands();
 
-  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
-  void update_previous_chord_inputs();
+  // 直感的なエッジ検出・入力判定ヘルパー
+  bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
+  bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
+  double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
+  bool is_axis_just_triggered(const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
 
-  static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
-  static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
   double apply_axis_deadzone(double value) const;
   static double apply_axis_limit(double value, double limit);
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
@@ -96,24 +97,8 @@ private:
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
-  bool spring_fire_chord_on_{false};
-  bool belt_mode_up_chord_on_{false};
-  bool belt_mode_down_chord_on_{false};
-  bool dribble_enable_button_on_{false};
-  bool home_button_on_{false};
-  bool shot_cycle_chord_on_{false};
-  bool manual_dribble_chord_on_{false};
-  bool manual_open_chord_on_{false};
-  bool forward_reverse_button_on_{false};
-
-  bool pre_belt_mode_up_chord_on_{false};
-  bool pre_belt_mode_down_chord_on_{false};
-  bool pre_dribble_enable_button_on_{false};
-  bool pre_home_button_on_{false};
-  bool pre_shot_cycle_chord_on_{false};
-  bool pre_manual_dribble_chord_on_{false};
-  bool pre_manual_open_chord_on_{false};
-  bool pre_forward_reverse_button_on_{false};
+  // 前回のJoyメッセージを1個保持して判定（個別のbool変数群を全廃）
+  sensor_msgs::msg::Joy::SharedPtr last_joy_msg_{nullptr};
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
 
