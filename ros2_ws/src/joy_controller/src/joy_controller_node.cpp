@@ -157,13 +157,15 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   // 4. PSボタンで前後反転
   if (is_button_just_pressed(*msg, ps_button_)) {
     is_drive_reversed_ = !is_drive_reversed_;
-    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s",
+    RCLCPP_INFO(
+      get_logger(), "Drive direction toggled: %s",
       is_drive_reversed_ ? "REVERSED" : "FORWARD");
   }
 
   // 5. L2 + ○ ボタンで自動シュートサイクル要求
-  if (!is_emergency_stop_ && get_axis_value(*msg,
-    left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_))
+  if (!is_emergency_stop_ && get_axis_value(
+      *msg,
+      left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_))
   {
     std_msgs::msg::Bool req; req.data = true;
     shot_cycle_request_pub_->publish(req);
@@ -188,9 +190,11 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     double linear_y = apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
     double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
 
-    cmd_vel_.linear.x = apply_axis_limit(linear_x,
+    cmd_vel_.linear.x = apply_axis_limit(
+      linear_x,
       linear_x_limit_) * linear_x_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
-    cmd_vel_.linear.y = apply_axis_limit(linear_y,
+    cmd_vel_.linear.y = apply_axis_limit(
+      linear_y,
       linear_y_limit_) * linear_y_scale_ * (is_drive_reversed_ ? -1.0 : 1.0);
     cmd_vel_.angular.z = apply_axis_limit(angular_z, angular_z_limit_) * angular_z_scale_;
   } else {

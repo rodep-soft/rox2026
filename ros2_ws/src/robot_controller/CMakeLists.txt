@@ -45,8 +45,8 @@ target_include_directories(
 ament_target_dependencies(
   arm_position_controller_node rclcpp std_msgs)
 
-install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node
-                dribbler_controller_node arm_position_controller_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node dribbler_controller_node
+                arm_position_controller_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
 

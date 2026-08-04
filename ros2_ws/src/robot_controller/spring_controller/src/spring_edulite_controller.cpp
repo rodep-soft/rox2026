@@ -12,7 +12,8 @@ SpringEduliteController::SpringEduliteController()
   get_parameters();
 
   if (limit_switch_bit_offset_ < 0 || limit_switch_bit_offset_ >= 8) {
-    RCLCPP_ERROR(get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d",
+    RCLCPP_ERROR(
+      get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d",
       limit_switch_bit_offset_);
     config_valid_ = false;
   }
@@ -222,7 +223,8 @@ void SpringEduliteController::log_fire_request_rejection() const
   } else if (emergency_stop_active_) {
     RCLCPP_WARN(get_logger(), "Spring fire rejected: emergency stop active.");
   } else if (current_state_ != State::READY) {
-    RCLCPP_WARN(get_logger(), "Spring fire rejected: state is %s, not READY.",
+    RCLCPP_WARN(
+      get_logger(), "Spring fire rejected: state is %s, not READY.",
       state_name(current_state_));
   } else if (!is_loaded_) {
     RCLCPP_WARN(get_logger(), "Spring fire rejected: limit switch is OFF.");
