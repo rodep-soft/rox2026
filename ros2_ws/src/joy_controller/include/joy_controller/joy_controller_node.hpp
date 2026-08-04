@@ -41,15 +41,12 @@ private:
   void joy_timeout_timer_callback();
   void state_publish_timer_callback();
 
-  void publish_arm_position(ArmPositionMode position);
-  void publish_shot_cycle_request();
-  void publish_spring_fire_request(bool requested);
   void publish_emergency_stop();
   void publish_belt_mode();
   void publish_dribble_enabled();
   void publish_stop_commands();
 
-  // 直感的なエッジ検出・入力判定ヘルパー
+  // エッジ検出・入力判定ヘルパー
   bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
   bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
   double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
@@ -97,7 +94,6 @@ private:
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
-  // 前回のJoyメッセージを1個保持して判定（個別のbool変数群を全廃）
   sensor_msgs::msg::Joy::SharedPtr last_joy_msg_{nullptr};
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;

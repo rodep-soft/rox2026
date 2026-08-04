@@ -127,7 +127,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   joy_received_ = true;
   last_joy_received_time_ = std::chrono::steady_clock::now();
 
-  // 1. HOMEボタン押下で非常停止をトグル (ACTIVE ↔ STOP)
+  // 1. HOMEボタンで非常停止切替 (ACTIVE ↔ STOP)
   if (is_button_just_pressed(*msg, home_button_)) {
     is_emergency_stop_ = !is_emergency_stop_;
     publish_emergency_stop();
@@ -138,7 +138,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     }
   }
 
-  // 2. 十字キー上下の入力瞬間にベルトレベル昇降 (Level 0〜6)
+  // 2. 十字キー上下でベルトレベル昇降 (Level 0〜6)
   if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
     belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_6));
     publish_belt_mode();
@@ -148,32 +148,34 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     publish_belt_mode();
   }
 
-  // 3. R1ボタンの押下瞬間にドリブル回転ON/OFF
+  // 3. R1ボタンでドリブル回転ON/OFF
   if (is_button_just_pressed(*msg, dribble_enable_button_)) {
     dribble_enabled_ = !dribble_enabled_;
     publish_dribble_enabled();
   }
 
-  // 4. PSボタンの押下瞬間に前後反転
+  // 4. PSボタンで前後反転
   if (is_button_just_pressed(*msg, ps_button_)) {
     forward_reverse_ = !forward_reverse_;
     RCLCPP_INFO(get_logger(), "Forward/Reverse toggled: %s", forward_reverse_ ? "REVERSE" : "FORWARD");
   }
 
-  // 5. L2 + ○ ボタンの押下瞬間に自動シュートサイクル要求
-  const bool l2_down = get_axis_value(*msg, left_trigger_axis_) <= -axis_on_threshold_;
-  if (!is_emergency_stop_ && l2_down && is_button_just_pressed(*msg, circle_button_)) {
-    publish_shot_cycle_request();
+  // 5. L2 + ○ ボタンで自動シュートサイクル要求
+  if (!is_emergency_stop_ && get_axis_value(*msg, left_trigger_axis_) <= -axis_on_threshold_ && is_button_just_pressed(*msg, circle_button_)) {
+    std_msgs::msg::Bool req; req.data = true;
+    shot_cycle_request_publisher_->publish(req);
   }
 
   // 6. R2 + DPAD で手動アーム位置切替 (R2+DPAD右: DRIBBLE / R2+DPAD左: OPEN)
-  const bool r2_down = get_axis_value(*msg, right_trigger_axis_) <= -axis_on_threshold_;
-  if (!is_emergency_stop_ && r2_down) {
+  if (!is_emergency_stop_ && get_axis_value(*msg, right_trigger_axis_) <= -axis_on_threshold_) {
+    std_msgs::msg::UInt8 arm_msg;
     if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, true)) {
-      publish_arm_position(ArmPositionMode::DRIBBLE);
+      arm_msg.data = static_cast<uint8_t>(ArmPositionMode::DRIBBLE);
+      dribble_position_mode_publisher_->publish(arm_msg);
     }
     if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, false)) {
-      publish_arm_position(ArmPositionMode::OPEN);
+      arm_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
+      dribble_position_mode_publisher_->publish(arm_msg);
     }
   }
 
@@ -183,20 +185,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     double linear_y = apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
     double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
 
-    cmd_vel_.linear.x = apply_axis_limit(linear_x, linear_x_limit_) * linear_x_scale_;
-    cmd_vel_.linear.y = apply_axis_limit(linear_y, linear_y_limit_) * linear_y_scale_;
-    if (forward_reverse_) {
-      cmd_vel_.linear.x *= -1.0;
-      cmd_vel_.linear.y *= -1.0;
-    }
+    cmd_vel_.linear.x = apply_axis_limit(linear_x, linear_x_limit_) * linear_x_scale_ * (forward_reverse_ ? -1.0 : 1.0);
+    cmd_vel_.linear.y = apply_axis_limit(linear_y, linear_y_limit_) * linear_y_scale_ * (forward_reverse_ ? -1.0 : 1.0);
     cmd_vel_.angular.z = apply_axis_limit(angular_z, angular_z_limit_) * angular_z_scale_;
   } else {
     cmd_vel_ = geometry_msgs::msg::Twist{};
   }
 
   mecanum_cmd_vel_publisher_->publish(cmd_vel_);
-
-  // 今回のJoyメッセージを次回比較用に保存
   last_joy_msg_ = msg;
 }
 
@@ -218,33 +214,13 @@ void JoyControllerNode::state_publish_timer_callback()
     publish_dribble_enabled();
     publish_emergency_stop();
 
-    // L1 + ○ ボタンの同時押しでばね発射要求
-    const bool l1_down = is_button_down(*last_joy_msg_, spring_fire_enable_button_);
-    const bool circle_down = is_button_down(*last_joy_msg_, spring_fire_button_);
-    const bool spring_fire_requested = l1_down && circle_down && !is_emergency_stop_;
-    publish_spring_fire_request(spring_fire_requested);
+    // L1 + ○ ボタンでばね発射要求
+    const bool spring_fire_requested = is_button_down(*last_joy_msg_, spring_fire_enable_button_) &&
+                                       is_button_down(*last_joy_msg_, spring_fire_button_) &&
+                                       !is_emergency_stop_;
+    std_msgs::msg::Bool spring_msg; spring_msg.data = spring_fire_requested;
+    spring_fire_publisher_->publish(spring_msg);
   }
-}
-
-void JoyControllerNode::publish_arm_position(ArmPositionMode position)
-{
-  std_msgs::msg::UInt8 message;
-  message.data = static_cast<uint8_t>(position);
-  dribble_position_mode_publisher_->publish(message);
-}
-
-void JoyControllerNode::publish_shot_cycle_request()
-{
-  std_msgs::msg::Bool message;
-  message.data = true;
-  shot_cycle_request_publisher_->publish(message);
-}
-
-void JoyControllerNode::publish_spring_fire_request(bool requested)
-{
-  std_msgs::msg::Bool message;
-  message.data = requested;
-  spring_fire_publisher_->publish(message);
 }
 
 void JoyControllerNode::publish_emergency_stop()
@@ -275,7 +251,9 @@ void JoyControllerNode::publish_stop_commands()
   dribble_enabled_ = false;
   is_emergency_stop_ = true;
   mecanum_cmd_vel_publisher_->publish(cmd_vel_);
-  publish_spring_fire_request(false);
+
+  std_msgs::msg::Bool spring_msg; spring_msg.data = false;
+  spring_fire_publisher_->publish(spring_msg);
   publish_belt_mode();
   publish_dribble_enabled();
   publish_emergency_stop();
@@ -305,11 +283,8 @@ bool JoyControllerNode::is_axis_just_triggered(const sensor_msgs::msg::Joy & msg
 {
   const double val = get_axis_value(msg, index);
   const double prev_val = last_joy_msg_ ? get_axis_value(*last_joy_msg_, index) : 0.0;
-  if (positive) {
-    return val >= axis_on_threshold_ && prev_val < axis_on_threshold_;
-  } else {
-    return val <= -axis_on_threshold_ && prev_val > -axis_on_threshold_;
-  }
+  return positive ? (val >= axis_on_threshold_ && prev_val < axis_on_threshold_)
+                  : (val <= -axis_on_threshold_ && prev_val > -axis_on_threshold_);
 }
 
 double JoyControllerNode::apply_axis_deadzone(double value) const
