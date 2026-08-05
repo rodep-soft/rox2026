@@ -172,7 +172,7 @@ private:
 
 }  // namespace stm32_driver
 
-RCLCPP_COMPONENTS_REGISTER_NODE(stm32_driver::Stm32Node)
+RCLCPP_COMPONENTS_REGISTER_NODE(stm32_driver::Stm32Node);
 
 int main(int argc, char ** argv)
 {

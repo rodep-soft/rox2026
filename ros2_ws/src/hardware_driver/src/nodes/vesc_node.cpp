@@ -176,7 +176,7 @@ private:
 
 }  // namespace vesc_driver
 
-RCLCPP_COMPONENTS_REGISTER_NODE(vesc_driver::Node)
+RCLCPP_COMPONENTS_REGISTER_NODE(vesc_driver::Node);
 
 int main(int argc, char ** argv)
 {
