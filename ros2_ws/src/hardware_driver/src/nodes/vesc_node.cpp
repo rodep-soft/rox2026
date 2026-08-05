@@ -50,7 +50,7 @@ public:
     command_timeout_ = std::chrono::milliseconds(command_timeout_ms);
     feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
 
-    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50))
       .reliable()
       .durability_volatile();
 

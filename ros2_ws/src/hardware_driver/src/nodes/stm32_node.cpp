@@ -41,7 +41,7 @@ public:
 
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
 
-    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
     auto can_qos_sub = rclcpp::SensorDataQoS();
 
     rclcpp::SubscriptionOptions can_sub_options;
