@@ -41,7 +41,7 @@ def generate_launch_description():
             "interface": LaunchConfiguration("can_interface"),
             "enable_can_fd": "false",
             "enable_frame_loopback": "false",
-            "timeout_sec": "0.01",
+            "timeout_sec": "0.05",
             "to_can_bus_topic": "/socketcan_bridge/tx",
         }.items(),
     )
