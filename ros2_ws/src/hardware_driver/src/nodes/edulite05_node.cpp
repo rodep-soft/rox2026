@@ -2,10 +2,6 @@
 
 #include <chrono>
 
-// ────────────────────────────────────────────────────────────────────────────
-// コンストラクタ・デストラクタ
-// ────────────────────────────────────────────────────────────────────────────
-
 Ed05DriverNode::Ed05DriverNode()
 : Node("edulite05_driver_node")
 {
@@ -14,16 +10,16 @@ Ed05DriverNode::Ed05DriverNode()
   declare_parameters();
   get_parameters();
 
-  // フレームテンプレートの共通ヘッダを設定（全送信フレームで共有）
   frame_template_.is_extended = true;
   frame_template_.is_rtr = false;
   frame_template_.is_error = false;
 
-  const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
-  const auto can_qos_sub = rclcpp::SensorDataQoS();
+  // CAN通信のQoS Queue Depthを50に拡大して message was lost やドロップを強力に防止
+  const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+  const auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
 
   cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
-    sub_cmd_topic_name_, 1,
+    sub_cmd_topic_name_, 10,
     std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
 
   can_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_can_topic_name_, can_qos_pub);
@@ -34,7 +30,6 @@ Ed05DriverNode::Ed05DriverNode()
 
   fb_pub_ = this->create_publisher<std_msgs::msg::Float32>(pub_fb_topic_name_, 10);
 
-  // モータクラスを生成して初期化フレーム送信を開始する
   if (runmode_ == "Velocity") {
     motor_ = std::make_unique<Velocity>(motor_id_);
   } else if (runmode_ == "Position") {
@@ -46,12 +41,13 @@ Ed05DriverNode::Ed05DriverNode()
     return;
   }
 
-  // 3秒ごとにイネーブル未確定を検知してリトライするタイマー
+  // 1.5秒ごとにトルク確定状態（0x02受信）を監視し、未イネーブルなら自動再送するタイマー
   retry_timer_ = this->create_wall_timer(
-    std::chrono::seconds(3),
+    std::chrono::milliseconds(1500),
     std::bind(&Ed05DriverNode::retry_timer_callback, this));
 
-  start_init();
+  // 起動時のCANフレーム衝突を回避するため、モータIDごとに分散して初期化を開始する
+  schedule_staggered_init();
 }
 
 Ed05DriverNode::~Ed05DriverNode()
@@ -59,20 +55,12 @@ Ed05DriverNode::~Ed05DriverNode()
   RCLCPP_INFO(this->get_logger(), "Ed05Node is shutting down.");
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 公開メソッド
-// ────────────────────────────────────────────────────────────────────────────
-
 void Ed05DriverNode::terminate_motor()
 {
   init_state_ = InitState::IDLE;
   publish_frame(motor_->terminate_motor());
   RCLCPP_DEBUG(this->get_logger(), "Published terminate frame for motor %d.", motor_id_);
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// パラメータ
-// ────────────────────────────────────────────────────────────────────────────
 
 void Ed05DriverNode::declare_parameters()
 {
@@ -96,9 +84,17 @@ void Ed05DriverNode::get_parameters()
   is_requested_fb_pub_ = this->get_parameter("is_requested_fb_pub").as_bool();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// 初期化フレーム送信（非同期）
-// ────────────────────────────────────────────────────────────────────────────
+void Ed05DriverNode::schedule_staggered_init()
+{
+  // モータIDの下位4ビットに基づき 50ms〜450ms の起動遅延を設けてバースト衝突を完全に防止
+  const int delay_ms = 50 + (motor_id_ % 10) * 60;
+  init_delay_timer_ = this->create_wall_timer(
+    std::chrono::milliseconds(delay_ms),
+    [this]() {
+      init_delay_timer_->cancel();
+      start_init();
+    });
+}
 
 void Ed05DriverNode::start_init()
 {
@@ -106,25 +102,23 @@ void Ed05DriverNode::start_init()
     return;
   }
 
-  // 送信すべき初期化フレームリストを構築してキューに詰める
   pending_frames_ = motor_->create_init_frame();
   pending_frame_index_ = 0;
   init_state_ = InitState::SENDING;
 
-  // 50ms 間隔で1枚ずつ送信する一発タイマーを起動（キャンセル済みなら新規作成）
+  // 60ms 間隔でフレームを1枚ずつ送信（CANバス負荷を軽減）
   init_frame_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(50),
+    std::chrono::milliseconds(60),
     std::bind(&Ed05DriverNode::init_frame_timer_callback, this));
 }
 
 void Ed05DriverNode::init_frame_timer_callback()
 {
   if (pending_frame_index_ >= pending_frames_.size()) {
-    // 全フレームを送信完了 → ENABLED に遷移してタイマーを停止
     init_frame_timer_->cancel();
-    init_state_ = InitState::ENABLED;
     RCLCPP_INFO(
-      this->get_logger(), "Motor %d: init frames sent. Torque ON assumed.", motor_id_);
+      this->get_logger(), "Motor %d: all init frames sent. Awaiting CAN feedback (0x02)...",
+      motor_id_);
     return;
   }
 
@@ -135,29 +129,34 @@ void Ed05DriverNode::init_frame_timer_callback()
 void Ed05DriverNode::retry_timer_callback()
 {
   if (init_state_ == InitState::ENABLED) {
-    // イネーブル確定済み → リトライ不要
-    retry_timer_->cancel();
-    RCLCPP_INFO(this->get_logger(), "Motor %d enabled. Retry timer cancelled.", motor_id_);
+    // 最後にフィードバックを受信してから 3.0 秒以上経過していたら通信途絶と判定して再初期化
+    if ((now() - last_feedback_time_).seconds() > 3.0) {
+      RCLCPP_WARN(
+        this->get_logger(), "Motor %d: CAN feedback lost for >3.0s. Re-initializing...",
+        motor_id_);
+      init_state_ = InitState::IDLE;
+      start_init();
+    }
     return;
   }
+
   if (init_state_ == InitState::SENDING) {
-    // まだ初期化フレーム送信中 → 次回まで待つ
+    // まだ初期化フレーム送信中のためスキップ
     return;
   }
-  // IDLE（初期化未完 or 再起動検知後）→ 再送
+
+  // 初期化完了（0x02受信）に至っていないため再送
   RCLCPP_WARN(
-    this->get_logger(), "Motor %d: not enabled yet. Retrying init frames...", motor_id_);
+    this->get_logger(),
+    "Motor %d: Torque ON not confirmed yet (no 0x02 FB). Retrying init frames...",
+    motor_id_);
   start_init();
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// ROS コールバック
-// ────────────────────────────────────────────────────────────────────────────
 
 void Ed05DriverNode::cmd_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
   if (init_state_ != InitState::ENABLED) {
-    return;  // 初期化完了まで制御指令の送信を保留
+    return;  // モータからフィードバック応答がありトルクONが確定するまで制御指令を送らない
   }
   publish_frame(motor_->create_control_frame(msg->data));
   RCLCPP_DEBUG(this->get_logger(), "publish motor %d: %f", motor_id_, msg->data);
@@ -172,11 +171,14 @@ void Ed05DriverNode::can_callback(const can_msgs::msg::Frame::SharedPtr msg)
   }
 
   if (id_info.comm_type == 0x02) {
-    // フィードバック受信 → CAN通信で正式にイネーブル確認
+    last_feedback_time_ = now();
+
+    // CAN通信によりモータから実フィードバックを受信！トルクONを100%確定
     if (init_state_ != InitState::ENABLED) {
       init_state_ = InitState::ENABLED;
       RCLCPP_INFO(
-        this->get_logger(), "Motor %d: feedback confirmed. Torque ON.", motor_id_);
+        this->get_logger(), "Motor %d: CAN feedback (0x02) confirmed! Torque ON LOCKED.",
+        motor_id_);
     }
 
     std::array<uint8_t, 8> data_array{};
@@ -193,21 +195,15 @@ void Ed05DriverNode::can_callback(const can_msgs::msg::Frame::SharedPtr msg)
       fb_pub_->publish(fb_msg_);
     }
   } else if (id_info.comm_type == 0x00) {
-    // モータ再起動通知 → 再初期化
-    RCLCPP_WARN(
-      this->get_logger(), "Motor %d: reboot detected. Re-initializing...", motor_id_);
-    init_state_ = InitState::IDLE;
-    if (init_frame_timer_) {
-      init_frame_timer_->cancel();
+    // comm_type 0x00 はモータからの自動ステータス通知。
+    // フォルト検知時のみ警告ログを出力し、誤ったトルクオフ（set_disable）を伴う再初期化は行わない。
+    if (id_info.fault_info != 0) {
+      RCLCPP_WARN(
+        this->get_logger(), "Motor %d: status frame (0x00) fault_info=0x%02X",
+        motor_id_, id_info.fault_info);
     }
-    retry_timer_->reset();
-    start_init();
   }
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// フレーム送信ヘルパー
-// ────────────────────────────────────────────────────────────────────────────
 
 void Ed05DriverNode::publish_frame(const Canframe & frame)
 {
@@ -216,10 +212,6 @@ void Ed05DriverNode::publish_frame(const Canframe & frame)
   frame_template_.data = frame.data;
   can_pub_->publish(frame_template_);
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// エントリポイント
-// ────────────────────────────────────────────────────────────────────────────
 
 int main(int argc, char ** argv)
 {
