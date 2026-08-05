@@ -10,6 +10,7 @@
 
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/int16.hpp"
 #include "vesc_driver/vesc_protocol.hpp"
@@ -25,8 +26,8 @@ constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
 class Node : public rclcpp::Node
 {
 public:
-  Node()
-  : rclcpp::Node("vesc_driver_node")
+  explicit Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : rclcpp::Node("vesc_driver_node", options)
   {
     const auto target_rpm_topic =
       declare_parameter<std::string>("target_rpm_topic", "/vesc/target/rpm");
@@ -174,6 +175,8 @@ private:
 };
 
 }  // namespace vesc_driver
+
+RCLCPP_COMPONENTS_REGISTER_NODE(vesc_driver::Node)
 
 int main(int argc, char ** argv)
 {

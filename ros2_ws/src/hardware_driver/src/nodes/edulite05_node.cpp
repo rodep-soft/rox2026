@@ -1,9 +1,10 @@
 #include "edulite05_driver/edulite05_node.hpp"
 
 #include <chrono>
+#include "rclcpp_components/register_node_macro.hpp"
 
-Ed05DriverNode::Ed05DriverNode()
-: Node("edulite05_driver_node")
+Ed05DriverNode::Ed05DriverNode(const rclcpp::NodeOptions & options)
+: Node("edulite05_driver_node", options)
 {
   RCLCPP_INFO(this->get_logger(), "Edulite05Node has been started.");
 
@@ -225,3 +226,5 @@ int main(int argc, char ** argv)
   rclcpp::shutdown();
   return 0;
 }
+
+RCLCPP_COMPONENTS_REGISTER_NODE(Ed05DriverNode)

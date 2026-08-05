@@ -28,8 +28,8 @@ constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
 class Stm32Node : public rclcpp::Node
 {
 public:
-  Stm32Node()
-  : Node("stm32_driver_node"),
+  explicit Stm32Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("stm32_driver_node", options),
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now())
   {
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
@@ -171,6 +171,8 @@ private:
 };
 
 }  // namespace stm32_driver
+
+RCLCPP_COMPONENTS_REGISTER_NODE(stm32_driver::Stm32Node)
 
 int main(int argc, char ** argv)
 {

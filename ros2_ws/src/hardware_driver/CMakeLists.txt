@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(ament_cmake REQUIRED)
 find_package(can_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
@@ -30,15 +31,20 @@ function(add_hardware_node target source)
   if(ARGN)
     target_link_libraries(${target} ${ARGN})
   endif()
-  ament_target_dependencies(${target} can_msgs rclcpp sensor_msgs std_msgs)
+  ament_target_dependencies(${target} can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
 endfunction()
 
 add_protocol_library(stm32_protocol src/protocol/stm32_protocol.cpp can_msgs)
 add_protocol_library(edulite05_protocol src/protocol/edulite05_protocol.cpp)
 
 add_hardware_node(stm32_node src/nodes/stm32_node.cpp stm32_protocol)
+rclcpp_components_register_node(stm32_node PLUGIN "stm32_driver::Stm32Node" EXECUTABLE stm32_node)
+
 add_hardware_node(edulite05_node src/nodes/edulite05_node.cpp edulite05_protocol)
+rclcpp_components_register_node(edulite05_node PLUGIN "Ed05DriverNode" EXECUTABLE edulite05_node)
+
 add_hardware_node(vesc_node src/nodes/vesc_node.cpp)
+rclcpp_components_register_node(vesc_node PLUGIN "vesc_driver::Node" EXECUTABLE vesc_node)
 
 set(protocol_libraries stm32_protocol edulite05_protocol)
 set(driver_nodes stm32_node edulite05_node vesc_node)

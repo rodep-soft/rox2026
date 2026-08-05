@@ -18,7 +18,7 @@
 class Ed05DriverNode : public rclcpp::Node
 {
 public:
-  Ed05DriverNode();
+  explicit Ed05DriverNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   ~Ed05DriverNode();
 
   /// @brief モータを停止させる終了フレームを送信する
