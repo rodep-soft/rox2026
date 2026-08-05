@@ -146,14 +146,14 @@ void SocketCanReceiverNode::receive()
   CanId receive_id{};
 
   if (!enable_fd_) {
-    can_msgs::msg::Frame frame_msg(rosidl_runtime_cpp::MessageInitialization::ZERO);
-    frame_msg.header.frame_id = "can";
-
     while (rclcpp::ok()) {
       if (this->get_current_state().id() != State::PRIMARY_STATE_ACTIVE) {
         std::this_thread::sleep_for(100ms);
         continue;
       }
+
+      can_msgs::msg::Frame frame_msg(rosidl_runtime_cpp::MessageInitialization::ZERO);
+      frame_msg.header.frame_id = "can";
 
       try {
         receive_id = receiver_->receive(frame_msg.data.data(), interval_ns_);
@@ -182,15 +182,14 @@ void SocketCanReceiverNode::receive()
       frames_pub_->publish(std::move(frame_msg));
     }
   } else {
-    ros2_socketcan_msgs::msg::FdFrame fd_frame_msg(rosidl_runtime_cpp::MessageInitialization::ZERO);
-    fd_frame_msg.header.frame_id = "can";
-
     while (rclcpp::ok()) {
       if (this->get_current_state().id() != State::PRIMARY_STATE_ACTIVE) {
         std::this_thread::sleep_for(100ms);
         continue;
       }
 
+      ros2_socketcan_msgs::msg::FdFrame fd_frame_msg(rosidl_runtime_cpp::MessageInitialization::ZERO);
+      fd_frame_msg.header.frame_id = "can";
       fd_frame_msg.data.resize(64);
 
       try {
