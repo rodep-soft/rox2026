@@ -47,6 +47,16 @@ SocketCanReceiverNode::SocketCanReceiverNode(rclcpp::NodeOptions options)
   RCLCPP_INFO(this->get_logger(), "use bus time: %d", use_bus_time_);
   RCLCPP_INFO(this->get_logger(), "can fd enabled: %s", enable_fd_ ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "interval(s): %f", interval_sec);
+
+  bool auto_configure = this->declare_parameter("auto_configure", true);
+  bool auto_activate = this->declare_parameter("auto_activate", true);
+
+  if (auto_configure) {
+    this->configure();
+  }
+  if (auto_activate) {
+    this->activate();
+  }
 }
 
 SocketCanReceiverNode::~SocketCanReceiverNode()

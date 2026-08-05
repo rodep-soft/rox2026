@@ -46,6 +46,16 @@ SocketCanSenderNode::SocketCanSenderNode(rclcpp::NodeOptions options)
     this->get_logger(), "frame loopback enabled: %s",
     enable_frame_loopback_ ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "timeout(s): %f", timeout_sec);
+
+  bool auto_configure = this->declare_parameter("auto_configure", true);
+  bool auto_activate = this->declare_parameter("auto_activate", true);
+
+  if (auto_configure) {
+    this->configure();
+  }
+  if (auto_activate) {
+    this->activate();
+  }
 }
 
 LNI::CallbackReturn SocketCanSenderNode::on_configure(const lc::State & state)
