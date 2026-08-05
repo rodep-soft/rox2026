@@ -123,6 +123,15 @@ void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::
     RCLCPP_INFO(get_logger(), "Spring limit switch is %s.", is_loaded_ ? "ON" : "OFF");
   }
   limit_switch_received_ = true;
+
+  // スイッチがONになった瞬間にタイマー待機なしで即座に0.0 rad/sの停止コマンドを発行
+  if (is_loaded_ && !previous_loaded && current_state_ == State::LOAD) {
+    current_state_ = State::READY;
+    std_msgs::msg::Float32 stop_cmd;
+    stop_cmd.data = 0.0F;
+    spring_velocity_pub_->publish(stop_cmd);
+    RCLCPP_INFO(get_logger(), "Spring limit switch HIT! Stopped motor immediately.");
+  }
 }
 
 void SpringEduliteController::timer_callback()
