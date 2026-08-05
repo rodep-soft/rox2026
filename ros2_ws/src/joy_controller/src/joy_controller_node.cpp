@@ -53,6 +53,10 @@ JoyControllerNode::JoyControllerNode()
   state_publish_timer_ = create_wall_timer(
     std::chrono::milliseconds(state_publish_period_ms_),
     std::bind(&JoyControllerNode::state_publish_timer_callback, this));
+
+  loop_timer_ = create_wall_timer(
+    std::chrono::milliseconds(10),
+    std::bind(&JoyControllerNode::loop_callback, this));
 }
 
 void JoyControllerNode::declare_parameters()
@@ -126,9 +130,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   joy_timeout_active_ = false;
   joy_received_ = true;
   last_joy_received_time_ = std::chrono::steady_clock::now();
+  joy_msg_ = *msg;
+}
+
+void JoyControllerNode::loop_callback()
+{
 
   // 1. HOMEボタンで非常停止切替 (ACTIVE ↔ STOP)
-  if (is_button_just_pressed(*msg, home_button_)) {
+  if (is_button_just_pressed(joy_msg_, home_button_)) {
     is_emergency_stop_ = !is_emergency_stop_;
     publish_emergency_stop();
     if (is_emergency_stop_) {
@@ -141,14 +150,14 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   // 非常停止中でない場合のみ、各種操作を受け付ける
   if (!is_emergency_stop_) {
     // 2. R2 が押されていない時は、DPAD 上/下でベルトレベル昇降 (Level 0〜6)
-    const bool is_r2_active = get_axis_value(*msg, right_trigger_axis_) <= -axis_on_threshold_;
+    const bool is_r2_active = get_axis_value(joy_msg_, right_trigger_axis_) <= -axis_on_threshold_;
     if (!is_r2_active) {
-      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
+      if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
         belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_6));
         RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
         publish_belt_mode();
       }
-      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, false)) {
+      if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, false)) {
         belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
         RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
         publish_belt_mode();
@@ -156,7 +165,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     }
 
     // 3. R1ボタンでドリブル回転ON/OFF
-    if (is_button_just_pressed(*msg, dribble_enable_button_)) {
+    if (is_button_just_pressed(joy_msg_, dribble_enable_button_)) {
       dribble_enabled_ = !dribble_enabled_;
       RCLCPP_INFO(
         get_logger(), "Dribble toggled: %s",
@@ -165,7 +174,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     }
 
     // 4. PSボタンで前後反転
-    if (is_button_just_pressed(*msg, ps_button_)) {
+    if (is_button_just_pressed(joy_msg_, ps_button_)) {
       is_drive_reversed_ = !is_drive_reversed_;
       RCLCPP_INFO(
         get_logger(), "Drive direction toggled: %s",
@@ -173,8 +182,8 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     }
 
     // 5. L2 + ○ ボタンで自動シュートサイクル要求
-    if (get_axis_value(*msg, left_trigger_axis_) <= -axis_on_threshold_ &&
-      is_button_just_pressed(*msg, circle_button_))
+    if (get_axis_value(joy_msg_, left_trigger_axis_) <= -axis_on_threshold_ &&
+      is_button_just_pressed(joy_msg_, circle_button_))
     {
       RCLCPP_INFO(get_logger(), "Shot cycle requested!");
       std_msgs::msg::Bool req; req.data = true;
@@ -184,17 +193,17 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     // 6. R2 + DPAD で手動アーム位置切替 (R2+DPAD右: DRIBBLE / R2+DPAD左: OPEN / R2+DPAD上: FEED)
     if (is_r2_active) {
       std_msgs::msg::UInt8 arm_msg;
-      if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, true)) {
+      if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
         arm_msg.data = static_cast<uint8_t>(ArmPositionMode::DRIBBLE);
         RCLCPP_INFO(get_logger(), "Manual Arm Position: DRIBBLE (0.35 rad)");
         arm_position_mode_pub_->publish(arm_msg);
       }
-      if (is_axis_just_triggered(*msg, dpad_horizontal_axis_, false)) {
+      if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
         arm_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
         RCLCPP_INFO(get_logger(), "Manual Arm Position: OPEN (-1.0 rad)");
         arm_position_mode_pub_->publish(arm_msg);
       }
-      if (is_axis_just_triggered(*msg, dpad_vertical_axis_, true)) {
+      if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
         arm_msg.data = static_cast<uint8_t>(ArmPositionMode::FEED);
         RCLCPP_INFO(get_logger(), "Manual Arm Position: FEED (1.3 rad)");
         arm_position_mode_pub_->publish(arm_msg);
@@ -202,9 +211,9 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     }
 
     // 7. スティックでの足回り走行制御
-    double linear_x = apply_axis_deadzone(get_axis_value(*msg, left_stick_y_axis_));
-    double linear_y = -apply_axis_deadzone(get_axis_value(*msg, left_stick_x_axis_));
-    double angular_z = apply_axis_deadzone(get_axis_value(*msg, right_stick_x_axis_));
+    double linear_x = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
+    double linear_y = -apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
+    double angular_z = apply_axis_deadzone(get_axis_value(joy_msg_, right_stick_x_axis_));
 
     cmd_vel_.linear.x = apply_axis_limit(
       linear_x,
@@ -218,7 +227,7 @@ void JoyControllerNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
 
   mecanum_cmd_vel_pub_->publish(cmd_vel_);
-  last_joy_msg_ = msg;
+  last_joy_msg_ = joy_msg_;
 }
 
 void JoyControllerNode::joy_timeout_timer_callback()
