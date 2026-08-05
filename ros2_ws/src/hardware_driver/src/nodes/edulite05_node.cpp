@@ -116,6 +116,7 @@ void Ed05DriverNode::init_frame_timer_callback()
 {
   if (pending_frame_index_ >= pending_frames_.size()) {
     init_frame_timer_->cancel();
+    init_state_ = InitState::IDLE;
     RCLCPP_INFO(
       this->get_logger(), "Motor %d: all init frames sent. Awaiting CAN feedback (0x02)...",
       motor_id_);
