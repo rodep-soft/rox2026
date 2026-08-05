@@ -16,7 +16,7 @@ Ed05DriverNode::Ed05DriverNode()
 
   // CAN通信のQoS Queue Depthを50に拡大して message was lost やドロップを強力に防止
   const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
-  const auto can_qos_sub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+  const auto can_qos_sub = rclcpp::SensorDataQoS().keep_last(50);
 
   cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
     sub_cmd_topic_name_, 10,
