@@ -38,6 +38,7 @@ private:
   void get_parameters();
 
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
+  void loop_callback();
   void joy_timeout_timer_callback();
   void state_publish_timer_callback();
 
@@ -94,7 +95,9 @@ private:
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
-  sensor_msgs::msg::Joy::SharedPtr last_joy_msg_{nullptr};
+  std::optional<sensor_msgs::msg::Joy> last_joy_msg_{};
+  sensor_msgs::msg::Joy joy_msg_{};
+
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
@@ -108,6 +111,7 @@ private:
 
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
+  rclcpp::TimerBase::SharedPtr loop_timer_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
