@@ -245,7 +245,9 @@ void SpringEduliteController::log_fire_request_rejection() const
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<SpringEduliteController>());
+  auto node = std::make_shared<SpringEduliteController>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }

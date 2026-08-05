@@ -172,10 +172,12 @@ private:
 
 }  // namespace stm32_driver
 
-int main(int argc, char * argv[])
+int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<stm32_driver::Stm32Node>());
+  auto node = std::make_shared<stm32_driver::Stm32Node>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }

@@ -49,6 +49,13 @@ SocketCanReceiverNode::SocketCanReceiverNode(rclcpp::NodeOptions options)
   RCLCPP_INFO(this->get_logger(), "interval(s): %f", interval_sec);
 }
 
+SocketCanReceiverNode::~SocketCanReceiverNode()
+{
+  if (receiver_thread_ && receiver_thread_->joinable()) {
+    receiver_thread_->join();
+  }
+}
+
 LNI::CallbackReturn SocketCanReceiverNode::on_configure(const lc::State & state)
 {
   (void)state;

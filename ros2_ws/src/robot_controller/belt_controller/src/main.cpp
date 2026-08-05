@@ -6,7 +6,9 @@
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<BeltControllerNode>());
+  auto node = std::make_shared<BeltControllerNode>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }

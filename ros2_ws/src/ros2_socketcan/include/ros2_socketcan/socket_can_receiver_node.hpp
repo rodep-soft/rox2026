@@ -49,6 +49,9 @@ public:
   /// \brief Default constructor
   explicit SocketCanReceiverNode(rclcpp::NodeOptions options);
 
+  /// \brief Destructor
+  ~SocketCanReceiverNode();
+
   /// \brief Callback from transition to "configuring" state.
   /// \param[in] state The current state that the node is in.
   LNI::CallbackReturn on_configure(const lc::State & state) override;

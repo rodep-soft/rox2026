@@ -344,7 +344,9 @@ uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<JoyControllerNode>());
+  auto node = std::make_shared<JoyControllerNode>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }

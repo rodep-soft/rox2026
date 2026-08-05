@@ -6,7 +6,9 @@
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<ArmPositionControllerNode>());
+  auto node = std::make_shared<ArmPositionControllerNode>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }
