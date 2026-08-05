@@ -171,8 +171,10 @@ void Ed05DriverNode::can_callback(const can_msgs::msg::Frame::SharedPtr msg)
     return;
   }
 
+  // モータからのあらゆるCANフレーム（0x00ステータスまたは0x02レスポンス）で通信生存時刻を更新
+  last_feedback_time_ = now();
+
   if (id_info.comm_type == 0x02) {
-    last_feedback_time_ = now();
 
     // CAN通信によりモータから実フィードバックを受信！トルクONを100%確定
     if (init_state_ != InitState::ENABLED) {
