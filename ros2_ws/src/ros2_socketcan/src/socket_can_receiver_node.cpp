@@ -157,6 +157,8 @@ void SocketCanReceiverNode::receive()
 
       try {
         receive_id = receiver_->receive(frame_msg.data.data(), interval_ns_);
+      } catch (const SocketCanTimeout &) {
+        continue;
       } catch (const std::exception & ex) {
         RCLCPP_WARN_THROTTLE(
           this->get_logger(), *this->get_clock(), 1000,
@@ -193,6 +195,8 @@ void SocketCanReceiverNode::receive()
 
       try {
         receive_id = receiver_->receive_fd(fd_frame_msg.data.data<void>(), interval_ns_);
+      } catch (const SocketCanTimeout &) {
+        continue;
       } catch (const std::exception & ex) {
         RCLCPP_WARN_THROTTLE(
           this->get_logger(), *this->get_clock(), 1000,
