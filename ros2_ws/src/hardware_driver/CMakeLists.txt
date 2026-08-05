@@ -40,22 +40,34 @@ add_protocol_library(edulite05_protocol src/protocol/edulite05_protocol.cpp)
 
 add_hardware_node(stm32_node src/nodes/stm32_node.cpp stm32_protocol)
 rclcpp_components_register_node(stm32_node_component PLUGIN "stm32_driver::Stm32Node" EXECUTABLE stm32_node)
-target_include_directories(stm32_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(stm32_node stm32_protocol)
-ament_target_dependencies(stm32_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
+target_include_directories(
+  stm32_node
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(
+  stm32_node stm32_protocol)
+ament_target_dependencies(
+  stm32_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
 
 add_hardware_node(edulite05_node src/nodes/edulite05_node.cpp edulite05_protocol)
 rclcpp_components_register_node(edulite05_node_component PLUGIN "Ed05DriverNode" EXECUTABLE edulite05_node)
-target_include_directories(edulite05_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(edulite05_node edulite05_protocol)
-ament_target_dependencies(edulite05_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
+target_include_directories(
+  edulite05_node
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(
+  edulite05_node edulite05_protocol)
+ament_target_dependencies(
+  edulite05_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
 
 add_hardware_node(vesc_node src/nodes/vesc_node.cpp)
 rclcpp_components_register_node(vesc_node_component PLUGIN "vesc_driver::Node" EXECUTABLE vesc_node)
-target_include_directories(vesc_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-ament_target_dependencies(vesc_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
+target_include_directories(
+  vesc_node
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+ament_target_dependencies(
+  vesc_node can_msgs rclcpp rclcpp_components sensor_msgs std_msgs)
 
-set(protocol_libraries stm32_protocol edulite05_protocol stm32_node_component edulite05_node_component vesc_node_component)
+set(protocol_libraries stm32_protocol edulite05_protocol stm32_node_component edulite05_node_component
+                       vesc_node_component)
 set(driver_nodes stm32_node edulite05_node vesc_node)
 
 install(
