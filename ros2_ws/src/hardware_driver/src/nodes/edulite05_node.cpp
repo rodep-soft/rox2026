@@ -156,6 +156,9 @@ void Ed05DriverNode::retry_timer_callback()
 
 void Ed05DriverNode::cmd_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
+  if (init_state_ != InitState::ENABLED) {
+    return;  // 初期化完了まで制御指令の送信を保留
+  }
   publish_frame(motor_->create_control_frame(msg->data));
   RCLCPP_DEBUG(this->get_logger(), "publish motor %d: %f", motor_id_, msg->data);
 }

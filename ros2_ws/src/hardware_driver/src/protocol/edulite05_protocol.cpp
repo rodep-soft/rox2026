@@ -24,10 +24,16 @@ std::vector<Canframe> Velocity::create_init_frame()
 {
   std::vector<Canframe> frames;
 
-  // runmode
-  frames.push_back(set_runmode(2)); // runmode: velocity
-
-  // motor enable
+  // disable
+  frames.push_back(set_disable());
+  // runmode: operation
+  frames.push_back(set_runmode(0));
+  // enable
+  frames.push_back(set_enable());
+  frames.push_back(set_disable());
+  // runmode: velocity
+  frames.push_back(set_runmode(2));
+  // enable
   frames.push_back(set_enable());
 
   // その他制御量の設定
