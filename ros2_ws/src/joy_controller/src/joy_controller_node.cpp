@@ -240,6 +240,7 @@ void JoyControllerNode::state_publish_timer_callback()
     publish_belt_mode();
     publish_dribble_enabled();
     publish_emergency_stop();
+    mecanum_cmd_vel_pub_->publish(cmd_vel_);
 
     // L1 + ○ ボタンでばね発射要求
     const bool spring_fire_requested = is_button_down(*last_joy_msg_, spring_fire_enable_button_) &&

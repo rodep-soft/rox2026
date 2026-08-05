@@ -26,6 +26,7 @@ void MecanumControllerNode::declare_parameters()
   declare_parameter<double>("vx_sign", 1.0);
   declare_parameter<double>("vy_sign", 1.0);
   declare_parameter<double>("angular_z_sign", 1.0);
+  declare_parameter<int>("command_period_ms", 20);
   declare_parameter<int>("qos_depth", 1);
 }
 
@@ -39,7 +40,12 @@ void MecanumControllerNode::get_parameters()
   get_parameter("vx_sign", vx_sign_);
   get_parameter("vy_sign", vy_sign_);
   get_parameter("angular_z_sign", angular_z_sign_);
+  get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
+
+  if (command_period_ms_ <= 0) {
+    command_period_ms_ = 20;
+  }
 
   constexpr std::size_t kNumWheels = 4;
   if (velocity_corrections_.size() != kNumWheels) {
@@ -138,6 +144,10 @@ void MecanumControllerNode::create_interfaces()
     wheel_velocity_pubs_[index] = create_publisher<std_msgs::msg::Float32>(
       wheel_velocity_topics[index], rclcpp::QoS(qos_depth_));
   }
+
+  timer_ = create_wall_timer(
+    std::chrono::milliseconds(command_period_ms_),
+    std::bind(&MecanumControllerNode::publish_wheel_commands, this));
 }
 
 void MecanumControllerNode::cmd_vel_callback(

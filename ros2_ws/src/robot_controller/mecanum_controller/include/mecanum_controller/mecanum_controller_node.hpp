@@ -54,7 +54,10 @@ private:
   double vx_sign_{1.0};
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};
+  int command_period_ms_{20};
   int qos_depth_{1};
+
+  rclcpp::TimerBase::SharedPtr timer_;
 };
 
 #endif  // MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_
