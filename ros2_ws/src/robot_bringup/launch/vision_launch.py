@@ -117,8 +117,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "mipi_rotation",
-                default_value="180.0",
-                description="MIPI rotation for 230AI camera (default 180.0)",
+                default_value="0.0",
+                description="MIPI rotation for 230AI camera (default 0.0)",
             ),
             DeclareLaunchArgument(
                 "mipi_channel",
