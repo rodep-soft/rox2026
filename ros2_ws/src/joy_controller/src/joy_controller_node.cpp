@@ -195,7 +195,22 @@ void JoyControllerNode::loop_callback()
       game2_start_pub_->publish(game2_msg);
     }
 
-    // 7. L1 + R1 + △ボタンでスプリング射出 (セーフティ解除付き)
+    // 7. 手動オーバーライド: Game 2 自動モード中に人間がスティックを動かしたら即座に自動解除！
+    if (game2_active_) {
+      double raw_vx = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
+      double raw_vy = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
+      double raw_wz = apply_axis_deadzone(get_axis_value(joy_msg_, right_stick_x_axis_));
+
+      if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
+        game2_active_ = false;
+        RCLCPP_WARN(get_logger(), "⚠️ Manual stick input detected! Game 2 AUTO mode DISENGAGED.");
+        std_msgs::msg::Bool game2_msg;
+        game2_msg.data = false;
+        game2_start_pub_->publish(game2_msg);
+      }
+    }
+
+    // 8. L1 + R1 + △ボタンでスプリング射出 (セーフティ解除付き)
     const bool is_l1_down = is_button_down(joy_msg_, spring_fire_enable_button_);
     const bool is_r1_down = is_button_down(joy_msg_, dribble_enable_button_);
     if (is_l1_down && is_r1_down && is_button_just_pressed(joy_msg_, spring_fire_button_)) {
@@ -204,7 +219,7 @@ void JoyControllerNode::loop_callback()
       spring_fire_pub_->publish(msg);
     }
 
-    // 8. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
+    // 9. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
     if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
       std_msgs::msg::UInt8 mode_msg;
       mode_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
@@ -217,7 +232,7 @@ void JoyControllerNode::loop_callback()
       RCLCPP_INFO(get_logger(), "Arm position set to: FEED");
     }
 
-    // 9. アナログスティックによるメカナム走行速度の算出 (Game 2 モード非アクティブ時)
+    // 10. アナログスティックによるメカナム走行速度の算出 (Game 2 モード非アクティブ時)
     if (!game2_active_) {
       double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
       double raw_vy = -get_axis_value(joy_msg_, left_stick_x_axis_);
