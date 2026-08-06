@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
@@ -70,13 +70,28 @@ def launch_setup(context, *args, **kwargs):
     bringup_share = get_package_share_directory("robot_bringup")
 
     if enable_apriltag:
+        # image_transport は画像トピックの親名前空間から camera_info を自動導出する
+        # /StereoNetNode/rectify_left_image → /StereoNetNode/camera_info (存在しない)
+        # 実際の配信先 /StereoNetNode/rectify_left_image/camera_info からリレーする
+        relay_script = os.path.join(bringup_share, "scripts", "camera_info_relay.py")
+        camera_info_relay = ExecuteProcess(
+            cmd=[
+                "python3", relay_script,
+                "--ros-args",
+                "-p", "input_topic:=/StereoNetNode/rectify_left_image/camera_info",
+                "-p", "output_topic:=/StereoNetNode/camera_info",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(camera_info_relay)
+
         apriltag_launch_file = os.path.join(bringup_share, "launch", "apriltag_launch.py")
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
             launch_arguments={
                 "node_name": "apriltag_csi_node",
                 "image_topic": "/StereoNetNode/rectify_left_image",
-                "camera_info_topic": "/StereoNetNode/rectify_left_image/camera_info",
+                "camera_info_topic": "/StereoNetNode/camera_info",
                 "tag_family": tag_family,
                 "tag_size": tag_size,
             }.items(),
