@@ -86,10 +86,29 @@ ros2 launch robot_bringup vision_launch.py enable_yolo:=true
 
 # ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
 ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
+## bingo_shooter.launch.py (ビンゴパネル自動戦術射出ノード)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `base_frame` | `base_link` | ロボット基準フレーム ID |
+| `target_distance` | `1.5` | パネルまでの射程距離 (メートル) |
+| `rpm_bottom` | `3000.0` | 下段パネル用射出ベルト RPM |
+| `rpm_middle` | `4500.0` | 中段パネル用射出ベルト RPM |
+| `rpm_top` | `6000.0` | 上段パネル用射出ベルト RPM |
+
+起動例:
+```bash
+# ビンゴパネル戦術自動射出ノード単体起動
+ros2 launch robot_bringup bingo_shooter.launch.py
+
+# ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ ビンゴ自動戦術ノードを一括起動
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_bingo:=true
 ```
+戦術動作:
+- **3枚残っている段**: 隣り合う 2枚の境目（AprilTag の中点）を狙って強力射出（2枚抜き）
+- **1枚残っている段**: 残った 1枚の AprilTag 真芯をピンポイント射出（完全抜き）
+- **Tag 消失検知**: 射出後に Tag が画面から消えたら「パネル倒壊成功」と判別し自動で次の段へ移行
 
-
-## webcam_launch.py (USB Webカメラ V4L2 起動)
 
 | 引数 | 既定値 | 説明 |
 |---|---|---|

@@ -9,6 +9,8 @@ find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_executable(mecanum_controller_node mecanum_controller/src/mecanum_controller_node.cpp
                                        mecanum_controller/src/main.cpp)
@@ -48,14 +50,23 @@ target_include_directories(
 ament_target_dependencies(
   arm_position_controller_node rclcpp std_msgs)
 
+add_executable(bingo_tactical_shooter_node bingo_shooter/src/bingo_tactical_shooter_node.cpp
+                                           bingo_shooter/src/main.cpp)
+target_include_directories(
+  bingo_tactical_shooter_node
+  PRIVATE bingo_shooter/include)
+ament_target_dependencies(
+  bingo_tactical_shooter_node geometry_msgs rclcpp std_msgs tf2 tf2_ros)
+
 install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node dribbler_controller_node
-                arm_position_controller_node DESTINATION lib/${PROJECT_NAME})
+                arm_position_controller_node bingo_tactical_shooter_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY mecanum_controller/include/ DESTINATION include)
 install(DIRECTORY spring_controller/include/ DESTINATION include)
 install(DIRECTORY belt_controller/include/ DESTINATION include)
 install(DIRECTORY dribbler_controller/include/ DESTINATION include)
 install(DIRECTORY arm_position_controller/include/ DESTINATION include)
+install(DIRECTORY bingo_shooter/include/ DESTINATION include)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

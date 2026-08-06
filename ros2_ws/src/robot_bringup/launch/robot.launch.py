@@ -44,6 +44,12 @@ def generate_launch_description():
         }.items(),
     )
 
+    # ビンゴパネル戦術自動射出ノード
+    bingo_shooter_launch = include(
+        "bingo_shooter.launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_bingo")),
+    )
+
     # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
@@ -82,6 +88,11 @@ def generate_launch_description():
                 description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
+                "enable_bingo",
+                default_value="false",
+                description="Enable tactical bingo panel shooter node",
+            ),
+            DeclareLaunchArgument(
                 "stereonet_version",
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
@@ -89,6 +100,7 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
+            bingo_shooter_launch,
             *[include(launch_file) for launch_file in launch_files],
         ]
     )
