@@ -24,10 +24,11 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   rpm_top_ = this->declare_parameter<double>("rpm_top", 6000.0);
   shoot_hold_duration_ = this->declare_parameter<double>("shoot_hold_duration", 0.8);
 
-  // パラメータから各段のTag IDリストを取得 (Tag 0〜26対応)
-  std::vector<int64_t> default_bottom = {6, 7, 8};
-  std::vector<int64_t> default_middle = {3, 4, 5};
-  std::vector<int64_t> default_top = {0, 1, 2};
+  // 大会公式シュートパネル Tag ID 設定
+  // 上段: [14, 15, 16], 中段: [17, 18, 19], 下段: [20, 21, 22]
+  std::vector<int64_t> default_bottom = {20, 21, 22};
+  std::vector<int64_t> default_middle = {17, 18, 19};
+  std::vector<int64_t> default_top = {14, 15, 16};
 
   auto bottom_tags = this->declare_parameter<std::vector<int64_t>>("bottom_tags", default_bottom);
   auto middle_tags = this->declare_parameter<std::vector<int64_t>>("middle_tags", default_middle);
@@ -66,7 +67,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Configurable Tag IDs 0~26).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Official Tag Grid: Top[14,15,16], Mid[17,18,19], Bot[20,21,22]).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -75,7 +76,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Configurable Tag ID Grid active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Official Tag Grid active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -139,7 +140,8 @@ void Game2TacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Adjacent Left & Center found -> Aiming at LC Boundary!", active_row_);
+        "Row %d: Adjacent Left & Center found (Tag %d & %d) -> Aiming at LC Boundary!",
+        active_row_, left->tag_id, center->tag_id);
       break;
     }
 
@@ -151,7 +153,8 @@ void Game2TacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Adjacent Center & Right found -> Aiming at CR Boundary!", active_row_);
+        "Row %d: Adjacent Center & Right found (Tag %d & %d) -> Aiming at CR Boundary!",
+        active_row_, center->tag_id, right->tag_id);
       break;
     }
 
