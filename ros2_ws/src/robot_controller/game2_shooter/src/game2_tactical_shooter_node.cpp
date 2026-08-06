@@ -13,7 +13,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
   tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag16h5:");
   kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン
-  kp_y_ = this->declare_parameter<double>("kp_y", 0.6);            // 横スライドゲイン
+  kp_y_ = this->declare_parameter<double>("kp_y", 0.0);            // 横スライドはオフ (旋回アライメント優先)
   kp_dist_ = this->declare_parameter<double>("kp_dist", 0.8);        // 前後距離ゲイン
   max_angular_z_ = this->declare_parameter<double>("max_angular_z", 0.35); // 最大旋回速度制限 (rad/s)
   target_distance_ = this->declare_parameter<double>("target_distance", 1.5); // 1.5m射程
@@ -67,7 +67,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Official Tag Grid: Top[14,15,16], Mid[17,18,19], Bot[20,21,22]).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Pure Yaw Rotation Alignment Mode).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -76,7 +76,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Official Tag Grid active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Pure Yaw Rotation Alignment Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -140,7 +140,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Adjacent Left & Center found (Tag %d & %d) -> Aiming at LC Boundary!",
+        "Row %d: Adjacent Left & Center found (Tag %d & %d) -> Rotation Aiming at LC Boundary!",
         active_row_, left->tag_id, center->tag_id);
       break;
     }
@@ -153,7 +153,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Adjacent Center & Right found (Tag %d & %d) -> Aiming at CR Boundary!",
+        "Row %d: Adjacent Center & Right found (Tag %d & %d) -> Rotation Aiming at CR Boundary!",
         active_row_, center->tag_id, right->tag_id);
       break;
     }
@@ -167,7 +167,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
         target_valid_ = true;
         RCLCPP_INFO_THROTTLE(
           this->get_logger(), *this->get_clock(), 2000,
-          "Row %d: Single isolated panel Tag %d -> Pinpoint Aiming at Center!", active_row_, panel->tag_id);
+          "Row %d: Single isolated panel Tag %d -> Rotation Pinpoint Aiming at Center!", active_row_, panel->tag_id);
         break;
       }
     }
@@ -250,8 +250,8 @@ void Game2TacticalShooterNode::control_loop()
     case State::ALIGNING: {
       state_ = State::ALIGNING;
 
-      // 横スライド補正
-      cmd_vel.linear.y = -kp_y_ * y_err;
+      // 横スライド補正はオフ (100% 旋回のみでエイム)
+      cmd_vel.linear.y = 0.0;
       // 前後距離補正
       cmd_vel.linear.x = kp_dist_ * dist_err;
       
@@ -261,7 +261,7 @@ void Game2TacticalShooterNode::control_loop()
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Preparing to shoot...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED via Yaw Rotation! Preparing to shoot...");
         state_ = State::PREPARING_SHOOT;
       }
       break;
