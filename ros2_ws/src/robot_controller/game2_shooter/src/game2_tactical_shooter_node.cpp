@@ -44,6 +44,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
+  completed_pub_ = this->create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
 
   // Control Loop Timer (20Hz)
   timer_ = this->create_wall_timer(
@@ -166,15 +167,26 @@ void Game2TacticalShooterNode::control_loop()
   geometry_msgs::msg::Twist cmd_vel;
   std_msgs::msg::Float32 rpm_msg;
   std_msgs::msg::Bool trigger_msg;
+  std_msgs::msg::Bool completed_msg;
+  
   rpm_msg.data = static_cast<float>(target_rpm_);
   trigger_msg.data = false;
+  completed_msg.data = false;
 
+  // 全9枚のパネルをすべて倒した場合 (Game 2 完走！)
   if (active_row_ > 2) {
     state_ = State::COMPLETED;
+    completed_msg.data = true;
+    rpm_msg.data = 0.0f;
+    
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
-      "GAME2 PANELS COMPLETED! Victory!");
+      "🎉 GAME 2 PANELS ALL CLEARED! MISSION COMPLETED! 🎉");
+      
     cmd_vel_pub_->publish(cmd_vel);
+    belt_rpm_pub_->publish(rpm_msg);
+    shoot_trigger_pub_->publish(trigger_msg);
+    completed_pub_->publish(completed_msg);
     return;
   }
 
@@ -184,6 +196,7 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel.angular.z = 0.3;
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
+    completed_pub_->publish(completed_msg);
     return;
   }
 
@@ -245,6 +258,7 @@ void Game2TacticalShooterNode::control_loop()
   cmd_vel_pub_->publish(cmd_vel);
   belt_rpm_pub_->publish(rpm_msg);
   shoot_trigger_pub_->publish(trigger_msg);
+  completed_pub_->publish(completed_msg);
 }
 
 }  // namespace robot_controller
