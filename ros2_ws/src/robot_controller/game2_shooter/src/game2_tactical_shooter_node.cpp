@@ -103,20 +103,33 @@ void Game2TacticalShooterNode::update_panel_states()
   const auto now = this->now();
 
   for (auto & [tag_id, info] : panel_grid_) {
-    std::string frame_name = tag_prefix_ + std::to_string(tag_id);
-    try {
-      geometry_msgs::msg::TransformStamped tf =
-        tf_buffer_->lookupTransform(base_frame_, frame_name, tf2::TimePointZero);
+    std::vector<std::string> candidate_frames = {
+      "16h5:" + std::to_string(tag_id),
+      "tag16h5:" + std::to_string(tag_id),
+      tag_prefix_ + std::to_string(tag_id),
+      "tag36h11:" + std::to_string(tag_id)
+    };
 
-      info.detected = true;
-      info.x = tf.transform.translation.x;
-      info.y = tf.transform.translation.y;
-      info.z = tf.transform.translation.z;
-      info.last_seen = now;
-    } catch (const tf2::TransformException & ex) {
-      if ((now - info.last_seen).seconds() > 2.0) {
-        info.detected = false;
+    bool found = false;
+    for (const auto & frame_name : candidate_frames) {
+      try {
+        geometry_msgs::msg::TransformStamped tf =
+          tf_buffer_->lookupTransform(base_frame_, frame_name, tf2::TimePointZero);
+
+        info.detected = true;
+        info.x = tf.transform.translation.x;
+        info.y = tf.transform.translation.y;
+        info.z = tf.transform.translation.z;
+        info.last_seen = now;
+        found = true;
+        break;
+      } catch (const tf2::TransformException & ex) {
+        // Try next candidate frame
       }
+    }
+
+    if (!found && (now - info.last_seen).seconds() > 2.0) {
+      info.detected = false;
     }
   }
 }

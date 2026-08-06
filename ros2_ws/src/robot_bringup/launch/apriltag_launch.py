@@ -60,8 +60,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "tag_family",
-                default_value="tag16h5",
-                description="AprilTag family (e.g. tag16h5, tag36h11, tag25h9)",
+                default_value="16h5",
+                description="AprilTag family (16h5)",
             ),
             DeclareLaunchArgument(
                 "tag_size",
