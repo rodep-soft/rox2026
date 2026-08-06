@@ -35,9 +35,39 @@ ros2 launch robot_bringup robot.launch.py can_interface:=can1
 - EduLite driver 6台
 - belt・dribble、mecanum、Spring、dribble位置controller
 - `joy_node`とjoy_controller
+- （オプション）`enable_vision:=true` 指定時に `hobot_stereonet` ビジョンノード
+
+```bash
+# ビジョン機能 ＋ AprilTag 検出付きで通常起動する場合
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true
+```
 
 Joy deviceの既定値は`/dev/input/js0`である。別deviceを使う場合は通常起動へ
 `device:=/dev/input/js1`のように渡す。
+
+## vision_launch.py & apriltag_launch.py (230AI ビジョン・AprilTag 検出)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `stereonet_version` | `v2.4_int16` | hobot_stereonet モデルバージョン (`v2.4_int16`, `v2.5_int16` 等) |
+| `enable_apriltag` | `false` | AprilTag 検出ノードを同時に起動するか |
+| `tag_family` | `tag36h11` | AprilTag ファミリー (`tag36h11`, `tag25h9`, `tag16h5`) |
+| `tag_size` | `0.16` | AprilTag の一辺のサイズ (メートル単位, 例: `0.16` = 16cm) |
+| `publish_visual_enabled` | `True` | Web UI 表示用の描画画像トピック配信 |
+| `publish_pcd_enabled` | `True` | PointCloud2 トピック (`~/stereonet_pointcloud2`) 配信 |
+
+起動例:
+```bash
+# ビジョン ＋ AprilTag 検出を起動
+ros2 launch robot_bringup vision_launch.py enable_apriltag:=true tag_family:=tag36h11 tag_size:=0.16
+
+# AprilTag 単体起動（補正済み左画像を入力トピックとして使用）
+ros2 launch robot_bringup apriltag_launch.py image_topic:=/StereoNetNode/rectify_left_image
+```
+AprilTag 検出結果は `/tf` および `/detections` トピック等に出力されます。
+Web可視化確認は、ブラウザから `http://<RDK_IP>:8000` にアクセスしてください。
+
+
 
 ## hardware.launch.py
 

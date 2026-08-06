@@ -2,8 +2,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
@@ -12,13 +14,24 @@ def generate_launch_description():
         "launch",
     )
 
-    def include(launch_file):
+    def include(launch_file, **kwargs):
         return IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file))
+            PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file)),
+            **kwargs,
         )
 
     # hardware (ドライバ類・VESC・CAN等)
     hardware_launch = include("hardware.launch.py")
+
+    # 230AI ステレオビジョン機能（hobot_stereonet & AprilTag）
+    vision_launch = include(
+        "vision_launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_vision")),
+        launch_arguments={
+            "stereonet_version": LaunchConfiguration("stereonet_version"),
+            "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+        }.items(),
+    )
 
     # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
@@ -32,7 +45,23 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "enable_vision",
+                default_value="false",
+                description="Enable 230AI stereo vision launch (hobot_stereonet)",
+            ),
+            DeclareLaunchArgument(
+                "enable_apriltag",
+                default_value="false",
+                description="Enable AprilTag detection node",
+            ),
+            DeclareLaunchArgument(
+                "stereonet_version",
+                default_value="v2.4_int16",
+                description="hobot_stereonet model version for 230AI",
+            ),
             hardware_launch,
+            vision_launch,
             *[include(launch_file) for launch_file in launch_files],
         ]
     )

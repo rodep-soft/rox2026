@@ -82,7 +82,9 @@ sudo apt install -y \
   usbutils \
   can-utils \
   device-tree-compiler \
-  bluez bluez-tools
+  bluez bluez-tools \
+  ros-humble-apriltag-ros
+
 
 #ca~~  :https認証用
 #gpg   :GPG署名の確認用
