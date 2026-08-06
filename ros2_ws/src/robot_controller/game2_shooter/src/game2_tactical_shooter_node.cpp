@@ -12,7 +12,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   // Declare Parameters
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
   tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag36h11:");
-  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン (0.5)
+  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン
   kp_y_ = this->declare_parameter<double>("kp_y", 0.6);            // 横スライドゲイン
   kp_dist_ = this->declare_parameter<double>("kp_dist", 0.8);        // 前後距離ゲイン
   max_angular_z_ = this->declare_parameter<double>("max_angular_z", 0.35); // 最大旋回速度制限 (rad/s)
@@ -22,7 +22,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   rpm_bottom_ = this->declare_parameter<double>("rpm_bottom", 3000.0);
   rpm_middle_ = this->declare_parameter<double>("rpm_middle", 4500.0);
   rpm_top_ = this->declare_parameter<double>("rpm_top", 6000.0);
-  shoot_hold_duration_ = this->declare_parameter<double>("shoot_hold_duration", 1.0);
+  shoot_hold_duration_ = this->declare_parameter<double>("shoot_hold_duration", 0.8);
 
   // Initialize Panel Grid Map (3x3 Game2 Panels)
   // Row 0: Bottom (Tag 6, 7, 8)
@@ -57,7 +57,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (STANDBY mode, Low-sensitivity Yaw: %.2f).", kp_yaw_);
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Vertical Line Sweep Strategy).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -65,12 +65,12 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
     state_ = State::SEARCHING;
-    active_row_ = 0; // 下段からリセットしてスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START Command Received! Entering AUTO mode.");
+    active_row_ = 0; // フェーズ1 (左中ライン) からスタート
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Executing Vertical Line Sweep Strategy.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
-    RCLCPP_INFO(this->get_logger(), "⏹️ Game 2 STOP Command Received! Entering STANDBY mode.");
+    RCLCPP_INFO(this->get_logger(), "⏹️ Game 2 STOP! Entering STANDBY mode.");
   }
 }
 
@@ -101,7 +101,9 @@ void Game2TacticalShooterNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 下段 -> 中段 -> 上段 の順に攻略
+  // -------------------------------------------------------------
+  // フェーズ 1: 【左＆中央の縦境界ライン】を一気に上中下 3段抜き！ (active_row_: 0〜2)
+  // -------------------------------------------------------------
   while (active_row_ <= 2) {
     std::vector<PanelTagInfo *> row_panels;
     for (auto & [tag_id, info] : panel_grid_) {
@@ -109,73 +111,77 @@ void Game2TacticalShooterNode::select_target_and_aim()
         row_panels.push_back(&info);
       }
     }
-
-    // 列（col: 0:Left, 1:Center, 2:Right）でソート
     std::sort(row_panels.begin(), row_panels.end(), [](PanelTagInfo * a, PanelTagInfo * b) {
       return a->col < b->col;
     });
 
     PanelTagInfo * left = row_panels[0];
     PanelTagInfo * center = row_panels[1];
-    PanelTagInfo * right = row_panels[2];
 
-    // パターン1: 左と中央が残っている -> L&Cの境目を狙って2枚抜き！
-    if (left->detected && center->detected) {
-      target_x_ = (left->x + center->x) / 2.0;
-      target_y_ = (left->y + center->y) / 2.0;
-      target_z_ = (left->z + center->z) / 2.0;
+    // 左または中央が残っている場合 ➔ 左中境界を狙う！
+    if (left->detected || center->detected) {
+      if (left->detected && center->detected) {
+        target_x_ = (left->x + center->x) / 2.0;
+        target_y_ = (left->y + center->y) / 2.0;
+        target_z_ = (left->z + center->z) / 2.0;
+      } else if (left->detected) {
+        target_x_ = left->x;
+        target_y_ = left->y;
+        target_z_ = left->z;
+      } else {
+        target_x_ = center->x;
+        target_y_ = center->y;
+        target_z_ = center->z;
+      }
       target_valid_ = true;
+
+      // 段に応じた RPM 設定
+      target_rpm_ = (active_row_ == 0) ? rpm_bottom_ : ((active_row_ == 1) ? rpm_middle_ : rpm_top_);
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Game2 Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
-        active_row_, left->tag_id, center->tag_id);
+        "Phase 1 (Left-Center Line) Row %d: Aiming at LC Boundary (RPM: %.0f)", active_row_, target_rpm_);
       break;
     }
 
-    // パターン2: 中央と右が残っている -> C&Rの境目を狙って2枚抜き！
-    if (center->detected && right->detected) {
-      target_x_ = (center->x + right->x) / 2.0;
-      target_y_ = (center->y + right->y) / 2.0;
-      target_z_ = (center->z + right->z) / 2.0;
-      target_valid_ = true;
-      RCLCPP_INFO_THROTTLE(
-        this->get_logger(), *this->get_clock(), 2000,
-        "Game2 Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
-        active_row_, center->tag_id, right->tag_id);
-      break;
-    }
+    // この段の左中が両方撃破されていたら、次の段の上へ進む
+    active_row_++;
+  }
 
-    // パターン3: 1枚だけ残っている -> その1枚の真芯を狙撃！
-    for (auto * panel : row_panels) {
-      if (panel->detected) {
-        target_x_ = panel->x;
-        target_y_ = panel->y;
-        target_z_ = panel->z;
-        target_valid_ = true;
-        RCLCPP_INFO_THROTTLE(
-          this->get_logger(), *this->get_clock(), 2000,
-          "Game2 Row %d: Aiming at remaining single Tag %d (Pinpoint Shot!)",
-          active_row_, panel->tag_id);
+  if (target_valid_) {
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // フェーズ 2: 【右パネルの縦ライン】へ旋回し、一気に上中下 3段抜き！ (active_row_: 3〜5)
+  // -------------------------------------------------------------
+  while (active_row_ >= 3 && active_row_ <= 5) {
+    int target_row = active_row_ - 3; // 0: Bottom, 1: Middle, 2: Top
+    PanelTagInfo * right = nullptr;
+
+    for (auto & [tag_id, info] : panel_grid_) {
+      if (info.row == target_row && info.col == 2) {
+        right = &info;
         break;
       }
     }
 
-    if (target_valid_) {
+    if (right && right->detected) {
+      target_x_ = right->x;
+      target_y_ = right->y;
+      target_z_ = right->z;
+      target_valid_ = true;
+
+      // 段に応じた RPM 設定
+      target_rpm_ = (target_row == 0) ? rpm_bottom_ : ((target_row == 1) ? rpm_middle_ : rpm_top_);
+      RCLCPP_INFO_THROTTLE(
+        this->get_logger(), *this->get_clock(), 2000,
+        "Phase 2 (Right Line Sweep) Row %d: Aiming at Right Tag %d (RPM: %.0f)",
+        target_row, right->tag_id, target_rpm_);
       break;
     }
 
-    // その段が全滅していたら次の段へ進む
-    RCLCPP_INFO(this->get_logger(), "Game2 Row %d completed! Moving to next row.", active_row_);
+    // 右パネルが倒れていたら次の段へ
     active_row_++;
-  }
-
-  // 段に応じた目標ベルト RPM の決定
-  if (active_row_ == 0) {
-    target_rpm_ = rpm_bottom_;
-  } else if (active_row_ == 1) {
-    target_rpm_ = rpm_middle_;
-  } else {
-    target_rpm_ = rpm_top_;
   }
 }
 
@@ -204,15 +210,15 @@ void Game2TacticalShooterNode::control_loop()
 
   rpm_msg.data = static_cast<float>(target_rpm_);
 
-  // 全9枚のパネルをすべて倒した場合 (Game 2 完走！)
-  if (active_row_ > 2) {
+  // 全9枚のパネル（フェーズ1 + フェーズ2）をすべて倒した場合 (Game 2 全クリア！)
+  if (active_row_ > 5) {
     state_ = State::COMPLETED;
     completed_msg.data = true;
     rpm_msg.data = 0.0f;
     
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
-      "🎉 GAME 2 PANELS ALL CLEARED! MISSION COMPLETED! 🎉");
+      "🏆 GAME 2 VERTICAL SWEEP ALL CLEARED! PERFECT VICTORY! 🏆");
       
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
@@ -278,7 +284,7 @@ void Game2TacticalShooterNode::control_loop()
 
     case State::WAITING_RESULT: {
       cmd_vel = geometry_msgs::msg::Twist{};
-      if ((this->now() - shoot_start_time_).seconds() > 1.5) {
+      if ((this->now() - shoot_start_time_).seconds() > 1.2) {
         state_ = State::ALIGNING;
       }
       break;
