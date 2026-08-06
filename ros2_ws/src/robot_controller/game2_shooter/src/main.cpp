@@ -1,10 +1,10 @@
-#include "bingo_shooter/bingo_tactical_shooter_node.hpp"
+#include "game2_shooter/game2_tactical_shooter_node.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<robot_controller::BingoTacticalShooterNode>();
+  auto node = std::make_shared<robot_controller::Game2TacticalShooterNode>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

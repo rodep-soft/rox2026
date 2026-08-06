@@ -1,5 +1,5 @@
-#ifndef BINGO_SHOOTER__BINGO_TACTICAL_SHOOTER_NODE_HPP_
-#define BINGO_SHOOTER__BINGO_TACTICAL_SHOOTER_NODE_HPP_
+#ifndef GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_
+#define GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_
 
 #include <array>
 #include <chrono>
@@ -41,10 +41,10 @@ enum class State
   COMPLETED
 };
 
-class BingoTacticalShooterNode : public rclcpp::Node
+class Game2TacticalShooterNode : public rclcpp::Node
 {
 public:
-  explicit BingoTacticalShooterNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit Game2TacticalShooterNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
   void update_panel_states();
@@ -89,4 +89,4 @@ private:
 
 }  // namespace robot_controller
 
-#endif  // BINGO_SHOOTER__BINGO_TACTICAL_SHOOTER_NODE_HPP_
+#endif  // GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_

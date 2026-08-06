@@ -1,12 +1,12 @@
-#include "bingo_shooter/bingo_tactical_shooter_node.hpp"
+#include "game2_shooter/game2_tactical_shooter_node.hpp"
 
 #include <cmath>
 
 namespace robot_controller
 {
 
-BingoTacticalShooterNode::BingoTacticalShooterNode(const rclcpp::NodeOptions & options)
-: Node("bingo_tactical_shooter_node", options)
+Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & options)
+: Node("game2_tactical_shooter_node", options)
 {
   // Declare Parameters
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
@@ -22,7 +22,7 @@ BingoTacticalShooterNode::BingoTacticalShooterNode(const rclcpp::NodeOptions & o
   rpm_top_ = this->declare_parameter<double>("rpm_top", 6000.0);
   shoot_hold_duration_ = this->declare_parameter<double>("shoot_hold_duration", 1.0);
 
-  // Initialize Panel Grid Map (3x3)
+  // Initialize Panel Grid Map (3x3 Game2 Panels)
   // Row 0: Bottom (Tag 6, 7, 8)
   panel_grid_[6] = {6, 0, 0};
   panel_grid_[7] = {7, 0, 1};
@@ -48,12 +48,12 @@ BingoTacticalShooterNode::BingoTacticalShooterNode(const rclcpp::NodeOptions & o
   // Control Loop Timer (20Hz)
   timer_ = this->create_wall_timer(
     std::chrono::milliseconds(50),
-    std::bind(&BingoTacticalShooterNode::control_loop, this));
+    std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "BingoTacticalShooterNode initialized.");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized.");
 }
 
-void BingoTacticalShooterNode::update_panel_states()
+void Game2TacticalShooterNode::update_panel_states()
 {
   const auto now = this->now();
 
@@ -76,7 +76,7 @@ void BingoTacticalShooterNode::update_panel_states()
   }
 }
 
-void BingoTacticalShooterNode::select_target_and_aim()
+void Game2TacticalShooterNode::select_target_and_aim()
 {
   target_valid_ = false;
 
@@ -106,7 +106,7 @@ void BingoTacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
+        "Game2 Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
         active_row_, left->tag_id, center->tag_id);
       break;
     }
@@ -119,7 +119,7 @@ void BingoTacticalShooterNode::select_target_and_aim()
       target_valid_ = true;
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
+        "Game2 Row %d: Aiming at boundary between Tag %d and Tag %d (Double Knockdown!)",
         active_row_, center->tag_id, right->tag_id);
       break;
     }
@@ -133,7 +133,7 @@ void BingoTacticalShooterNode::select_target_and_aim()
         target_valid_ = true;
         RCLCPP_INFO_THROTTLE(
           this->get_logger(), *this->get_clock(), 2000,
-          "Row %d: Aiming at remaining single Tag %d (Pinpoint Shot!)",
+          "Game2 Row %d: Aiming at remaining single Tag %d (Pinpoint Shot!)",
           active_row_, panel->tag_id);
         break;
       }
@@ -144,7 +144,7 @@ void BingoTacticalShooterNode::select_target_and_aim()
     }
 
     // その段が全滅していたら次の段へ進む
-    RCLCPP_INFO(this->get_logger(), "Row %d completed! Moving to next row.", active_row_);
+    RCLCPP_INFO(this->get_logger(), "Game2 Row %d completed! Moving to next row.", active_row_);
     active_row_++;
   }
 
@@ -158,7 +158,7 @@ void BingoTacticalShooterNode::select_target_and_aim()
   }
 }
 
-void BingoTacticalShooterNode::control_loop()
+void Game2TacticalShooterNode::control_loop()
 {
   update_panel_states();
   select_target_and_aim();
@@ -173,7 +173,7 @@ void BingoTacticalShooterNode::control_loop()
     state_ = State::COMPLETED;
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
-      "ALL BINGO PANELS COMPLETED! Good job!");
+      "GAME2 PANELS COMPLETED! Victory!");
     cmd_vel_pub_->publish(cmd_vel);
     return;
   }
@@ -204,7 +204,7 @@ void BingoTacticalShooterNode::control_loop()
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Target Alignment ACQUIRED! Preparing to shoot...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Preparing to shoot...");
         state_ = State::PREPARING_SHOOT;
       }
       break;
@@ -223,7 +223,7 @@ void BingoTacticalShooterNode::control_loop()
       trigger_msg.data = true; // 発射トリガーオン！
 
       if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(this->get_logger(), "Shot RELEASED! Waiting for panel result...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Shot RELEASED! Waiting for panel result...");
         state_ = State::WAITING_RESULT;
         shoot_start_time_ = this->now();
       }

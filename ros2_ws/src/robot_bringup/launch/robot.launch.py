@@ -44,10 +44,10 @@ def generate_launch_description():
         }.items(),
     )
 
-    # ビンゴパネル戦術自動射出ノード
-    bingo_shooter_launch = include(
-        "bingo_shooter.launch.py",
-        condition=IfCondition(LaunchConfiguration("enable_bingo")),
+    # Game2 パネル戦術自動射出ノード
+    game2_shooter_launch = include(
+        "game2_shooter.launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
     # 分割された5つの独立コントローラーノード＋入力を一括起動
@@ -88,9 +88,9 @@ def generate_launch_description():
                 description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
-                "enable_bingo",
+                "enable_game2",
                 default_value="false",
-                description="Enable tactical bingo panel shooter node",
+                description="Enable Game2 tactical panel shooter node",
             ),
             DeclareLaunchArgument(
                 "stereonet_version",
@@ -100,7 +100,7 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
-            bingo_shooter_launch,
+            game2_shooter_launch,
             *[include(launch_file) for launch_file in launch_files],
         ]
     )

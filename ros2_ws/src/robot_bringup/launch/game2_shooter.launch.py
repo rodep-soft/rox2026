@@ -13,10 +13,10 @@ def launch_setup(context, *args, **kwargs):
     rpm_top = float(LaunchConfiguration("rpm_top").perform(context))
     target_distance = float(LaunchConfiguration("target_distance").perform(context))
 
-    bingo_node = Node(
+    game2_node = Node(
         package="robot_controller",
-        executable="bingo_tactical_shooter_node",
-        name="bingo_tactical_shooter_node",
+        executable="game2_tactical_shooter_node",
+        name="game2_tactical_shooter_node",
         output="screen",
         parameters=[
             {
@@ -29,7 +29,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    return [bingo_node]
+    return [game2_node]
 
 
 def generate_launch_description():
@@ -43,22 +43,22 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "target_distance",
                 default_value="1.5",
-                description="Target shooting distance from panels in meters",
+                description="Target shooting distance from Game2 panels in meters",
             ),
             DeclareLaunchArgument(
                 "rpm_bottom",
                 default_value="3000.0",
-                description="Shooting belt RPM for bottom row panels",
+                description="Shooting belt RPM for Game2 bottom row panels",
             ),
             DeclareLaunchArgument(
                 "rpm_middle",
                 default_value="4500.0",
-                description="Shooting belt RPM for middle row panels",
+                description="Shooting belt RPM for Game2 middle row panels",
             ),
             DeclareLaunchArgument(
                 "rpm_top",
                 default_value="6000.0",
-                description="Shooting belt RPM for top row panels",
+                description="Shooting belt RPM for Game2 top row panels",
             ),
             OpaqueFunction(function=launch_setup),
         ]
