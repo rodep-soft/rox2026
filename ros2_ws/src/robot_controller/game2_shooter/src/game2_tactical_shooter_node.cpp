@@ -24,19 +24,28 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   rpm_top_ = this->declare_parameter<double>("rpm_top", 6000.0);
   shoot_hold_duration_ = this->declare_parameter<double>("shoot_hold_duration", 0.8);
 
-  // Initialize Panel Grid Map (3x3 Game2 Panels)
-  // Row 0: Bottom (Tag 6, 7, 8)
-  panel_grid_[6] = {6, 0, 0};
-  panel_grid_[7] = {7, 0, 1};
-  panel_grid_[8] = {8, 0, 2};
-  // Row 1: Middle (Tag 3, 4, 5)
-  panel_grid_[3] = {3, 1, 0};
-  panel_grid_[4] = {4, 1, 1};
-  panel_grid_[5] = {5, 1, 2};
-  // Row 2: Top (Tag 0, 1, 2)
-  panel_grid_[0] = {0, 2, 0};
-  panel_grid_[1] = {1, 2, 1};
-  panel_grid_[2] = {2, 2, 2};
+  // パラメータから各段のTag IDリストを取得 (Tag 0〜26対応)
+  std::vector<int64_t> default_bottom = {6, 7, 8};
+  std::vector<int64_t> default_middle = {3, 4, 5};
+  std::vector<int64_t> default_top = {0, 1, 2};
+
+  auto bottom_tags = this->declare_parameter<std::vector<int64_t>>("bottom_tags", default_bottom);
+  auto middle_tags = this->declare_parameter<std::vector<int64_t>>("middle_tags", default_middle);
+  auto top_tags = this->declare_parameter<std::vector<int64_t>>("top_tags", default_top);
+
+  // パネルマップへの登録 (0:Bottom, 1:Middle, 2:Top)
+  for (size_t col = 0; col < bottom_tags.size(); ++col) {
+    int id = static_cast<int>(bottom_tags[col]);
+    panel_grid_[id] = {id, 0, static_cast<int>(col)};
+  }
+  for (size_t col = 0; col < middle_tags.size(); ++col) {
+    int id = static_cast<int>(middle_tags[col]);
+    panel_grid_[id] = {id, 1, static_cast<int>(col)};
+  }
+  for (size_t col = 0; col < top_tags.size(); ++col) {
+    int id = static_cast<int>(top_tags[col]);
+    panel_grid_[id] = {id, 2, static_cast<int>(col)};
+  }
 
   // Initialize TF
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
@@ -57,7 +66,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Robust Dynamic Boundary & Pinpoint Strategy).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Configurable Tag IDs 0~26).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -66,7 +75,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Dynamic Target & Boundary Adaptation Enabled.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Configurable Tag ID Grid active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -113,12 +122,17 @@ void Game2TacticalShooterNode::select_target_and_aim()
       return a->col < b->col;
     });
 
-    PanelTagInfo * left = row_panels[0];
-    PanelTagInfo * center = row_panels[1];
-    PanelTagInfo * right = row_panels[2];
+    if (row_panels.empty()) {
+      active_row_++;
+      continue;
+    }
+
+    PanelTagInfo * left = row_panels.size() > 0 ? row_panels[0] : nullptr;
+    PanelTagInfo * center = row_panels.size() > 1 ? row_panels[1] : nullptr;
+    PanelTagInfo * right = row_panels.size() > 2 ? row_panels[2] : nullptr;
 
     // 🎯 ルール1 (隣接2枚狙い): 左と中央が隣り合って残っている -> L&Cの境目を狙う！
-    if (left->detected && center->detected) {
+    if (left && center && left->detected && center->detected) {
       target_x_ = (left->x + center->x) / 2.0;
       target_y_ = (left->y + center->y) / 2.0;
       target_z_ = (left->z + center->z) / 2.0;
@@ -130,7 +144,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
     }
 
     // 🎯 ルール2 (隣接2枚狙い): 中央と右が隣り合って残っている -> C&Rの境目を狙う！
-    if (center->detected && right->detected) {
+    if (center && right && center->detected && right->detected) {
       target_x_ = (center->x + right->x) / 2.0;
       target_y_ = (center->y + right->y) / 2.0;
       target_z_ = (center->z + right->z) / 2.0;
@@ -143,7 +157,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
 
     // 🎯 ルール3 (1枚孤立狙い): 倒れ残りなどで1枚だけ残っている -> その1枚の「真芯」を狙う！
     for (auto * panel : row_panels) {
-      if (panel->detected) {
+      if (panel && panel->detected) {
         target_x_ = panel->x;
         target_y_ = panel->y;
         target_z_ = panel->z;
@@ -159,7 +173,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
       break;
     }
 
-    // この段の3枚が全滅していれば次の段へ！
+    // この段のパネルが全滅していれば次の段へ！
     active_row_++;
   }
 
@@ -206,7 +220,7 @@ void Game2TacticalShooterNode::control_loop()
     
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
-      "🏆 GAME 2 ALL 9 PANELS CLEARED! PERFECT VICTORY! 🏆");
+      "🏆 GAME 2 ALL PANELS CLEARED! PERFECT VICTORY! 🏆");
       
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
