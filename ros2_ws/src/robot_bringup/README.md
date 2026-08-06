@@ -67,7 +67,28 @@ ros2 launch robot_bringup apriltag_launch.py image_topic:=/StereoNetNode/rectify
 AprilTag 検出結果は `/tf` および `/detections` トピック等に出力されます。
 Web可視化確認は、ブラウザから `http://<RDK_IP>:8000` にアクセスしてください。
 
+## webcam_launch.py (USB Webカメラ V4L2 起動)
 
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `video_device` | `/dev/video0` | V4L2 カメラのデバイスパス |
+| `image_width` | `640` | 画像幅 |
+| `image_height` | `480` | 画像高さ |
+| `pixel_format` | `YUYV` | ピクセルフォーマット (`YUYV`, `mjpeg` 等) |
+| `enable_apriltag` | `false` | Webカメラ画像からの AprilTag 検出を有効化 |
+
+起動例:
+```bash
+# Webカメラ (/dev/video0) を単体起動
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0
+
+# Webカメラ ＋ AprilTag 検出を同時に起動
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
+
+# ロボット全体起動と同時に Webカメラも起動
+ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
+```
+配信トピック: `/webcam/image_raw`, `/webcam/camera_info`
 
 ## hardware.launch.py
 

@@ -33,6 +33,16 @@ def generate_launch_description():
         }.items(),
     )
 
+    # USB Webカメラ (V4L2)
+    webcam_launch = include(
+        "webcam_launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_webcam")),
+        launch_arguments={
+            "video_device": LaunchConfiguration("video_device"),
+            "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+        }.items(),
+    )
+
     # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
@@ -51,6 +61,16 @@ def generate_launch_description():
                 description="Enable 230AI stereo vision launch (hobot_stereonet)",
             ),
             DeclareLaunchArgument(
+                "enable_webcam",
+                default_value="false",
+                description="Enable USB webcam launch (v4l2_camera)",
+            ),
+            DeclareLaunchArgument(
+                "video_device",
+                default_value="/dev/video0",
+                description="V4L2 video device path for webcam (e.g. /dev/video0)",
+            ),
+            DeclareLaunchArgument(
                 "enable_apriltag",
                 default_value="false",
                 description="Enable AprilTag detection node",
@@ -62,6 +82,7 @@ def generate_launch_description():
             ),
             hardware_launch,
             vision_launch,
+            webcam_launch,
             *[include(launch_file) for launch_file in launch_files],
         ]
     )

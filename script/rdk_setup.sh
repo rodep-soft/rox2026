@@ -83,7 +83,10 @@ sudo apt install -y \
   can-utils \
   device-tree-compiler \
   bluez bluez-tools \
+  v4l-utils \
+  ros-humble-v4l2-camera \
   ros-humble-apriltag-ros
+
 
 
 #ca~~  :https認証用

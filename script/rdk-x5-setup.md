@@ -62,5 +62,33 @@ ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=t
 * **AprilTag 認識データ**: `ros2 topic echo /tf` や `ros2 topic echo /detections` で検出した AprilTag の位置姿勢データを確認。
 * **点群確認 (RViz2)**: PC 上の RViz2 で `/StereoNetNode/stereonet_pointcloud2` または AprilTag TF 座標枠を参照。
 
+## 5. USB Webカメラ (V4L2) のセットアップ
+
+### 5.1. パッケージのインストール
+```bash
+sudo apt update
+sudo apt install -y v4l-utils ros-humble-v4l2-camera
+```
+
+### 5.2. デバイス確認
+```bash
+v4l2-ctl --list-devices
+```
+`/dev/video0` などのデバイスノードが存在することを確認します。
+
+### 5.3. ROS 2 Launch 起動
+```bash
+# USB Webカメラ単体起動 (/dev/video0)
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0
+
+# USB Webカメラ ＋ AprilTag 検出を同時に起動
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
+
+# ロボット全体起動と同時に Webカメラを起動
+ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
+```
+配信トピック: `/webcam/image_raw` (`sensor_msgs/msg/Image`), `/webcam/camera_info`
+
+
 
 
