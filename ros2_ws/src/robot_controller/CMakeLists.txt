@@ -83,7 +83,7 @@ if(BUILD_TESTING)
       mecanum_controller/src/mecanum_controller_node.cpp)
     target_include_directories(test_robot_controller PRIVATE belt_controller/include arm_position_controller/include
                                                              dribbler_controller/include mecanum_controller/include)
-    ament_target_dependencies(test_robot_controller rclcpp std_msgs geometry_msgs)
+    ament_target_dependencies(test_robot_controller rclcpp std_msgs geometry_msgs sensor_msgs)
   endif()
 endif()
 
