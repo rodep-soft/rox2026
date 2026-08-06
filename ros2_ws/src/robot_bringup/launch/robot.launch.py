@@ -23,13 +23,14 @@ def generate_launch_description():
     # hardware (ドライバ類・VESC・CAN等)
     hardware_launch = include("hardware.launch.py")
 
-    # 230AI ステレオビジョン機能（hobot_stereonet & AprilTag）
+    # 230AI ステレオビジョン機能（hobot_stereonet, AprilTag & YOLO）
     vision_launch = include(
         "vision_launch.py",
         condition=IfCondition(LaunchConfiguration("enable_vision")),
         launch_arguments={
             "stereonet_version": LaunchConfiguration("stereonet_version"),
             "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+            "enable_yolo": LaunchConfiguration("enable_yolo"),
         }.items(),
     )
 
@@ -74,6 +75,11 @@ def generate_launch_description():
                 "enable_apriltag",
                 default_value="false",
                 description="Enable AprilTag detection node",
+            ),
+            DeclareLaunchArgument(
+                "enable_yolo",
+                default_value="false",
+                description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
                 "stereonet_version",

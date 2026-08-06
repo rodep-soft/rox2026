@@ -67,6 +67,28 @@ ros2 launch robot_bringup apriltag_launch.py image_topic:=/StereoNetNode/rectify
 AprilTag 検出結果は `/tf` および `/detections` トピック等に出力されます。
 Web可視化確認は、ブラウザから `http://<RDK_IP>:8000` にアクセスしてください。
 
+## yolo_launch.py (RDK X5 BPU 加速 YOLO ボール検出)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `image_topic` | `/StereoNetNode/rectify_left_image` | YOLO 入力画像トピック |
+| `model_name` | `yolov5s` | 使用モデル (`yolov5s`, `yolov8n` 等) |
+| `score_threshold` | `0.4` | 検出確信度しきい値 (0.0 〜 1.0) |
+| `use_bpu` | `true` | RDK X5 BPU ハードウェアアクセラレータ使用 |
+
+起動例:
+```bash
+# YOLO ボール検出ノード単体起動
+ros2 launch robot_bringup yolo_launch.py
+
+# 230AI ビジョン ＋ YOLO ボール検出を起動
+ros2 launch robot_bringup vision_launch.py enable_yolo:=true
+
+# ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
+```
+
+
 ## webcam_launch.py (USB Webカメラ V4L2 起動)
 
 | 引数 | 既定値 | 説明 |

@@ -22,6 +22,12 @@ def launch_setup(context, *args, **kwargs):
     tag_family = LaunchConfiguration("tag_family").perform(context)
     tag_size = LaunchConfiguration("tag_size").perform(context)
 
+    enable_yolo = LaunchConfiguration("enable_yolo").perform(context).lower() in [
+        "true",
+        "1",
+    ]
+    model_name = LaunchConfiguration("model_name").perform(context)
+
     # 230AI MIPI ステレオカメラ専用の設定
     use_mipi_cam = "True"
     stereo_image_topic = "/image_combine_raw"
@@ -61,8 +67,9 @@ def launch_setup(context, *args, **kwargs):
 
     launch_nodes = [stereonet_launch]
 
+    bringup_share = get_package_share_directory("robot_bringup")
+
     if enable_apriltag:
-        bringup_share = get_package_share_directory("robot_bringup")
         apriltag_launch_file = os.path.join(bringup_share, "launch", "apriltag_launch.py")
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
@@ -74,8 +81,18 @@ def launch_setup(context, *args, **kwargs):
                 "tag_size": tag_size,
             }.items(),
         )
-
         launch_nodes.append(apriltag_launch)
+
+    if enable_yolo:
+        yolo_launch_file = os.path.join(bringup_share, "launch", "yolo_launch.py")
+        yolo_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(yolo_launch_file),
+            launch_arguments={
+                "image_topic": "/StereoNetNode/rectify_left_image",
+                "model_name": model_name,
+            }.items(),
+        )
+        launch_nodes.append(yolo_launch)
 
     return launch_nodes
 
@@ -127,6 +144,16 @@ def generate_launch_description():
                 "tag_size",
                 default_value="0.16",
                 description="AprilTag size in meters (e.g. 0.16)",
+            ),
+            DeclareLaunchArgument(
+                "enable_yolo",
+                default_value="false",
+                description="Enable YOLO ball detection node",
+            ),
+            DeclareLaunchArgument(
+                "model_name",
+                default_value="yolov5s",
+                description="YOLO model name (e.g. yolov5s, yolov8n)",
             ),
             OpaqueFunction(function=launch_setup),
         ]
