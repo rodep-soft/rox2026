@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -56,7 +57,7 @@ target_include_directories(
   game2_tactical_shooter_node
   PRIVATE game2_shooter/include)
 ament_target_dependencies(
-  game2_tactical_shooter_node geometry_msgs rclcpp std_msgs tf2 tf2_ros)
+  game2_tactical_shooter_node geometry_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros)
 
 install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node dribbler_controller_node
                 arm_position_controller_node game2_tactical_shooter_node DESTINATION lib/${PROJECT_NAME})
