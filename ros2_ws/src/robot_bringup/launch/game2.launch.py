@@ -32,10 +32,12 @@ def generate_launch_description():
         }.items(),
     )
 
-    # 3. Game 2 パネル自動戦術射出ノード
+    # 3. Game 2 パネル自動戦術射出ノード (低感度旋回パラメータ適用)
     game2_shooter_launch = include(
         "game2_shooter.launch.py",
         launch_arguments={
+            "kp_yaw": LaunchConfiguration("kp_yaw"),
+            "max_angular_z": LaunchConfiguration("max_angular_z"),
             "target_distance": LaunchConfiguration("target_distance"),
             "rpm_bottom": LaunchConfiguration("rpm_bottom"),
             "rpm_middle": LaunchConfiguration("rpm_middle"),
@@ -59,6 +61,16 @@ def generate_launch_description():
                 "stereonet_version",
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
+            ),
+            DeclareLaunchArgument(
+                "kp_yaw",
+                default_value="0.5",
+                description="Low-sensitivity yaw rotation P-gain for Game 2 targeting",
+            ),
+            DeclareLaunchArgument(
+                "max_angular_z",
+                default_value="0.35",
+                description="Maximum rotation velocity limit in rad/s",
             ),
             DeclareLaunchArgument(
                 "target_distance",

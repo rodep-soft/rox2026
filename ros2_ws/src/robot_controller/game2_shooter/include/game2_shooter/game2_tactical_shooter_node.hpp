@@ -72,6 +72,7 @@ private:
   double kp_yaw_;
   double kp_y_;
   double kp_dist_;
+  double max_angular_z_;
   double target_distance_;
   double yaw_tolerance_;
   double dist_tolerance_;

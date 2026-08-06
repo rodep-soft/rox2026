@@ -1,5 +1,6 @@
 #include "game2_shooter/game2_tactical_shooter_node.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace robot_controller
@@ -11,11 +12,12 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   // Declare Parameters
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
   tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag36h11:");
-  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 1.2);
-  kp_y_ = this->declare_parameter<double>("kp_y", 0.8);
-  kp_dist_ = this->declare_parameter<double>("kp_dist", 1.0);
+  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン (0.5)
+  kp_y_ = this->declare_parameter<double>("kp_y", 0.6);            // 横スライドゲイン
+  kp_dist_ = this->declare_parameter<double>("kp_dist", 0.8);        // 前後距離ゲイン
+  max_angular_z_ = this->declare_parameter<double>("max_angular_z", 0.35); // 最大旋回速度制限 (rad/s)
   target_distance_ = this->declare_parameter<double>("target_distance", 1.5); // 1.5m射程
-  yaw_tolerance_ = this->declare_parameter<double>("yaw_tolerance", 0.05);   // rad (約2.8度)
+  yaw_tolerance_ = this->declare_parameter<double>("yaw_tolerance", 0.04);   // rad (約2.3度)
   dist_tolerance_ = this->declare_parameter<double>("dist_tolerance", 0.03); // 3cm
   rpm_bottom_ = this->declare_parameter<double>("rpm_bottom", 3000.0);
   rpm_middle_ = this->declare_parameter<double>("rpm_middle", 4500.0);
@@ -55,7 +57,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (STANDBY mode).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (STANDBY mode, Low-sensitivity Yaw: %.2f).", kp_yaw_);
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -221,8 +223,8 @@ void Game2TacticalShooterNode::control_loop()
 
   if (!target_valid_) {
     state_ = State::SEARCHING;
-    // ターゲット探索中：その場低速旋回
-    cmd_vel.angular.z = 0.3;
+    // ターゲット探索中：マイルドな低速旋回 (0.2 rad/s)
+    cmd_vel.angular.z = 0.2;
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     completed_pub_->publish(completed_msg);
@@ -241,8 +243,10 @@ void Game2TacticalShooterNode::control_loop()
       cmd_vel.linear.y = -kp_y_ * y_err;
       // 前後距離補正
       cmd_vel.linear.x = kp_dist_ * dist_err;
-      // 旋回アライメント補正
-      cmd_vel.angular.z = -kp_yaw_ * y_err;
+      
+      // 旋回アライメント補正 (低感度 kp_yaw_ ＆ 最大速度制限 max_angular_z_)
+      double raw_wz = -kp_yaw_ * y_err;
+      cmd_vel.angular.z = std::clamp(raw_wz, -max_angular_z_, max_angular_z_);
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
