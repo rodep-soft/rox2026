@@ -57,7 +57,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Vertical Line Sweep Strategy).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Robust Dynamic Boundary & Pinpoint Strategy).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -65,8 +65,8 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
     state_ = State::SEARCHING;
-    active_row_ = 0; // フェーズ1 (左中ライン) からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Executing Vertical Line Sweep Strategy.");
+    active_row_ = 0; // 下段からスタート
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Dynamic Target & Boundary Adaptation Enabled.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -101,9 +101,7 @@ void Game2TacticalShooterNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // -------------------------------------------------------------
-  // フェーズ 1: 【左＆中央の縦境界ライン】を一気に上中下 3段抜き！ (active_row_: 0〜2)
-  // -------------------------------------------------------------
+  // 下段(0) -> 中段(1) -> 上段(2) の順に盤面状況を動的評価
   while (active_row_ <= 2) {
     std::vector<PanelTagInfo *> row_panels;
     for (auto & [tag_id, info] : panel_grid_) {
@@ -117,71 +115,61 @@ void Game2TacticalShooterNode::select_target_and_aim()
 
     PanelTagInfo * left = row_panels[0];
     PanelTagInfo * center = row_panels[1];
+    PanelTagInfo * right = row_panels[2];
 
-    // 左または中央が残っている場合 ➔ 左中境界を狙う！
-    if (left->detected || center->detected) {
-      if (left->detected && center->detected) {
-        target_x_ = (left->x + center->x) / 2.0;
-        target_y_ = (left->y + center->y) / 2.0;
-        target_z_ = (left->z + center->z) / 2.0;
-      } else if (left->detected) {
-        target_x_ = left->x;
-        target_y_ = left->y;
-        target_z_ = left->z;
-      } else {
-        target_x_ = center->x;
-        target_y_ = center->y;
-        target_z_ = center->z;
-      }
+    // 🎯 ルール1 (隣接2枚狙い): 左と中央が隣り合って残っている -> L&Cの境目を狙う！
+    if (left->detected && center->detected) {
+      target_x_ = (left->x + center->x) / 2.0;
+      target_y_ = (left->y + center->y) / 2.0;
+      target_z_ = (left->z + center->z) / 2.0;
       target_valid_ = true;
-
-      // 段に応じた RPM 設定
-      target_rpm_ = (active_row_ == 0) ? rpm_bottom_ : ((active_row_ == 1) ? rpm_middle_ : rpm_top_);
       RCLCPP_INFO_THROTTLE(
         this->get_logger(), *this->get_clock(), 2000,
-        "Phase 1 (Left-Center Line) Row %d: Aiming at LC Boundary (RPM: %.0f)", active_row_, target_rpm_);
+        "Row %d: Adjacent Left & Center found -> Aiming at LC Boundary!", active_row_);
       break;
     }
 
-    // この段の左中が両方撃破されていたら、次の段の上へ進む
-    active_row_++;
-  }
+    // 🎯 ルール2 (隣接2枚狙い): 中央と右が隣り合って残っている -> C&Rの境目を狙う！
+    if (center->detected && right->detected) {
+      target_x_ = (center->x + right->x) / 2.0;
+      target_y_ = (center->y + right->y) / 2.0;
+      target_z_ = (center->z + right->z) / 2.0;
+      target_valid_ = true;
+      RCLCPP_INFO_THROTTLE(
+        this->get_logger(), *this->get_clock(), 2000,
+        "Row %d: Adjacent Center & Right found -> Aiming at CR Boundary!", active_row_);
+      break;
+    }
 
-  if (target_valid_) {
-    return;
-  }
-
-  // -------------------------------------------------------------
-  // フェーズ 2: 【右パネルの縦ライン】へ旋回し、一気に上中下 3段抜き！ (active_row_: 3〜5)
-  // -------------------------------------------------------------
-  while (active_row_ >= 3 && active_row_ <= 5) {
-    int target_row = active_row_ - 3; // 0: Bottom, 1: Middle, 2: Top
-    PanelTagInfo * right = nullptr;
-
-    for (auto & [tag_id, info] : panel_grid_) {
-      if (info.row == target_row && info.col == 2) {
-        right = &info;
+    // 🎯 ルール3 (1枚孤立狙い): 倒れ残りなどで1枚だけ残っている -> その1枚の「真芯」を狙う！
+    for (auto * panel : row_panels) {
+      if (panel->detected) {
+        target_x_ = panel->x;
+        target_y_ = panel->y;
+        target_z_ = panel->z;
+        target_valid_ = true;
+        RCLCPP_INFO_THROTTLE(
+          this->get_logger(), *this->get_clock(), 2000,
+          "Row %d: Single isolated panel Tag %d -> Pinpoint Aiming at Center!", active_row_, panel->tag_id);
         break;
       }
     }
 
-    if (right && right->detected) {
-      target_x_ = right->x;
-      target_y_ = right->y;
-      target_z_ = right->z;
-      target_valid_ = true;
-
-      // 段に応じた RPM 設定
-      target_rpm_ = (target_row == 0) ? rpm_bottom_ : ((target_row == 1) ? rpm_middle_ : rpm_top_);
-      RCLCPP_INFO_THROTTLE(
-        this->get_logger(), *this->get_clock(), 2000,
-        "Phase 2 (Right Line Sweep) Row %d: Aiming at Right Tag %d (RPM: %.0f)",
-        target_row, right->tag_id, target_rpm_);
+    if (target_valid_) {
       break;
     }
 
-    // 右パネルが倒れていたら次の段へ
+    // この段の3枚が全滅していれば次の段へ！
     active_row_++;
+  }
+
+  // 段に応じた RPM 設定
+  if (active_row_ == 0) {
+    target_rpm_ = rpm_bottom_;
+  } else if (active_row_ == 1) {
+    target_rpm_ = rpm_middle_;
+  } else {
+    target_rpm_ = rpm_top_;
   }
 }
 
@@ -210,15 +198,15 @@ void Game2TacticalShooterNode::control_loop()
 
   rpm_msg.data = static_cast<float>(target_rpm_);
 
-  // 全9枚のパネル（フェーズ1 + フェーズ2）をすべて倒した場合 (Game 2 全クリア！)
-  if (active_row_ > 5) {
+  // 全9枚のパネルをすべて倒した場合 (Game 2 完全クリア！)
+  if (active_row_ > 2) {
     state_ = State::COMPLETED;
     completed_msg.data = true;
     rpm_msg.data = 0.0f;
     
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
-      "🏆 GAME 2 VERTICAL SWEEP ALL CLEARED! PERFECT VICTORY! 🏆");
+      "🏆 GAME 2 ALL 9 PANELS CLEARED! PERFECT VICTORY! 🏆");
       
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
