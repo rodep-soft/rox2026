@@ -65,7 +65,6 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
-  spring_fire_pub_ = this->create_publisher<std_msgs::msg::Bool>("/spring/fire_request", 10);
   completed_pub_ = this->create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
 
   // Control Loop Timer (20Hz)
@@ -73,7 +72,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Camera + IMU Hybrid Targeting).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Belt-only Shooting Mode).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -82,7 +81,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Camera + IMU Hybrid Targeting Active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Belt-only Shooting Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -219,7 +218,6 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
-    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -242,7 +240,6 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
-    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -254,7 +251,6 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
-    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -286,7 +282,7 @@ void Game2TacticalShooterNode::control_loop()
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED via Hybrid Camera+IMU! Preparing to shoot...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Firing belt...");
         state_ = State::PREPARING_SHOOT;
       }
       break;
@@ -302,10 +298,10 @@ void Game2TacticalShooterNode::control_loop()
 
     case State::SHOOTING: {
       cmd_vel = geometry_msgs::msg::Twist{};
-      trigger_msg.data = true; // 発射トリガーオン！ (スプリング機構 ＆ ベルト発射)
+      trigger_msg.data = true; // ベルト射出トリガーオン！
 
       if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Shot RELEASED! Waiting for panel result...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Belt Shot RELEASED! Waiting for panel result...");
         state_ = State::WAITING_RESULT;
         shoot_start_time_ = this->now();
       }
@@ -327,7 +323,6 @@ void Game2TacticalShooterNode::control_loop()
   cmd_vel_pub_->publish(cmd_vel);
   belt_rpm_pub_->publish(rpm_msg);
   shoot_trigger_pub_->publish(trigger_msg);
-  spring_fire_pub_->publish(trigger_msg);
   completed_pub_->publish(completed_msg);
 }
 
