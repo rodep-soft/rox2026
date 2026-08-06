@@ -22,6 +22,10 @@ BeltControllerNode::BeltControllerNode()
     "/belt/mode", command_qos,
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
+  belt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
+    "/belt/target_rpm", command_qos,
+    std::bind(&BeltControllerNode::belt_target_rpm_callback, this, std::placeholders::_1));
+
   underbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
     "/underbelt/target/rpm", command_qos);
   upperbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
@@ -46,7 +50,6 @@ void BeltControllerNode::declare_parameters()
 
 void BeltControllerNode::get_parameters()
 {
-  // 既存のyamlキー名との後方互換性を保つため個別に読み込んで配列に詰める
   int rpm = 0;
   get_parameter("level_1_rpm", rpm); level_rpms_[0] = rpm;
   get_parameter("level_2_rpm", rpm); level_rpms_[1] = rpm;
@@ -60,9 +63,21 @@ void BeltControllerNode::get_parameters()
 
 void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
+  use_direct_target_rpm_ = false;
   belt_mode_ = (msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_6)) ?
     static_cast<BeltMode>(msg->data) :
     BeltMode::STOP;
+}
+
+void BeltControllerNode::belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
+{
+  if (msg->data > 0.0f) {
+    use_direct_target_rpm_ = true;
+    direct_target_rpm_ = static_cast<int>(msg->data);
+  } else {
+    use_direct_target_rpm_ = false;
+    direct_target_rpm_ = 0;
+  }
 }
 
 void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -80,9 +95,13 @@ void BeltControllerNode::timer_callback()
 
 int BeltControllerNode::belt_target_rpm() const
 {
+  if (use_direct_target_rpm_) {
+    return direct_target_rpm_;
+  }
+
   const auto level = static_cast<uint8_t>(belt_mode_);
   if (level == 0 || level > kNumLevels) {
     return 0;
   }
-  return level_rpms_[level - 1];  // LEVEL_1=インデックス0, ..., LEVEL_6=インデックス5
+  return level_rpms_[level - 1];
 }

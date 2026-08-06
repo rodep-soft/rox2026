@@ -65,6 +65,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
+  spring_fire_pub_ = this->create_publisher<std_msgs::msg::Bool>("/spring/fire_request", 10);
   completed_pub_ = this->create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
 
   // Control Loop Timer (20Hz)
@@ -218,6 +219,7 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
+    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -240,6 +242,7 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
+    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -250,6 +253,8 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel.angular.z = 0.2;
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
+    shoot_trigger_pub_->publish(trigger_msg);
+    spring_fire_pub_->publish(trigger_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -297,7 +302,7 @@ void Game2TacticalShooterNode::control_loop()
 
     case State::SHOOTING: {
       cmd_vel = geometry_msgs::msg::Twist{};
-      trigger_msg.data = true; // 発射トリガーオン！
+      trigger_msg.data = true; // 発射トリガーオン！ (スプリング機構 ＆ ベルト発射)
 
       if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
         RCLCPP_INFO(this->get_logger(), "Game2 Shot RELEASED! Waiting for panel result...");
@@ -322,6 +327,7 @@ void Game2TacticalShooterNode::control_loop()
   cmd_vel_pub_->publish(cmd_vel);
   belt_rpm_pub_->publish(rpm_msg);
   shoot_trigger_pub_->publish(trigger_msg);
+  spring_fire_pub_->publish(trigger_msg);
   completed_pub_->publish(completed_msg);
 }
 

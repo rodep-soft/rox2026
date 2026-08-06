@@ -66,6 +66,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
