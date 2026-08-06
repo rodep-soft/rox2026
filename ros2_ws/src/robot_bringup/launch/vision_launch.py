@@ -76,7 +76,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments={
                 "node_name": "apriltag_csi_node",
                 "image_topic": "/StereoNetNode/rectify_left_image",
-                "camera_info_topic": "/StereoNetNode/rectify_left_camera_info",
+                "camera_info_topic": "/StereoNetNode/stereonet_depth/camera_info",
                 "tag_family": tag_family,
                 "tag_size": tag_size,
             }.items(),
