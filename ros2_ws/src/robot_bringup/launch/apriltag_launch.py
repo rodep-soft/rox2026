@@ -25,6 +25,14 @@ def launch_setup(context, *args, **kwargs):
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
 
+    # image_transport::CameraSubscriber は画像トピックの親名前空間から
+    # camera_info トピックを自動導出する。
+    # 例: /StereoNetNode/rectify_left_image → /StereoNetNode/camera_info
+    # しかし実際のパブリッシャーは /StereoNetNode/rectify_left_image/camera_info にいる。
+    # フルパス名でリマップして正しいトピックに接続する。
+    image_ns = image_topic.rsplit("/", 1)[0] if "/" in image_topic else ""
+    derived_camera_info = image_ns + "/camera_info" if image_ns else "camera_info"
+
     apriltag_node = Node(
         package=pkg_name,
         executable="apriltag_node",
@@ -34,6 +42,7 @@ def launch_setup(context, *args, **kwargs):
             ("image_rect", image_topic),
             ("camera_info", camera_info_topic),
             ("image", image_topic),
+            (derived_camera_info, camera_info_topic),
         ],
         parameters=[node_params],
     )
