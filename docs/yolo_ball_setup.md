@@ -29,19 +29,37 @@
 
 ---
 
-## STEP 3. Google Colab での無料高速学習 (約 5 分)
+## STEP 3. ローカル PC または Google Colab での学習
 
-Google Colab（無料 GPU）でモデルを学習させます。
+### A. ローカル PC で学習する場合 (Mac / Linux / Windows)
+
+ローカルのターミナルでそのまま学習を実行できます。Mac (Apple Silicon) の場合は GPU (`device=mps`) 加速で高速に完了します。
+
+```bash
+# 1. ultralytics パッケージのインストール
+pip install ultralytics
+
+# 2. ローカル環境での学習実行 (Mac GPU指定: device=mps)
+yolo detect train data=/path/to/dataset/data.yaml model=yolov8n.pt epochs=50 imgsz=640 device=mps
+
+# 3. 完成したモデルを ONNX 形式へ変換
+yolo export model=runs/detect/train/weights/best.pt format=onnx
+```
+
+---
+
+### B. Google Colab (クラウド) で学習する場合 (約 5 分)
 
 ```python
-# 1. ultralytics / YOLOv8 のインストール
+# 1. ultralytics のインストール
 !pip install ultralytics
 
-# 2. Roboflow からデータセットのダウンロード (取得したコードを貼り付け)
-# !curl -L "https://universe.roboflow.com/..."
-
-# 3. 学習の実行 (色変化に強いナノモデル YOLOv8n / YOLOv5s)
+# 2. 学習の実行
 !yolo detect train data=data.yaml model=yolov8n.pt epochs=50 imgsz=640
+
+# 3. ONNX 形式へのエクスポート
+!yolo export model=runs/detect/train/weights/best.pt format=onnx
+```
 
 # 4. ONNX 形式へのエクスポート
 !yolo export model=runs/detect/train/weights/best.pt format=onnx
