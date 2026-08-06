@@ -16,9 +16,10 @@ def launch_setup(context, *args, **kwargs):
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
 
     node_params = {
+        "image_transport": "raw",
         "family": tag_family,
         "size": tag_size,
-        "max_hamming": 0,
+        "max_hamming": 1,
         "publish_tf": True,
     }
     if camera_frame_id:
