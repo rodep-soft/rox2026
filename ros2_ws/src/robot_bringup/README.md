@@ -104,10 +104,19 @@ ros2 launch robot_bringup game2_shooter.launch.py
 # ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ Game 2 自動戦術ノードを一括起動
 ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_game2:=true
 ```
-戦術動作:
-- **2枚以上残っている段**: 隣り合う 2枚の境目（AprilTag の中点）を狙って強力射出（2枚抜き）
-- **1枚残っている段**: 残った 1枚の AprilTag 真芯をピンポイント射出（完全抜き）
-- **Tag 消失検知**: 射出後に Tag が画面から消えたら「パネル倒壊成功」と判別し自動で次の段へ移行
+## game2.launch.py (Game 2 試合本番用一括起動 Launch)
+
+Game 2 試合に必要なモジュールのみを最軽量でピンポイント起動します（正面 CSI カメラ ＋ AprilTag 検出 ＋ Game 2 戦術ノード ＋ 全コントローラー）。
+
+起動例:
+```bash
+# Game 2 試合本番用ワンコマンド起動
+ros2 launch robot_bringup game2.launch.py
+
+# パラメータ調整して起動 (例: 射程距離 1.8m、ベルト回転数変更)
+ros2 launch robot_bringup game2.launch.py target_distance:=1.8 rpm_bottom:=3200.0 rpm_top:=6200.0
+```
+
 
 
 
