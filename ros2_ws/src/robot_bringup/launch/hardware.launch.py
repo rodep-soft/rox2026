@@ -17,16 +17,17 @@ def generate_launch_description():
         )
     )
 
-    # libbno055_linux IMU ドライバ (RDK X5 /dev/i2c-5 バス対応)
-    imu_launch = IncludeLaunchDescription(
+    # libbno055_linux 高性能 IMU ドライバ ＋ 角度補正 (Heading PID Controller)
+    bno055_share = get_package_share_directory("libbno055_linux")
+    
+    imu_heading_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("libbno055_linux"),
-                "launch",
-                "bno055_launch.py",
-            )
+            os.path.join(bno055_share, "launch", "heading_control_launch.py")
         ),
         condition=IfCondition(LaunchConfiguration("enable_imu")),
+        launch_arguments={
+            "use_composition": "true",
+        }.items(),
     )
 
     return LaunchDescription(
@@ -34,9 +35,9 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "enable_imu",
                 default_value="true",
-                description="Enable BNO055 IMU driver node (libbno055_linux)",
+                description="Enable BNO055 IMU & Heading PID Controller (libbno055_linux)",
             ),
             hardware_container_launch,
-            imu_launch,
+            imu_heading_launch,
         ]
     )
