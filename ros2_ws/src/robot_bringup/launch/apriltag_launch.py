@@ -55,7 +55,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "camera_info_topic",
-                default_value="/StereoNetNode/rectify_left_camera_info",
+                default_value="/image_combine_raw/left/camera_info",
                 description="Input camera info topic for AprilTag detection",
             ),
             DeclareLaunchArgument(
