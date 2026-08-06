@@ -33,6 +33,7 @@ struct PanelTagInfo
 
 enum class State
 {
+  STANDBY,
   SEARCHING,
   ALIGNING,
   PREPARING_SHOOT,
@@ -50,12 +51,15 @@ private:
   void update_panel_states();
   void select_target_and_aim();
   void control_loop();
+  void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-  // Publishers & Timers
+  // Subscriptions & Publishers & Timers
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
+
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
@@ -77,7 +81,8 @@ private:
   double shoot_hold_duration_;
 
   // State Variables
-  State state_{State::SEARCHING};
+  State state_{State::STANDBY};
+  bool is_enabled_{false};
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top
   double target_x_{0.0};

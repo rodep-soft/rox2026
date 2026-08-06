@@ -40,7 +40,11 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-  // Publishers
+  // Subscriptions & Publishers
+  start_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+    "/game2/start", 10,
+    std::bind(&Game2TacticalShooterNode::start_callback, this, std::placeholders::_1));
+
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
@@ -51,7 +55,21 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized.");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (STANDBY mode).");
+}
+
+void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data && !is_enabled_) {
+    is_enabled_ = true;
+    state_ = State::SEARCHING;
+    active_row_ = 0; // 下段からリセットしてスタート
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START Command Received! Entering AUTO mode.");
+  } else if (!msg->data && is_enabled_) {
+    is_enabled_ = false;
+    state_ = State::STANDBY;
+    RCLCPP_INFO(this->get_logger(), "⏹️ Game 2 STOP Command Received! Entering STANDBY mode.");
+  }
 }
 
 void Game2TacticalShooterNode::update_panel_states()
@@ -161,17 +179,28 @@ void Game2TacticalShooterNode::select_target_and_aim()
 
 void Game2TacticalShooterNode::control_loop()
 {
-  update_panel_states();
-  select_target_and_aim();
-
   geometry_msgs::msg::Twist cmd_vel;
   std_msgs::msg::Float32 rpm_msg;
   std_msgs::msg::Bool trigger_msg;
   std_msgs::msg::Bool completed_msg;
-  
-  rpm_msg.data = static_cast<float>(target_rpm_);
+
   trigger_msg.data = false;
   completed_msg.data = false;
+
+  // ボタンが押されていない (STANDBY) の時は制御を停止
+  if (!is_enabled_ || state_ == State::STANDBY) {
+    rpm_msg.data = 0.0f;
+    cmd_vel_pub_->publish(cmd_vel);
+    belt_rpm_pub_->publish(rpm_msg);
+    shoot_trigger_pub_->publish(trigger_msg);
+    completed_pub_->publish(completed_msg);
+    return;
+  }
+
+  update_panel_states();
+  select_target_and_aim();
+
+  rpm_msg.data = static_cast<float>(target_rpm_);
 
   // 全9枚のパネルをすべて倒した場合 (Game 2 完走！)
   if (active_row_ > 2) {

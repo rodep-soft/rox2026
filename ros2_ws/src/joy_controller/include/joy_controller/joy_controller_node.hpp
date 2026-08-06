@@ -78,6 +78,7 @@ private:
   int home_button_{13};
   int circle_button_{2};
   int dribble_enable_button_{5};
+  int game2_start_button_{9};
   int left_trigger_axis_{3};
   int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
@@ -90,6 +91,7 @@ private:
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
   bool dribble_enabled_{false};
+  bool game2_active_{false};
   bool is_drive_reversed_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
@@ -108,6 +110,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
 
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
