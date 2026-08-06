@@ -1,3 +1,8 @@
+#ifndef VESC_DRIVER__VESC_PROTOCOL_HPP_
+#define VESC_DRIVER__VESC_PROTOCOL_HPP_
+
+#pragma once
+
 #include <array>
 #include <cstdint>
 #include "can_msgs/msg/frame.hpp"
@@ -19,7 +24,7 @@ struct Status1
 /// @param id モータID
 /// @param erpm 実際のrpm * 極数
 /// @return canFrame
-can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
+inline can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
 {
   can_msgs::msg::Frame frame{};
   frame.id = (SET_RPM_ID << 8) | id;
@@ -37,7 +42,7 @@ can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
 /// @param frame
 /// @param status
 /// @return true:デコードした false:デコードしていない
-bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status)
+inline bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status)
 {
   if (!frame.is_extended || frame.is_rtr || frame.is_error || frame.dlc != 8 ||
     (frame.id >> 8) != STATUS_1_ID)
@@ -59,3 +64,6 @@ bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status)
   return true;
 }
 } // namespace vesc_driver::protocol
+
+#endif  // VESC_DRIVER__VESC_PROTOCOL_HPP_
+

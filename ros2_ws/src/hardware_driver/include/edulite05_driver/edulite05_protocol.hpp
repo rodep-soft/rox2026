@@ -1,4 +1,7 @@
-//#pragma once
+#ifndef EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
+#define EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
+
+#pragma once
 
 #include <stdint.h>
 #include <array>
@@ -98,3 +101,6 @@ private:
     //{"zero_sta", 0x7029, 1.0f},  //
   }};
 };
+
+#endif  // EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
+
