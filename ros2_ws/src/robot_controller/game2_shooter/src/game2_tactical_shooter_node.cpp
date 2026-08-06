@@ -74,7 +74,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Dribble Auto Loading & Belt Shooting Mode).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (DRIBBLE -> OPEN -> FEED Sequential Loading Mode).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -83,7 +83,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Dribble Auto-Loading Active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! DRIBBLE -> OPEN -> FEED Auto-Loading Sequence Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -260,9 +260,9 @@ void Game2TacticalShooterNode::control_loop()
 
   if (!target_valid_) {
     state_ = State::SEARCHING;
-    // ターゲット探索中：マイルドな低速旋回 (0.2 rad/s) ＆ ドリブラーボール保持
+    // ターゲット探索中：マイルドな低速旋回 (0.2 rad/s) ＆ DRIBBLE位置でボール保持
     cmd_vel.angular.z = 0.2;
-    arm_pos_msg.data = 0; // DRIBBLEキャッチ位置
+    arm_pos_msg.data = 0; // 0: DRIBBLE
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
@@ -284,7 +284,7 @@ void Game2TacticalShooterNode::control_loop()
       cmd_vel.linear.y = 0.0;
       // 前後距離補正
       cmd_vel.linear.x = kp_dist_ * dist_err;
-      arm_pos_msg.data = 0; // DRIBBLEキャッチ位置
+      arm_pos_msg.data = 0; // STEP 1: DRIBBLE位置でボールを回転保持しながらアライメント！
       
       // カメラ角度誤差 (P項) ＋ IMUジャイロアクティブブレーキ (D項) によるハイブリッド旋回制御
       double camera_p_term = -kp_yaw_ * y_err;
@@ -300,28 +300,34 @@ void Game2TacticalShooterNode::control_loop()
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Preparing auto-loading feed...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! STEP 2: Transitioning to OPEN position...");
         state_ = State::PREPARING_SHOOT;
+        shoot_start_time_ = this->now();
       }
       break;
     }
 
     case State::PREPARING_SHOOT: {
-      // 照準完了：機体完全静止 ＆ ベルト高速回転到達待ち
+      // STEP 2: アームを一度パカッと開く (1: OPEN) でボールの拘束を解放
       cmd_vel = geometry_msgs::msg::Twist{};
-      arm_pos_msg.data = 0;
-      state_ = State::SHOOTING;
-      shoot_start_time_ = this->now();
+      arm_pos_msg.data = 1; // 1: OPEN
+
+      if ((this->now() - shoot_start_time_).seconds() > 0.3) {
+        RCLCPP_INFO(this->get_logger(), "STEP 3: Transitioning to FEED position for belt loading...");
+        state_ = State::SHOOTING;
+        shoot_start_time_ = this->now();
+      }
       break;
     }
 
     case State::SHOOTING: {
+      // STEP 3: アームを FEED (2: FEED) へ倒し込み、高速ベルトへボールを自動押し込み装填＆射出！
       cmd_vel = geometry_msgs::msg::Twist{};
       trigger_msg.data = true; // ベルト射出トリガーオン！
-      arm_pos_msg.data = 2;    // FEED位置！ (アームを傾けてボールをベルトへ自動噛み込み装填)
+      arm_pos_msg.data = 2;    // 2: FEED
 
       if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Ball Fed & Fired! Resetting arm to DRIBBLE position...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Ball Fired! Resetting arm to DRIBBLE position for next ball...");
         state_ = State::WAITING_RESULT;
         shoot_start_time_ = this->now();
       }
@@ -330,7 +336,7 @@ void Game2TacticalShooterNode::control_loop()
 
     case State::WAITING_RESULT: {
       cmd_vel = geometry_msgs::msg::Twist{};
-      arm_pos_msg.data = 0; // 次のボール受け取り用にアームをDRIBBLE位置へリセット
+      arm_pos_msg.data = 0; // 次のボール受け取り用にアームを 0: DRIBBLE 位置へリセット
       if ((this->now() - shoot_start_time_).seconds() > 1.2) {
         state_ = State::ALIGNING;
       }
