@@ -20,8 +20,13 @@ def generate_launch_description():
             **kwargs,
         )
 
-    # hardware (ドライバ類・VESC・CAN等)
-    hardware_launch = include("hardware.launch.py")
+    # hardware (ドライバ類・VESC・CAN・BNO055 IMU等)
+    hardware_launch = include(
+        "hardware.launch.py",
+        launch_arguments={
+            "enable_imu": LaunchConfiguration("enable_imu"),
+        }.items(),
+    )
 
     # 230AI ステレオビジョン機能（hobot_stereonet, AprilTag & YOLO）
     vision_launch = include(
@@ -62,6 +67,11 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "enable_imu",
+                default_value="true",
+                description="Enable BNO055 IMU & Heading PID Controller",
+            ),
             DeclareLaunchArgument(
                 "enable_vision",
                 default_value="false",

@@ -19,8 +19,13 @@ def generate_launch_description():
             **kwargs,
         )
 
-    # 1. ハードウェアドライバ類 (VESC, CAN, STM32等)
-    hardware_launch = include("hardware.launch.py")
+    # 1. ハードウェアドライバ類 (VESC, CAN, STM32, BNO055 IMU等)
+    hardware_launch = include(
+        "hardware.launch.py",
+        launch_arguments={
+            "enable_imu": LaunchConfiguration("enable_imu"),
+        }.items(),
+    )
 
     # 2. 正面 CSI ステレオカメラ ＋ AprilTag 検出器ノード
     vision_launch = include(
@@ -57,6 +62,11 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "enable_imu",
+                default_value="true",
+                description="Enable BNO055 IMU & Heading PID Controller",
+            ),
             DeclareLaunchArgument(
                 "stereonet_version",
                 default_value="v2.4_int16",
