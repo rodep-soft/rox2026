@@ -66,11 +66,13 @@ private:
   double linear_x_scale_{1.0};
   double linear_y_scale_{1.0};
   double angular_z_scale_{1.0};
+  double game2_angular_scale_ratio_{0.4}; // Game2モード時の手動旋回感度倍率 (0.4倍)
   double linear_x_limit_{2.0};
   double linear_y_limit_{2.0};
   double angular_z_limit_{2.0};
   double axis_deadzone_{0.05};
   double axis_on_threshold_{0.7};
+  bool enable_game2_mode_{false}; // LaunchファイルまたはキーでGame2手動低感度を有効化
 
   int spring_fire_enable_button_{4};
   int spring_fire_button_{2};

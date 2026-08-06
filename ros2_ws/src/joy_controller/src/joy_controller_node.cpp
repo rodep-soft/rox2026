@@ -61,6 +61,8 @@ void JoyControllerNode::declare_parameters()
   declare_parameter<double>("linear_x_scale", 1.0);
   declare_parameter<double>("linear_y_scale", 1.0);
   declare_parameter<double>("angular_z_scale", 1.0);
+  declare_parameter<double>("game2_angular_scale_ratio", 0.4); // Game2用 手動旋回感度比率 (0.4倍)
+  declare_parameter<bool>("enable_game2_mode", true);          // Game2モード感度有効化
   declare_parameter<double>("linear_x_limit", 2.0);
   declare_parameter<double>("linear_y_limit", 2.0);
   declare_parameter<double>("angular_z_limit", 2.0);
@@ -95,6 +97,8 @@ void JoyControllerNode::get_parameters()
   get_parameter("linear_x_scale", linear_x_scale_);
   get_parameter("linear_y_scale", linear_y_scale_);
   get_parameter("angular_z_scale", angular_z_scale_);
+  get_parameter("game2_angular_scale_ratio", game2_angular_scale_ratio_);
+  get_parameter("enable_game2_mode", enable_game2_mode_);
   get_parameter("linear_x_limit", linear_x_limit_);
   get_parameter("linear_y_limit", linear_y_limit_);
   get_parameter("angular_z_limit", angular_z_limit_);
@@ -243,6 +247,9 @@ void JoyControllerNode::loop_callback()
         raw_vy = -raw_vy;
       }
 
+      // Game2有効時は手動旋回感度をマイルド化 (0.4倍)
+      double current_angular_scale = enable_game2_mode_ ? (angular_z_scale_ * game2_angular_scale_ratio_) : angular_z_scale_;
+
       cmd_vel_.linear.x = apply_axis_limit(
         apply_axis_deadzone(raw_vx) * linear_x_scale_,
         linear_x_limit_);
@@ -252,7 +259,7 @@ void JoyControllerNode::loop_callback()
         linear_y_limit_);
 
       cmd_vel_.angular.z = apply_axis_limit(
-        apply_axis_deadzone(raw_wz) * angular_z_scale_,
+        apply_axis_deadzone(raw_wz) * current_angular_scale,
         angular_z_limit_);
 
       mecanum_cmd_vel_pub_->publish(cmd_vel_);
