@@ -1,3 +1,0 @@
-[submodule "ros2_ws/src/libbno055-linux"]
-	path = ros2_ws/src/libbno055-linux
-	url = https://github.com/lazytatzv/libbno055-linux.git
