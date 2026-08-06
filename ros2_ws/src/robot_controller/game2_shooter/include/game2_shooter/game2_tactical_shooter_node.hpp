@@ -10,6 +10,7 @@
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "tf2/exceptions.h"
@@ -52,6 +53,7 @@ private:
   void select_target_and_aim();
   void control_loop();
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -59,6 +61,7 @@ private:
 
   // Subscriptions & Publishers & Timers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
@@ -70,6 +73,7 @@ private:
   std::string base_frame_;
   std::string tag_prefix_;
   double kp_yaw_;
+  double kd_yaw_;
   double kp_y_;
   double kp_dist_;
   double max_angular_z_;
@@ -92,6 +96,11 @@ private:
   double target_rpm_{0.0};
   bool target_valid_{false};
   rclcpp::Time shoot_start_time_;
+
+  // IMU Feedback State
+  bool imu_received_{false};
+  double current_gyro_z_{0.0}; // rad/s
+  rclcpp::Time last_imu_time_;
 };
 
 }  // namespace robot_controller

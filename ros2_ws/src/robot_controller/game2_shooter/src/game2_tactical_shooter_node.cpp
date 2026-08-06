@@ -12,7 +12,8 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   // Declare Parameters
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
   tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag16h5:");
-  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン
+  kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回Pゲイン
+  kd_yaw_ = this->declare_parameter<double>("kd_yaw", 0.05);         // IMUジャイロDゲイン (アクティブブレーキ)
   kp_y_ = this->declare_parameter<double>("kp_y", 0.0);            // 横スライドはオフ (旋回アライメント優先)
   kp_dist_ = this->declare_parameter<double>("kp_dist", 0.8);        // 前後距離ゲイン
   max_angular_z_ = this->declare_parameter<double>("max_angular_z", 0.35); // 最大旋回速度制限 (rad/s)
@@ -57,6 +58,10 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     "/game2/start", 10,
     std::bind(&Game2TacticalShooterNode::start_callback, this, std::placeholders::_1));
 
+  imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+    "/imu/data", rclcpp::SensorDataQoS(),
+    std::bind(&Game2TacticalShooterNode::imu_callback, this, std::placeholders::_1));
+
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
@@ -67,7 +72,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Pure Yaw Rotation Alignment Mode).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Camera + IMU Hybrid Targeting).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -76,12 +81,19 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Pure Yaw Rotation Alignment Active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Camera + IMU Hybrid Targeting Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
     RCLCPP_INFO(this->get_logger(), "⏹️ Game 2 STOP! Entering STANDBY mode.");
   }
+}
+
+void Game2TacticalShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+{
+  imu_received_ = true;
+  last_imu_time_ = this->now();
+  current_gyro_z_ = msg->angular_velocity.z;
 }
 
 void Game2TacticalShooterNode::update_panel_states()
@@ -255,13 +267,21 @@ void Game2TacticalShooterNode::control_loop()
       // 前後距離補正
       cmd_vel.linear.x = kp_dist_ * dist_err;
       
-      // 旋回アライメント補正 (低感度 kp_yaw_ ＆ 最大速度制限 max_angular_z_)
-      double raw_wz = -kp_yaw_ * y_err;
+      // カメラ角度誤差 (P項) ＋ IMUジャイロアクティブブレーキ (D項) によるハイブリッド旋回制御
+      double camera_p_term = -kp_yaw_ * y_err;
+      double imu_d_term = 0.0;
+
+      // IMU受信中（過去1秒以内に受信あり）なら、ジャイロ反力をダンパーブレーキとして利用！
+      if (imu_received_ && (this->now() - last_imu_time_).seconds() < 1.0) {
+        imu_d_term = -kd_yaw_ * current_gyro_z_;
+      }
+
+      double raw_wz = camera_p_term + imu_d_term;
       cmd_vel.angular.z = std::clamp(raw_wz, -max_angular_z_, max_angular_z_);
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED via Yaw Rotation! Preparing to shoot...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED via Hybrid Camera+IMU! Preparing to shoot...");
         state_ = State::PREPARING_SHOOT;
       }
       break;
