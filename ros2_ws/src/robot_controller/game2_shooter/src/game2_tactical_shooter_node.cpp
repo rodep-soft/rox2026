@@ -65,6 +65,8 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
   belt_rpm_pub_ = this->create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = this->create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
+  dribble_enabled_pub_ = this->create_publisher<std_msgs::msg::Bool>("/dribble/enabled", 10);
+  arm_position_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/dribble/position_mode", 10);
   completed_pub_ = this->create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
 
   // Control Loop Timer (20Hz)
@@ -72,7 +74,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Belt-only Shooting Mode).");
+  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (Dribble Auto Loading & Belt Shooting Mode).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -81,7 +83,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Belt-only Shooting Active.");
+    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! Dribble Auto-Loading Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -207,9 +209,13 @@ void Game2TacticalShooterNode::control_loop()
   geometry_msgs::msg::Twist cmd_vel;
   std_msgs::msg::Float32 rpm_msg;
   std_msgs::msg::Bool trigger_msg;
+  std_msgs::msg::Bool dribble_msg;
+  std_msgs::msg::UInt8 arm_pos_msg;
   std_msgs::msg::Bool completed_msg;
 
   trigger_msg.data = false;
+  dribble_msg.data = false;
+  arm_pos_msg.data = 0; // 0: DRIBBLE
   completed_msg.data = false;
 
   // ボタンが押されていない (STANDBY) の時は制御を停止
@@ -218,9 +224,14 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
+    dribble_enabled_pub_->publish(dribble_msg);
+    arm_position_pub_->publish(arm_pos_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
+
+  // Game 2 実行中はドリブラー常時ON (手動で置かれたボールを自動保持・引き込み)
+  dribble_msg.data = true;
 
   update_panel_states();
   select_target_and_aim();
@@ -232,6 +243,7 @@ void Game2TacticalShooterNode::control_loop()
     state_ = State::COMPLETED;
     completed_msg.data = true;
     rpm_msg.data = 0.0f;
+    dribble_msg.data = false;
     
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
@@ -240,17 +252,22 @@ void Game2TacticalShooterNode::control_loop()
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
+    dribble_enabled_pub_->publish(dribble_msg);
+    arm_position_pub_->publish(arm_pos_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
 
   if (!target_valid_) {
     state_ = State::SEARCHING;
-    // ターゲット探索中：マイルドな低速旋回 (0.2 rad/s)
+    // ターゲット探索中：マイルドな低速旋回 (0.2 rad/s) ＆ ドリブラーボール保持
     cmd_vel.angular.z = 0.2;
+    arm_pos_msg.data = 0; // DRIBBLEキャッチ位置
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
+    dribble_enabled_pub_->publish(dribble_msg);
+    arm_position_pub_->publish(arm_pos_msg);
     completed_pub_->publish(completed_msg);
     return;
   }
@@ -267,6 +284,7 @@ void Game2TacticalShooterNode::control_loop()
       cmd_vel.linear.y = 0.0;
       // 前後距離補正
       cmd_vel.linear.x = kp_dist_ * dist_err;
+      arm_pos_msg.data = 0; // DRIBBLEキャッチ位置
       
       // カメラ角度誤差 (P項) ＋ IMUジャイロアクティブブレーキ (D項) によるハイブリッド旋回制御
       double camera_p_term = -kp_yaw_ * y_err;
@@ -282,15 +300,16 @@ void Game2TacticalShooterNode::control_loop()
 
       // 照準完了チェック (誤差判定)
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Firing belt...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! Preparing auto-loading feed...");
         state_ = State::PREPARING_SHOOT;
       }
       break;
     }
 
     case State::PREPARING_SHOOT: {
-      // 照準完了：機体完全静止 ＆ ベルト加圧
+      // 照準完了：機体完全静止 ＆ ベルト高速回転到達待ち
       cmd_vel = geometry_msgs::msg::Twist{};
+      arm_pos_msg.data = 0;
       state_ = State::SHOOTING;
       shoot_start_time_ = this->now();
       break;
@@ -299,9 +318,10 @@ void Game2TacticalShooterNode::control_loop()
     case State::SHOOTING: {
       cmd_vel = geometry_msgs::msg::Twist{};
       trigger_msg.data = true; // ベルト射出トリガーオン！
+      arm_pos_msg.data = 2;    // FEED位置！ (アームを傾けてボールをベルトへ自動噛み込み装填)
 
       if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Belt Shot RELEASED! Waiting for panel result...");
+        RCLCPP_INFO(this->get_logger(), "Game2 Ball Fed & Fired! Resetting arm to DRIBBLE position...");
         state_ = State::WAITING_RESULT;
         shoot_start_time_ = this->now();
       }
@@ -310,6 +330,7 @@ void Game2TacticalShooterNode::control_loop()
 
     case State::WAITING_RESULT: {
       cmd_vel = geometry_msgs::msg::Twist{};
+      arm_pos_msg.data = 0; // 次のボール受け取り用にアームをDRIBBLE位置へリセット
       if ((this->now() - shoot_start_time_).seconds() > 1.2) {
         state_ = State::ALIGNING;
       }
@@ -323,6 +344,8 @@ void Game2TacticalShooterNode::control_loop()
   cmd_vel_pub_->publish(cmd_vel);
   belt_rpm_pub_->publish(rpm_msg);
   shoot_trigger_pub_->publish(trigger_msg);
+  dribble_enabled_pub_->publish(dribble_msg);
+  arm_position_pub_->publish(arm_pos_msg);
   completed_pub_->publish(completed_msg);
 }
 

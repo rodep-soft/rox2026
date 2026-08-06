@@ -13,6 +13,7 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 #include "tf2/exceptions.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
@@ -66,6 +67,8 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
