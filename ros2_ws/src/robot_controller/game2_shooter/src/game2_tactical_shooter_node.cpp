@@ -11,7 +11,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
 {
   // Declare Parameters
   base_frame_ = this->declare_parameter<std::string>("base_frame", "base_link");
-  tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag36h11:");
+  tag_prefix_ = this->declare_parameter<std::string>("tag_prefix", "tag16h5:");
   kp_yaw_ = this->declare_parameter<double>("kp_yaw", 0.5);          // Game2用 低感度旋回ゲイン
   kp_y_ = this->declare_parameter<double>("kp_y", 0.6);            // 横スライドゲイン
   kp_dist_ = this->declare_parameter<double>("kp_dist", 0.8);        // 前後距離ゲイン

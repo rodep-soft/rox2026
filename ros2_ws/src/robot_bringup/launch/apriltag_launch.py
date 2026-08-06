@@ -60,13 +60,13 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "tag_family",
-                default_value="tag36h11",
-                description="AprilTag family (e.g. tag36h11, tag25h9, tag16h5)",
+                default_value="tag16h5",
+                description="AprilTag family (e.g. tag16h5, tag36h11, tag25h9)",
             ),
             DeclareLaunchArgument(
                 "tag_size",
-                default_value="0.16",
-                description="AprilTag size in meters (e.g. 0.16 for 16cm tag)",
+                default_value="0.18",
+                description="AprilTag size in meters (0.18 for 18cm tag)",
             ),
             DeclareLaunchArgument(
                 "pkg_name",
