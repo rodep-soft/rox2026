@@ -51,8 +51,7 @@ flowchart LR
   joy_controller -->|"/dribble/enabled"| dribbler
   joy_controller -->|"/dribble/position_mode"| arm
   joy_controller -->|"/spring/fire_request"| spring
-  joy_controller -->|"/shot_cycle/request"| belt
-  belt -->|"/shot_cycle/start"| arm
+  joy_controller -->|"/shot_cycle/request"| arm
 
   belt -->|"/underbelt/target/rpm<br/>/upperbelt/target/rpm"| vesc
   dribbler -->|"/dribble/target/rpm"| vesc
@@ -72,17 +71,13 @@ flowchart LR
 [ JoyController ]
      │ L2+○ 押下 ➔ /shot_cycle/request (true) をパブリッシュ
      ▼
-[ belt_controller ]
-     │ ベルトを目標RPM（Level 1〜6）に加速
-     │ 上下ベルトの実RPMが目標値に到達＆0.3秒安定維持（ready）を確認
-     ▼ /shot_cycle/start (true) をパブリッシュ
 [ arm_position_controller ]
      │
-     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームがパカッと開いてボール受球
-     │     │ (目標角度到達)
+     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームが開いてボールを受ける
+     │     │ 0.3秒間保持
      │     ▼
      ├──② [ Mode: FEED (1.3 rad) ] ───> ボールをベルトへグッと押し込み（シュート！）
-     │     │ (目標角度到達 ➔ 0.6秒保持)
+     │     │ 0.6秒間保持
      │     ▼
      └──③ [ Mode: DRIBBLE (0.35 rad) ] ─> 通常姿勢へ自動復帰
 ```

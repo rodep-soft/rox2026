@@ -19,7 +19,7 @@ JoyControllerNode::JoyControllerNode()
     "/mecanum/cmd_vel", rclcpp::QoS(command_qos_depth_));
 
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/spring/fire", rclcpp::QoS(command_qos_depth_));
+    "/spring/fire_request", rclcpp::QoS(command_qos_depth_));
 
   belt_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
     "/belt/mode", rclcpp::QoS(command_qos_depth_));

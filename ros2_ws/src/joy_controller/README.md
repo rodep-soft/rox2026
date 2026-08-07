@@ -9,11 +9,9 @@
 
 1. `include/joy_controller/joy_controller_node.hpp`のenumと内部状態
 2. constructorのparameter検証とpub/sub作成
-3. `update_chord_inputs()`の同時押し判定
-4. `handle_operation_mode()`のmode遷移
-5. `joy_callback()`の機構指令とstick変換
-6. 2つのtimer callbackの周期publish・通信断処理
-7. shot cycleのrunning・complete callback
+3. `joy_callback()`のJoyメッセージ保存
+4. `loop_callback()`のボタン・軸入力からの機構指令変換
+5. 2つのtimer callbackの周期publish・通信断処理
 
 Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ変換するところまでを
 責務とする。
@@ -52,70 +50,40 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | 6 | DPAD左右（左=`1`、右=`-1`） |
 | 7 | DPAD上下（上=`1`、下=`-1`） |
 
-## operation mode
-
-| 値 | mode |
-|---:|---|
-| 0 | STOP |
-| 1 | DRIVE |
-| 2 | SHOT_CYCLE |
-| 3 | BELT_ONLY |
-
-```text
-STOP -- Home --> DRIVE
-STOP・DRIVE <-- Create --> SHOT_CYCLE
-STOP・DRIVE <-- Options --> BELT_ONLY
-STOP以外 -- Home --> STOP
-```
-
-SHOT_CYCLEの動作中でもHomeはSTOPとして受理する。
-SHOT_CYCLEの動作中は、Home以外のmode変更を無視する。
-BELT_ONLY中のCreateと、SHOT_CYCLE中のOptionsは無視する。
-`auto_drive_on_shot_cycle_complete=true`の場合、
-`/shot_cycle/complete=true`を受けるとDRIVEへ戻る。
-
 ## 操作
 
 | 入力 | 動作 |
 |---|---|
-| Home | STOPへ移動。STOP中はDRIVEへ戻る |
-| Create | STOP・DRIVEからSHOT_CYCLEへ移動。同modeの待機中はDRIVEへ戻る |
-| Options | STOP・DRIVEからBELT_ONLYへ移動。同mode中はDRIVEへ戻る |
-| DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_6の範囲で増減 |
-| R1 | dribble ON/OFF。DRIVE・SHOT_CYCLEだけで受理 |
-| L1 + ○ | Spring発射要求。DRIVEだけで、押下中にtrueを送る |
-| L2 + ○ | SHOT_CYCLE中の実行要求 |
-| R2 + DPAD左 | DRIBBLE位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
-| R2 + DPAD右 | OPEN位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
+| Home | 非常停止のON/OFFを切替。ON時は走行、belt、dribblerへ停止指令を送る |
+| Options | Game2自動戦術モードのON/OFFを切替 |
+| DPAD上 / 下 | R2を押していないとき、belt modeをSTOPとLEVEL_1〜LEVEL_6の範囲で増減 |
+| R1 | dribbler ON/OFF |
+| L1 + R1 + △ | Spring発射要求 |
+| L2 + ○ | armの自動shot cycleを要求 |
+| DPAD左 | armをOPEN位置へ移動 |
+| DPAD右 | armをFEED位置へ移動 |
 | PS | `linear.x/y`の前後左右反転 |
 
-STOPへ入った場合とJoy通信が途切れた場合は、belt mode・dribble状態・
-位置シーケンス状態を保持せず初期化する。
-Joy通信が途切れた場合はSTOPへ移動し、Joy入力が復帰するまで状態の周期publishを止める。
+Game2モード中にスティック入力があれば、Game2モードを解除して手動走行へ戻る。
+Joy通信が途切れた場合は、走行0、belt STOP、dribbler OFFをpublishする。
 
 ## Joy入力の処理順
 
-`/joy`を受けるたびに次の順で処理する。
+`/joy`を受信すると最新メッセージを保存する。10 ms周期の`loop_callback()`が、保存した入力を次の順で処理する。
 
-1. Joy受信時刻を更新し、timeout状態を解除する。
-2. buttonとaxisから同時押し状態を作る。
-3. Home、Create、Optionsの立ち上がりでoperation modeを更新する。
-4. DPAD上下の立ち上がりでbelt levelを1段階変更する。
-5. R1の立ち上がりでdribble ON/OFFを切り替える。
-6. PSの立ち上がりで並進方向反転を切り替える。
-7. shot・手動positionの同時押しを必要なmodeでだけpublishする。
-8. stick入力を`cmd_vel`へ変換してpublishする。
-9. 現在の入力を前回値として保存する。
+1. Homeの立ち上がりで非常停止を切り替える。
+2. 非常停止中でなければ、R2の状態とDPAD上下でbelt levelを変更する。
+3. R1でdribbler、PSで走行反転、L2+○でshot cycle、OptionsでGame2を操作する。
+4. L1+R1+△でSpring発射、DPAD左右でarm位置を切り替える。
+5. Game2が有効でなければ、stick入力を`cmd_vel`へ変換してpublishする。
+6. 現在の入力を前回値として保存する。
 
-button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
-SpringだけはL1+○を押している間、周期timerからtrueを送り続ける。Spring controller側は
-そのtrueの立ち上がりだけを発射要求として扱う。
+button・DPAD操作は基本的に立ち上がり判定なので、押し続けても連続実行しない。
 
 ## stick処理
 
 - 左stick上下はdeadzone適用後の連続値を前後速度へ使う。
-- 左stick左右は`lateral_axis_threshold`以上で`-1`または`+1`へ丸める。
-- 左右移動が成立した周期は、前後速度を必ず0にする。
+- 左stick左右はdeadzone適用後の連続値を左右速度へ使う。
 - 右stick左右はdeadzone適用後の連続値を旋回速度へ使う。
 - 各値へlimitとscaleを掛け、PS反転は並進2軸だけへ適用する。
 
@@ -124,25 +92,21 @@ SpringだけはL1+○を押している間、周期timerからtrueを送り続�
 
 ## STOPと通信断
 
-起動直後は`publish_stop_commands()`を実行し、走行0、Spring false、belt STOP、
-dribble false、operation STOP、emergency stop trueをpublishする。
+起動直後は`publish_stop_commands()`を実行し、走行0、belt STOP、dribbler OFFをpublishする。
+`/emergency_stop`は初期値trueで、状態再送timerからpublishされる。
 
-最後のJoy受信から`joy_timeout_ms`を超えると同じ停止指令を即時publishし、その後は
-Joyが復帰するまで状態の周期publishを止める。controller側には最後に送ったSTOPと
-emergency stopがtransient local QoSで残る。
+最後のJoy受信から`joy_timeout_ms`を超えると、走行0、belt STOP、dribbler OFFを即時publishする。
 
-ここでの`/emergency_stop`は専用ハードウェアE-stop入力ではなく、
-`operation_mode == STOP`をBoolへ変換したものになる。
+ここでの`/emergency_stop`は専用ハードウェアE-stop入力ではなく、Homeで切り替えるソフトウェア上の停止状態である。
 
 ## callbackの役割
 
 | callback | 実行契機 | 役割 |
 |---|---|---|
-| `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/mecanum/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
-| `state_publish_timer_callback` | `state_publish_period_ms`周期 | belt mode、dribble enabled、operation mode、spring fire requestを再送する。spring fire requestはDRIVE中かつL1+○を押している間だけtrueにする。 |
-| `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視する。最後の入力から`joy_timeout_ms`を超えた場合は、STOPと各停止指令を即時publishする。 |
-| `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
-| `shot_cycle_complete_callback` | `/shot_cycle/complete`受信時 | shot cycle完了を受け取り、`auto_drive_on_shot_cycle_complete`に従ってDRIVEへ復帰する。 |
+| `joy_callback` | `/joy`受信時 | 最新のJoyメッセージと受信時刻を保存する。 |
+| `loop_callback` | 10ms周期 | 保存した入力の立ち上がりを判定し、非常停止、機構指令、Game2切替、走行指令を処理する。 |
+| `state_publish_timer_callback` | `state_publish_period_ms`周期 | emergency stop、belt mode、dribbler enabledを再送する。 |
+| `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視し、超過時に走行・belt・dribblerの停止指令を送る。 |
 
 ## parameter
 
@@ -151,10 +115,8 @@ emergency stopがtransient local QoSで残る。
 | `joy_qos_depth` | int | SensorDataQoSで保持するJoy入力件数。0以下なら1 |
 | `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
-| `state_publish_period_ms` | `int` | belt mode、dribble enabled、operation mode、spring fire requestの再送周期[ms] |
-| `auto_drive_on_shot_cycle_complete` | `bool` | `true`ならshot cycle完了時にDRIVEへ自動復帰する |
+| `state_publish_period_ms` | `int` | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
-| `lateral_axis_threshold` | double | 左右を`-1/0/+1`へ丸める閾値。`(0, 1]`、不正時0.7 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
 | `linear_x_limit` | double | 前後速度係数[m/s]。負値・非finiteなら2.0 |
 | `linear_y_limit` | double | 左右速度係数[m/s]。負値・非finiteなら2.0 |
@@ -184,15 +146,13 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | 値 | position |
 |---:|---|
 | 0 | DRIBBLE |
-| 1 | INTAKE |
-| 2 | SHOT |
-| 3 | OPEN |
+| 1 | OPEN |
+| 2 | FEED |
 
 ## 主なtopic
 
 | 種別 | topic | 型 |
 |---|---|---|
-| publish | `/operation_mode` | `std_msgs/msg/UInt8` |
 | publish | `/shot_cycle/request` | `std_msgs/msg/Bool` |
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/enabled` | `std_msgs/msg/Bool` |
@@ -200,5 +160,4 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
-| subscribe | `/shot_cycle/running` | `std_msgs/msg/Bool` |
-| subscribe | `/shot_cycle/complete` | `std_msgs/msg/Bool` |
+| publish | `/game2/start` | `std_msgs/msg/Bool` |

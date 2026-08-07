@@ -12,9 +12,9 @@ joy_controller:
     # タッチパッドをHomeとして扱う (非常停止切替)
     home_button: 13
 
-    # L1+○でspring発射を要求する
+    # L1+R1+△でspring発射を要求する
     spring_fire_enable_button: 4
-    spring_fire_button: 2
+    spring_fire_button: 3
 
     # L2+○で自動シュートサイクルを要求する
     left_trigger_axis: 3
@@ -25,7 +25,8 @@ joy_controller:
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
-    # R2+DPAD右はDRIBBLE、R2+DPAD左はOPEN位置へ移動する
+    # R2を押していないときにDPAD上/下でbelt levelを変更する。
+    # DPAD左でOPEN、DPAD右でFEED位置へ移動する。
     right_trigger_axis: 4
     dpad_horizontal_axis: 6
 
