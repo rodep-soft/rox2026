@@ -171,8 +171,13 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & msg)
     if (mode_status == 2) {
       enabled_ = true;
       retry_count_ = 0;
-      state_ = MotorState::READY;
-      init_step_ = InitStep::READY;
+      if (init_index_ >= init_items_.size()) {
+        configured_ = true;
+        state_ = MotorState::READY;
+        init_step_ = InitStep::READY;
+      } else {
+        init_step_ = InitStep::WRITE_ITEM;
+      }
     }
     return;
   }
@@ -228,7 +233,11 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame & msg)
   ++init_index_;
 
   if (init_index_ >= init_items_.size()) {
-    configured_ = true;
+    configured_ = enabled_;
+    state_ = MotorState::READY;
+    init_step_ = InitStep::READY;
+  } else if (!enabled_) {
+    // マニュアルの順序どおりrun_modeを確定してからEnableし、その後に制限値を設定する。
     init_step_ = InitStep::ENABLE;
   } else {
     init_step_ = InitStep::WRITE_ITEM;
