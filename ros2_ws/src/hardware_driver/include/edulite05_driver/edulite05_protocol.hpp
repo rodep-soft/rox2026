@@ -3,11 +3,12 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <array>
-#include <vector>
-#include <memory>
-#include <string>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+
+#include "can_msgs/msg/frame.hpp"
 
 struct Canframe
 {

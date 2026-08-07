@@ -1,0 +1,53 @@
+edulite05_driver:
+  ros__parameters:
+
+    motors:
+      - front_left
+      - front_right
+      - rear_left
+      - rear_right
+      - lift
+      - arm
+
+    front_left:
+      logical_id: 0
+      can_id: 32
+      mode: velocity
+      current_limit: 8.0
+      acceleration: 20.0
+
+    front_right:
+      logical_id: 1
+      can_id: 33
+      mode: velocity
+      current_limit: 8.0
+      acceleration: 20.0
+
+    rear_left:
+      logical_id: 2
+      can_id: 34
+      mode: velocity
+      current_limit: 8.0
+      acceleration: 20.0
+
+    rear_right:
+      logical_id: 3
+      can_id: 35
+      mode: velocity
+      current_limit: 8.0
+      acceleration: 20.0
+
+    lift:
+      logical_id: 4
+      can_id: 36
+      mode: csp
+      current_limit: 6.0
+      speed_limit: 5.0
+
+    arm:
+      logical_id: 5
+      can_id: 37
+      mode: pp
+      current_limit: 6.0
+      speed_limit: 5.0
+      acceleration: 10.0
