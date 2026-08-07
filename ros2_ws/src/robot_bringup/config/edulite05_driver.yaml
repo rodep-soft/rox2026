@@ -1,6 +1,11 @@
 edulite05_driver:
   ros__parameters:
 
+    target_topic: "/edulite/target"
+    target_array_topic: "/edulite/target_array"
+    state_topic: "/edulite/state"
+    state_array_topic: "/edulite/state_array"
+    
     motors:
       - front_left
       - front_right

@@ -23,11 +23,6 @@ namespace
 
 Protocol::Protocol(const MotorConfig & config) : config_(config)
 {
-  build_init_items();
-}
-
-void Protocol::build_init_items()
-{
   init_items_.clear();
   // 最初に必ずrun_mode
   init_items_.push_back({RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.mode)),true});
@@ -56,7 +51,7 @@ void Protocol::set_target(float target)
   last_target_time_ = Clock::now();
 }
 
-std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
+std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame()
 {
   const auto now = Clock::now();
   switch (init_step_) {
@@ -68,16 +63,13 @@ std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
       init_step_ = InitStep::WAIT_WRITE;
 
       if (item.is_u8) {
-        return write_u8(config_.can_id,item.index,static_cast<uint8_t>(item.value));
+        return create_write_u8_frame(config_.can_id,item.index,static_cast<uint8_t>(item.value));
       }
-
-      return write_float(config_.can_id,item.index,item.value);
+      return create_write_float_frame(config_.can_id,item.index,item.value);
     }
     case InitStep::WAIT_WRITE:
     {
-      // Type18のType2応答そのものを
-      // 設定成功判定には使わない。
-      // 少し待ってType17 Readbackする。
+      // これで帰ってきた応答そのものを設定成功判定には使わずに，type17 Readbackで確認
       if (now - last_request_time_ >= WRITE_WAIT) {
         init_step_ = InitStep::READ_ITEM;
       }
@@ -88,7 +80,7 @@ std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
       const auto & item = init_items_[init_index_];
       last_request_time_ = now;
       init_step_ = InitStep::WAIT_READ;
-      return read_parameter(config_.can_id, item.index);
+      return create_read_parameter_frame(config_.can_id, item.index);
     }
     case InitStep::WAIT_READ:
     {
@@ -102,13 +94,11 @@ std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
     {
       last_request_time_ = now;
       init_step_ = InitStep::WAIT_ENABLE;
-      return enable(config_.can_id);
+      return create_enable_frame(config_.can_id);
     }
     case InitStep::WAIT_ENABLE:
     {
-      if (
-        now - last_request_time_ >
-        RESPONSE_TIMEOUT)
+      if (now - last_request_time_ > RESPONSE_TIMEOUT)
       {
         retry_initialization();
       }
@@ -118,8 +108,7 @@ std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
       break;
     case InitStep::ERROR:
     {
-      // 電源再投入などでもROSノードを
-      // 再起動しなくて済むように自動再試行
+      // 電源再投入などでもROSノードを再起動しなくて済むように自動再試行
       if (now - error_time_ > ERROR_RETRY_PERIOD)
       {
         restart(true);
@@ -168,7 +157,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & msg)
   const uint8_t mode_status = static_cast<uint8_t>((msg.id >> 22) & 0x03);
   // Enable完了確認
   if (init_step_ == InitStep::WAIT_ENABLE) {
-    if (mode_status == 2) {
+    if (mode_status == RUN_STATUS_MODE) {
       enabled_ = true;
       retry_count_ = 0;
       if (init_index_ >= init_items_.size()) {
@@ -183,7 +172,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & msg)
   }
 
   // 動作中にResetへ戻った場合
-  if (init_step_ == InitStep::READY && mode_status != 2)
+  if (init_step_ == InitStep::READY && mode_status != RUN_STATUS_MODE)
   {
     restart(true);
   }
@@ -202,7 +191,7 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame & msg)
     return;
   }
   // Type17 status != 0
-  if (status != 0) {
+  if (status != RESET_STATUS_MODE) {
     retry_initialization();
     return;
   }
@@ -228,7 +217,7 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame & msg)
     retry_initialization();
     return;
   }
-  // このparameterは成功
+
   retry_count_ = 0;
   ++init_index_;
 
@@ -237,7 +226,6 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame & msg)
     state_ = MotorState::READY;
     init_step_ = InitStep::READY;
   } else if (!enabled_) {
-    // マニュアルの順序どおりrun_modeを確定してからEnableし、その後に制限値を設定する。
     init_step_ = InitStep::ENABLE;
   } else {
     init_step_ = InitStep::WRITE_ITEM;
@@ -255,7 +243,6 @@ void Protocol::retry_initialization()
     error_time_ = Clock::now();
     return;
   }
-
   switch (init_step_) {
     case InitStep::WAIT_READ:
       // Writeからやり直す
@@ -284,15 +271,7 @@ void Protocol::restart(bool clear_target)
   }
 }
 
-bool Protocol::command_due(TimePoint now) const
-{
-  if (last_command_time_ == TimePoint{}) {
-    return true;
-  }
-  return now - last_command_time_ >= std::chrono::milliseconds(config_.command_period_ms);
-}
-
-std::optional<can_msgs::msg::Frame> Protocol::target_frame()
+std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
 {
   if (state_ != MotorState::READY || !target_received_)
   {
@@ -301,7 +280,7 @@ std::optional<can_msgs::msg::Frame> Protocol::target_frame()
 
   const auto now = Clock::now();
 
-  if (!command_due(now)) {
+  if (last_command_time_ != TimePoint{} && now - last_target_time_ < std::chrono::milliseconds(config_.command_period_ms)) {
     return std::nullopt;
   }
 
@@ -315,12 +294,12 @@ std::optional<can_msgs::msg::Frame> Protocol::target_frame()
       target = 0.0f;
     }
     target = std::clamp(target, -50.0f, 50.0f);
-    return write_float(config_.can_id, SPEED_REF, target);
+    return create_write_float_frame(config_.can_id, SPEED_REF, target);
   }
 
   // PP / CSPは指令が途絶えても
   // 最後の位置を保持する
-  return write_float(config_.can_id, POSITION_REF, target);
+  return create_write_float_frame(config_.can_id, POSITION_REF, target);
 }
 
 void Protocol::watchdog()
@@ -344,7 +323,6 @@ void Protocol::watchdog()
 can_msgs::msg::Frame Protocol::make_base_frame(uint8_t type, uint8_t motor_id)
 {
   can_msgs::msg::Frame msg;
-
   msg.id = (static_cast<uint32_t>(type) << 24) | (static_cast<uint32_t>(HOST_ID) << 8) | motor_id;
   msg.is_extended = true;
   msg.dlc = 8;
@@ -352,8 +330,7 @@ can_msgs::msg::Frame Protocol::make_base_frame(uint8_t type, uint8_t motor_id)
   return msg;
 }
 
-
-can_msgs::msg::Frame Protocol::write_u8(uint8_t motor_id, uint16_t index, uint8_t value)
+can_msgs::msg::Frame Protocol::create_write_u8_frame(uint8_t motor_id, uint16_t index, uint8_t value)
 {
   auto msg = make_base_frame(TYPE_WRITE, motor_id);
   msg.data[0] = static_cast<uint8_t>(index & 0xFF);
@@ -362,7 +339,7 @@ can_msgs::msg::Frame Protocol::write_u8(uint8_t motor_id, uint16_t index, uint8_
   return msg;
 }
 
-can_msgs::msg::Frame Protocol::write_float(uint8_t motor_id, uint16_t index, float value)
+can_msgs::msg::Frame Protocol::create_write_float_frame(uint8_t motor_id, uint16_t index, float value)
 {
   auto msg = make_base_frame(TYPE_WRITE, motor_id);
   msg.data[0] = static_cast<uint8_t>(index & 0xFF);
@@ -371,7 +348,7 @@ can_msgs::msg::Frame Protocol::write_float(uint8_t motor_id, uint16_t index, flo
   return msg;
 }
 
-can_msgs::msg::Frame Protocol::read_parameter(uint8_t motor_id, uint16_t index)
+can_msgs::msg::Frame Protocol::create_read_parameter_frame(uint8_t motor_id, uint16_t index)
 {
   auto msg = make_base_frame(TYPE_READ, motor_id);
   msg.data[0] = static_cast<uint8_t>(index & 0xFF);
@@ -379,10 +356,8 @@ can_msgs::msg::Frame Protocol::read_parameter(uint8_t motor_id, uint16_t index)
   return msg;
 }
 
-can_msgs::msg::Frame Protocol::enable(uint8_t motor_id)
+can_msgs::msg::Frame Protocol::create_enable_frame(uint8_t motor_id)
 {
-  return make_base_frame(
-    TYPE_ENABLE,
-    motor_id);
+  return make_base_frame(TYPE_ENABLE, motor_id);
 }
 }  // namespace edulite05_driver

@@ -17,10 +17,6 @@ namespace
 {
 constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
 constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
-constexpr char TARGET_TOPIC[] = "/edulite/target";
-constexpr char TARGETS_TOPIC[] = "/edulite/targets";
-constexpr char STATE_TOPIC[] = "/edulite/state";
-constexpr char STATES_TOPIC[] = "/edulite/states";
 }  // namespace
 
 Node::Node()
@@ -31,31 +27,30 @@ Node::Node()
   const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
   const auto can_qos_sub = rclcpp::SensorDataQoS().keep_last(50);
 
-  // EduLite 05向けCANフレームをsocketcan bridgeへ送信する。
   can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
-  // socketcan bridgeから受信したType 2/17応答を各モータへ振り分ける。
   can_sub_ = create_subscription<can_msgs::msg::Frame>(
     CAN_SUB_TOPIC, can_qos_sub, std::bind(&Node::can_callback, this, std::placeholders::_1));
 
-  // robot_controllerから単体モータの目標値を受信する。
   target_sub_ = create_subscription<actuator_msgs::msg::ActuatorTarget>(
-    TARGET_TOPIC, 10, std::bind(&Node::target_callback, this, std::placeholders::_1));
-  // robot_controllerから複数モータの目標値を一括受信する。
+    target_topic, 10, std::bind(&Node::target_callback, this, std::placeholders::_1));
   target_array_sub_ = create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
-    TARGETS_TOPIC, 10, std::bind(&Node::targets_callback, this, std::placeholders::_1));
+    target_array_topic, 10, std::bind(&Node::target_array_callback, this, std::placeholders::_1));
 
-  // Type 2フィードバック受信直後に該当モータの状態を配信する。
-  state_pub_ = create_publisher<actuator_msgs::msg::ActuatorState>(STATE_TOPIC, 10);
-  // 監視用に全モータの最新状態を周期配信する。
-  state_array_pub_ =
-    create_publisher<actuator_msgs::msg::ActuatorStateArray>(STATES_TOPIC, 10);
+  state_pub_ = create_publisher<actuator_msgs::msg::ActuatorState>(state_topic, 10);
+  state_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorStateArray>(state_array_topic, 10);
 
   update_timer_ = create_wall_timer(10ms, std::bind(&Node::update_callback, this));
-  state_timer_ = create_wall_timer(50ms, std::bind(&Node::states_callback, this));
+  state_timer_ = create_wall_timer(50ms, std::bind(&Node::state_array_callback, this));
 }
 
 void Node::get_parameters()
 {
+
+  target_topic = declare_parameter<std::string>("target_topic", "/edulite/target");
+  target_array_topic = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
+  state_topic = declare_parameter<std::string>("state_topic", "/edulite/state");
+  state_array_topic = declare_parameter<std::string>("state_array_topic", "/edulite/state_array");
+
   const auto names =
     declare_parameter<std::vector<std::string>>("motors", std::vector<std::string>{});
 
@@ -177,7 +172,7 @@ void Node::target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr msg)
     static_cast<unsigned>(msg->logical_id));
 }
 
-void Node::targets_callback(actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg)
+void Node::target_array_callback(actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg)
 {
   for (const auto & actuator : msg->actuators) {
     if (auto * motor = find_logical_id(actuator.logical_id)) {
@@ -201,13 +196,13 @@ void Node::update_callback()
   }
 
   auto & init_motor = motors_[init_index_];
-  if (auto frame = init_motor.initialization_frame()) {
+  if (auto frame = init_motor.create_initialization_frame()) {
     can_pub_->publish(*frame);
   }
   init_index_ = (init_index_ + 1) % motors_.size();
 
   for (auto & motor : motors_) {
-    if (auto frame = motor.target_frame()) {
+    if (auto frame = motor.create_target_frame()) {
       can_pub_->publish(*frame);
     }
   }
@@ -245,7 +240,7 @@ actuator_msgs::msg::ActuatorState Node::make_state(const Protocol & motor) const
   return msg;
 }
 
-void Node::states_callback()
+void Node::state_array_callback()
 {
   actuator_msgs::msg::ActuatorStateArray msg;
   msg.header.stamp = now();
