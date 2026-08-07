@@ -1,6 +1,3 @@
-#ifndef VESC_DRIVER__VESC_PROTOCOL_HPP_
-#define VESC_DRIVER__VESC_PROTOCOL_HPP_
-
 #pragma once
 
 #include <array>
@@ -64,6 +61,3 @@ inline bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status
   return true;
 }
 } // namespace vesc_driver::protocol
-
-#endif  // VESC_DRIVER__VESC_PROTOCOL_HPP_
-

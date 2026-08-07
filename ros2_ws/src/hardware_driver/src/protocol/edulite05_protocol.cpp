@@ -1,212 +1,379 @@
 #include "edulite05_driver/edulite05_protocol.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
-#include <vector>
 
-Ed05CanframeCreater::Ed05CanframeCreater(uint8_t motor_id)
-: motor_id_(motor_id)
+namespace edulite05_driver
 {
-}
 
-Velocity::Velocity(uint8_t motor_id)
-: Ed05CanframeCreater(motor_id)
+namespace
 {
-}
-
-Position::Position(uint8_t motor_id)
-: Ed05CanframeCreater(motor_id)
-{
-}
-
-std::vector<Canframe> Velocity::create_init_frame()
-{
-  std::vector<Canframe> frames;
-
-  // disable
-  frames.push_back(set_disable());
-  // runmode: operation
-  frames.push_back(set_runmode(0));
-  // enable
-  frames.push_back(set_enable());
-  frames.push_back(set_disable());
-  // runmode: velocity
-  frames.push_back(set_runmode(2));
-  // enable
-  frames.push_back(set_enable());
-
-  // その他制御量の設定
-  for (size_t i = 1; i < targets_info.size(); i++) {
-    frames.push_back(set_target_value(targets_info[i]));
+  uint16_t read_be_u16(const std::array<uint8_t, 8> & data, size_t index)
+  {
+    return (static_cast<uint16_t>(data[index]) << 8) | static_cast<uint16_t>(data[index + 1]);
   }
 
-  return frames;
-}
-
-std::vector<Canframe> Position::create_init_frame()
-{
-  std::vector<Canframe> frames;
-
-  // disable
-  frames.push_back(set_disable());
-  // runmode: operation
-  frames.push_back(set_runmode(0)); // runmode: operation
-  // enable
-  frames.push_back(set_enable());
-  // mechanical zero (コメントアウトして自動原点書き換えを無効化)
-  // frames.push_back(set_mechanicalzero());
-  frames.push_back(set_disable());
-  frames.push_back(set_runmode(1)); // runmode: position
-  frames.push_back(set_enable());
-  for (size_t i = 1; i < targets_info.size(); i++) {
-    frames.push_back(set_target_value(targets_info[i]));
+  float decode_u16(uint16_t value, float min, float max)
+  {
+    return min + static_cast<float>(value) * (max - min) / 65535.0f;
   }
-  frames.push_back(set_angle_range()); // angleを-180~180にするための設定
-
-  return frames;
 }
 
-Canframe Velocity::create_control_frame(float value)
+Protocol::Protocol(const MotorConfig & config) : config_(config)
 {
-  targets_info[0].value = std::clamp(value, -50.0f, 50.0f);
-  return set_target_value(targets_info[0]);
+  build_init_items();
 }
 
-Canframe Position::create_control_frame(float value)
+void Protocol::build_init_items()
 {
-  targets_info[0].value = std::clamp(value, -static_cast<float>(M_PI), static_cast<float>(M_PI));
-  return set_target_value(targets_info[0]);
+  init_items_.clear();
+  // 最初に必ずrun_mode
+  init_items_.push_back({RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.mode)),true});
+
+  switch (config_.mode) {
+    case Mode::VELOCITY:
+      init_items_.push_back({LIMIT_CURRENT, config_.current_limit,false});
+      init_items_.push_back({ACCELERATION, config_.acceleration,false});
+      break;
+    case Mode::CSP:
+      init_items_.push_back({LIMIT_SPEED,config_.speed_limit,false});
+      init_items_.push_back({LIMIT_CURRENT,config_.current_limit,false});
+      break;
+    case Mode::PP:
+      init_items_.push_back({PP_SPEED,config_.speed_limit,false});
+      init_items_.push_back({PP_ACCELERATION,config_.acceleration,false});
+      init_items_.push_back({LIMIT_CURRENT,config_.current_limit,false});
+      break;
+  }
 }
 
-uint32_t Ed05CanframeCreater::encode_can_id(uint8_t commtype_index)
+void Protocol::set_target(float target)
 {
-  return (static_cast<uint32_t>(commtype_index) << 24) |
-         (static_cast<uint32_t>(host_id_) << 8) |
-         static_cast<uint32_t>(motor_id_);
+  target_ = target;
+  target_received_ = true;
+  last_target_time_ = Clock::now();
 }
 
-std::array<uint8_t, 8> Ed05CanframeCreater::encode_commtype18_data(ControlTargetInfo target_info)
+std::optional<can_msgs::msg::Frame> Protocol::initialization_frame()
 {
-  std::array<uint8_t, 8> data{};
-  uint16_t index = target_info.index;
-  data[0] = static_cast<uint8_t>(index & 0xFF);
-  data[1] = static_cast<uint8_t>((index >> 8) & 0xFF);
-  data[2] = 0;
-  data[3] = 0;
+  const auto now = Clock::now();
+  switch (init_step_) {
+    case InitStep::WRITE_ITEM:
+    {
+      state_ = MotorState::INITIALIZING;
+      const auto & item = init_items_[init_index_];
+      last_request_time_ = now;
+      init_step_ = InitStep::WAIT_WRITE;
 
-  uint32_t val_bits = 0;
-  std::memcpy(&val_bits, &target_info.value, sizeof(val_bits));
-  data[4] = static_cast<uint8_t>(val_bits & 0xFF);
-  data[5] = static_cast<uint8_t>((val_bits >> 8) & 0xFF);
-  data[6] = static_cast<uint8_t>((val_bits >> 16) & 0xFF);
-  data[7] = static_cast<uint8_t>((val_bits >> 24) & 0xFF);
+      if (item.is_u8) {
+        return write_u8(config_.can_id,item.index,static_cast<uint8_t>(item.value));
+      }
 
-  return data;
+      return write_float(config_.can_id,item.index,item.value);
+    }
+    case InitStep::WAIT_WRITE:
+    {
+      // Type18のType2応答そのものを
+      // 設定成功判定には使わない。
+      // 少し待ってType17 Readbackする。
+      if (now - last_request_time_ >= WRITE_WAIT) {
+        init_step_ = InitStep::READ_ITEM;
+      }
+      break;
+    }
+    case InitStep::READ_ITEM:
+    {
+      const auto & item = init_items_[init_index_];
+      last_request_time_ = now;
+      init_step_ = InitStep::WAIT_READ;
+      return read_parameter(config_.can_id, item.index);
+    }
+    case InitStep::WAIT_READ:
+    {
+      if (now - last_request_time_ > RESPONSE_TIMEOUT)
+      {
+        retry_initialization();
+      }
+      break;
+    }
+    case InitStep::ENABLE:
+    {
+      last_request_time_ = now;
+      init_step_ = InitStep::WAIT_ENABLE;
+      return enable(config_.can_id);
+    }
+    case InitStep::WAIT_ENABLE:
+    {
+      if (
+        now - last_request_time_ >
+        RESPONSE_TIMEOUT)
+      {
+        retry_initialization();
+      }
+      break;
+    }
+    case InitStep::READY:
+      break;
+    case InitStep::ERROR:
+    {
+      // 電源再投入などでもROSノードを
+      // 再起動しなくて済むように自動再試行
+      if (now - error_time_ > ERROR_RETRY_PERIOD)
+      {
+        restart(true);
+      }
+      break;
+    }
+  }
+  return std::nullopt;
 }
 
-Canframe Ed05CanframeCreater::set_runmode(int value)
+bool Protocol::receive(const can_msgs::msg::Frame & msg)
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x12);
-  frame.dlc = dlc_;
-  //ControlTargetInfo info{"runmode", 0x7005, static_cast<float>(value)};
-  //auto data = encode_commtype18_data(info);
-  //std::memcpy(frame.data.data(), data.data(), 8);
-  frame.data[0] = 0x05;   // index low byte
-  frame.data[1] = 0x70;   // index high byte
-  frame.data[2] = 0x00;   // subindex
-  frame.data[3] = 0x00;   // reserved
-  frame.data[4] = static_cast<uint8_t>(value & 0xFF);   // value low byte
-  frame.data[5] = 0x00;   // value high byte
-  frame.data[6] = 0x00;   // reserved
-  frame.data[7] = 0x00;   // reserved
-  return frame;
+  if (!msg.is_extended || msg.dlc < 8) {
+    return false;
+  }
+
+  const uint8_t type = static_cast<uint8_t>((msg.id >> 24) & 0x1F);
+  const uint8_t motor_id = static_cast<uint8_t>((msg.id >> 8) & 0xFF);
+
+  if (motor_id != config_.can_id) {
+    return false;
+  }
+  if (type == TYPE_FEEDBACK) {
+    process_feedback(msg);
+    return true;
+  }
+  if (type == TYPE_READ) {
+    process_parameter_response(msg);
+  }
+  last_rx_time_ = Clock::now();
+  return false;
 }
 
-Canframe Ed05CanframeCreater::set_enable()
+void Protocol::process_feedback(const can_msgs::msg::Frame & msg)
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x03);
-  frame.dlc = dlc_;
-  frame.data.fill(0);
-  return frame;
+  connected_ = true;
+  last_rx_time_ = Clock::now();
+  feedback_.position = decode_u16(read_be_u16(msg.data, 0),-4.0f * PI,4.0f * PI);
+
+  feedback_.velocity = decode_u16(read_be_u16(msg.data, 2),-50.0f ,50.0f);
+  feedback_.effort = decode_u16(read_be_u16(msg.data, 4), -6.0f, 6.0f);
+  feedback_.temperature = static_cast<float>(read_be_u16(msg.data, 6)) / 10.0f;
+  // Type2 ID bit21~16
+  feedback_.fault_code = static_cast<uint32_t>((msg.id >> 16) & 0x3F);
+  // bit23~22
+  const uint8_t mode_status = static_cast<uint8_t>((msg.id >> 22) & 0x03);
+  // Enable完了確認
+  if (init_step_ == InitStep::WAIT_ENABLE) {
+    if (mode_status == 2) {
+      enabled_ = true;
+      retry_count_ = 0;
+      state_ = MotorState::READY;
+      init_step_ = InitStep::READY;
+    }
+    return;
+  }
+
+  // 動作中にResetへ戻った場合
+  if (init_step_ == InitStep::READY && mode_status != 2)
+  {
+    restart(true);
+  }
 }
 
-Canframe Ed05CanframeCreater::set_target_value(ControlTargetInfo target_info)
+void Protocol::process_parameter_response(const can_msgs::msg::Frame & msg)
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x12);
-  frame.dlc = dlc_;
-  auto data = encode_commtype18_data(target_info);
-  std::memcpy(frame.data.data(), data.data(), 8);
-  return frame;
+  connected_ = true;
+  last_rx_time_ = Clock::now();
+  if (init_step_ != InitStep::WAIT_READ) {
+    return;
+  }
+  const uint8_t destination = static_cast<uint8_t>(msg.id & 0xFF);
+  const uint8_t status = static_cast<uint8_t>((msg.id >> 16) & 0xFF);
+  if (destination != HOST_ID) {
+    return;
+  }
+  // Type17 status != 0
+  if (status != 0) {
+    retry_initialization();
+    return;
+  }
+
+  const uint16_t index = static_cast<uint16_t>(msg.data[0]) 
+  | (static_cast<uint16_t>(msg.data[1]) << 8);
+
+  const auto & expected =init_items_[init_index_];
+  // 古い別parameterの応答などは無視
+  if (index != expected.index) {
+    return;
+  }
+
+  bool matched = false;
+  if (expected.is_u8) {
+    matched = msg.data[4] == static_cast<uint8_t>(expected.value);
+  } else {
+    float value = 0.0f;
+    std::memcpy(&value, msg.data.data() + 4, sizeof(float));
+    matched = std::fabs(value - expected.value) < 0.001f;
+  }
+  if (!matched) {
+    retry_initialization();
+    return;
+  }
+  // このparameterは成功
+  retry_count_ = 0;
+  ++init_index_;
+
+  if (init_index_ >= init_items_.size()) {
+    configured_ = true;
+    init_step_ = InitStep::ENABLE;
+  } else {
+    init_step_ = InitStep::WRITE_ITEM;
+  }
 }
 
-Canframe Ed05CanframeCreater::set_disable()
+void Protocol::retry_initialization()
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x04);
-  frame.dlc = dlc_;
-  frame.data.fill(0);
-  return frame;
+  ++retry_count_;
+  if (retry_count_ > MAX_RETRY) {
+    state_ = MotorState::ERROR;
+    configured_ = false;
+    enabled_ = false;
+    init_step_ = InitStep::ERROR;
+    error_time_ = Clock::now();
+    return;
+  }
+
+  switch (init_step_) {
+    case InitStep::WAIT_READ:
+      // Writeからやり直す
+      init_step_ = InitStep::WRITE_ITEM;
+      break;
+    case InitStep::WAIT_ENABLE:
+      init_step_ = InitStep::ENABLE;
+      break;
+    default:
+      init_step_ = InitStep::WRITE_ITEM;
+      break;
+  }
 }
 
-Canframe Ed05CanframeCreater::set_mechanicalzero()
+void Protocol::restart(bool clear_target)
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x06);
-  frame.dlc = dlc_;
-  frame.data.fill(0);
-  frame.data[0] = 0x1;
-  return frame;
+  state_ = MotorState::INITIALIZING;
+  configured_ = false;
+  enabled_ = false;
+  init_index_ = 0;
+  retry_count_ = 0;
+  init_step_ = InitStep::WRITE_ITEM;
+  if (clear_target) {
+    target_received_ = false;
+    target_ = 0.0f;
+  }
 }
 
-Canframe Ed05CanframeCreater::terminate_motor()
+bool Protocol::command_due(TimePoint now) const
 {
-  return set_disable();
+  if (last_command_time_ == TimePoint{}) {
+    return true;
+  }
+  return now - last_command_time_ >= std::chrono::milliseconds(config_.command_period_ms);
 }
 
-Canframe Ed05CanframeCreater::set_angle_range()
+std::optional<can_msgs::msg::Frame> Protocol::target_frame()
 {
-  Canframe frame{};
-  frame.id = encode_can_id(0x12);
-  frame.dlc = dlc_;
-  frame.data[0] = 0x29;   // index low byte
-  frame.data[1] = 0x70;   // index high byte
-  frame.data[2] = 0x00;   // subindex
-  frame.data[3] = 0x00;   // reserved
-  frame.data[4] = 0x01;   // value low byte
-  frame.data[5] = 0x00;   // value high byte
-  frame.data[6] = 0x00;   // reserved
-  frame.data[7] = 0x00;   // reserved
-  return frame;
+  if (state_ != MotorState::READY || !target_received_)
+  {
+    return std::nullopt;
+  }
+
+  const auto now = Clock::now();
+
+  if (!command_due(now)) {
+    return std::nullopt;
+  }
+
+  last_command_time_ = now;
+  float target = target_;
+
+  if (config_.mode == Mode::VELOCITY) {
+    const bool timeout = now - last_target_time_ > std::chrono::milliseconds(config_.target_timeout_ms);
+    // 上位制御ノードが死んだ場合は停止
+    if (timeout) {
+      target = 0.0f;
+    }
+    target = std::clamp(target, -50.0f, 50.0f);
+    return write_float(config_.can_id, SPEED_REF, target);
+  }
+
+  // PP / CSPは指令が途絶えても
+  // 最後の位置を保持する
+  return write_float(config_.can_id, POSITION_REF, target);
 }
 
-CanIdInfo decode_can_id(uint32_t can_id)
+void Protocol::watchdog()
 {
-  CanIdInfo info{};
-  info.comm_type = static_cast<uint8_t>((can_id >> 24) & 0x1F);
-  info.mode_status = static_cast<uint8_t>((can_id >> 22) & 0x03);
-  info.fault_info = static_cast<uint8_t>((can_id >> 16) & 0x3F);
-  info.motor_id = static_cast<uint8_t>((can_id >> 8) & 0xFF);
-  info.host_id = static_cast<uint8_t>(can_id & 0xFF);
-  return info;
+  if (state_ != MotorState::READY || !target_received_ || !connected_)
+  {
+    return;
+  }
+  const auto now = Clock::now();
+
+  if (now - last_rx_time_ <= std::chrono::milliseconds(config_.feedback_timeout_ms))
+  {
+    return;
+  }
+  connected_ = false;
+  // 再接続後に古いtargetで突然動かないように
+  // targetも破棄
+  restart(true);
 }
 
-MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data)
+can_msgs::msg::Frame Protocol::make_base_frame(uint8_t type, uint8_t motor_id)
 {
-  MotorFeedbackData fb_data{};
+  can_msgs::msg::Frame msg;
 
-  uint16_t raw_angle = (static_cast<uint16_t>(data[0]) << 8) | data[1];
-  uint16_t raw_vel = (static_cast<uint16_t>(data[2]) << 8) | data[3];
-  uint16_t raw_torque = (static_cast<uint16_t>(data[4]) << 8) | data[5];
-  uint16_t raw_temp = (static_cast<uint16_t>(data[6]) << 8) | data[7];
-
-  fb_data.angle = -4.0f * M_PI + (static_cast<float>(raw_angle) / 65535.0f) * (8.0f * M_PI);
-  fb_data.velocity = -50.0f + (static_cast<float>(raw_vel) / 65535.0f) * 100.0f;
-  fb_data.torque = -6.0f + (static_cast<float>(raw_torque) / 65535.0f) * 12.0f;
-  fb_data.temperature = static_cast<float>(raw_temp) / 10.0f;
-
-  return fb_data;
+  msg.id = (static_cast<uint32_t>(type) << 24) | (static_cast<uint32_t>(HOST_ID) << 8) | motor_id;
+  msg.is_extended = true;
+  msg.dlc = 8;
+  msg.data.fill(0);
+  return msg;
 }
+
+
+can_msgs::msg::Frame Protocol::write_u8(uint8_t motor_id, uint16_t index, uint8_t value)
+{
+  auto msg = make_base_frame(TYPE_WRITE, motor_id);
+  msg.data[0] = static_cast<uint8_t>(index & 0xFF);
+  msg.data[1] = static_cast<uint8_t>((index >> 8) & 0xFF);
+  msg.data[4] = value;
+  return msg;
+}
+
+can_msgs::msg::Frame Protocol::write_float(uint8_t motor_id, uint16_t index, float value)
+{
+  auto msg = make_base_frame(TYPE_WRITE, motor_id);
+  msg.data[0] = static_cast<uint8_t>(index & 0xFF);
+  msg.data[1] = static_cast<uint8_t>((index >> 8) & 0xFF);
+  std::memcpy(msg.data.data() + 4, &value, sizeof(float));
+  return msg;
+}
+
+can_msgs::msg::Frame Protocol::read_parameter(uint8_t motor_id, uint16_t index)
+{
+  auto msg = make_base_frame(TYPE_READ, motor_id);
+  msg.data[0] = static_cast<uint8_t>(index & 0xFF);
+  msg.data[1] = static_cast<uint8_t>((index >> 8) & 0xFF);
+  return msg;
+}
+
+can_msgs::msg::Frame Protocol::enable(uint8_t motor_id)
+{
+  return make_base_frame(
+    TYPE_ENABLE,
+    motor_id);
+}
+}  // namespace edulite05_driver

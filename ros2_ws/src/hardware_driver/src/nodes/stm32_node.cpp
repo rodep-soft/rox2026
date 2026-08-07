@@ -9,7 +9,6 @@
 
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_components/register_node_macro.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
@@ -172,8 +171,6 @@ private:
 };
 
 }  // namespace stm32_driver
-
-RCLCPP_COMPONENTS_REGISTER_NODE(stm32_driver::Stm32Node);
 
 int main(int argc, char ** argv)
 {

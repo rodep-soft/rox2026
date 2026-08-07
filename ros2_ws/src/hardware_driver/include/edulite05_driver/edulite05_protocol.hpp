@@ -1,107 +1,172 @@
-#ifndef EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
-#define EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
-
 #pragma once
 
-#include <array>
-#include <cmath>
+#include <chrono>
 #include <cstdint>
-#include <cstring>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "can_msgs/msg/frame.hpp"
 
-struct Canframe
+namespace edulite05_driver
 {
-  uint32_t id;
-  int dlc;
-  std::array<uint8_t, 8> data;
+  constexpr uint8_t HOST_ID = 0xFD;
+  constexpr uint8_t TYPE_FEEDBACK = 0x02;
+  constexpr uint8_t TYPE_ENABLE = 0x03;
+  constexpr uint8_t TYPE_READ = 0x11;
+  constexpr uint8_t TYPE_WRITE = 0x12;
+
+  // Parameter index
+  constexpr uint16_t RUN_MODE = 0x7005;
+  constexpr uint16_t SPEED_REF = 0x700A;
+
+  constexpr uint16_t POSITION_REF = 0x7016;
+  constexpr uint16_t LIMIT_SPEED = 0x7017;
+  constexpr uint16_t LIMIT_CURRENT = 0x7018;
+
+  constexpr uint16_t ACCELERATION = 0x7022;
+  constexpr uint16_t PP_SPEED = 0x7024;
+  constexpr uint16_t PP_ACCELERATION = 0x7025;
+
+  constexpr int MAX_RETRY = 3;
+  constexpr auto WRITE_WAIT = std::chrono::milliseconds(2);
+  constexpr auto RESPONSE_TIMEOUT = std::chrono::milliseconds(100);
+  constexpr auto ERROR_RETRY_PERIOD = std::chrono::milliseconds(1000);
+  constexpr float PI = 3.14159265358979323846f;
+
+
+enum class Mode : uint8_t
+{
+  PP = 1,
+  VELOCITY = 2,
+  CSP = 5
 };
 
-struct CanIdInfo
+enum class MotorState : uint8_t
 {
-  uint8_t comm_type;   // Bit 28~24
-  uint8_t mode_status; // Bit 23~22
-  uint8_t fault_info;  // Bit 21~16
-  uint8_t motor_id;    // Bit 15~8
-  uint8_t host_id;     // Bit 7~0
+  OFFLINE,
+  INITIALIZING,
+  READY,
+  ERROR
 };
 
-struct MotorFeedbackData
+struct MotorConfig
 {
-  float angle;        // [rad] (-4pi ~ 4pi)
-  float velocity;     // [rad/s] (-50 ~ 50)
-  float torque;       // [Nm] (-6 ~ 6)
-  float temperature;  // [Celsius]
+  std::string name;
+  uint16_t logical_id = 0;
+  uint8_t can_id = 0;
+  Mode mode = Mode::VELOCITY;
+
+  float current_limit = 11.0f;
+  float acceleration = 150.0f;
+  float speed_limit = 50.0f;
+    // CAN指令送信周期
+  uint32_t command_period_ms = 10;
+  // 上位ノードからの指令タイムアウト
+  uint32_t target_timeout_ms = 200;
+  // モータから応答がなくなったときのタイムアウト
+  uint32_t feedback_timeout_ms = 500;
 };
 
-CanIdInfo decode_can_id(uint32_t can_id);
-MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data);
+struct MotorFeedback
+{
+  float position = 0.0f;
+  float velocity = 0.0f;
+  float effort = 0.0f;
+  float temperature = 0.0f;
+  uint32_t fault_code = 0;
+};
 
-
-class Ed05CanframeCreater
+class Protocol
 {
 public:
-  Ed05CanframeCreater(uint8_t motor_id);
-  virtual ~Ed05CanframeCreater() = default;
+  explicit Protocol(const MotorConfig & config);
 
-  virtual std::vector<Canframe> create_init_frame() = 0;
-  virtual Canframe create_control_frame(float value) = 0;
-  Canframe terminate_motor();
+  const std::string & get_name() const { return config_.name; }
+  uint16_t get_logical_id() const { return config_.logical_id; }
+  uint8_t get_can_id() const { return config_.can_id; }
 
-protected:
-  struct ControlTargetInfo
+  MotorState get_state() const { return state_; }
+  bool is_connected() const { return connected_; }
+  bool is_enabled() const { return enabled_; }
+
+  const MotorFeedback & get_feedback() const { return feedback_; }
+
+  void set_target(float target);
+
+  // 初期化状態機械を1ステップ進める
+  std::optional<can_msgs::msg::Frame> initialization_frame();
+
+  // CAN受信
+  void receive(const can_msgs::msg::Frame & msg);
+
+  // READY時の通常指令
+  std::optional<can_msgs::msg::Frame> target_frame() const;
+
+  // 通信断監視
+  void watchdog();
+
+private:
+  using Clock = std::chrono::steady_clock;
+  using TimePoint = Clock::time_point;
+
+  enum class InitStep
   {
-    char name[12];
-    uint16_t index;     // commtype18で使用
+    WRITE_MODE,
+    READ_MODE,
+    WAIT_MODE,
+
+    WRITE_PARAM,
+    READ_PARAM,
+    WAIT_PARAM,
+
+    ENABLE,
+    WAIT_ENABLE,
+
+    READY,
+    ERROR
+  };
+
+  struct Parameter
+  {
+    uint16_t index;
     float value;
   };
 
-  uint8_t motor_id_;
-  int dlc_ = 8;
-  uint8_t host_id_ = 0xFD;
 
-  uint32_t encode_can_id(uint8_t commtype_index);
-  std::array<uint8_t, 8> encode_commtype18_data(ControlTargetInfo target_info);
+  MotorConfig config_;
+  MotorFeedback feedback_;
 
-  Canframe set_runmode(int value);
-  Canframe set_enable();
-  Canframe set_target_value(ControlTargetInfo target_info);
-  Canframe set_disable();
-  Canframe set_mechanicalzero();
-  Canframe set_angle_range(); // angleを-180~180にするための設定
+  MotorState state_ = MotorState::INITIALIZING;
+  InitStep step_ = InitStep::WRITE_MODE;
+
+  std::vector<Parameter> parameters_;
+  size_t parameter_index_ = 0;
+
+  float target_ = 0.0f;
+
+  bool connected_ = false;
+  bool enabled_ = false;
+
+  int retry_count_ = 0;
+
+  TimePoint last_feedback_time_{};
+  TimePoint last_request_time_{};
+  TimePoint last_target_time_{};
+  TimePoint last_command_time_{};
+
+
+  void build_parameters();
+  void retry();
+  void restart();
+
+  void receive_feedback(const can_msgs::msg::Frame & msg);
+  void receive_parameter(const can_msgs::msg::Frame & msg);
+
+  static can_msgs::msg::Frame write_u8(uint8_t motor_id, uint16_t index, uint8_t value);
+  static can_msgs::msg::Frame write_float(uint8_t motor_id, uint16_t index, float value);
+  static can_msgs::msg::Frame read(uint8_t motor_id, uint16_t index);
+  static can_msgs::msg::Frame enable(uint8_t motor_id);
 };
 
-class Velocity : public Ed05CanframeCreater
-{
-public:
-  explicit Velocity(uint8_t motor_id);
-  std::vector<Canframe> create_init_frame() override;
-  Canframe create_control_frame(float value) override;
-
-private:
-  std::array<ControlTargetInfo, 3> targets_info = {{
-    {"vel", 0x700A, 0.0f},     // 速度指令
-    {"limit_cur", 0x7018, 5.0f},     // 電流制限
-    {"acc_rad", 0x7022, 100.0f},     // 加速度制限
-  }};
-};
-
-class Position : public Ed05CanframeCreater
-{
-public:
-  explicit Position(uint8_t motor_id);
-  std::vector<Canframe> create_init_frame() override;
-  Canframe create_control_frame(float value) override;
-
-private:
-  std::array<ControlTargetInfo, 5> targets_info = {{
-    {"loc_ref", 0x7016, 0.0f}, // 位置指令
-    {"limit_cur", 0x7018, 5.0f}, // 電流制限
-    {"vel_max", 0x7024, 50.0f},  // 速度制限
-    {"acc_set", 0x7025, 100.0f}, // 加速度
-    //{"zero_sta", 0x7029, 1.0f},  //
-  }};
-};
-
-#endif  // EDULITE05_DRIVER__EDULITE05_PROTOCOL_HPP_
-
+}  // namespace edulite05_driver

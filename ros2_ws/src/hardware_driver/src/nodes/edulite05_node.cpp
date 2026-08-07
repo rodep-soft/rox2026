@@ -1,230 +1,266 @@
-#include "edulite05_driver/edulite05_node.hpp"
+#include "edulite05_driver/node.hpp"
 
+#include <algorithm>
 #include <chrono>
-#include "rclcpp_components/register_node_macro.hpp"
+#include <stdexcept>
+#include <string>
 
-Ed05DriverNode::Ed05DriverNode(const rclcpp::NodeOptions & options)
-: Node("edulite05_driver_node", options)
+namespace edulite05_driver
 {
-  RCLCPP_INFO(this->get_logger(), "Edulite05Node has been started.");
+using namespace std::chrono_literals;
+constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
+constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
 
-  declare_parameters();
+Node::Node()
+: rclcpp::Node("edulite05_driver")
+{
   get_parameters();
 
-  frame_template_.is_extended = true;
-  frame_template_.is_rtr = false;
-  frame_template_.is_error = false;
+  auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50))
+      .reliable()
+      .durability_volatile();
+  auto can_qos_sub = rclcpp::SensorDataQoS();
 
-  // CAN通信のQoS Queue Depthを50に拡大して message was lost やドロップを強力に防止
-  const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
-  const auto can_qos_sub = rclcpp::SensorDataQoS().keep_last(50);
+  can_pub_ =create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC,can_qos_pub);
+  can_sub_ =create_subscription<can_msgs::msg::Frame>(CAN_SUB_TOPIC,can_qos_sub,
+      std::bind(&Ed05DriverNode::can_callback,this,std::placeholders::_1));
 
-  cmd_sub_ = this->create_subscription<std_msgs::msg::Float32>(
-    sub_cmd_topic_name_, 10,
-    std::bind(&Ed05DriverNode::cmd_callback, this, std::placeholders::_1));
+  target_sub_ = create_subscription<actuator_msgs::msg::ActuatorTarget>(
+      "/edulite/target",
+      10,
+      std::bind(&Ed05DriverNode::target_callback,this,std::placeholders::_1));
+  target_array_sub_ = create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
+      "/edulite/target",
+      10,
+      std::bind(&Ed05DriverNode::target_array_callback,this,std::placeholders::_1));
 
-  can_pub_ = this->create_publisher<can_msgs::msg::Frame>(pub_can_topic_name_, can_qos_pub);
+  state_pub_ = create_publisher<actuator_msgs::msg::ActuatorState>(
+      "/edulite/state",
+      10);
+  state_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorStateArray>(
+      "/edulite/state",
+      10);
 
-  can_sub_ = this->create_subscription<can_msgs::msg::Frame>(
-    sub_can_topic_name_, can_qos_sub,
-    std::bind(&Ed05DriverNode::can_callback, this, std::placeholders::_1));
+  update_timer_ = create_wall_timer(
+      10ms,
+      std::bind(&Ed05DriverNode::update_callback,this));
 
-  fb_pub_ = this->create_publisher<std_msgs::msg::Float32>(pub_fb_topic_name_, 10);
-
-  if (runmode_ == "Velocity") {
-    motor_ = std::make_unique<Velocity>(motor_id_);
-  } else if (runmode_ == "Position") {
-    motor_ = std::make_unique<Position>(motor_id_);
-  } else {
-    RCLCPP_ERROR(
-      this->get_logger(), "Invalid runmode: %s. Must be \"Velocity\" or \"Position\".",
-      runmode_.c_str());
-    return;
-  }
-
-  // 1.5秒ごとにトルク確定状態（0x02受信）を監視し、未イネーブルなら自動再送するタイマー
-  retry_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(1500),
-    std::bind(&Ed05DriverNode::retry_timer_callback, this));
-
-  // 起動時のCANフレーム衝突を回避するため、モータIDごとに分散して初期化を開始する
-  schedule_staggered_init();
+  state_timer_ = create_wall_timer(
+      50ms,
+      std::bind(&Ed05DriverNode::state_callback,this));
 }
 
-Ed05DriverNode::~Ed05DriverNode()
+
+void Node::get_parameters()
 {
-  RCLCPP_INFO(this->get_logger(), "Ed05Node is shutting down.");
-}
+  const auto names = declare_parameter<std::vector<std::string>>("motors");
 
-void Ed05DriverNode::terminate_motor()
-{
-  init_state_ = InitState::IDLE;
-  publish_frame(motor_->terminate_motor());
-  RCLCPP_DEBUG(this->get_logger(), "Published terminate frame for motor %d.", motor_id_);
-}
+  for (const auto & name : names) {
+    const auto prefix = name + ".";
+    const auto logical_id = declare_parameter<uint16_t>(prefix + "logical_id",-1);
+    const auto can_id = declare_parameter<uint8_t>(prefix + "can_id",-1);
+    const auto mode_name = declare_parameter<std::string>(prefix + "mode","velocity");
+    const auto current_limit = declare_parameter<double>(prefix + "current_limit",11.0);
+    const auto acceleration = declare_parameter<double>(prefix + "acceleration",150.0);
+    const auto speed_limit = declare_parameter<double>(prefix + "speed_limit",50.0);
+    const auto command_period_ms = declare_parameter<uint32_t>(prefix + "command_period_ms",5);
+    const auto target_timeout_ms = declare_parameter<uint32_t>(prefix + "target_timeout_ms",200);
+    const auto feedback_timeout_ms =declare_parameter<uint32_t>(prefix + "feedback_timeout_ms",500);
 
-void Ed05DriverNode::declare_parameters()
-{
-  this->declare_parameter<std::string>("sub_cmd_topic_name", "cmd");
-  this->declare_parameter<std::string>("pub_can_topic_name", "can_tx");
-  this->declare_parameter<std::string>("sub_can_topic_name", "can_rx");
-  this->declare_parameter<std::string>("pub_fb_topic_name", "fb");
-  this->declare_parameter<uint8_t>("motor_id", 0x01);
-  this->declare_parameter<std::string>("runmode", "Velocity");
-  this->declare_parameter<bool>("is_requested_fb_pub", false);
-}
-
-void Ed05DriverNode::get_parameters()
-{
-  sub_cmd_topic_name_ = this->get_parameter("sub_cmd_topic_name").as_string();
-  pub_can_topic_name_ = this->get_parameter("pub_can_topic_name").as_string();
-  sub_can_topic_name_ = this->get_parameter("sub_can_topic_name").as_string();
-  pub_fb_topic_name_ = this->get_parameter("pub_fb_topic_name").as_string();
-  motor_id_ = static_cast<uint8_t>(this->get_parameter("motor_id").as_int());
-  runmode_ = this->get_parameter("runmode").as_string();
-  is_requested_fb_pub_ = this->get_parameter("is_requested_fb_pub").as_bool();
-}
-
-void Ed05DriverNode::schedule_staggered_init()
-{
-  // モータIDの下位4ビットに基づき 50ms〜450ms の起動遅延を設けてバースト衝突を完全に防止
-  const int delay_ms = 50 + (motor_id_ % 10) * 60;
-  init_delay_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(delay_ms),
-    [this]() {
-      init_delay_timer_->cancel();
-      start_init();
-    });
-}
-
-void Ed05DriverNode::start_init()
-{
-  if (!motor_) {
-    return;
-  }
-
-  pending_frames_ = motor_->create_init_frame();
-  pending_frame_index_ = 0;
-  init_state_ = InitState::SENDING;
-
-  // 60ms 間隔でフレームを1枚ずつ送信（CANバス負荷を軽減）
-  init_frame_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(60),
-    std::bind(&Ed05DriverNode::init_frame_timer_callback, this));
-}
-
-void Ed05DriverNode::init_frame_timer_callback()
-{
-  if (pending_frame_index_ >= pending_frames_.size()) {
-    init_frame_timer_->cancel();
-    init_state_ = InitState::IDLE;
-    RCLCPP_INFO(
-      this->get_logger(), "Motor %d: all init frames sent. Awaiting CAN feedback (0x02)...",
-      motor_id_);
-    return;
-  }
-
-  publish_frame(pending_frames_[pending_frame_index_]);
-  ++pending_frame_index_;
-}
-
-void Ed05DriverNode::retry_timer_callback()
-{
-  if (init_state_ == InitState::ENABLED) {
-    // 最後にフィードバックを受信してから 3.0 秒以上経過していたら通信途絶と判定して再初期化
-    if ((now() - last_feedback_time_).seconds() > 3.0) {
-      RCLCPP_WARN(
-        this->get_logger(), "Motor %d: CAN feedback lost for >3.0s. Re-initializing...",
-        motor_id_);
-      init_state_ = InitState::IDLE;
-      start_init();
+    if (logical_id < 0 || logical_id > 65535)
+    {
+      throw std::runtime_error(name + ": invalid logical_id");
     }
-    return;
-  }
-
-  if (init_state_ == InitState::SENDING) {
-    // まだ初期化フレーム送信中のためスキップ
-    return;
-  }
-
-  // 初期化完了（0x02受信）に至っていないため再送
-  RCLCPP_WARN(
-    this->get_logger(),
-    "Motor %d: Torque ON not confirmed yet (no 0x02 FB). Retrying init frames...",
-    motor_id_);
-  start_init();
-}
-
-void Ed05DriverNode::cmd_callback(const std_msgs::msg::Float32::SharedPtr msg)
-{
-  if (init_state_ != InitState::ENABLED) {
-    return;  // モータからフィードバック応答がありトルクONが確定するまで制御指令を送らない
-  }
-  publish_frame(motor_->create_control_frame(msg->data));
-  RCLCPP_DEBUG(this->get_logger(), "publish motor %d: %f", motor_id_, msg->data);
-}
-
-void Ed05DriverNode::can_callback(const can_msgs::msg::Frame::SharedPtr msg)
-{
-  const CanIdInfo id_info = decode_can_id(msg->id);
-
-  if (id_info.motor_id != motor_id_) {
-    return;
-  }
-
-  // モータからのあらゆるCANフレーム（0x00ステータスまたは0x02レスポンス）で通信生存時刻を更新
-  last_feedback_time_ = now();
-
-  if (id_info.comm_type == 0x02) {
-
-    // CAN通信によりモータから実フィードバックを受信！トルクONを100%確定
-    if (init_state_ != InitState::ENABLED) {
-      init_state_ = InitState::ENABLED;
-      RCLCPP_INFO(
-        this->get_logger(), "Motor %d: CAN feedback (0x02) confirmed! Torque ON LOCKED.",
-        motor_id_);
+    if (can_id < 0 || can_id > 255)
+    {
+      throw std::runtime_error(name +": invalid can_id");
+    }
+    
+    Mode mode;
+    if (mode_name == "velocity") {
+      mode = Mode::VELOCITY;
+    } else if (mode_name == "pp") {
+      mode = Mode::PP;
+    } else if (mode_name == "csp") {
+      mode = Mode::CSP;
+    } else {
+      throw std::runtime_error(
+        "Unknown mode: " + mode_name);
     }
 
-    std::array<uint8_t, 8> data_array{};
-    std::copy(msg->data.begin(), msg->data.end(), data_array.begin());
-    const MotorFeedbackData fb_data = decode_feedback_data(data_array);
+    MotorConfig config{
+      name,
+      logical_id,
+      can_id,
+      mode,
+      static_cast<float>(current_limit),
+      static_cast<float>(acceleration),
+      static_cast<float>(speed_limit),
+      command_period_ms,
+      target_timeout_ms,
+      feedback_timeout_ms,
+    };
 
-    if (runmode_ == "Velocity") {
-      fb_msg_.data = fb_data.velocity;
-    } else if (runmode_ == "Position") {
-      fb_msg_.data = fb_data.angle;
-    }
+    motors_.emplace_back(config);
 
-    if (is_requested_fb_pub_) {
-      fb_pub_->publish(fb_msg_);
-    }
-  } else if (id_info.comm_type == 0x00) {
-    // comm_type 0x00 はモータからの自動ステータス通知。
-    // フォルト検知時のみ警告ログを出力し、誤ったトルクオフ（set_disable）を伴う再初期化は行わない。
-    if (id_info.fault_info != 0) {
-      RCLCPP_WARN(
-        this->get_logger(), "Motor %d: status frame (0x00) fault_info=0x%02X",
-        motor_id_, id_info.fault_info);
+    RCLCPP_INFO(get_logger(),
+      "%s: logical=%d CAN=0x%02X mode=%s period=%ldms",
+      name.c_str(),logical_id,can_id,mode_name.c_str(),command_period_ms);
+  }
+}
+
+
+Protocol * Node::find_can_id(uint8_t can_id)
+{
+  const auto it = std::find_if(
+      motors_.begin(),
+      motors_.end(),
+      [can_id](const Protocol & motor) {
+        return motor.can_id() == can_id;
+      });
+
+  return it == motors_.end()? nullptr : &*it;
+}
+
+Protocol * Node::find_logical_id(uint16_t logical_id)
+{
+  const auto it = std::find_if(
+      motors_.begin(),
+      motors_.end(),
+      [logical_id](const Protocol & motor) {
+        return motor.logical_id() == logical_id;
+      });
+
+  return it == motors_.end() ? nullptr : &*it;
+}
+
+void Node::can_callback(can_msgs::msg::Frame::SharedPtr msg)
+{
+  if (!msg->is_extended) {
+    return;
+  }
+  const uint8_t type = static_cast<uint8_t>((msg->id >> 24) & 0x1F);
+  // 必要な応答だけ処理を行う
+  if (type != TYPE_FEEDBACK && type != TYPE_READ) {
+    return;
+  }
+  // Type2 / Type17 replyではbit15:8がmotor CAN ID
+  const uint8_t motor_id = static_cast<uint8_t>((msg->id >> 8) & 0xFF);
+  if (auto * motor = find_can_id(motor_id)) {
+    const bool feedback_updated = motor->receive(*msg);
+    // Type2を受けた瞬間にそのモータだけ配信する
+    if (feedback_updated) {
+      state_pub_->publish(make_state(*motor));
     }
   }
 }
 
-void Ed05DriverNode::publish_frame(const Canframe & frame)
+void Node::target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr msg)
 {
-  frame_template_.id = frame.id;
-  frame_template_.dlc = frame.dlc;
-  frame_template_.data = frame.data;
-  can_pub_->publish(frame_template_);
+  if (auto * motor = find_logical_id(msg->logical_id))
+  {
+      motor->set_target(msg->target);
+  }
 }
+
+void Node::targets_callback(actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg)
+{
+  for (const auto & actuator : msg->actuators) {
+    if (auto * motor = find_logical_id(actuator.logical_id)) {
+      motor->set_target(actuator.target);
+    }
+  }
+}
+
+void Node::set_target(uint16_t logical_id,float target)
+{
+  auto * motor = find_logical_id(logical_id);
+  if (!motor) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "Unknown logical_id: %u", static_cast<unsigned>(logical_id));
+    return;
+  }
+    motor->set_target(target);
+}
+
+void Node::update_callback()
+{
+  if (motors_.empty()) {
+    return;
+  }
+  const auto time = now();
+
+  // 通信断監視
+  for (auto & motor : motors_) {
+    motor.watchdog(time);
+  }
+
+  // 初期化は1周期につき1台だけ進める
+   auto & init_motor = motors_[init_index_];
+  if (auto frame = init_motor.initialization_frame(time)) {
+    can_pub_->publish(*frame);
+  }
+  init_index_ = (init_index_ + 1) % motors_.size();
+
+  // READYモータへ通常指令
+  for (const auto & motor : motors_) {
+    if (auto frame = motor.target_frame()) {
+      can_pub_->publish(*frame);
+    }
+  }
+}
+
+actuator_msgs::msg::ActuatorState Node::make_state(const Protocol & motor) const
+{
+  actuator_msgs::msg::ActuatorState msg;
+
+  msg.logical_id = motor.logical_id();
+  msg.connected = motor.connected();
+  msg.configured = motor.configured();
+  msg.enabled = motor.enabled();
+  const auto & feedback = motor.feedback();
+  msg.position = feedback.position;
+  msg.velocity = feedback.velocity;
+  msg.effort = feedback.effort;
+  msg.temperature = feedback.temperature;
+  msg.fault_code = feedback.fault_code;
+
+  switch (motor.state()) {
+    case MotorState::OFFLINE:
+      msg.state = actuator_msgs::msg::ActuatorState::STATE_OFFLINE;
+      break;
+    case MotorState::INITIALIZING:
+      msg.state = actuator_msgs::msg::ActuatorState::STATE_INITIALIZING;
+      break;
+    case MotorState::READY:
+      msg.state = actuator_msgs::msg::ActuatorState::STATE_READY;
+      break;
+    case MotorState::ERROR:
+      msg.state = actuator_msgs::msg::ActuatorState::STATE_ERROR;
+      break;
+  }
+  return msg;
+}
+
+void Node::states_callback()
+{
+  actuator_msgs::msg::ActuatorStateArray msg;
+  msg.header.stamp = now();
+  msg.actuators.reserve(motors_.size());
+
+  for (const auto & motor : motors_) {
+    msg.actuators.push_back(make_state(motor));
+  }
+    states_pub_->publish(msg);
+}
+  
+}// namespace edulite05_driver
 
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<Ed05DriverNode>();
-  rclcpp::spin(node);
-  node->terminate_motor();
+  rclcpp::spin(std::make_shared<edulite05_driver::Ed05DriverNode>());
   rclcpp::shutdown();
   return 0;
 }
-
-RCLCPP_COMPONENTS_REGISTER_NODE(Ed05DriverNode);

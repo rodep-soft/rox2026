@@ -10,7 +10,6 @@
 
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_components/register_node_macro.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/int16.hpp"
 #include "vesc_driver/vesc_protocol.hpp"
@@ -175,8 +174,6 @@ private:
 };
 
 }  // namespace vesc_driver
-
-RCLCPP_COMPONENTS_REGISTER_NODE(vesc_driver::Node);
 
 int main(int argc, char ** argv)
 {
