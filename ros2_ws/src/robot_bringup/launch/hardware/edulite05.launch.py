@@ -9,7 +9,7 @@ def generate_launch_description():
     parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
-        "edulite05_driver_v2.yaml",
+        "edulite05_driver.yaml",
     )
 
     return LaunchDescription(

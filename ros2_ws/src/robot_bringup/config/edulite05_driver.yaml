@@ -1,61 +1,53 @@
-# edulite05_driver configuration for all motors
-
-edulite05_fl_driver:
+edulite05_driver:
   ros__parameters:
-    sub_cmd_topic_name: "/mecanum/fl/vel_command" # std_msgs/msg/Float32 (rad/s)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/mecanum/fl/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x20
-    runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
 
-edulite05_fr_driver:
-  ros__parameters:
-    sub_cmd_topic_name: "/mecanum/fr/vel_command" # std_msgs/msg/Float32 (rad/s)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/mecanum/fr/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x21
-    runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    motors:
+      - front_left
+      - front_right
+      - rear_left
+      - rear_right
+      - lift
+      - arm
 
-edulite05_rl_driver:
-  ros__parameters:
-    sub_cmd_topic_name: "/mecanum/rl/vel_command" # std_msgs/msg/Float32 (rad/s)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/mecanum/rl/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x22
-    runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    front_left:
+      logical_id: 0
+      can_id: 32
+      mode: velocity
+      current_limit: 11.0
+      acceleration: 150.0
 
-edulite05_rr_driver:
-  ros__parameters:
-    sub_cmd_topic_name: "/mecanum/rr/vel_command" # std_msgs/msg/Float32 (rad/s)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/mecanum/rr/feedback"     # std_msgs/msg/Float32
-    motor_id: 0x23
-    runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    front_right:
+      logical_id: 1
+      can_id: 33
+      mode: velocity
+      current_limit: 11.0
+      acceleration: 150.0
 
-edulite05_spring_driver:
-  ros__parameters:
-    sub_cmd_topic_name: "/spring/vel_command"     # std_msgs/msg/Float32 (rad/s)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/spring/feedback"         # std_msgs/msg/Float32
-    motor_id: 0x28
-    runmode: "Velocity"                           # "Velocity" or "Position"
-    is_requested_fb_pub: false                    # Publish feedback if true
+    rear_left:
+      logical_id: 2
+      can_id: 34
+      mode: velocity
+      current_limit: 11.0
+      acceleration: 150.0
 
-edulite05_dribble_position_driver:
-  ros__parameters:
-    sub_cmd_topic_name: "/dribble/position_command"  # std_msgs/msg/Float32 (rad)
-    pub_can_topic_name: "/socketcan_bridge/tx"
-    sub_can_topic_name: "/socketcan_bridge/rx"
-    pub_fb_topic_name: "/dribble/position_feedback"  # std_msgs/msg/Float32 (rad)
-    motor_id: 0x38
-    runmode: "Position"                              # "Velocity" or "Position"
-    is_requested_fb_pub: true                        # Publish feedback if true
+    rear_right:
+      logical_id: 3
+      can_id: 35
+      mode: velocity
+      current_limit: 11.0
+      acceleration: 150.0
+
+    lift:
+      logical_id: 4
+      can_id: 40
+      mode: velocity
+      current_limit: 11.0
+      acceleration: 150.0
+
+    arm:
+      logical_id: 5
+      can_id: 38
+      mode: pp
+      current_limit: 11.0
+      speed_limit: 5.0
+      acceleration: 150.0
