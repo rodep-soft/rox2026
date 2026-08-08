@@ -88,13 +88,10 @@ if(BUILD_TESTING)
     ament_add_gtest(test_robot_controller test/test_robot_controller.cpp)
     target_link_libraries(
       test_robot_controller
-      PRIVATE
-        belt_controller_node_implementation
-        arm_position_controller_node_implementation
-        dribbler_controller_node_implementation
-        mecanum_controller_node_implementation)
-    ament_target_dependencies(
-      test_robot_controller actuator_msgs geometry_msgs rclcpp sensor_msgs std_msgs)
+      belt_controller_node_implementation
+      arm_position_controller_node_implementation
+      dribbler_controller_node_implementation
+      mecanum_controller_node_implementation)
   endif()
 endif()
 
