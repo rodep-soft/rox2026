@@ -20,7 +20,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             "can_interface": "can0",
-            "enable_frame_loopback": "false",
+            "enable_frame_loopback": "true",
         }.items(),
     )
 
