@@ -27,7 +27,7 @@ struct MotorConfig
   double max_rpm;
   double rpm_slew_rate;
   double startup_current_a;
-  int32_t rpm_control_threshold_erpm;
+  double rpm_control_threshold_rpm;
   std::chrono::milliseconds command_timeout;
   std::chrono::milliseconds feedback_timeout;
 };
@@ -44,7 +44,6 @@ struct Motor
   double commanded_rpm{0.0};
   float current_rpm{std::numeric_limits<float>::quiet_NaN()};
   float current_a{std::numeric_limits<float>::quiet_NaN()};
-  int32_t current_erpm{0};
   bool command_received{false};
   bool feedback_received{false};
   bool rpm_control_active{false};
@@ -79,8 +78,8 @@ public:
       const auto rpm_slew_rate = declare_parameter<double>(prefix + "rpm_slew_rate", 4000.0);
       const auto startup_current_a =
         declare_parameter<double>(prefix + "startup_current_a", 5.0);
-      const auto rpm_control_threshold_erpm =
-        declare_parameter<int64_t>(prefix + "rpm_control_threshold_erpm", 7000);
+      const auto rpm_control_threshold_rpm =
+        declare_parameter<double>(prefix + "rpm_control_threshold_rpm", 1000.0);
 
       if (logical_id < 0 || logical_id > 65535) {
         throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
@@ -89,11 +88,10 @@ public:
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
       }
       if (!std::isfinite(startup_current_a) || startup_current_a <= 0.0 ||
-        rpm_control_threshold_erpm <= 0 ||
-        rpm_control_threshold_erpm > std::numeric_limits<int32_t>::max())
+        !std::isfinite(rpm_control_threshold_rpm) || rpm_control_threshold_rpm <= 0.0)
       {
         throw std::runtime_error(
-          name + ": startup current and ERPM threshold must be positive");
+          name + ": startup current and RPM threshold must be positive");
       }
 
       motors_.emplace_back(MotorConfig{
@@ -102,7 +100,7 @@ public:
         max_rpm,
         rpm_slew_rate,
         startup_current_a,
-        static_cast<int32_t>(rpm_control_threshold_erpm),
+        rpm_control_threshold_rpm,
         std::chrono::milliseconds(command_timeout_ms),
         std::chrono::milliseconds(feedback_timeout_ms)});
     }
@@ -200,14 +198,12 @@ private:
     }
 
     const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-    const auto target_erpm = desired_rpm * motor_pole_pairs;
-    const auto switch_erpm = std::min(
-      static_cast<double>(motor.config.rpm_control_threshold_erpm),
-      std::abs(target_erpm));
+    const auto switch_rpm = std::min(
+      motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
     const auto rotating_in_target_direction =
-      target_erpm * static_cast<double>(motor.current_erpm) > 0.0;
+      desired_rpm * static_cast<double>(motor.current_rpm) > 0.0;
     if (!motor.rpm_control_active && rotating_in_target_direction &&
-      std::abs(static_cast<double>(motor.current_erpm)) >= switch_erpm)
+      std::abs(static_cast<double>(motor.current_rpm)) >= switch_rpm)
     {
       motor.rpm_control_active = true;
       motor.commanded_rpm = motor.current_rpm;
@@ -241,7 +237,6 @@ private:
     if (motor == nullptr) {
       return;
     }
-    motor->current_erpm = status.erpm;
     motor->current_rpm = static_cast<float>(
       status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
     motor->current_a = status.current_a;

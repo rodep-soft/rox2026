@@ -21,7 +21,7 @@ vesc_driver:
       max_rpm: 5600.0 # 最大回転数(モータ固有)
       rpm_slew_rate: 1000.0 # 一秒間での加速量
       startup_current_a: 10.0
-      rpm_control_threshold_erpm: 7000
+      rpm_control_threshold_rpm: 1000.0
 
     under_belt:
       logical_id: 11
@@ -31,7 +31,7 @@ vesc_driver:
       max_rpm: 5600.0
       rpm_slew_rate: 1000.0 #一秒間での加速量
       startup_current_a: 10.0
-      rpm_control_threshold_erpm: 7000
+      rpm_control_threshold_rpm: 1000.0
 
     dribble:
       logical_id: 12
@@ -41,4 +41,4 @@ vesc_driver:
       max_rpm: 5600.0
       rpm_slew_rate: 4000.0 #一秒間での加速量
       startup_current_a: 5.0
-      rpm_control_threshold_erpm: 7000
+      rpm_control_threshold_rpm: 1000.0
