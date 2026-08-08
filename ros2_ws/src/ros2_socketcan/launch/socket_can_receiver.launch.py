@@ -40,6 +40,10 @@ def generate_launch_description():
                 "interval_sec": LaunchConfiguration("interval_sec"),
                 "filters": LaunchConfiguration("filters"),
                 "use_bus_time": LaunchConfiguration("use_bus_time"),
+                # Lifecycle transitions are managed by the event handlers below.
+                # Disable the component fallback to avoid configuring/activating twice.
+                "auto_configure": False,
+                "auto_activate": False,
             }
         ],
         remappings=[("from_can_bus", LaunchConfiguration("from_can_bus_topic"))],
