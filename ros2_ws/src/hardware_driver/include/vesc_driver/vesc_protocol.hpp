@@ -37,6 +37,10 @@ inline can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
   return frame;
 }
 
+/// @brief escに送る電流制御用のcanFrame生成
+/// @param id モータID
+/// @param current_a 電流(A)
+/// @return canFrame
 inline can_msgs::msg::Frame make_set_current_frame(uint8_t id, double current_a)
 {
   can_msgs::msg::Frame frame{};

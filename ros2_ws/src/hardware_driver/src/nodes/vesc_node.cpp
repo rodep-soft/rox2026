@@ -91,13 +91,6 @@ public:
       if (controller_id < 0 || controller_id > 255) {
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
       }
-      if (!std::isfinite(startup_current_a) || startup_current_a <= 0.0 ||
-        !std::isfinite(rpm_control_threshold_rpm) || rpm_control_threshold_rpm <= 0.0 ||
-        startup_current_timeout_ms <= 0)
-      {
-        throw std::runtime_error(
-          name + ": startup current, RPM threshold, and timeout must be positive");
-      }
 
       motors_.emplace_back(MotorConfig{
         static_cast<uint16_t>(logical_id),
@@ -132,6 +125,10 @@ public:
   }
 
 private:
+
+  /// @brief 論理IDからモーターを検索
+  /// @param logical_id 論理ID
+  /// @return motorへのポインタ(見つからなければnullptr)
   Motor * find_by_logical_id(uint16_t logical_id)
   {
     const auto iterator = std::find_if(
@@ -141,6 +138,9 @@ private:
     return iterator == motors_.end() ? nullptr : &*iterator;
   }
 
+  /// @brief controller IDからモーターを検索
+  /// @param controller_id Controller ID
+  /// @return motorへのポインタ(見つからなければnullptr)
   Motor * find_by_controller_id(uint8_t controller_id)
   {
     const auto iterator = std::find_if(
@@ -150,18 +150,25 @@ private:
     return iterator == motors_.end() ? nullptr : &*iterator;
   }
 
+  /// @brief モーターが接続されているかを判定
+  /// @param motor モーター
+  /// @param now 現在時刻
+  /// @return 接続されている場合はtrue、それ以外はfalse
   bool is_connected(const Motor & motor, std::chrono::steady_clock::time_point now) const
   {
     return motor.feedback_received && now - motor.last_feedback_time <= motor.config.feedback_timeout;
   }
 
-  actuator_msgs::msg::ActuatorState make_state(
-    const Motor & motor, std::chrono::steady_clock::time_point now) const
+  /// @brief モーターの状態メッセージを作成
+  /// @param motor モーター
+  /// @param now 現在時刻
+  /// @return 状態メッセージ
+  actuator_msgs::msg::ActuatorState make_state(const Motor & motor, std::chrono::steady_clock::time_point now) const
   {
     actuator_msgs::msg::ActuatorState message;
     message.logical_id = motor.config.logical_id;
     message.position_reference_set = false;
-    message.velocity = std::isfinite(motor.current_rpm) ? motor.current_rpm : 0.0f;
+    message.velocity = motor.current_rpm;
     message.torque_nm = std::numeric_limits<float>::quiet_NaN();
     message.current_a = motor.current_a;
     message.state = is_connected(motor, now) ?
@@ -172,15 +179,9 @@ private:
 
   void set_target(Motor & motor, float target_rpm)
   {
-    if (!std::isfinite(target_rpm)) {
-      return;
-    }
     const auto previous_target_rpm = motor.target_rpm;
-    motor.target_rpm = std::clamp(
-      static_cast<double>(target_rpm), -motor.config.max_rpm, motor.config.max_rpm);
-    if (motor.target_rpm == 0.0 || previous_target_rpm * motor.target_rpm <= 0.0 ||
-      (!motor.rpm_control_active && motor.startup_current_start_time ==
-      std::chrono::steady_clock::time_point{}))
+    motor.target_rpm = std::clamp(static_cast<double>(target_rpm), -motor.config.max_rpm, motor.config.max_rpm);
+    if (motor.target_rpm == 0.0 || previous_target_rpm * motor.target_rpm <= 0.0 ||(!motor.rpm_control_active && motor.startup_current_start_time == std::chrono::steady_clock::time_point{}))
     {
       motor.rpm_control_active = false;
       motor.startup_current_start_time = std::chrono::steady_clock::now();
@@ -189,37 +190,29 @@ private:
     motor.command_received = true;
   }
 
-  void publish_motor_command(
-    Motor & motor, std::chrono::steady_clock::time_point now)
+  void publish_motor_command(Motor & motor, std::chrono::steady_clock::time_point now)
   {
     if (!motor.command_received) {
       return;
     }
 
-    const auto command_timed_out =
-      now - motor.last_command_time > motor.config.command_timeout;
+    const auto command_timed_out = now - motor.last_command_time > motor.config.command_timeout;
     const auto desired_rpm = command_timed_out ? 0.0 : motor.target_rpm;
     if (desired_rpm == 0.0) {
       motor.rpm_control_active = false;
       motor.commanded_rpm = 0.0;
       motor.startup_current_start_time = {};
-      can_publisher_->publish(
-        protocol::make_set_current_frame(motor.config.controller_id, 0.0));
+      can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, 0.0));
       return;
     }
 
     const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-    const auto switch_rpm = std::min(
-      motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
-    const auto rotating_in_target_direction =
-      desired_rpm * static_cast<double>(motor.current_rpm) > 0.0;
-    const auto threshold_reached = rotating_in_target_direction &&
-      std::abs(static_cast<double>(motor.current_rpm)) >= switch_rpm;
-    const auto startup_timed_out = motor.startup_current_start_time !=
-      std::chrono::steady_clock::time_point{} &&
+    const auto switch_rpm = std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
+    const auto rotating_in_target_direction = desired_rpm * static_cast<double>(motor.current_rpm) > 0.0;
+    const auto threshold_reached = rotating_in_target_direction && std::abs(static_cast<double>(motor.current_rpm)) >= switch_rpm;
+    const auto startup_timed_out = motor.startup_current_start_time != std::chrono::steady_clock::time_point{} &&
       now - motor.startup_current_start_time >= motor.config.startup_current_timeout;
-    if (!motor.rpm_control_active && motor.feedback_received &&
-      std::isfinite(motor.current_rpm) && (threshold_reached || startup_timed_out))
+    if (!motor.rpm_control_active && motor.feedback_received && (threshold_reached || startup_timed_out))
     {
       motor.rpm_control_active = true;
       motor.commanded_rpm = motor.current_rpm;
@@ -228,21 +221,20 @@ private:
     if (!motor.rpm_control_active) {
       const auto startup_current_a =
         std::copysign(motor.config.startup_current_a, desired_rpm);
-      can_publisher_->publish(protocol::make_set_current_frame(
-        motor.config.controller_id, startup_current_a));
+      can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, startup_current_a));
       return;
     }
 
     const auto elapsed_seconds =
       std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
     const auto maximum_step = motor.config.rpm_slew_rate * elapsed_seconds;
-    motor.commanded_rpm += std::clamp(
-      desired_rpm - motor.commanded_rpm, -maximum_step, maximum_step);
+    motor.commanded_rpm += std::clamp(desired_rpm - motor.commanded_rpm, -maximum_step, maximum_step);
     const auto commanded_erpm = motor.commanded_rpm * motor_pole_pairs;
-    can_publisher_->publish(protocol::make_set_rpm_frame(
-      motor.config.controller_id, static_cast<int32_t>(std::lround(commanded_erpm))));
+    can_publisher_->publish(protocol::make_set_rpm_frame(motor.config.controller_id, static_cast<int32_t>(std::lround(commanded_erpm))));
   }
 
+  /// @brief CANフレーム受信時のコールバック関数
+  /// @param frame 
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     protocol::Status1 status{};
@@ -253,14 +245,15 @@ private:
     if (motor == nullptr) {
       return;
     }
-    motor->current_rpm = static_cast<float>(
-      status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
+    motor->current_rpm = static_cast<float>(status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
     motor->current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
     state_publisher_->publish(make_state(*motor, motor->last_feedback_time));
   }
 
+  /// @brief 目標値が送られてきた場合のコールバック関数
+  /// @param message
   void target_callback(const actuator_msgs::msg::ActuatorTarget::SharedPtr message)
   {
     if (auto * motor = find_by_logical_id(message->logical_id)) {
@@ -268,6 +261,8 @@ private:
     }
   }
 
+  /// @brief 目標値が複数送られてきた場合のコールバック関数
+  /// @param message 
   void target_array_callback(
     const actuator_msgs::msg::ActuatorTargetArray::SharedPtr message)
   {

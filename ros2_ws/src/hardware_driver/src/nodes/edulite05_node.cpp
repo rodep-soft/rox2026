@@ -53,9 +53,6 @@ void Node::declare_and_load_parameters() {
     if (can_id < 0 || can_id > 255) {
       throw std::runtime_error(motor_name + ": can_id must be in [0, 255]");
     }
-    if (current_feedback_period_ms <= 0) {
-      throw std::runtime_error(motor_name + ": current_feedback_period_ms must be positive");
-    }
 
     ControlMode control_mode;
     if (control_mode_name == "velocity") {
@@ -107,8 +104,7 @@ void Node::declare_and_load_parameters() {
 }
 
 void Node::create_interfaces() {
-  const auto can_tx_qos =
-      rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+  const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
   const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
 
   can_frame_publisher_ =
@@ -155,8 +151,7 @@ void Node::can_frame_callback(can_msgs::msg::Frame::SharedPtr message) {
   }
 }
 
-void Node::target_callback(
-    actuator_msgs::msg::ActuatorTarget::SharedPtr message) {
+void Node::target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr message) {
   if (auto *motor = find_motor_by_logical_id(message->logical_id)) {
     motor->set_target(message->target);
     return;
@@ -166,8 +161,7 @@ void Node::target_callback(
                        static_cast<unsigned>(message->logical_id));
 }
 
-void Node::target_array_callback(
-    actuator_msgs::msg::ActuatorTargetArray::SharedPtr message) {
+void Node::target_array_callback(actuator_msgs::msg::ActuatorTargetArray::SharedPtr message) {
   for (const auto &target : message->actuators) {
     if (auto *motor = find_motor_by_logical_id(target.logical_id)) {
       motor->set_target(target.target);
@@ -179,9 +173,7 @@ void Node::target_array_callback(
   }
 }
 
-void Node::set_position_callback(
-    const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request,
-    std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response) {
+void Node::set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request, std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response) {
   auto *motor = find_motor_by_logical_id(request->logical_id);
   if (motor == nullptr) {
     response->success = false;
