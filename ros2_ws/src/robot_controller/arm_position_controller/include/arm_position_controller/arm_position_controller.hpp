@@ -9,24 +9,22 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class ArmPositionControllerNode : public rclcpp::Node
-{
+class ArmPositionControllerNode : public rclcpp::Node {
 public:
   ArmPositionControllerNode();
 
 private:
-  enum class PositionMode : uint8_t
-  {
+  enum class PositionMode : uint8_t {
     DRIBBLE = 0,
     OPEN = 1,
     FEED = 2,
   };
 
   /// @brief 自動シュートサイクルの進行フェーズ
-  enum class ShotCyclePhase : uint8_t
-  {
-    OPENING = 0,  ///< OPEN 位置へ移動中
-    FEEDING = 1,  ///< FEED 位置へ押し込み中
+  enum class ShotCyclePhase : uint8_t {
+    OPENING = 0,   ///< OPEN 位置へ移動中
+    FEEDING = 1,   ///< FEED 位置へ押し込み中
+    RETURNING = 2, ///< DRIBBLE 位置へ復帰中
   };
 
   void declare_parameters();
@@ -38,16 +36,23 @@ private:
   void timer_callback();
 
   /// @brief PositionMode に対応する文字列表現を返す
-  const char * mode_name(PositionMode mode) const;
+  const char *mode_name(PositionMode mode) const;
   /// @brief 現在モードに対応する目標位置 [rad] を返す
   float target_position_rad() const;
+  float interpolated_position_rad(double from, double to, double elapsed_sec,
+                                  double max_velocity_rad_s) const;
+  double transition_duration_sec(double from, double to,
+                                 double max_velocity_rad_s) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
   double open_position_rad_{-1.0};
   double feed_position_rad_{1.3};
-  double open_duration_sec_{0.3};  ///< OPEN 姿勢を保持する時間 [s]
-  double feed_duration_sec_{0.6};  ///< FEED 押し込みを保持する時間 [s]
+  double open_duration_sec_{0.3}; ///< OPEN 姿勢を保持する時間 [s]
+  double feed_duration_sec_{0.6}; ///< FEED 押し込みを保持する時間 [s]
+  double opening_max_velocity_rad_s_{4.0};
+  double feeding_max_velocity_rad_s_{6.0};
+  double returning_max_velocity_rad_s_{4.0};
   int command_period_ms_{20};
   int qos_depth_{1};
   int logical_id_{5};
@@ -60,13 +65,16 @@ private:
   bool in_shot_cycle_{false};
   ShotCyclePhase shot_cycle_phase_{ShotCyclePhase::OPENING};
   rclcpp::Time shot_cycle_start_time_;
+  double shot_cycle_start_position_rad_{0.35};
+  double last_command_position_rad_{0.35};
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
+      position_command_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
-#endif  // ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
+#endif // ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
