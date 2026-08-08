@@ -3,7 +3,6 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
-#include <memory>
 
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
@@ -250,14 +249,4 @@ void SpringEduliteController::log_fire_request_rejection() const
   } else if (!is_loaded_) {
     RCLCPP_WARN(get_logger(), "Spring fire rejected: limit switch is OFF.");
   }
-}
-
-int main(int argc, char * argv[])
-{
-  rclcpp::init(argc, argv);
-  auto node = std::make_shared<SpringEduliteController>();
-  rclcpp::spin(node);
-  node.reset();
-  rclcpp::shutdown();
-  return 0;
 }
