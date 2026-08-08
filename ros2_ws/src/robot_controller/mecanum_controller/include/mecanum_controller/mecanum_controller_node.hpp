@@ -40,6 +40,7 @@ private:
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+  
   std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
 
   geometry_msgs::msg::Twist last_cmd_vel_;

@@ -1,13 +1,13 @@
 edulite05_driver:
   ros__parameters:
-
-    can_pub_topic: "/socketcan_bridge/tx"
-    can_sub_topic: "/socketcan_bridge/rx"
+    can_tx_topic: "/socketcan_bridge/tx"
+    can_rx_topic: "/socketcan_bridge/rx"
     target_topic: "/edulite/target"
     target_array_topic: "/edulite/target_array"
     state_topic: "/edulite/state"
     state_array_topic: "/edulite/state_array"
-    
+    set_position_service: "/edulite/set_position"
+
     motors:
       - front_left
       - front_right
@@ -19,54 +19,60 @@ edulite05_driver:
     front_left:
       logical_id: 0
       can_id: 32
-      mode: velocity
+      control_mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      speed_limit: 50.0
       command_period_ms: 10
 
     front_right:
       logical_id: 1
       can_id: 33
-      mode: velocity
+      control_mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      speed_limit: 50.0
       command_period_ms: 10
 
     rear_left:
       logical_id: 2
       can_id: 34
-      mode: velocity
+      control_mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      speed_limit: 50.0
       command_period_ms: 10
 
     rear_right:
       logical_id: 3
       can_id: 35
-      mode: velocity
+      control_mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      speed_limit: 50.0
       command_period_ms: 10
 
     spring:
       logical_id: 4
       can_id: 40
-      mode: velocity
+      control_mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      speed_limit: 50.0
       command_period_ms: 50
 
     dribble:
       logical_id: 5
       can_id: 38
-      mode: pp
+      control_mode: pp
 
-      require_homing: false
-      # この値は実機で測定して決める
-      position_offset: -1.234
-      position_min: -1.57
-      position_max: 1.57
-      
+      # service: /edulite/set_positionが呼ばれるまで位置指令を送らない。
+      # yaml_absolute: 最初のfeedback時の現在位置をstartup_absolute_position_radとして扱う。
+      position_reference_mode: yaml_absolute
+      startup_absolute_position_rad: -1.234
+      minimum_position_rad: -1.57
+      maximum_position_rad: 1.57
+
       command_period_ms: 50
       current_limit: 11.0
       speed_limit: 5.0

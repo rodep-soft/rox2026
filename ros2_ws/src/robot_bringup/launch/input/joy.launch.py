@@ -7,17 +7,16 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "device",
-                default_value="/dev/input/js0",
-                description="Input device read by joy_node",
-            ),
             Node(
                 package="joy",
                 executable="joy_node",
                 name="joy_node",
                 output="screen",
-                parameters=[{"dev": LaunchConfiguration("device")}],
+                parameters=[{
+                    'device_name': 'PS5 Controller',
+                    "autorepeat_rate": 100.0,
+                    "coalesce_interval_ms": 10
+                }],
             ),
         ]
     )
