@@ -19,70 +19,37 @@ Node::Node() : rclcpp::Node("edulite05_driver") {
 }
 
 void Node::declare_and_load_parameters() {
-  can_tx_topic_ =
-      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
-  can_rx_topic_ =
-      declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
-  target_topic_ =
-      declare_parameter<std::string>("target_topic", "/edulite/target");
-  target_array_topic_ = declare_parameter<std::string>("target_array_topic",
-                                                       "/edulite/target_array");
-  state_topic_ =
-      declare_parameter<std::string>("state_topic", "/edulite/state");
-  state_array_topic_ = declare_parameter<std::string>("state_array_topic",
-                                                      "/edulite/state_array");
-  set_position_service_name_ = declare_parameter<std::string>(
-      "set_position_service", "/edulite/set_position");
+  can_tx_topic_ = declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+  can_rx_topic_ = declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
+  target_topic_ = declare_parameter<std::string>("target_topic", "/edulite/target");
+  target_array_topic_ = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
+  state_topic_ = declare_parameter<std::string>("state_topic", "/edulite/state");
+  state_array_topic_ = declare_parameter<std::string>("state_array_topic","/edulite/state_array");
+  set_position_service_name_ = declare_parameter<std::string>("set_position_service", "/edulite/set_position");
 
-  const auto motor_names = declare_parameter<std::vector<std::string>>(
-      "motors", std::vector<std::string>{});
+  const auto motor_names = declare_parameter<std::vector<std::string>>("motors", std::vector<std::string>{});
+
   for (const auto &motor_name : motor_names) {
     const auto prefix = motor_name + ".";
-    const auto logical_id =
-        declare_parameter<int64_t>(prefix + "logical_id", -1);
+    const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
     const auto can_id = declare_parameter<int64_t>(prefix + "can_id", -1);
-    const auto control_mode_name =
-        declare_parameter<std::string>(prefix + "control_mode", "velocity");
-    const auto current_limit =
-        declare_parameter<double>(prefix + "current_limit", 11.0);
-    const auto acceleration =
-        declare_parameter<double>(prefix + "acceleration", 150.0);
-    const auto speed_limit =
-        declare_parameter<double>(prefix + "speed_limit", 50.0);
-    const auto command_period_ms =
-        declare_parameter<int64_t>(prefix + "command_period_ms", 10);
-    const auto target_timeout_ms =
-        declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
-    const auto feedback_timeout_ms =
-        declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
-    const auto reference_mode_name = declare_parameter<std::string>(
-        prefix + "position_reference_mode", "service");
-    const auto startup_absolute_position_rad = declare_parameter<double>(
-        prefix + "startup_absolute_position_rad", 0.0);
-    const auto minimum_position_rad =
-        declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
-    const auto maximum_position_rad =
-        declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
+    const auto control_mode_name = declare_parameter<std::string>(prefix + "control_mode", "velocity");
+    const auto current_limit = declare_parameter<double>(prefix + "current_limit", 11.0);
+    const auto acceleration = declare_parameter<double>(prefix + "acceleration", 150.0);
+    const auto speed_limit = declare_parameter<double>(prefix + "speed_limit", 50.0);
+    const auto command_period_ms = declare_parameter<int64_t>(prefix + "command_period_ms", 10);
+    const auto target_timeout_ms = declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
+    const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+    const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
+    const auto startup_absolute_position_rad = declare_parameter<double>(prefix + "startup_absolute_position_rad", 0.0);
+    const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
+    const auto maximum_position_rad = declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
 
     if (logical_id < 0 || logical_id > 65535) {
-      throw std::runtime_error(motor_name +
-                               ": logical_id must be in [0, 65535]");
+      throw std::runtime_error(motor_name + ": logical_id must be in [0, 65535]");
     }
     if (can_id < 0 || can_id > 255) {
       throw std::runtime_error(motor_name + ": can_id must be in [0, 255]");
-    }
-    if (command_period_ms <= 0 || target_timeout_ms <= 0 ||
-        feedback_timeout_ms <= 0) {
-      throw std::runtime_error(motor_name +
-                               ": periods and timeouts must be positive");
-    }
-    if (current_limit <= 0.0 || acceleration <= 0.0 || speed_limit <= 0.0) {
-      throw std::runtime_error(motor_name + ": motor limits must be positive");
-    }
-    if (minimum_position_rad > maximum_position_rad) {
-      throw std::runtime_error(
-          motor_name +
-          ": minimum_position_rad must not exceed maximum_position_rad");
     }
 
     ControlMode control_mode;
@@ -107,24 +74,10 @@ void Node::declare_and_load_parameters() {
           motor_name +
           ": position_reference_mode must be service or yaml_absolute");
     }
-    if (control_mode == ControlMode::VELOCITY &&
-        position_reference_mode != PositionReferenceMode::SERVICE) {
+    if (control_mode == ControlMode::VELOCITY && position_reference_mode != PositionReferenceMode::SERVICE) {
       throw std::runtime_error(
           motor_name +
           ": position_reference_mode is only valid for PP/CSP motors");
-    }
-
-    const auto duplicate_logical_id = std::any_of(
-        motors_.cbegin(), motors_.cend(), [logical_id](const Protocol &motor) {
-          return motor.logical_id() == static_cast<uint16_t>(logical_id);
-        });
-    const auto duplicate_can_id = std::any_of(
-        motors_.cbegin(), motors_.cend(), [can_id](const Protocol &motor) {
-          return motor.can_id() == static_cast<uint8_t>(can_id);
-        });
-    if (duplicate_logical_id || duplicate_can_id) {
-      throw std::runtime_error(motor_name +
-                               ": logical_id and can_id must be unique");
     }
 
     motors_.emplace_back(MotorConfig{
@@ -282,14 +235,11 @@ actuator_msgs::msg::ActuatorState
 Node::make_state_message(const Protocol &motor) const {
   actuator_msgs::msg::ActuatorState message;
   message.logical_id = motor.logical_id();
-  message.connected = motor.is_connected();
-  message.configured = motor.is_configured();
-  message.enabled = motor.is_enabled();
   message.position_reference_set = motor.position_reference_is_set();
   const auto &feedback = motor.feedback();
   message.position = feedback.position;
   message.velocity = feedback.velocity;
-  message.effort = feedback.effort;
+  message.torque_nm = feedback.torque_nm;
   message.temperature = feedback.temperature;
   message.fault_code = feedback.fault_code;
   switch (motor.state()) {

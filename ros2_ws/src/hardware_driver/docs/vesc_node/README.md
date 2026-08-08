@@ -23,5 +23,7 @@ VESCでは`target`と`state.velocity`の単位を機械RPMとして扱う。上�
 | `feedback_timeout_ms` | 接続切れと判定する時間 |
 | `max_rpm` | 機械RPM指令の絶対値上限 |
 | `rpm_slew_rate` | 1秒あたりの機械RPM変化量 |
+| `startup_current_a` | 始動時の電流指令 [A] |
+| `rpm_control_threshold_erpm` | 電流制御からRPM制御へ切り替えるERPM |
 
 現在の割り当てはupper beltがlogical ID 10、under beltが11、dribbleが12である。

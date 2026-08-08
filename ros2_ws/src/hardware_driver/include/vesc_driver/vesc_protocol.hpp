@@ -1,11 +1,13 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include "can_msgs/msg/frame.hpp"
 
 namespace vesc_driver::protocol
 {
+constexpr uint32_t SET_CURRENT_ID = 1;
 constexpr uint32_t SET_RPM_ID = 3;
 constexpr uint32_t STATUS_1_ID = 9;
 constexpr int64_t MOTOR_POLES = 14;   // モーターの極数
@@ -29,6 +31,21 @@ inline can_msgs::msg::Frame make_set_rpm_frame(uint8_t id, int32_t erpm)
   frame.dlc = 4;
 
   const auto value = static_cast<uint32_t>(erpm);
+  for (std::size_t i = 0; i < 4; ++i) {
+    frame.data[i] = static_cast<uint8_t>((value >> (24 - 8 * i)) & 0xFF);
+  }
+  return frame;
+}
+
+inline can_msgs::msg::Frame make_set_current_frame(uint8_t id, double current_a)
+{
+  can_msgs::msg::Frame frame{};
+  frame.id = (SET_CURRENT_ID << 8) | id;
+  frame.is_extended = true;
+  frame.dlc = 4;
+
+  const auto value =
+    static_cast<uint32_t>(static_cast<int32_t>(std::lround(current_a * 1000.0)));
   for (std::size_t i = 0; i < 4; ++i) {
     frame.data[i] = static_cast<uint8_t>((value >> (24 - 8 * i)) & 0xFF);
   }

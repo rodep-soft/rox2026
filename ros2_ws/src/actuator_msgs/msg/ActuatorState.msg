@@ -8,14 +8,11 @@ uint8 STATE_ERROR=3
 uint16 logical_id
 uint8 state
 
-bool connected
-bool configured
-bool enabled
 bool position_reference_set
 
 float32 position
 float32 velocity
-float32 effort
+float32 torque_nm
 float32 temperature
 
 uint32 fault_code

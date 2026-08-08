@@ -62,7 +62,7 @@ struct MotorConfig {
 struct MotorFeedback {
   float position = 0.0f;
   float velocity = 0.0f;
-  float effort = 0.0f;
+  float torque_nm = 0.0f;
   float temperature = 0.0f;
   uint32_t fault_code = 0;
 };
@@ -77,9 +77,6 @@ public:
   ControlMode control_mode() const { return config_.control_mode; }
   MotorState state() const { return state_; }
   bool position_reference_is_set() const { return position_reference_is_set_; }
-  bool is_connected() const { return connected_; }
-  bool is_configured() const { return configured_; }
-  bool is_enabled() const { return enabled_; }
   const MotorFeedback &feedback() const { return feedback_; }
 
   /// @brief 目標値を設定
@@ -134,12 +131,9 @@ private:
   void process_parameter_response(const can_msgs::msg::Frame &message);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
-  static can_msgs::msg::Frame
-  make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
-  static can_msgs::msg::Frame
-  make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
-  static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id,
-                                                        uint16_t index);
+  static can_msgs::msg::Frame make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
+  static can_msgs::msg::Frame make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
+  static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id, uint16_t index);
   static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
 
   MotorConfig config_;

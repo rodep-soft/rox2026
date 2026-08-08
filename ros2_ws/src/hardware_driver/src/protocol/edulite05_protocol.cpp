@@ -163,7 +163,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   feedback_.position = raw_position_ + position_offset_;
   feedback_.velocity =
       decode_uint16(read_big_endian_uint16(message.data, 2), -50.0f, 50.0f);
-  feedback_.effort =
+  feedback_.torque_nm =
       decode_uint16(read_big_endian_uint16(message.data, 4), -6.0f, 6.0f);
   feedback_.temperature =
       static_cast<float>(read_big_endian_uint16(message.data, 6)) / 10.0f;
