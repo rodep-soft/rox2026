@@ -122,11 +122,11 @@ void SpringEduliteController::fire_request_callback(
 void SpringEduliteController::emergency_stop_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
   emergency_stop_active_ = msg->data;
-  if (emergency_stop_active_) {
-    RCLCPP_WARN(
-        get_logger(),
-        "Emergency stop active. Spring position target remains unchanged.");
-  }
+  // if (emergency_stop_active_) {
+  //   RCLCPP_WARN(
+  //       get_logger(),
+  //       "Emergency stop active. Spring position target remains unchanged.");
+  // }
 }
 
 void SpringEduliteController::limit_switch_callback(
