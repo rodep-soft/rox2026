@@ -155,6 +155,7 @@ private:
   bool connected_ = false;
   bool configured_ = false;
   bool enabled_ = false;
+  int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
   float raw_position_ = 0.0f;
   float position_offset_ = 0.0f;

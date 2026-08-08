@@ -238,9 +238,19 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   }
 
   // 動作中にResetへ戻った場合
-  if (initialization_step_ == InitializationStep::READY &&
-      mode_status != RUN_STATUS_MODE) {
-    restart_initialization(true);
+  if (initialization_step_ == InitializationStep::READY) {
+    if (mode_status == RUN_STATUS_MODE) {
+      consecutive_non_run_feedback_count_ = 0;
+    } else {
+      ++consecutive_non_run_feedback_count_;
+      // PPモードはREADY直後に一時的な非RUN状態を返すことがある。
+      // 上位ノードが最初の位置指令を送る前に再初期化しないようデバウンスする。
+      constexpr int non_run_feedback_restart_threshold = 20;
+      if (consecutive_non_run_feedback_count_ >=
+          non_run_feedback_restart_threshold) {
+        restart_initialization(true);
+      }
+    }
   }
 }
 
@@ -349,6 +359,7 @@ void Protocol::restart_initialization(bool clear_target) {
   state_ = MotorState::INITIALIZING;
   configured_ = false;
   enabled_ = false;
+  consecutive_non_run_feedback_count_ = 0;
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
   initialization_step_ = InitializationStep::WRITE_PARAMETER;
