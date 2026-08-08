@@ -142,7 +142,7 @@ bool Protocol::receive(const can_msgs::msg::Frame &message) {
     return true;
   }
   if (type == TYPE_READ) {
-    process_parameter_response(message);
+    return process_parameter_response(message);
   }
   last_feedback_time_ = Clock::now();
   return false;
@@ -197,30 +197,41 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   }
 }
 
-void Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
+bool Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   connected_ = true;
   last_feedback_time_ = Clock::now();
-  if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
-    return;
-  }
   const auto destination = static_cast<uint8_t>(message.id & 0xFF);
   const auto status = static_cast<uint8_t>((message.id >> 16) & 0xFF);
   if (destination != HOST_ID) {
-    return;
+    return false;
+  }
+  const auto index = static_cast<uint16_t>(message.data[0]) |
+                     (static_cast<uint16_t>(message.data[1]) << 8);
+  if (initialization_step_ == InitializationStep::READY &&
+      config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
+      status == RESET_STATUS_MODE) {
+    float value = 0.0f;
+    std::memcpy(&value, message.data.data() + 4, sizeof(float));
+    if (std::isfinite(value)) {
+      feedback_.current_a = value;
+      return true;
+    }
+    return false;
+  }
+  if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
+    return false;
   }
   // Type17 status != 0
   if (status != RESET_STATUS_MODE) {
     retry_initialization();
-    return;
+    return false;
   }
 
-  const auto index = static_cast<uint16_t>(message.data[0]) |
-                     (static_cast<uint16_t>(message.data[1]) << 8);
   const auto &expected =
       initialization_parameters_[initialization_parameter_index_];
   // 古い別parameterの応答などは無視
   if (index != expected.index) {
-    return;
+    return false;
   }
 
   bool values_match = false;
@@ -233,7 +244,7 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   }
   if (!values_match) {
     retry_initialization();
-    return;
+    return false;
   }
 
   initialization_retry_count_ = 0;
@@ -251,6 +262,22 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   } else {
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
+  return false;
+}
+
+std::optional<can_msgs::msg::Frame> Protocol::create_current_feedback_frame() {
+  if (!config_.current_feedback_enabled || state_ != MotorState::READY) {
+    return std::nullopt;
+  }
+  const auto current_time = Clock::now();
+  const auto period =
+      std::chrono::milliseconds(config_.current_feedback_period_ms);
+  if (last_current_feedback_request_time_ != TimePoint{} &&
+      current_time - last_current_feedback_request_time_ < period) {
+    return std::nullopt;
+  }
+  last_current_feedback_request_time_ = current_time;
+  return make_read_parameter_frame(config_.can_id, CURRENT_FEEDBACK);
 }
 
 void Protocol::retry_initialization() {

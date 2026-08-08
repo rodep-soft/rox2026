@@ -43,6 +43,7 @@ struct Motor
   double target_rpm{0.0};
   double commanded_rpm{0.0};
   float current_rpm{std::numeric_limits<float>::quiet_NaN()};
+  float current_a{std::numeric_limits<float>::quiet_NaN()};
   int32_t current_erpm{0};
   bool command_received{false};
   bool feedback_received{false};
@@ -158,6 +159,7 @@ private:
     message.position_reference_set = false;
     message.velocity = std::isfinite(motor.current_rpm) ? motor.current_rpm : 0.0f;
     message.torque_nm = std::numeric_limits<float>::quiet_NaN();
+    message.current_a = motor.current_a;
     message.state = is_connected(motor, now) ?
       actuator_msgs::msg::ActuatorState::STATE_READY :
       actuator_msgs::msg::ActuatorState::STATE_OFFLINE;
@@ -242,6 +244,7 @@ private:
     motor->current_erpm = status.erpm;
     motor->current_rpm = static_cast<float>(
       status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
+    motor->current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
     state_publisher_->publish(make_state(*motor, motor->last_feedback_time));

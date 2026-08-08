@@ -14,6 +14,8 @@ EduLite 05を1ノードで複数台管理し、速度制御、Profile Position�
 
 速度指令の単位はrad/s、位置指令と位置状態の単位はradである。
 
+`current_a`は`current_feedback_enabled=true`のモーターについてType 17で取得したフィルタ済みq軸電流`iqf` [A]である。無効時または取得前はNaNになる。
+
 ## PP/CSPの位置基準
 
 PP/CSPは位置基準が設定されるまで位置指令をCANへ送らない。モーターごとの
@@ -42,6 +44,8 @@ ros2 service call /edulite/set_position actuator_msgs/srv/SetPosition \
 | `command_period_ms` | CAN指令の最小送信周期 |
 | `target_timeout_ms` | velocity指令が途絶えた際に0へ戻す時間 |
 | `feedback_timeout_ms` | 接続切れと判定する時間 |
+| `current_feedback_enabled` | Type 17による電流取得を有効化 |
+| `current_feedback_period_ms` | 電流読出し要求の最小周期 [ms] |
 | `position_reference_mode` | PP/CSPの位置基準設定方法 |
 | `position_offset_rad` | `yaml_offset`でエンコーダ絶対角に加える固定オフセット |
 | `minimum_position_rad` | PP/CSP位置指令の下限 |

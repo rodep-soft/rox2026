@@ -23,6 +23,7 @@ edulite05_driver:
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
+      current_feedback_enabled: false
       command_period_ms: 10
 
     front_right:
@@ -32,6 +33,7 @@ edulite05_driver:
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
+      current_feedback_enabled: false
       command_period_ms: 10
 
     rear_left:
@@ -41,6 +43,7 @@ edulite05_driver:
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
+      current_feedback_enabled: false
       command_period_ms: 10
 
     rear_right:
@@ -50,6 +53,7 @@ edulite05_driver:
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
+      current_feedback_enabled: false
       command_period_ms: 10
 
     spring:
@@ -59,6 +63,7 @@ edulite05_driver:
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
+      current_feedback_enabled: false
       command_period_ms: 50
 
     dribble:
@@ -73,6 +78,8 @@ edulite05_driver:
       maximum_position_rad: 1.57
 
       command_period_ms: 50
+      current_feedback_enabled: false
+      current_feedback_period_ms: 100
       current_limit: 11.0
       speed_limit: 5.0
       acceleration: 150.0

@@ -13,6 +13,8 @@
 
 VESCでは`target`と`state.velocity`の単位を機械RPMとして扱う。上位ノードはlogical IDだけを使用し、VESC CAN controller IDとERPM変換はhardware_driver内に閉じ込める。
 
+`state.current_a`にはStatus 1で受信したモーター電流[A]を格納する。回生時などは負の値になる。
+
 ## モーター別パラメーター
 
 | パラメーター | 内容 |

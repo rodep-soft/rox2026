@@ -40,6 +40,8 @@ void Node::declare_and_load_parameters() {
     const auto command_period_ms = declare_parameter<int64_t>(prefix + "command_period_ms", 10);
     const auto target_timeout_ms = declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
     const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+    const auto current_feedback_enabled = declare_parameter<bool>(prefix + "current_feedback_enabled", false);
+    const auto current_feedback_period_ms = declare_parameter<int64_t>(prefix + "current_feedback_period_ms", 100);
     const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
     const auto position_offset_rad = declare_parameter<double>(prefix + "position_offset_rad", 0.0);
     const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
@@ -50,6 +52,9 @@ void Node::declare_and_load_parameters() {
     }
     if (can_id < 0 || can_id > 255) {
       throw std::runtime_error(motor_name + ": can_id must be in [0, 255]");
+    }
+    if (current_feedback_period_ms <= 0) {
+      throw std::runtime_error(motor_name + ": current_feedback_period_ms must be positive");
     }
 
     ControlMode control_mode;
@@ -87,7 +92,8 @@ void Node::declare_and_load_parameters() {
         static_cast<float>(speed_limit),
         static_cast<uint32_t>(command_period_ms),
         static_cast<uint32_t>(target_timeout_ms),
-        static_cast<uint32_t>(feedback_timeout_ms), position_reference_mode,
+        static_cast<uint32_t>(feedback_timeout_ms), current_feedback_enabled,
+        static_cast<uint32_t>(current_feedback_period_ms), position_reference_mode,
         static_cast<float>(position_offset_rad),
         static_cast<float>(minimum_position_rad),
         static_cast<float>(maximum_position_rad)});
@@ -219,6 +225,11 @@ void Node::command_timer_callback() {
       can_frame_publisher_->publish(*frame);
     }
   }
+  for (auto &motor : motors_) {
+    if (auto frame = motor.create_current_feedback_frame()) {
+      can_frame_publisher_->publish(*frame);
+    }
+  }
 }
 
 void Node::state_timer_callback() {
@@ -240,6 +251,7 @@ Node::make_state_message(const Protocol &motor) const {
   message.position = feedback.position;
   message.velocity = feedback.velocity;
   message.torque_nm = feedback.torque_nm;
+  message.current_a = feedback.current_a;
   message.temperature = feedback.temperature;
   message.fault_code = feedback.fault_code;
   switch (motor.state()) {

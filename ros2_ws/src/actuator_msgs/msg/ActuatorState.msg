@@ -13,6 +13,7 @@ bool position_reference_set
 float32 position
 float32 velocity
 float32 torque_nm
+float32 current_a
 float32 temperature
 
 uint32 fault_code

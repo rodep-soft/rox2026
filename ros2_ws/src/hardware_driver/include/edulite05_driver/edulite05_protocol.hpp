@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ constexpr uint16_t SPEED_REFERENCE = 0x700A;
 constexpr uint16_t POSITION_REFERENCE = 0x7016;
 constexpr uint16_t SPEED_LIMIT = 0x7017;
 constexpr uint16_t CURRENT_LIMIT = 0x7018;
+constexpr uint16_t CURRENT_FEEDBACK = 0x701A;
 constexpr uint16_t ACCELERATION = 0x7022;
 constexpr uint16_t PP_SPEED = 0x7024;
 constexpr uint16_t PP_ACCELERATION = 0x7025;
@@ -52,6 +54,8 @@ struct MotorConfig {
   uint32_t command_period_ms = 10;
   uint32_t target_timeout_ms = 200;
   uint32_t feedback_timeout_ms = 500;
+  bool current_feedback_enabled = false;
+  uint32_t current_feedback_period_ms = 100;
   PositionReferenceMode position_reference_mode =
       PositionReferenceMode::SERVICE;
   float position_offset_rad = 0.0f;
@@ -63,6 +67,7 @@ struct MotorFeedback {
   float position = 0.0f;
   float velocity = 0.0f;
   float torque_nm = 0.0f;
+  float current_a = std::numeric_limits<float>::quiet_NaN();
   float temperature = 0.0f;
   uint32_t fault_code = 0;
 };
@@ -94,6 +99,7 @@ public:
   /// @brief 目標値の送信が必要かどうか
   /// @return true: 送信が必要，false: 送信不要
   std::optional<can_msgs::msg::Frame> create_target_frame();
+  std::optional<can_msgs::msg::Frame> create_current_feedback_frame();
   void watchdog();
 
 private:
@@ -128,7 +134,7 @@ private:
   void process_feedback(const can_msgs::msg::Frame &message);
   /// @brief パラメータ応答を処理
   /// @param msg 受信したCANフレーム
-  void process_parameter_response(const can_msgs::msg::Frame &message);
+  bool process_parameter_response(const can_msgs::msg::Frame &message);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
   static can_msgs::msg::Frame make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
@@ -155,6 +161,7 @@ private:
   TimePoint last_request_time_{};
   TimePoint last_target_time_{};
   TimePoint last_command_time_{};
+  TimePoint last_current_feedback_request_time_{};
   TimePoint error_time_{};
 };
 }  // namespace edulite05_driver

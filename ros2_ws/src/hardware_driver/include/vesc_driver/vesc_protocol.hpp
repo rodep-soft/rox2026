@@ -15,7 +15,7 @@ constexpr int64_t MOTOR_POLES = 14;   // モーターの極数
 struct Status1
 {
   uint8_t controller_id;
-  int32_t current_ma;
+  float current_a;
   int32_t erpm;
 };
 
@@ -69,12 +69,12 @@ inline bool decode_status_1(const can_msgs::msg::Frame & frame, Status1 & status
     (static_cast<uint32_t>(frame.data[1]) << 16) |
     (static_cast<uint32_t>(frame.data[2]) << 8) |
     static_cast<uint32_t>(frame.data[3]);
-  const uint32_t current_ma =
+  const uint16_t raw_current =
     (static_cast<uint32_t>(frame.data[4]) << 8) |
     static_cast<uint32_t>(frame.data[5]);
 
   status.erpm = static_cast<int32_t>(rpm);
-  status.current_ma = static_cast<int32_t>(current_ma) * 10;
+  status.current_a = static_cast<float>(static_cast<int16_t>(raw_current)) / 10.0f;
   return true;
 }
 } // namespace vesc_driver::protocol
