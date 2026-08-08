@@ -237,8 +237,13 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
     return;
   }
 
-  // 動作中にResetへ戻った場合
+  // PP/CSPは新しい位置指令が届くまで非RUNを返すため、RUN statusを
+  // 再接続判定に使用しない。位置制御モーターの電源再投入はwatchdogの
+  // feedback timeoutで検出する。
   if (initialization_step_ == InitializationStep::READY) {
+    if (uses_position_control()) {
+      return;
+    }
     if (mode_status == RUN_STATUS_MODE) {
       consecutive_non_run_feedback_count_ = 0;
     } else {
