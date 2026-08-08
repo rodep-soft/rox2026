@@ -68,7 +68,7 @@ edulite05_driver:
 
       # この値は実機で測定して決める
       position_reference_mode: yaml_offset
-      position_offset_rad: 0.0
+      position_offset_rad: 0.01936626434326172
       minimum_position_rad: -1.57
       maximum_position_rad: 1.57
 
