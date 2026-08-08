@@ -2,10 +2,11 @@
 #define SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 
 #include <cstdint>
+#include <string>
 
+#include "actuator_msgs/msg/actuator_target.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class SpringEduliteController : public rclcpp::Node
@@ -54,6 +55,8 @@ private:
   double load_timeout_sec_{5.0};
   int command_period_ms_{10};
   int qos_depth_{1};
+  int logical_id_{4};
+  std::string target_topic_{"/edulite/target"};
 
   rclcpp::Time fire_start_time_;
   rclcpp::Time load_start_time_;
@@ -61,7 +64,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr spring_velocity_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

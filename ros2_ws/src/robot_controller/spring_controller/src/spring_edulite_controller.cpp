@@ -11,6 +11,10 @@ SpringEduliteController::SpringEduliteController()
   declare_parameters();
   get_parameters();
 
+  if (logical_id_ < 0 || logical_id_ > 65535 || target_topic_.empty()) {
+    RCLCPP_ERROR(get_logger(), "logical_id or target_topic is invalid");
+    config_valid_ = false;
+  }
   if (limit_switch_bit_offset_ < 0 || limit_switch_bit_offset_ >= 8) {
     RCLCPP_ERROR(
       get_logger(), "limit_switch_bit_offset must be between 0 and 7: %d",
@@ -54,8 +58,8 @@ SpringEduliteController::SpringEduliteController()
     "/limit_switchs", command_qos,
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
 
-  spring_velocity_pub_ = create_publisher<std_msgs::msg::Float32>(
-    "/spring/vel_command", command_qos);
+  spring_velocity_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
+    target_topic_, command_qos);
 
   load_start_time_ = now();
   timer_ = create_wall_timer(
@@ -72,6 +76,8 @@ void SpringEduliteController::declare_parameters()
   declare_parameter<double>("load_timeout_sec", 18.0);
   declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("qos_depth", 1);
+  declare_parameter<int>("logical_id", 4);
+  declare_parameter<std::string>("target_topic", "/edulite/target");
 }
 
 void SpringEduliteController::get_parameters()
@@ -83,6 +89,8 @@ void SpringEduliteController::get_parameters()
   get_parameter("load_timeout_sec", load_timeout_sec_);
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
+  get_parameter("logical_id", logical_id_);
+  get_parameter("target_topic", target_topic_);
 }
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -127,8 +135,9 @@ void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::
   // スイッチがONになった瞬間にタイマー待機なしで即座に0.0 rad/sの停止コマンドを発行
   if (is_loaded_ && !previous_loaded && current_state_ == State::LOAD) {
     current_state_ = State::READY;
-    std_msgs::msg::Float32 stop_cmd;
-    stop_cmd.data = 0.0F;
+    actuator_msgs::msg::ActuatorTarget stop_cmd;
+    stop_cmd.logical_id = static_cast<uint16_t>(logical_id_);
+    stop_cmd.target = 0.0F;
     spring_velocity_pub_->publish(stop_cmd);
     RCLCPP_INFO(get_logger(), "Spring limit switch HIT! Stopped motor immediately.");
   }
@@ -136,8 +145,9 @@ void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::
 
 void SpringEduliteController::timer_callback()
 {
-  std_msgs::msg::Float32 command;
-  command.data = 0.0F;
+  actuator_msgs::msg::ActuatorTarget command;
+  command.logical_id = static_cast<uint16_t>(logical_id_);
+  command.target = 0.0F;
 
   if (!config_valid_ || !is_fire_allowed()) {
     fire_pending_ = false;
@@ -147,27 +157,27 @@ void SpringEduliteController::timer_callback()
       case State::LOAD:
         if (is_loaded_) {
           current_state_ = State::READY;
-          command.data = 0.0F;
+          command.target = 0.0F;
           RCLCPP_INFO(get_logger(), "Spring loading completed. Ready to fire.");
         } else if ((now() - load_start_time_).seconds() >= load_timeout_sec_) {
           current_state_ = State::ERROR;
-          command.data = 0.0F;
+          command.target = 0.0F;
           RCLCPP_ERROR(get_logger(), "Spring loading timed out. Stopping spring motor.");
         } else {
-          command.data = static_cast<float>(loading_velocity_rad_s_);
+          command.target = static_cast<float>(loading_velocity_rad_s_);
         }
         break;
 
       case State::READY:
-        command.data = 0.0F; // 装填完了姿勢を保持 (0.0 rad/s)
+        command.target = 0.0F; // 装填完了姿勢を保持 (0.0 rad/s)
         if (fire_pending_ && is_fire_allowed()) {
           start_fire();
-          command.data = static_cast<float>(fire_velocity_rad_s_);
+          command.target = static_cast<float>(fire_velocity_rad_s_);
         }
         break;
 
       case State::FIRE:
-        command.data = static_cast<float>(fire_velocity_rad_s_);
+        command.target = static_cast<float>(fire_velocity_rad_s_);
         if ((now() - fire_start_time_).seconds() >= fire_duration_sec_) {
           RCLCPP_INFO(get_logger(), "Spring fire completed. Restarting loading.");
           start_loading();
@@ -175,7 +185,7 @@ void SpringEduliteController::timer_callback()
         break;
 
       case State::ERROR:
-        command.data = 0.0F;
+        command.target = 0.0F;
         if (is_loaded_) {
           current_state_ = State::READY;
         }

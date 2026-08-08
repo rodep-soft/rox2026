@@ -21,7 +21,7 @@ constructorの設定検証後、mode・fire・emergency・limit callbackを読�
 | sub | `/emergency_stop` | `Bool` | 発射中断 |
 | sub | `/spring/fire_request` | `Bool` | 発射要求 |
 | sub | `/limit_switchs` | `UInt8` | STM32からのリミットスイッチbit列 |
-| pub | `/spring/vel_command` | `Float32` | EduLite速度[rad/s] |
+| pub | `/edulite/target` | `ActuatorTarget` | logical ID 4のEduLite速度[rad/s] |
 
 ## 状態遷移
 
@@ -59,7 +59,7 @@ LOADが`load_timeout_sec`を超える場合はERRORログにswitch値と速度�
 
 ```bash
 ros2 topic echo /limit_switchs
-ros2 topic echo /spring/vel_command
+ros2 topic echo /edulite/target
 ros2 topic pub --once /spring/fire_request std_msgs/msg/Bool "{data: true}"
 ```
 

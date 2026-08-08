@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 // ────────────────────────────────────────────────────────────────────────────
 // コンストラクタ
@@ -13,12 +14,15 @@ ArmPositionControllerNode::ArmPositionControllerNode()
 {
   declare_parameters();
   get_parameters();
+  if (logical_id_ < 0 || logical_id_ > 65535 || target_topic_.empty()) {
+    throw std::runtime_error("logical_id or target_topic is invalid");
+  }
 
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   const auto command_qos = rclcpp::QoS(qos_depth_);
 
-  position_command_pub_ = create_publisher<std_msgs::msg::Float32>(
-    "/dribble/position_command", command_qos);
+  position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
+    target_topic_, command_qos);
 
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
     "/dribble/position_mode", command_qos,
@@ -51,6 +55,8 @@ void ArmPositionControllerNode::declare_parameters()
   declare_parameter<double>("feed_duration_sec", 0.6);
   declare_parameter<int>("command_period_ms", 20);
   declare_parameter<int>("qos_depth", 1);
+  declare_parameter<int>("logical_id", 5);
+  declare_parameter<std::string>("target_topic", "/edulite/target");
 }
 
 void ArmPositionControllerNode::get_parameters()
@@ -62,6 +68,8 @@ void ArmPositionControllerNode::get_parameters()
   get_parameter("feed_duration_sec", feed_duration_sec_);
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
+  get_parameter("logical_id", logical_id_);
+  get_parameter("target_topic", target_topic_);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -118,8 +126,9 @@ void ArmPositionControllerNode::timer_callback()
 {
   if (emergency_stop_active_) {
     in_shot_cycle_ = false;
-    std_msgs::msg::Float32 msg;
-    msg.data = static_cast<float>(dribble_position_rad_);
+    actuator_msgs::msg::ActuatorTarget msg;
+    msg.logical_id = static_cast<uint16_t>(logical_id_);
+    msg.target = static_cast<float>(dribble_position_rad_);
     position_command_pub_->publish(msg);
     return;
   }
@@ -147,8 +156,9 @@ void ArmPositionControllerNode::timer_callback()
     }
   }
 
-  std_msgs::msg::Float32 msg;
-  msg.data = target_position_rad();
+  actuator_msgs::msg::ActuatorTarget msg;
+  msg.logical_id = static_cast<uint16_t>(logical_id_);
+  msg.target = target_position_rad();
   position_command_pub_->publish(msg);
 }
 

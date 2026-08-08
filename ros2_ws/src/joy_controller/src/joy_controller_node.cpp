@@ -12,14 +12,16 @@ JoyControllerNode::JoyControllerNode()
     "/joy", rclcpp::QoS(joy_qos_depth_),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
+  const auto emergency_stop_qos =
+    rclcpp::QoS(1).reliable().transient_local();
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/emergency_stop", rclcpp::QoS(command_qos_depth_));
+    "/emergency_stop", emergency_stop_qos);
 
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/mecanum/cmd_vel", rclcpp::QoS(command_qos_depth_));
 
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/spring/fire", rclcpp::QoS(command_qos_depth_));
+    "/spring/fire_request", rclcpp::QoS(command_qos_depth_));
 
   belt_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
     "/belt/mode", rclcpp::QoS(command_qos_depth_));

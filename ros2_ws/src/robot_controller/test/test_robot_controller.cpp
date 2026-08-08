@@ -7,7 +7,6 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
@@ -141,10 +140,12 @@ TEST_F(RobotControllerTest, ArmPositionControllerStateTransitionSequenceTest)
   auto test_node = std::make_shared<rclcpp::Node>("test_arm_client");
 
   float last_arm_pos = 999.0f;
-  auto sub_arm_pos = test_node->create_subscription<std_msgs::msg::Float32>(
-    "/dribble/position_command", 1,
-    [&last_arm_pos](const std_msgs::msg::Float32::SharedPtr msg) {
-      last_arm_pos = msg->data;
+  auto sub_arm_pos = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
+    "/edulite/target", 1,
+    [&last_arm_pos](const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
+      if (msg->logical_id == 5) {
+        last_arm_pos = msg->target;
+      }
     });
 
   auto pub_arm_mode = test_node->create_publisher<std_msgs::msg::UInt8>(

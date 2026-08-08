@@ -57,8 +57,8 @@ flowchart LR
   belt -->|"/vesc/target_array"| vesc
   dribbler -->|"/vesc/target"| vesc
   mecanum -->|"/edulite/target_array"| edulite
-  spring -->|"/spring/vel_command"| edulite
-  arm -->|"/dribble/position_command"| edulite
+  spring -->|"/edulite/target (ID 4)"| edulite
+  arm -->|"/edulite/target (ID 5)"| edulite
 ```
 
 ---

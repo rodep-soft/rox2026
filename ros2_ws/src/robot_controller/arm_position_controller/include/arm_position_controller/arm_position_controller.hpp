@@ -2,10 +2,11 @@
 #define ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
 
 #include <cstdint>
+#include <string>
 
+#include "actuator_msgs/msg/actuator_target.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class ArmPositionControllerNode : public rclcpp::Node
@@ -49,6 +50,8 @@ private:
   double feed_duration_sec_{0.6};  ///< FEED 押し込みを保持する時間 [s]
   int command_period_ms_{20};
   int qos_depth_{1};
+  int logical_id_{5};
+  std::string target_topic_{"/edulite/target"};
 
   // ── 状態変数 ────────────────────────────────────────
   PositionMode current_position_mode_{PositionMode::DRIBBLE};
@@ -62,7 +65,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr position_command_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

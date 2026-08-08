@@ -17,3 +17,6 @@ spring_controller_node:
 
     # [ms] 速度指令を再送する周期。
     command_period_ms: 10
+
+    logical_id: 4
+    target_topic: "/edulite/target"

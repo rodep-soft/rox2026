@@ -11,3 +11,6 @@ arm_position_controller_node:
     command_period_ms: 20
     # ROS 2 QoS queue depth
     qos_depth: 1
+
+    logical_id: 5
+    target_topic: "/edulite/target"

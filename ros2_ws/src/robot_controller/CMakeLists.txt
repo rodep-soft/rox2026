@@ -27,7 +27,7 @@ target_include_directories(
   spring_controller_node
   PRIVATE spring_controller/include)
 ament_target_dependencies(
-  spring_controller_node rclcpp std_msgs)
+  spring_controller_node actuator_msgs rclcpp std_msgs)
 
 add_executable(belt_controller_node belt_controller/src/belt_controller.cpp belt_controller/src/main.cpp)
 target_include_directories(
@@ -50,7 +50,7 @@ target_include_directories(
   arm_position_controller_node
   PRIVATE arm_position_controller/include)
 ament_target_dependencies(
-  arm_position_controller_node rclcpp std_msgs)
+  arm_position_controller_node actuator_msgs rclcpp std_msgs)
 
 add_executable(game2_tactical_shooter_node game2_shooter/src/game2_tactical_shooter_node.cpp
                                            game2_shooter/src/main.cpp)
