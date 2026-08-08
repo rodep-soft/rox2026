@@ -20,8 +20,8 @@ vesc_driver:
       feedback_timeout_ms: 500 # フィードバックが返ってきているかのタイムアウト用
       max_rpm: 5600.0 # 最大回転数(モータ固有)
       rpm_slew_rate: 1000.0 # 一秒間での加速量
-      startup_current_a: 10.0
-      rpm_control_threshold_rpm: 1000.0
+      startup_current_a: 5.0
+      rpm_control_threshold_rpm: 1500.0
       startup_current_timeout_ms: 1000
 
     under_belt:
