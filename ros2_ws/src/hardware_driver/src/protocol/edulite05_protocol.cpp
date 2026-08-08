@@ -160,6 +160,13 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
     position_reference_is_set_ = true;
   }
 
+  if (uses_position_control() && !position_reference_is_set_ &&
+      config_.allow_unreferenced_position_commands &&
+      !provisional_position_reference_initialized_) {
+    position_offset_ = -raw_position_;
+    provisional_position_reference_initialized_ = true;
+  }
+
   feedback_.position = raw_position_ + position_offset_;
   feedback_.velocity =
       decode_uint16(read_big_endian_uint16(message.data, 2), -50.0f, 50.0f);
@@ -305,6 +312,10 @@ void Protocol::restart_initialization(bool clear_target) {
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
   initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  if (uses_position_control()) {
+    position_reference_is_set_ = false;
+    provisional_position_reference_initialized_ = false;
+  }
   if (clear_target) {
     target_received_ = false;
     target_ = 0.0f;
@@ -315,7 +326,9 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
   if (state_ != MotorState::READY || !target_received_) {
     return std::nullopt;
   }
-  if (uses_position_control() && !position_reference_is_set_) {
+  if (uses_position_control() && !position_reference_is_set_ &&
+      !(config_.allow_unreferenced_position_commands &&
+        provisional_position_reference_initialized_)) {
     return std::nullopt;
   }
 

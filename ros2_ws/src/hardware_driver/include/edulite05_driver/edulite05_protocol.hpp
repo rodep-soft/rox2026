@@ -61,6 +61,7 @@ struct MotorConfig {
   float position_offset_rad = 0.0f;
   float minimum_position_rad = -1000.0f;
   float maximum_position_rad = 1000.0f;
+  bool allow_unreferenced_position_commands = false;
 };
 
 struct MotorFeedback {
@@ -157,6 +158,7 @@ private:
   float raw_position_ = 0.0f;
   float position_offset_ = 0.0f;
   bool position_reference_is_set_ = false;
+  bool provisional_position_reference_initialized_ = false;
   TimePoint last_feedback_time_{};
   TimePoint last_request_time_{};
   TimePoint last_target_time_{};

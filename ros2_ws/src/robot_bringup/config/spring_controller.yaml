@@ -5,18 +5,17 @@ spring_controller_node:
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
-    # [rad/s] 装填時に出す速度。
-    loading_velocity_rad_s: -5.0
-    # [rad/s] 発射時に出す速度。
-    fire_velocity_rad_s: -20.0
+    # [rad/request] 発射要求1回で累積目標へ加算する角度。必ず負値。
+    fire_increment_rad: -6.283185307
+    # [rad/s] 未原点時に目標位置を負方向へずらす速度。
+    homing_velocity_rad_s: 0.5
+    # [s] リミットスイッチが見つからない場合のタイムアウト。
+    homing_timeout_sec: 30.0
 
-    # [s] 発射速度を維持する時間。
-    fire_duration_sec: 0.3
-    # [s] 装填異常としてERROR停止するまでの上限時間。
-    load_timeout_sec: 18.0
-
-    # [ms] 速度指令を再送する周期。
-    command_period_ms: 10
+    # [ms] 位置指令更新周期。
+    command_period_ms: 50
 
     logical_id: 4
     target_topic: "/edulite/target"
+    state_topic: "/edulite/state"
+    set_position_service: "/edulite/set_position"

@@ -43,6 +43,8 @@ void Node::declare_and_load_parameters() {
     const auto current_feedback_enabled = declare_parameter<bool>(prefix + "current_feedback_enabled", false);
     const auto current_feedback_period_ms = declare_parameter<int64_t>(prefix + "current_feedback_period_ms", 100);
     const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
+    const auto allow_unreferenced_position_commands =
+        declare_parameter<bool>(prefix + "allow_unreferenced_position_commands", false);
     const auto position_offset_rad = declare_parameter<double>(prefix + "position_offset_rad", 0.0);
     const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
     const auto maximum_position_rad = declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
@@ -93,7 +95,8 @@ void Node::declare_and_load_parameters() {
         static_cast<uint32_t>(current_feedback_period_ms), position_reference_mode,
         static_cast<float>(position_offset_rad),
         static_cast<float>(minimum_position_rad),
-        static_cast<float>(maximum_position_rad)});
+        static_cast<float>(maximum_position_rad),
+        allow_unreferenced_position_commands});
 
     RCLCPP_INFO(
         get_logger(),

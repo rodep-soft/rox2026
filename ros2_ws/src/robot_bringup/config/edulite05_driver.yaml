@@ -59,12 +59,19 @@ edulite05_driver:
     spring:
       logical_id: 4
       can_id: 40
-      control_mode: velocity
+      control_mode: pp
+
+      position_reference_mode: service
+      # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
+      allow_unreferenced_position_commands: true
+      minimum_position_rad: -1000000.0
+      maximum_position_rad: 0.0
+
       current_limit: 11.0
       acceleration: 150.0
-      speed_limit: 50.0
+      speed_limit: 20.0
       current_feedback_enabled: false
-      command_period_ms: 50
+      command_period_ms: 10
 
     dribble:
       logical_id: 5

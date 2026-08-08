@@ -138,6 +138,7 @@ void MecanumControllerNode::create_interfaces()
     std::bind(
       &MecanumControllerNode::cmd_vel_callback, this,
       std::placeholders::_1));
+      
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     emergency_stop_topic_, state_qos,

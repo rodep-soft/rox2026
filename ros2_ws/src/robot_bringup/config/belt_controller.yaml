@@ -9,5 +9,5 @@ belt_controller_node:
     level_4_rpm: 4500
     level_5_rpm: 5000
     level_6_rpm: 5500
-    command_period_ms: 10
+    command_period_ms: 50
     qos_depth: 1
