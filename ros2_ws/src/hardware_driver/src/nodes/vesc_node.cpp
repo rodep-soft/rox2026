@@ -28,6 +28,7 @@ struct MotorConfig
   double rpm_slew_rate;
   double startup_current_a;
   double rpm_control_threshold_rpm;
+  std::chrono::milliseconds startup_current_timeout;
   std::chrono::milliseconds command_timeout;
   std::chrono::milliseconds feedback_timeout;
 };
@@ -47,6 +48,7 @@ struct Motor
   bool command_received{false};
   bool feedback_received{false};
   bool rpm_control_active{false};
+  std::chrono::steady_clock::time_point startup_current_start_time{};
   std::chrono::steady_clock::time_point last_command_time{};
   std::chrono::steady_clock::time_point last_feedback_time{};
   std::chrono::steady_clock::time_point last_ramp_update_time{};
@@ -80,6 +82,8 @@ public:
         declare_parameter<double>(prefix + "startup_current_a", 5.0);
       const auto rpm_control_threshold_rpm =
         declare_parameter<double>(prefix + "rpm_control_threshold_rpm", 1000.0);
+      const auto startup_current_timeout_ms =
+        declare_parameter<int64_t>(prefix + "startup_current_timeout_ms", 1000);
 
       if (logical_id < 0 || logical_id > 65535) {
         throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
@@ -88,10 +92,11 @@ public:
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
       }
       if (!std::isfinite(startup_current_a) || startup_current_a <= 0.0 ||
-        !std::isfinite(rpm_control_threshold_rpm) || rpm_control_threshold_rpm <= 0.0)
+        !std::isfinite(rpm_control_threshold_rpm) || rpm_control_threshold_rpm <= 0.0 ||
+        startup_current_timeout_ms <= 0)
       {
         throw std::runtime_error(
-          name + ": startup current and RPM threshold must be positive");
+          name + ": startup current, RPM threshold, and timeout must be positive");
       }
 
       motors_.emplace_back(MotorConfig{
@@ -101,6 +106,7 @@ public:
         rpm_slew_rate,
         startup_current_a,
         rpm_control_threshold_rpm,
+        std::chrono::milliseconds(startup_current_timeout_ms),
         std::chrono::milliseconds(command_timeout_ms),
         std::chrono::milliseconds(feedback_timeout_ms)});
     }
@@ -172,8 +178,12 @@ private:
     const auto previous_target_rpm = motor.target_rpm;
     motor.target_rpm = std::clamp(
       static_cast<double>(target_rpm), -motor.config.max_rpm, motor.config.max_rpm);
-    if (motor.target_rpm == 0.0 || previous_target_rpm * motor.target_rpm <= 0.0) {
+    if (motor.target_rpm == 0.0 || previous_target_rpm * motor.target_rpm <= 0.0 ||
+      (!motor.rpm_control_active && motor.startup_current_start_time ==
+      std::chrono::steady_clock::time_point{}))
+    {
       motor.rpm_control_active = false;
+      motor.startup_current_start_time = std::chrono::steady_clock::now();
     }
     motor.last_command_time = std::chrono::steady_clock::now();
     motor.command_received = true;
@@ -192,6 +202,7 @@ private:
     if (desired_rpm == 0.0) {
       motor.rpm_control_active = false;
       motor.commanded_rpm = 0.0;
+      motor.startup_current_start_time = {};
       can_publisher_->publish(
         protocol::make_set_current_frame(motor.config.controller_id, 0.0));
       return;
@@ -202,8 +213,13 @@ private:
       motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
     const auto rotating_in_target_direction =
       desired_rpm * static_cast<double>(motor.current_rpm) > 0.0;
-    if (!motor.rpm_control_active && rotating_in_target_direction &&
-      std::abs(static_cast<double>(motor.current_rpm)) >= switch_rpm)
+    const auto threshold_reached = rotating_in_target_direction &&
+      std::abs(static_cast<double>(motor.current_rpm)) >= switch_rpm;
+    const auto startup_timed_out = motor.startup_current_start_time !=
+      std::chrono::steady_clock::time_point{} &&
+      now - motor.startup_current_start_time >= motor.config.startup_current_timeout;
+    if (!motor.rpm_control_active && motor.feedback_received &&
+      std::isfinite(motor.current_rpm) && (threshold_reached || startup_timed_out))
     {
       motor.rpm_control_active = true;
       motor.commanded_rpm = motor.current_rpm;
