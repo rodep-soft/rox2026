@@ -250,7 +250,6 @@ void Node::state_array_callback()
   }
   state_array_pub_->publish(msg);
 }
-
 }  // namespace edulite05_driver
 
 int main(int argc, char ** argv)
