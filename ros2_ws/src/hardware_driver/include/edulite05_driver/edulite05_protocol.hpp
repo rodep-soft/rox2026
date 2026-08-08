@@ -37,7 +37,7 @@ enum class ControlMode : uint8_t {
   CYCLIC_SYNCHRONOUS_POSITION = 5
 };
 
-enum class PositionReferenceMode : uint8_t { SERVICE, YAML_ABSOLUTE };
+enum class PositionReferenceMode : uint8_t { SERVICE, YAML_OFFSET };
 
 enum class MotorState : uint8_t { OFFLINE, INITIALIZING, READY, ERROR };
 
@@ -54,7 +54,7 @@ struct MotorConfig {
   uint32_t feedback_timeout_ms = 500;
   PositionReferenceMode position_reference_mode =
       PositionReferenceMode::SERVICE;
-  float startup_absolute_position_rad = 0.0f;
+  float position_offset_rad = 0.0f;
   float minimum_position_rad = -1000.0f;
   float maximum_position_rad = 1000.0f;
 };

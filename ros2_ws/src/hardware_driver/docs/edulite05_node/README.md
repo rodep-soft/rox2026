@@ -20,7 +20,7 @@ PP/CSPは位置基準が設定されるまで位置指令をCANへ送らない�
 `position_reference_mode`で設定方法を選ぶ。
 
 - `service`: `/edulite/set_position`が成功するまで待つ。サービスの`position`には、呼び出し時点のモーター位置として扱いたい角度[rad]を指定する。0.0なら現在位置がゼロ点になる。
-- `yaml_absolute`: 最初に受信したフィードバック位置を`startup_absolute_position_rad`として扱い、自動的にオフセットを計算する。
+- `yaml_offset`: エンコーダの絶対角に`position_offset_rad`を加えた角度を上位制御で使用する。
 
 状態メッセージの`position_reference_set`で位置指令が許可されたか確認できる。サービスはPP/CSPかつフィードバック受信済みの場合だけ成功し、速度制御モーター、未知の`logical_id`、NaN/Infを拒否する。
 
@@ -43,7 +43,7 @@ ros2 service call /edulite/set_position actuator_msgs/srv/SetPosition \
 | `target_timeout_ms` | velocity指令が途絶えた際に0へ戻す時間 |
 | `feedback_timeout_ms` | 接続切れと判定する時間 |
 | `position_reference_mode` | PP/CSPの位置基準設定方法 |
-| `startup_absolute_position_rad` | `yaml_absolute`起動時の現在角 |
+| `position_offset_rad` | `yaml_offset`でエンコーダ絶対角に加える固定オフセット |
 | `minimum_position_rad` | PP/CSP位置指令の下限 |
 | `maximum_position_rad` | PP/CSP位置指令の上限 |
 

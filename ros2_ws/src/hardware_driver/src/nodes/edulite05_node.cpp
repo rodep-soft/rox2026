@@ -41,7 +41,7 @@ void Node::declare_and_load_parameters() {
     const auto target_timeout_ms = declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
     const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
     const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
-    const auto startup_absolute_position_rad = declare_parameter<double>(prefix + "startup_absolute_position_rad", 0.0);
+    const auto position_offset_rad = declare_parameter<double>(prefix + "position_offset_rad", 0.0);
     const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
     const auto maximum_position_rad = declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
 
@@ -67,12 +67,12 @@ void Node::declare_and_load_parameters() {
     PositionReferenceMode position_reference_mode;
     if (reference_mode_name == "service") {
       position_reference_mode = PositionReferenceMode::SERVICE;
-    } else if (reference_mode_name == "yaml_absolute") {
-      position_reference_mode = PositionReferenceMode::YAML_ABSOLUTE;
+    } else if (reference_mode_name == "yaml_offset") {
+      position_reference_mode = PositionReferenceMode::YAML_OFFSET;
     } else {
       throw std::runtime_error(
           motor_name +
-          ": position_reference_mode must be service or yaml_absolute");
+          ": position_reference_mode must be service or yaml_offset");
     }
     if (control_mode == ControlMode::VELOCITY && position_reference_mode != PositionReferenceMode::SERVICE) {
       throw std::runtime_error(
@@ -88,7 +88,7 @@ void Node::declare_and_load_parameters() {
         static_cast<uint32_t>(command_period_ms),
         static_cast<uint32_t>(target_timeout_ms),
         static_cast<uint32_t>(feedback_timeout_ms), position_reference_mode,
-        static_cast<float>(startup_absolute_position_rad),
+        static_cast<float>(position_offset_rad),
         static_cast<float>(minimum_position_rad),
         static_cast<float>(maximum_position_rad)});
 

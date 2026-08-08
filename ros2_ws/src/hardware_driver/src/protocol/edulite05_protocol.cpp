@@ -155,8 +155,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
                                 -4.0f * PI, 4.0f * PI);
 
   if (uses_position_control() && !position_reference_is_set_ &&
-      config_.position_reference_mode == PositionReferenceMode::YAML_ABSOLUTE) {
-    position_offset_ = config_.startup_absolute_position_rad - raw_position_;
+      config_.position_reference_mode == PositionReferenceMode::YAML_OFFSET) {
+    position_offset_ = config_.position_offset_rad;
     position_reference_is_set_ = true;
   }
 
