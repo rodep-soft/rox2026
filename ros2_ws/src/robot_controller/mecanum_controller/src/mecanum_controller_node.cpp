@@ -4,44 +4,55 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 MecanumControllerNode::MecanumControllerNode()
 : Node("mecanum_controller_node")
 {
-  declare_parameters();
   get_parameters();
 
   create_interfaces();
 }
 
-void MecanumControllerNode::declare_parameters()
-{
-  declare_parameter<double>("wheel_radius", 0.05);
-  declare_parameter<double>("robot_length", 0.47);
-  declare_parameter<double>("robot_width", 0.41);
-  declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
-  declare_parameter<std::vector<double>>(
-    "velocity_corrections",
-    {1.0, 1.0, 1.0, 1.0});
-  declare_parameter<double>("vx_sign", 1.0);
-  declare_parameter<double>("vy_sign", 1.0);
-  declare_parameter<double>("angular_z_sign", 1.0);
-  declare_parameter<int>("command_period_ms", 20);
-  declare_parameter<int>("qos_depth", 1);
-}
-
 void MecanumControllerNode::get_parameters()
 {
-  get_parameter("wheel_radius", wheel_radius_);
-  get_parameter("robot_length", robot_length_);
-  get_parameter("robot_width", robot_width_);
-  get_parameter("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
-  get_parameter("velocity_corrections", velocity_corrections_);
-  get_parameter("vx_sign", vx_sign_);
-  get_parameter("vy_sign", vy_sign_);
-  get_parameter("angular_z_sign", angular_z_sign_);
-  get_parameter("command_period_ms", command_period_ms_);
-  get_parameter("qos_depth", qos_depth_);
+  wheel_radius_ = declare_parameter<double>("wheel_radius", 0.05);
+  robot_length_ = declare_parameter<double>("robot_length", 0.47);
+  robot_width_ = declare_parameter<double>("robot_width", 0.41);
+  max_wheel_velocity_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
+  velocity_corrections_ = declare_parameter<std::vector<double>>("velocity_corrections", {1.0, 1.0, 1.0, 1.0});
+  vx_sign_ = declare_parameter<double>("vx_sign", 1.0);
+  vy_sign_ = declare_parameter<double>("vy_sign", 1.0);
+  angular_z_sign_ = declare_parameter<double>("angular_z_sign", 1.0);
+  command_period_ms_ = declare_parameter<int>("command_period_ms", 20);
+  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+
+  cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
+  emergency_stop_topic_ = declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
+  target_array_topic_ = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
+  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
+
+
+  if (wheel_logical_ids.size() != wheel_logical_ids_.size()) {
+    throw std::runtime_error("wheel_logical_ids must contain four elements");
+  }
+  for (std::size_t index = 0; index < wheel_logical_ids.size(); ++index) {
+    if (wheel_logical_ids[index] < 0 || wheel_logical_ids[index] > 65535) {
+      throw std::runtime_error("wheel_logical_ids values must be in [0, 65535]");
+    }
+    const auto logical_id = static_cast<uint16_t>(wheel_logical_ids[index]);
+    if (std::find(wheel_logical_ids_.cbegin(), wheel_logical_ids_.cbegin() + index, logical_id) !=
+      wheel_logical_ids_.cbegin() + index)
+    {
+      throw std::runtime_error("wheel_logical_ids values must be unique");
+    }
+    wheel_logical_ids_[index] = logical_id;
+  }
+  if (cmd_vel_topic_.empty() || emergency_stop_topic_.empty() || target_array_topic_.empty()) {
+    throw std::runtime_error("topic parameters must not be empty");
+  }
 
   if (command_period_ms_ <= 0) {
     command_period_ms_ = 20;
@@ -123,27 +134,19 @@ void MecanumControllerNode::create_interfaces()
 {
   // /mecanum/cmd_vel: joy_controllerから受ける機体座標系の走行速度指令。
   cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-    "/mecanum/cmd_vel", rclcpp::QoS(qos_depth_),
+    cmd_vel_topic_, rclcpp::QoS(qos_depth_),
     std::bind(
       &MecanumControllerNode::cmd_vel_callback, this,
       std::placeholders::_1));
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", state_qos,
+    emergency_stop_topic_, state_qos,
     std::bind(
       &MecanumControllerNode::emergency_stop_callback, this,
       std::placeholders::_1));
   // 各/vel_command: hardware_driverへ送る4輪それぞれの目標角速度 [rad/s]。
-  constexpr std::array<const char *, 4> wheel_velocity_topics = {
-    "/mecanum/fl/vel_command",
-    "/mecanum/fr/vel_command",
-    "/mecanum/rl/vel_command",
-    "/mecanum/rr/vel_command",
-  };
-  for (std::size_t index = 0; index < wheel_velocity_pubs_.size(); ++index) {
-    wheel_velocity_pubs_[index] = create_publisher<std_msgs::msg::Float32>(
-      wheel_velocity_topics[index], rclcpp::QoS(qos_depth_));
-  }
+  target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
+    target_array_topic_, rclcpp::QoS(qos_depth_));
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -204,9 +207,14 @@ void MecanumControllerNode::publish_wheel_commands()
   const double velocity_scale = (maximum_wheel_velocity > max_wheel_velocity_rad_s_) ?
     (max_wheel_velocity_rad_s_ / maximum_wheel_velocity) : 1.0;
 
+  actuator_msgs::msg::ActuatorTargetArray command_message;
+  command_message.header.stamp = now();
+  command_message.actuators.reserve(wheel_vels.size());
   for (std::size_t index = 0; index < wheel_vels.size(); ++index) {
-    std_msgs::msg::Float32 cmd_msg;
-    cmd_msg.data = static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
-    wheel_velocity_pubs_[index]->publish(cmd_msg);
+    actuator_msgs::msg::ActuatorTarget target;
+    target.logical_id = wheel_logical_ids_[index];
+    target.target = static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
+    command_message.actuators.push_back(target);
   }
+  target_array_pub_->publish(command_message);
 }

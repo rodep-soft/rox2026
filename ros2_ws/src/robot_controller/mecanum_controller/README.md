@@ -20,7 +20,7 @@ mode制限、符号補正、車輪補正、最大50 rad/sへの比率維持制�
 | sub | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | sub | `/operation_mode` | `std_msgs/msg/UInt8` |
 | sub | `/emergency_stop` | `std_msgs/msg/Bool` |
-| pub | `/mecanum/{fl,fr,rl,rr}/vel_command` | `std_msgs/msg/Float32` |
+| pub | `/edulite/target_array` | `actuator_msgs/msg/ActuatorTargetArray` |
 
 ## 計算順
 
@@ -46,7 +46,7 @@ cmd_velの`linear.x`、`linear.y`、`angular.z`のどれかがNaN・Infなら、
 ## 確認方法
 
 ```bash
-ros2 topic echo /mecanum/fl/vel_command
+ros2 topic echo /edulite/target_array
 ros2 topic pub --once /mecanum/cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 ```

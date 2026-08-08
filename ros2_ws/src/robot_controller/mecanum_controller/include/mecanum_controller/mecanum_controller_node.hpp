@@ -3,13 +3,13 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 #include <vector>
 
+#include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
-#include "std_msgs/msg/u_int8.hpp"
 
 class MecanumControllerNode : public rclcpp::Node
 {
@@ -25,7 +25,6 @@ private:
     RR = 3,
   };
 
-  void declare_parameters();
   void get_parameters();
   void create_interfaces();
 
@@ -41,7 +40,7 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   
-  std::array<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr, 4> wheel_velocity_pubs_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_pub_;
 
   geometry_msgs::msg::Twist last_cmd_vel_;
   bool emergency_stop_active_{false};
@@ -52,6 +51,10 @@ private:
   double robot_width_{0.41};
   double max_wheel_velocity_rad_s_{50.0};
   std::vector<double> velocity_corrections_;
+  std::array<uint16_t, 4> wheel_logical_ids_{0, 1, 2, 3};
+  std::string cmd_vel_topic_;
+  std::string emergency_stop_topic_;
+  std::string target_array_topic_;
   double vx_sign_{1.0};
   double vy_sign_{1.0};
   double angular_z_sign_{1.0};

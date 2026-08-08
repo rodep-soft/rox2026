@@ -2,6 +2,7 @@
 #include <chrono>
 #include <memory>
 
+#include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -189,12 +190,18 @@ TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
   auto test_node = std::make_shared<rclcpp::Node>("test_mecanum_client");
 
   float fl_vel = 0.0f, fr_vel = 0.0f;
-  auto sub_fl = test_node->create_subscription<std_msgs::msg::Float32>(
-    "/mecanum/fl/vel_command", 1,
-    [&fl_vel](const std_msgs::msg::Float32::SharedPtr msg) {fl_vel = msg->data;});
-  auto sub_fr = test_node->create_subscription<std_msgs::msg::Float32>(
-    "/mecanum/fr/vel_command", 1,
-    [&fr_vel](const std_msgs::msg::Float32::SharedPtr msg) {fr_vel = msg->data;});
+  auto target_array_sub =
+    test_node->create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
+    "/edulite/target_array", 1,
+    [&fl_vel, &fr_vel](const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
+      for (const auto & target : msg->actuators) {
+        if (target.logical_id == 0) {
+          fl_vel = target.target;
+        } else if (target.logical_id == 1) {
+          fr_vel = target.target;
+        }
+      }
+    });
 
   auto pub_cmd_vel = test_node->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 1);
   auto pub_estop = test_node->create_publisher<std_msgs::msg::Bool>(

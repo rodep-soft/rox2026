@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(actuator_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -19,7 +20,7 @@ target_include_directories(
   mecanum_controller_node
   PRIVATE mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_controller_node geometry_msgs rclcpp std_msgs)
+  mecanum_controller_node actuator_msgs geometry_msgs rclcpp std_msgs)
 
 add_executable(spring_controller_node spring_controller/src/spring_edulite_controller.cpp)
 target_include_directories(
@@ -83,7 +84,7 @@ if(BUILD_TESTING)
       mecanum_controller/src/mecanum_controller_node.cpp)
     target_include_directories(test_robot_controller PRIVATE belt_controller/include arm_position_controller/include
                                                              dribbler_controller/include mecanum_controller/include)
-    ament_target_dependencies(test_robot_controller rclcpp std_msgs geometry_msgs sensor_msgs)
+    ament_target_dependencies(test_robot_controller actuator_msgs rclcpp std_msgs geometry_msgs sensor_msgs)
   endif()
 endif()
 

@@ -16,32 +16,33 @@ uint16_t read_big_endian_uint16(const std::array<uint8_t, 8> &data,
 float decode_uint16(uint16_t value, float minimum, float maximum) {
   return minimum + static_cast<float>(value) * (maximum - minimum) / 65535.0f;
 }
-} // namespace
+}
 
 Protocol::Protocol(const MotorConfig &config) : config_(config) {
+  // 最初に必ずrun_mode
   initialization_parameters_.push_back(
       {RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.control_mode)),
        true});
 
   switch (config_.control_mode) {
   case ControlMode::VELOCITY:
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {CURRENT_LIMIT, config_.current_limit, false});
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {ACCELERATION, config_.acceleration, false});
     break;
   case ControlMode::CYCLIC_SYNCHRONOUS_POSITION:
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {SPEED_LIMIT, config_.speed_limit, false});
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {CURRENT_LIMIT, config_.current_limit, false});
     break;
   case ControlMode::PROFILE_POSITION:
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {PP_SPEED, config_.speed_limit, false});
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {PP_ACCELERATION, config_.acceleration, false});
-    initialization_parameters_.push_back(
+  initialization_parameters_.push_back(
         {CURRENT_LIMIT, config_.current_limit, false});
     break;
   }
@@ -89,6 +90,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
                                   parameter.value);
   }
   case InitializationStep::WAIT_AFTER_WRITE:
+    // これで帰ってきた応答そのものを設定成功判定には使わずに，type17 Readbackで確認
     if (current_time - last_request_time_ >= WRITE_SETTLING_TIME) {
       initialization_step_ = InitializationStep::READ_PARAMETER;
     }
@@ -117,6 +119,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
   case InitializationStep::READY:
     break;
   case InitializationStep::ERROR:
+    // 電源再投入などでもROSノードを再起動しなくて済むように自動再試行
     if (current_time - error_time_ > ERROR_RETRY_PERIOD) {
       restart_initialization(true);
     }
@@ -164,8 +167,12 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
       decode_uint16(read_big_endian_uint16(message.data, 4), -6.0f, 6.0f);
   feedback_.temperature =
       static_cast<float>(read_big_endian_uint16(message.data, 6)) / 10.0f;
+  // Type2 ID bit21~16
   feedback_.fault_code = static_cast<uint32_t>((message.id >> 16) & 0x3F);
+  // bit23~22
   const auto mode_status = static_cast<uint8_t>((message.id >> 22) & 0x03);
+
+  // Enable完了確認
 
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     if (mode_status == RUN_STATUS_MODE) {
@@ -183,6 +190,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
     return;
   }
 
+  // 動作中にResetへ戻った場合
   if (initialization_step_ == InitializationStep::READY &&
       mode_status != RUN_STATUS_MODE) {
     restart_initialization(true);
@@ -200,6 +208,7 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   if (destination != HOST_ID) {
     return;
   }
+  // Type17 status != 0
   if (status != RESET_STATUS_MODE) {
     retry_initialization();
     return;
@@ -209,6 +218,7 @@ void Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
                      (static_cast<uint16_t>(message.data[1]) << 8);
   const auto &expected =
       initialization_parameters_[initialization_parameter_index_];
+  // 古い別parameterの応答などは無視
   if (index != expected.index) {
     return;
   }
@@ -256,6 +266,7 @@ void Protocol::retry_initialization() {
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     initialization_step_ = InitializationStep::ENABLE;
   } else {
+    // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
 }
@@ -292,6 +303,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
 
   if (config_.control_mode == ControlMode::VELOCITY) {
     auto velocity_target = target_;
+    // 上位制御ノードが死んだ場合は停止
     if (current_time - last_target_time_ >
         std::chrono::milliseconds(config_.target_timeout_ms)) {
       velocity_target = 0.0f;
@@ -302,6 +314,8 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
                                   velocity_target);
   }
 
+  // PP / CSPは指令が途絶えても
+  // 最後の位置を保持する
   const auto absolute_position_target = std::clamp(
       target_, config_.minimum_position_rad, config_.maximum_position_rad);
   const auto motor_position_target =
@@ -319,6 +333,8 @@ void Protocol::watchdog() {
     return;
   }
   connected_ = false;
+  // 再接続後に古いtargetで突然動かないように
+  // targetも破棄
   restart_initialization(true);
 }
 
@@ -363,4 +379,4 @@ can_msgs::msg::Frame Protocol::make_read_parameter_frame(uint8_t motor_id,
 can_msgs::msg::Frame Protocol::make_enable_frame(uint8_t motor_id) {
   return make_base_frame(TYPE_ENABLE, motor_id);
 }
-} // namespace edulite05_driver
+}  // namespace edulite05_driver

@@ -1,5 +1,9 @@
 mecanum_controller_node:
   ros__parameters:
+    cmd_vel_topic: "/mecanum/cmd_vel"
+    emergency_stop_topic: "/emergency_stop"
+    target_array_topic: "/edulite/target_array"
+    wheel_logical_ids: [0, 1, 2, 3]
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
@@ -8,7 +12,6 @@ mecanum_controller_node:
     robot_length: 0.355
     robot_width: 0.353
     # [rad/s] 4輪の補正後指令の最大絶対値。超過時は全輪を同じ比率で縮小する。
-    max_wheel_velocity_rad_s: 50.0
 
     # 各ホイール速度に掛ける補正係数。配列順序は出力速度と同一。
     velocity_corrections: [1.0, 1.0, 1.0, 1.0]

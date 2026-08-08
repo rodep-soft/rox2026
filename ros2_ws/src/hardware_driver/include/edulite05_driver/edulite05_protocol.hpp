@@ -82,13 +82,20 @@ public:
   bool is_enabled() const { return enabled_; }
   const MotorFeedback &feedback() const { return feedback_; }
 
-  // VELOCITYでは速度[rad/s]、PP/CSPでは校正後の絶対位置[rad]を設定する。
+  /// @brief 目標値を設定
+  /// @param target 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）
   void set_target(float target);
-  // 現在位置をcurrent_position_radとして扱うよう位置オフセットを更新する。
   bool set_current_position(float current_position_rad);
 
+  /// @brief 今回の呼び出しで初期化の際に送るフレームの取得
+  /// @return 初期化フレーム
   std::optional<can_msgs::msg::Frame> create_initialization_frame();
+  /// @brief CANフレームを受信
+  /// @param msg 受信したCANフレーム
+  /// @return 処理結果 true: 値を受信できた，false: 受信できなかった
   bool receive(const can_msgs::msg::Frame &message);
+  /// @brief 目標値の送信が必要かどうか
+  /// @return true: 送信が必要，false: 送信不要
   std::optional<can_msgs::msg::Frame> create_target_frame();
   void watchdog();
 
@@ -114,9 +121,16 @@ private:
   };
 
   bool uses_position_control() const;
+  /// @brief 初期化のリトライ
   void retry_initialization();
+  /// @brief モータの初期化からやり直すことを指示
+  /// @param clear_target やり直すモータの目標値を破棄するかどうか
   void restart_initialization(bool clear_target);
+  /// @brief フィードバックを処理
+  /// @param msg 受信したCANフレーム
   void process_feedback(const can_msgs::msg::Frame &message);
+  /// @brief パラメータ応答を処理
+  /// @param msg 受信したCANフレーム
   void process_parameter_response(const can_msgs::msg::Frame &message);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
@@ -149,4 +163,4 @@ private:
   TimePoint last_command_time_{};
   TimePoint error_time_{};
 };
-} // namespace edulite05_driver
+}  // namespace edulite05_driver

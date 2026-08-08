@@ -152,31 +152,24 @@ void Node::create_interfaces() {
       rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
   const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
 
-  // EduLite 05向けCANフレームをsocketcan bridgeへ送信する。
   can_frame_publisher_ =
       create_publisher<can_msgs::msg::Frame>(can_tx_topic_, can_tx_qos);
-  // socketcan bridgeから全CANフレームを受信し、対象モーターの状態を復元する。
   can_frame_subscription_ = create_subscription<can_msgs::msg::Frame>(
       can_rx_topic_, can_rx_qos,
       std::bind(&Node::can_frame_callback, this, std::placeholders::_1));
-  // 上位controllerから単体モーターの速度または位置指令を受信する。
   target_subscription_ =
       create_subscription<actuator_msgs::msg::ActuatorTarget>(
           target_topic_, 10,
           std::bind(&Node::target_callback, this, std::placeholders::_1));
-  // 上位controllerから複数モーターの指令をまとめて受信する。
   target_array_subscription_ =
       create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
           target_array_topic_, 10,
           std::bind(&Node::target_array_callback, this, std::placeholders::_1));
-  // CAN受信時に更新された単体モーター状態を上位ノードへ送信する。
   state_publisher_ =
       create_publisher<actuator_msgs::msg::ActuatorState>(state_topic_, 10);
-  // 全モーター状態の周期スナップショットを上位ノードへ送信する。
   state_array_publisher_ =
       create_publisher<actuator_msgs::msg::ActuatorStateArray>(
           state_array_topic_, 10);
-  // 上位ノードからPP/CSPモーターの現在位置を指定して位置基準を設定する。
   set_position_service_ = create_service<actuator_msgs::srv::SetPosition>(
       set_position_service_name_,
       std::bind(&Node::set_position_callback, this, std::placeholders::_1,
@@ -330,7 +323,7 @@ Protocol *Node::find_motor_by_logical_id(uint16_t logical_id) {
                                      });
   return iterator == motors_.end() ? nullptr : &*iterator;
 }
-} // namespace edulite05_driver
+}  // namespace edulite05_driver
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);

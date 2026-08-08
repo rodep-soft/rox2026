@@ -1,5 +1,4 @@
 uint16 logical_id
-# Current motor position to assign, in radians.
 float32 position
 ---
 bool success

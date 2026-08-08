@@ -21,30 +21,41 @@ public:
   Node();
 
 private:
+  /// @brief yamlから各種情報の取得
   void declare_and_load_parameters();
   void create_interfaces();
 
-  // /socketcan_bridge/rx
-  // の受信フレームから状態を更新し、/edulite/stateへ送信する。
+  /// @brief can_msgs::msg::Frameを受信し，対象モータの状態を更新して/edulite/stateへ配信
+  /// @param msg 受信したcanFrame
   void can_frame_callback(can_msgs::msg::Frame::SharedPtr message);
-  // /edulite/target の指令をlogical_idが一致するモーターへ設定する。
+  /// @brief 単体の目標値指令をlogical_idが一致するモータへ設定
+  /// @param msg actuator_msgs::msg::ActuatorTargetの目標値指令
   void target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr message);
-  // /edulite/target_array の各指令を対応するモーターへ設定する。
+  /// @brief 複数の目標値指令を受信し，各モータへ設定
+  /// @param msg actuator_msgs::msg::ActuatorTargetArrayの目標値指令
   void target_array_callback(
       actuator_msgs::msg::ActuatorTargetArray::SharedPtr message);
-  // /edulite/set_positionを受け、PP/CSPの現在位置を指定値として校正する。
-  // 未接続、速度制御、未知のlogical_idでは状態を変更せず失敗を返す。
   void set_position_callback(
       const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request,
       std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response);
 
+  /// @brief 初期化，通信断監視，通常CAN指令の送信を周期実行
   void command_timer_callback();
-  // 全モーターの状態を/edulite/state_arrayへ周期送信する。
+  /// @brief actuator_msgs::msg::ActuatorStateArrayの状態配信
   void state_timer_callback();
 
+  /// @brief モータの状態をactuator_msgs::msg::ActuatorStateに変換
+  /// @param motor モータのProtocol
+  /// @return 変換された状態
   actuator_msgs::msg::ActuatorState
   make_state_message(const Protocol &motor) const;
+  /// @brief CAN IDからモータを検索
+  /// @param can_id can_id
+  /// @return モータのポインタ
   Protocol *find_motor_by_can_id(uint8_t can_id);
+  /// @brief logical_idからモータを検索
+  /// @param logical_id logical_id
+  /// @return モータのポインタ
   Protocol *find_motor_by_logical_id(uint16_t logical_id);
 
   std::vector<Protocol> motors_;
@@ -73,4 +84,4 @@ private:
   std::string state_array_topic_;
   std::string set_position_service_name_;
 };
-} // namespace edulite05_driver
+}  // namespace edulite05_driver

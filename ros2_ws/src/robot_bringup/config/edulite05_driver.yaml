@@ -66,8 +66,7 @@ edulite05_driver:
       can_id: 38
       control_mode: pp
 
-      # service: /edulite/set_positionが呼ばれるまで位置指令を送らない。
-      # yaml_absolute: 最初のfeedback時の現在位置をstartup_absolute_position_radとして扱う。
+      # この値は実機で測定して決める
       position_reference_mode: yaml_absolute
       startup_absolute_position_rad: -1.234
       minimum_position_rad: -1.57
