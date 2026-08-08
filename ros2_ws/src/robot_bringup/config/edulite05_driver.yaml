@@ -1,6 +1,8 @@
 edulite05_driver:
   ros__parameters:
 
+    can_pub_topic: "/socketcan_bridge/tx"
+    can_sub_topic: "/socketcan_bridge/rx"
     target_topic: "/edulite/target"
     target_array_topic: "/edulite/target_array"
     state_topic: "/edulite/state"
@@ -11,8 +13,8 @@ edulite05_driver:
       - front_right
       - rear_left
       - rear_right
-      - lift
-      - arm
+      - spring
+      - dribble
 
     front_left:
       logical_id: 0
@@ -20,6 +22,7 @@ edulite05_driver:
       mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      command_period_ms: 10
 
     front_right:
       logical_id: 1
@@ -27,6 +30,7 @@ edulite05_driver:
       mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      command_period_ms: 10
 
     rear_left:
       logical_id: 2
@@ -34,6 +38,7 @@ edulite05_driver:
       mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      command_period_ms: 10
 
     rear_right:
       logical_id: 3
@@ -41,18 +46,28 @@ edulite05_driver:
       mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      command_period_ms: 10
 
-    lift:
+    spring:
       logical_id: 4
       can_id: 40
       mode: velocity
       current_limit: 11.0
       acceleration: 150.0
+      command_period_ms: 50
 
-    arm:
+    dribble:
       logical_id: 5
       can_id: 38
       mode: pp
+
+      require_homing: false
+      # この値は実機で測定して決める
+      position_offset: -1.234
+      position_min: -1.57
+      position_max: 1.57
+      
+      command_period_ms: 50
       current_limit: 11.0
       speed_limit: 5.0
       acceleration: 150.0

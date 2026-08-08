@@ -21,8 +21,9 @@ namespace
   }
 }
 
-Protocol::Protocol(const MotorConfig & config) : config_(config)
+Protocol::Protocol(const MotorConfig & config) : config_(config),position_offset_(config.position_offset)
 {
+  homed_ = !config_.require_homing;
   init_items_.clear();
   // 最初に必ずrun_mode
   init_items_.push_back({RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.mode)),true});
@@ -49,6 +50,18 @@ void Protocol::set_target(float target)
   target_ = target;
   target_received_ = true;
   last_target_time_ = Clock::now();
+}
+
+bool Protocol::set_position_offset(float offset)
+{
+  if (!connected_) {
+    return false;
+  }
+  position_offset_ = offset - raw_position_;
+  feedback_.position = offset;
+
+  homed_ = true;
+  return true;
 }
 
 std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame()
@@ -146,8 +159,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & msg)
 {
   connected_ = true;
   last_rx_time_ = Clock::now();
-  feedback_.position = decode_u16(read_be_u16(msg.data, 0),-4.0f * PI,4.0f * PI);
-
+  raw_position_ = decode_u16(read_be_u16(msg.data, 0),-4.0f * PI, 4.0f * PI);
+  feedback_.position = raw_position_ + position_offset_;
   feedback_.velocity = decode_u16(read_be_u16(msg.data, 2),-50.0f ,50.0f);
   feedback_.effort = decode_u16(read_be_u16(msg.data, 4), -6.0f, 6.0f);
   feedback_.temperature = static_cast<float>(read_be_u16(msg.data, 6)) / 10.0f;
@@ -277,6 +290,10 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
   {
     return std::nullopt;
   }
+   if ((config_.mode == Mode::PP || config_.mode == Mode::CSP) && !homed_)
+  {
+    return std::nullopt;
+  }
 
   const auto now = Clock::now();
 
@@ -297,8 +314,9 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
     return create_write_float_frame(config_.can_id, SPEED_REF, target);
   }
 
-  // PP / CSPは指令が途絶えても
-  // 最後の位置を保持する
+  // PP / CSPは指令が途絶えても最後の位置を保持する
+  target = std::clamp(target_,config_.position_min, config_.position_max) - position_offset_;
+
   return create_write_float_frame(config_.can_id, POSITION_REF, target);
 }
 

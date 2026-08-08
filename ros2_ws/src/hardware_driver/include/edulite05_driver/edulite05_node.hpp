@@ -8,6 +8,8 @@
 #include "actuator_msgs/msg/actuator_state_array.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
 #include "actuator_msgs/msg/actuator_target_array.hpp"
+#include "actuator_msgs/srv/set_position.hpp"
+
 #include "can_msgs/msg/frame.hpp"
 #include "edulite05_driver/edulite05_protocol.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -56,6 +58,9 @@ private:
   /// @return モータのポインタ
   Protocol * find_logical_id(uint16_t logical_id);
 
+  void set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request,
+  std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response);
+
   std::vector<Protocol> motors_;
   std::size_t init_index_ = 0;
 
@@ -67,10 +72,14 @@ private:
 
   rclcpp::Publisher<actuator_msgs::msg::ActuatorState>::SharedPtr state_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_array_pub_;
+
+  rclcpp::Service<actuator_msgs::srv::SetPosition>::SharedPtr set_position_srv_;
   
   rclcpp::TimerBase::SharedPtr update_timer_;
   rclcpp::TimerBase::SharedPtr state_timer_;
 
+  std::string can_pub_topic;
+  std::string can_sub_topic;
   std::string target_topic;
   std::string target_array_topic;
   std::string state_topic;

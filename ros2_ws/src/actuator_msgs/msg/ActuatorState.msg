@@ -11,6 +11,7 @@ uint8 state
 bool connected
 bool configured
 bool enabled
+bool homed
 
 float32 position
 float32 velocity

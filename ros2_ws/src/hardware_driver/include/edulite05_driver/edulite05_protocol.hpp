@@ -60,6 +60,12 @@ struct MotorConfig
   float current_limit = 11.0f;
   float acceleration = 150.0f;
   float speed_limit = 50.0f;
+
+  float position_offset = 0.0f;
+  float position_min = -1000.0f;
+  float position_max = 1000.0f;
+  bool require_homing = false;
+
   uint32_t command_period_ms = 10;
   uint32_t target_timeout_ms = 200;
   uint32_t feedback_timeout_ms = 500;
@@ -83,6 +89,7 @@ public:
   uint16_t get_logical_id() const {return config_.logical_id;}
   uint8_t get_can_id() const {return config_.can_id;}
   MotorState get_state() const {return state_;}
+  bool is_homed() const{return homed_;}
   bool is_connected() const {return connected_;}
   bool is_configured() const {return configured_;}
   bool is_enabled() const {return enabled_;}
@@ -91,6 +98,8 @@ public:
   /// @brief 目標値を設定
   /// @param target 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）
   void set_target(float target);
+
+  bool set_position_offset(float offset);
 
   /// @brief 今回の呼び出しで初期化の際に送るフレームの取得
   /// @return 初期化フレーム
@@ -141,6 +150,10 @@ private:
   bool configured_ = false;
   bool enabled_ = false;
   int retry_count_ = 0;
+
+  float raw_position_ = 0.0f;
+  float position_offset_ = 0.0f;
+  bool homed_ = false;
 
   TimePoint last_rx_time_{};
   TimePoint last_request_time_{};

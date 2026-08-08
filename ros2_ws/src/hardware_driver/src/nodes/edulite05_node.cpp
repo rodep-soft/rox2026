@@ -13,12 +13,6 @@ namespace edulite05_driver
 {
 using namespace std::chrono_literals;
 
-namespace
-{
-constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
-constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
-}  // namespace
-
 Node::Node()
 : rclcpp::Node("edulite05_driver")
 {
@@ -39,13 +33,19 @@ Node::Node()
   state_pub_ = create_publisher<actuator_msgs::msg::ActuatorState>(state_topic, 10);
   state_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorStateArray>(state_array_topic, 10);
 
+  set_position_srv_ = create_service<actuator_msgs::srv::SetPosition>(
+    "set_position",
+    std::bind(&Node::set_position_callback,
+      this,std::placeholders::_1,std::placeholders::_2));
+
   update_timer_ = create_wall_timer(10ms, std::bind(&Node::update_callback, this));
   state_timer_ = create_wall_timer(50ms, std::bind(&Node::state_array_callback, this));
 }
 
 void Node::get_parameters()
 {
-
+  can_pub_topic = declare_parameter<std::string>("can_pub_topic", "/socketcan_bridge/tx");
+  can_sub_topic = declare_parameter<std::string>("can_sub_topic", "/socketcan_bridge/rx");
   target_topic = declare_parameter<std::string>("target_topic", "/edulite/target");
   target_array_topic = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
   state_topic = declare_parameter<std::string>("state_topic", "/edulite/state");
@@ -68,6 +68,11 @@ void Node::get_parameters()
       declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
     const auto feedback_timeout_ms =
       declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+
+    const auto require_homing = declare_parameter<bool>(prefix + "require_homing", false);
+    const auto position_offset = declare_parameter<double>(prefix + "position_offset", 0.0);
+    const auto position_min = declare_parameter<double>(prefix + "position_min", -1000.0);
+    const auto position_max = declare_parameter<double>(prefix + "position_max", 1000.0);
 
     if (logical_id < 0 || logical_id > 65535) {
       throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
@@ -118,7 +123,11 @@ void Node::get_parameters()
         static_cast<float>(speed_limit),
         static_cast<uint32_t>(command_period_ms),
         static_cast<uint32_t>(target_timeout_ms),
-        static_cast<uint32_t>(feedback_timeout_ms)});
+        static_cast<uint32_t>(feedback_timeout_ms),
+        static_cast<float>(position_offset),
+        static_cast<float>(position_min),
+        static_cast<float>(position_max),
+        require_homing});
 
     RCLCPP_INFO(
       get_logger(), "%s: logical=%ld CAN=0x%02lX mode=%s period=%ldms",
@@ -215,6 +224,7 @@ actuator_msgs::msg::ActuatorState Node::make_state(const Protocol & motor) const
   msg.connected = motor.is_connected();
   msg.configured = motor.is_configured();
   msg.enabled = motor.is_enabled();
+  msg.homed = motor.is_homed();
 
   const auto & feedback = motor.get_feedback();
   msg.position = feedback.position;
@@ -249,6 +259,26 @@ void Node::state_array_callback()
     msg.actuators.push_back(make_state(motor));
   }
   state_array_pub_->publish(msg);
+}
+
+void Node::set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request,
+  std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response)
+{
+  auto * motor = find_logical(request->logical_id);
+  if (!motor) {
+    response->success = false;
+    response->message ="Unknown logical_id";
+    return;
+  }
+  if (!motor->connected()) {
+    response->success = false;
+    response->message ="Motor is not connected";
+    return;
+  }
+
+  motor->set_position(request->position);
+  response->success = true;
+  response->message = "Position updated";
 }
 }  // namespace edulite05_driver
 

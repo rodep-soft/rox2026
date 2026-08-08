@@ -18,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ActuatorTargetArray.msg"
   "msg/ActuatorState.msg"
   "msg/ActuatorStateArray.msg"
+  "srv/SetPosition.srv"
   DEPENDENCIES
     std_msgs
 )
