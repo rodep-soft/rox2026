@@ -63,7 +63,7 @@ edulite05_driver:
 
     dribble:
       logical_id: 5
-      can_id: 38
+      can_id: 56
       control_mode: pp
 
       # この値は実機で測定して決める
