@@ -233,6 +233,13 @@ void Node::state_timer_callback() {
   message.actuators.reserve(motors_.size());
   for (const auto &motor : motors_) {
     message.actuators.push_back(make_state_message(motor));
+    if (motor.state() != MotorState::READY) {
+      const auto diagnostic = motor.initialization_diagnostic();
+      RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000,
+          "%s initialization incomplete: %s",
+          motor.name().c_str(), diagnostic.c_str());
+    }
   }
   state_array_publisher_->publish(message);
 }

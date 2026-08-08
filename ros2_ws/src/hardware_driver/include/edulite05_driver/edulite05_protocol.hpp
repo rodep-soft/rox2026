@@ -84,6 +84,7 @@ public:
   MotorState state() const { return state_; }
   bool position_reference_is_set() const { return position_reference_is_set_; }
   const MotorFeedback &feedback() const { return feedback_; }
+  std::string initialization_diagnostic() const;
 
   /// @brief 目標値を設定
   /// @param target 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）

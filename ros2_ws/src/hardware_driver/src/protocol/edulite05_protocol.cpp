@@ -4,6 +4,8 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 
 namespace edulite05_driver {
 namespace {
@@ -46,6 +48,44 @@ Protocol::Protocol(const MotorConfig &config) : config_(config) {
         {CURRENT_LIMIT, config_.current_limit, false});
     break;
   }
+}
+
+std::string Protocol::initialization_diagnostic() const {
+  const char *step_name = "unknown";
+  switch (initialization_step_) {
+  case InitializationStep::WRITE_PARAMETER:
+    step_name = "write";
+    break;
+  case InitializationStep::WAIT_AFTER_WRITE:
+    step_name = "wait_after_write";
+    break;
+  case InitializationStep::READ_PARAMETER:
+    step_name = "read";
+    break;
+  case InitializationStep::WAIT_FOR_READ:
+    step_name = "wait_for_read";
+    break;
+  case InitializationStep::ENABLE:
+    step_name = "enable";
+    break;
+  case InitializationStep::WAIT_FOR_ENABLE:
+    step_name = "wait_for_enable";
+    break;
+  case InitializationStep::READY:
+    step_name = "ready";
+    break;
+  case InitializationStep::ERROR:
+    step_name = "error";
+    break;
+  }
+  std::ostringstream stream;
+  stream << "step=" << step_name;
+  if (initialization_parameter_index_ < initialization_parameters_.size()) {
+    stream << " register=0x" << std::hex << std::uppercase
+           << initialization_parameters_[initialization_parameter_index_].index;
+  }
+  stream << std::dec << " retry=" << initialization_retry_count_;
+  return stream.str();
 }
 
 void Protocol::set_target(float target) {
