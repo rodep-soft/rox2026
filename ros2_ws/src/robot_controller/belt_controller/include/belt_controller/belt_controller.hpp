@@ -3,11 +3,12 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 
+#include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
-#include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class BeltControllerNode : public rclcpp::Node
@@ -49,13 +50,15 @@ private:
   std::array<int, kNumLevels> level_rpms_{3000, 3500, 4000, 4500, 5000, 5500};
   int command_period_ms_{10};
   int qos_depth_{1};
+  uint16_t underbelt_logical_id_{11};
+  uint16_t upperbelt_logical_id_{10};
+  std::string target_array_topic_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr belt_target_rpm_sub_;
 
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr underbelt_command_pub_;
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr upperbelt_command_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

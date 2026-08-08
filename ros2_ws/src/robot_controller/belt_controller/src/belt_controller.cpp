@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
@@ -26,10 +27,8 @@ BeltControllerNode::BeltControllerNode()
     "/belt/target_rpm", command_qos,
     std::bind(&BeltControllerNode::belt_target_rpm_callback, this, std::placeholders::_1));
 
-  underbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
-    "/underbelt/target/rpm", command_qos);
-  upperbelt_command_pub_ = create_publisher<std_msgs::msg::Int16>(
-    "/upperbelt/target/rpm", command_qos);
+  target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
+    target_array_topic_, command_qos);
 
   timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -46,6 +45,9 @@ void BeltControllerNode::declare_parameters()
   declare_parameter<int>("level_6_rpm", 5500);
   declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("qos_depth", 1);
+  declare_parameter<int>("underbelt_logical_id", 11);
+  declare_parameter<int>("upperbelt_logical_id", 10);
+  declare_parameter<std::string>("target_array_topic", "/vesc/target_array");
 }
 
 void BeltControllerNode::get_parameters()
@@ -59,6 +61,20 @@ void BeltControllerNode::get_parameters()
   get_parameter("level_6_rpm", rpm); level_rpms_[5] = rpm;
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
+  const auto underbelt_logical_id = get_parameter("underbelt_logical_id").as_int();
+  const auto upperbelt_logical_id = get_parameter("upperbelt_logical_id").as_int();
+  get_parameter("target_array_topic", target_array_topic_);
+  if (underbelt_logical_id < 0 || underbelt_logical_id > 65535 ||
+    upperbelt_logical_id < 0 || upperbelt_logical_id > 65535 ||
+    underbelt_logical_id == upperbelt_logical_id)
+  {
+    throw std::runtime_error("belt logical IDs must be unique values in [0, 65535]");
+  }
+  if (target_array_topic_.empty()) {
+    throw std::runtime_error("target_array_topic must not be empty");
+  }
+  underbelt_logical_id_ = static_cast<uint16_t>(underbelt_logical_id);
+  upperbelt_logical_id_ = static_cast<uint16_t>(upperbelt_logical_id);
 }
 
 void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
@@ -87,10 +103,15 @@ void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::Shar
 
 void BeltControllerNode::timer_callback()
 {
-  std_msgs::msg::Int16 cmd;
-  cmd.data = static_cast<int16_t>(emergency_stop_active_ ? 0 : belt_target_rpm());
-  underbelt_command_pub_->publish(cmd);
-  upperbelt_command_pub_->publish(cmd);
+  const auto target_rpm = static_cast<float>(emergency_stop_active_ ? 0 : belt_target_rpm());
+  actuator_msgs::msg::ActuatorTargetArray command;
+  command.header.stamp = now();
+  command.actuators.resize(2);
+  command.actuators[0].logical_id = underbelt_logical_id_;
+  command.actuators[0].target = target_rpm;
+  command.actuators[1].logical_id = upperbelt_logical_id_;
+  command.actuators[1].target = target_rpm;
+  target_array_pub_->publish(command);
 }
 
 int BeltControllerNode::belt_target_rpm() const

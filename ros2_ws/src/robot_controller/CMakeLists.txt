@@ -34,7 +34,7 @@ target_include_directories(
   belt_controller_node
   PRIVATE belt_controller/include)
 ament_target_dependencies(
-  belt_controller_node rclcpp std_msgs)
+  belt_controller_node actuator_msgs rclcpp std_msgs)
 
 add_executable(dribbler_controller_node dribbler_controller/src/dribbler_controller.cpp
                                         dribbler_controller/src/main.cpp)
@@ -42,7 +42,7 @@ target_include_directories(
   dribbler_controller_node
   PRIVATE dribbler_controller/include)
 ament_target_dependencies(
-  dribbler_controller_node rclcpp std_msgs)
+  dribbler_controller_node actuator_msgs rclcpp std_msgs)
 
 add_executable(arm_position_controller_node arm_position_controller/src/arm_position_controller.cpp
                                             arm_position_controller/src/main.cpp)

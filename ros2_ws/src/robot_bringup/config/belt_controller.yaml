@@ -1,5 +1,8 @@
 belt_controller_node:
   ros__parameters:
+    target_array_topic: "/vesc/target_array"
+    upperbelt_logical_id: 10
+    underbelt_logical_id: 11
     level_1_rpm: 3000
     level_2_rpm: 3500
     level_3_rpm: 4000

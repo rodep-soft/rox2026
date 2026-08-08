@@ -60,22 +60,6 @@ def generate_launch_description():
         ),
     ]
 
-    vesc_node_names = [
-        "vesc_upper_belt_driver",
-        "vesc_under_belt_driver",
-        "vesc_dribble_driver",
-    ]
-
-    for name in vesc_node_names:
-        composable_nodes.append(
-            ComposableNode(
-                package="hardware_driver",
-                plugin="vesc_driver::Node",
-                name=name,
-                parameters=[vesc_config],
-            )
-        )
-
     container = ComposableNodeContainer(
         name="hardware_container",
         namespace="",
@@ -85,6 +69,13 @@ def generate_launch_description():
         output="screen",
     )
 
+    vesc_node = Node(
+        package="hardware_driver",
+        executable="vesc_node",
+        name="vesc_driver",
+        output="screen",
+        parameters=[vesc_config],
+    )
     # EduLite 05 driver is a standalone multi-motor node, not an rclcpp component.
     edulite05_node = Node(
         package="hardware_driver",
@@ -94,4 +85,4 @@ def generate_launch_description():
         parameters=[edulite05_config],
     )
 
-    return LaunchDescription([can_interface_arg, container, edulite05_node])
+    return LaunchDescription([can_interface_arg, container, vesc_node, edulite05_node])

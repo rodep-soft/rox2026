@@ -2,6 +2,7 @@
 #include <chrono>
 #include <memory>
 
+#include "actuator_msgs/msg/actuator_target.hpp"
 #include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -34,11 +35,16 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   auto belt_node = std::make_shared<BeltControllerNode>();
   auto test_node = std::make_shared<rclcpp::Node>("test_belt_client");
 
-  int16_t last_underbelt_rpm = -1;
-  auto sub_underbelt = test_node->create_subscription<std_msgs::msg::Int16>(
-    "/underbelt/target/rpm", 1,
-    [&last_underbelt_rpm](const std_msgs::msg::Int16::SharedPtr msg) {
-      last_underbelt_rpm = msg->data;
+  float last_underbelt_rpm = -1.0f;
+  auto target_array_sub =
+    test_node->create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
+    "/vesc/target_array", 1,
+    [&last_underbelt_rpm](const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
+      for (const auto & target : msg->actuators) {
+        if (target.logical_id == 11) {
+          last_underbelt_rpm = target.target;
+        }
+      }
     });
 
   auto pub_belt_mode = test_node->create_publisher<std_msgs::msg::UInt8>("/belt/mode", 1);
@@ -83,11 +89,13 @@ TEST_F(RobotControllerTest, DribblerControllerEnableAndEmergencyStopTest)
   auto dribble_node = std::make_shared<DribblerControllerNode>();
   auto test_node = std::make_shared<rclcpp::Node>("test_dribbler_client");
 
-  int16_t last_dribble_rpm = -1;
-  auto sub_dribble = test_node->create_subscription<std_msgs::msg::Int16>(
-    "/dribble/target/rpm", 1,
-    [&last_dribble_rpm](const std_msgs::msg::Int16::SharedPtr msg) {
-      last_dribble_rpm = msg->data;
+  float last_dribble_rpm = -1.0f;
+  auto target_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
+    "/vesc/target", 1,
+    [&last_dribble_rpm](const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
+      if (msg->logical_id == 12) {
+        last_dribble_rpm = msg->target;
+      }
     });
 
   auto pub_dribble_enable = test_node->create_publisher<std_msgs::msg::Bool>("/dribble/enabled", 1);

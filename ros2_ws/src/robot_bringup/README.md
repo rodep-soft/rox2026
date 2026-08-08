@@ -153,7 +153,7 @@ ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev
 | `use_edulite_dribble_position` | `true` | dribble位置用EduLite |
 
 SocketCAN bridgeはhardwareの選択に関係なく起動する。VESCのnode名は
-`vesc_driver_1`〜`3`で、各nodeは同じ`vesc_driver.yaml`から自分の名前に対応する
+`vesc_driver`で、1つのnodeが`vesc_driver.yaml`から全モーターに対応する
 parameterだけを読む。
 
 ## 機構別テストlaunch

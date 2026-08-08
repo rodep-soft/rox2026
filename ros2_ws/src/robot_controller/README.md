@@ -54,8 +54,8 @@ flowchart LR
   joy_controller -->|"/shot_cycle/request"| belt
   belt -->|"/shot_cycle/start"| arm
 
-  belt -->|"/underbelt/target/rpm<br/>/upperbelt/target/rpm"| vesc
-  dribbler -->|"/dribble/target/rpm"| vesc
+  belt -->|"/vesc/target_array"| vesc
+  dribbler -->|"/vesc/target"| vesc
   mecanum -->|"/edulite/target_array"| edulite
   spring -->|"/spring/vel_command"| edulite
   arm -->|"/dribble/position_command"| edulite

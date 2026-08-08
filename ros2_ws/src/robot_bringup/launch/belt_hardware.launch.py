@@ -25,6 +25,12 @@ def generate_launch_description():
         }.items(),
     )
 
+    vesc_parameter_file = os.path.join(
+        get_package_share_directory("robot_bringup"),
+        "config",
+        "vesc_driver.yaml",
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -36,28 +42,9 @@ def generate_launch_description():
             Node(
                 package="hardware_driver",
                 executable="vesc_node",
-                name="underbelt_vesc_driver",
+                name="vesc_driver",
                 output="screen",
-                parameters=[
-                    {
-                        "controller_id": 51,
-                        "target_rpm_topic": "/underbelt/target/rpm",
-                        "current_rpm_topic": "/underbelt/current/rpm",
-                    }
-                ],
-            ),
-            Node(
-                package="hardware_driver",
-                executable="vesc_node",
-                name="upperbelt_vesc_driver",
-                output="screen",
-                parameters=[
-                    {
-                        "controller_id": 52,
-                        "target_rpm_topic": "/upperbelt/target/rpm",
-                        "current_rpm_topic": "/upperbelt/current/rpm",
-                    }
-                ],
+                parameters=[vesc_parameter_file],
             ),
         ]
     )
