@@ -72,6 +72,8 @@ edulite05_driver:
       speed_limit: 20.0
       current_feedback_enabled: false
       command_period_ms: 10
+      # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄する。
+      feedback_timeout_ms: 500
 
     dribble:
       logical_id: 5

@@ -324,7 +324,9 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   } else {
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
-  return false;
+  // 初期化状態が進んだことをNodeへ通知し、特に最終readbackで
+  // READYになったstateを個別topicへ即時publishさせる。
+  return true;
 }
 
 std::optional<can_msgs::msg::Frame> Protocol::create_current_feedback_frame() {

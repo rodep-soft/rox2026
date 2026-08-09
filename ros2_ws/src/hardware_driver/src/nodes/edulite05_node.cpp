@@ -213,8 +213,7 @@ void Node::command_timer_callback() {
   if (auto frame = initialization_motor.create_initialization_frame()) {
     can_frame_publisher_->publish(*frame);
   }
-  initialization_motor_index_ =
-      (initialization_motor_index_ + 1) % motors_.size();
+  initialization_motor_index_ = (initialization_motor_index_ + 1) % motors_.size();
   for (auto &motor : motors_) {
     if (auto frame = motor.create_target_frame()) {
       can_frame_publisher_->publish(*frame);
