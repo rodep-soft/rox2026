@@ -219,11 +219,15 @@ void JoyControllerNode::loop_callback()
     // 8. L1 + R1 + △ボタンでスプリング射出 (セーフティ解除付き)
     const bool is_l1_down = is_button_down(joy_msg_, spring_fire_enable_button_);
     const bool is_r1_down = is_button_down(joy_msg_, dribble_enable_button_);
-    if (is_l1_down && is_r1_down && is_button_just_pressed(joy_msg_, spring_fire_button_)) {
+    const bool spring_fire_triggered =
+      is_l1_down && is_r1_down &&
+      is_button_just_pressed(joy_msg_, spring_fire_button_);
+    if (spring_fire_triggered) {
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
-      std_msgs::msg::Bool msg; msg.data = true;
-      spring_fire_pub_->publish(msg);
     }
+    std_msgs::msg::Bool spring_fire_msg;
+    spring_fire_msg.data = spring_fire_triggered;
+    spring_fire_pub_->publish(spring_fire_msg);
 
     // 9. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
     if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
