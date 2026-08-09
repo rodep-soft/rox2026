@@ -8,11 +8,11 @@ arm_position_controller_node:
     open_duration_sec: 0.3      # OPEN 姿勢を保持する時間
     feed_duration_sec: 0.6      # FEED 押し込みを保持する時間
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 4.0   # DRIBBLE -> OPEN
-    feeding_max_velocity_rad_s: 6.0   # OPEN -> FEED
-    returning_max_velocity_rad_s: 4.0 # FEED -> DRIBBLE
+    opening_max_velocity_rad_s: 2.0   # DRIBBLE -> OPEN
+    feeding_max_velocity_rad_s: 3.0   # OPEN -> FEED
+    returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     # [ms] 指令再送周期
-    command_period_ms: 20
+    command_period_ms: 10
     # ROS 2 QoS queue depth
     qos_depth: 1
 

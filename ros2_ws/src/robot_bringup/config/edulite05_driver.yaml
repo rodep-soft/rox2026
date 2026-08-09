@@ -78,7 +78,7 @@ edulite05_driver:
     dribble:
       logical_id: 5
       can_id: 56
-      # 上位ノードが20 ms周期で滑らかな軌道を生成するため、
+      # 上位ノードが10 ms周期で滑らかな軌道を生成するため、
       # 内部プロファイルを毎回再計画するPPではなくCSPを使用する。
       control_mode: csp
 
@@ -88,9 +88,9 @@ edulite05_driver:
       minimum_position_rad: -1.57
       maximum_position_rad: 1.57
 
-      command_period_ms: 20
+      command_period_ms: 10
       current_feedback_enabled: false
       current_feedback_period_ms: 100
       current_limit: 11.0
-      speed_limit: 6.0
+      speed_limit: 3.0
       acceleration: 150.0
