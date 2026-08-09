@@ -206,7 +206,25 @@ bool Protocol::receive(const can_msgs::msg::Frame &message) {
 void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   connected_ = true;
   last_feedback_time_ = Clock::now();
-  raw_position_ = decode_uint16(read_big_endian_uint16(message.data, 0), -4.0f * PI, 4.0f * PI);
+  const auto wrapped_position =
+      decode_uint16(read_big_endian_uint16(message.data, 0), -4.0f * PI,
+                    4.0f * PI);
+  if (!raw_position_initialized_) {
+    raw_position_ = wrapped_position;
+    last_wrapped_position_ = wrapped_position;
+    raw_position_initialized_ = true;
+  } else {
+    auto position_delta = wrapped_position - last_wrapped_position_;
+    constexpr float feedback_position_period = 8.0f * PI;
+    constexpr float feedback_position_half_period = 4.0f * PI;
+    if (position_delta > feedback_position_half_period) {
+      position_delta -= feedback_position_period;
+    } else if (position_delta < -feedback_position_half_period) {
+      position_delta += feedback_position_period;
+    }
+    raw_position_ += position_delta;
+    last_wrapped_position_ = wrapped_position;
+  }
 
   // PositionReferenceMode::YAML_OFFSETの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
   if (uses_position_control() &&
@@ -386,6 +404,9 @@ void Protocol::restart_initialization(bool clear_target) {
   if (uses_position_control()) {
     position_reference_is_set_ = false;
     provisional_position_reference_initialized_ = false;
+    raw_position_ = 0.0f;
+    last_wrapped_position_ = 0.0f;
+    raw_position_initialized_ = false;
   }
   if (clear_target) {
     target_received_ = false;

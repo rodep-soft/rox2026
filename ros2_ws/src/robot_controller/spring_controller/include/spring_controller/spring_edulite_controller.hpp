@@ -16,7 +16,7 @@ public:
   SpringEduliteController();
 
 private:
-  enum class State : uint8_t { HOMING, READY, ERROR };
+  enum class State : uint8_t { HOMING, ZEROING, READY, ERROR };
 
   void declare_parameters();
   void get_parameters();
@@ -45,9 +45,12 @@ private:
   int command_period_ms_{10};
   int qos_depth_{1};
   int logical_id_{4};
+  int zeroing_stable_feedback_count_{0};
+  int zeroing_required_stable_feedback_count_{3};
   double fire_increment_rad_{-6.283185307};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
+  double zeroing_velocity_threshold_rad_s_{0.05};
   double target_position_rad_{0.0};
   std::string target_topic_{"/edulite/target"};
   std::string state_topic_{"/edulite/state"};

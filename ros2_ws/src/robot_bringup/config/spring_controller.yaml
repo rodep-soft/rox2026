@@ -11,6 +11,10 @@ spring_controller_node:
     homing_velocity_rad_s: 5.0
     # [s] リミットスイッチが見つからない場合のタイムアウト。
     homing_timeout_sec: 30.0
+    # [rad/s] この速度以下を停止とみなす。
+    zeroing_velocity_threshold_rad_s: 0.05
+    # 停止判定に必要な連続フィードバック数。
+    zeroing_required_stable_feedback_count: 3
 
     # [ms] 位置指令更新周期。
     command_period_ms: 50

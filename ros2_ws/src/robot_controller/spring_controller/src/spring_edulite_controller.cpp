@@ -32,6 +32,12 @@ SpringEduliteController::SpringEduliteController()
     RCLCPP_ERROR(get_logger(), "homing_timeout_sec must be positive");
     config_valid_ = false;
   }
+  if (!std::isfinite(zeroing_velocity_threshold_rad_s_) ||
+      zeroing_velocity_threshold_rad_s_ < 0.0 ||
+      zeroing_required_stable_feedback_count_ <= 0) {
+    RCLCPP_ERROR(get_logger(), "zeroing stability parameters are invalid");
+    config_valid_ = false;
+  }
   if (command_period_ms_ <= 0) {
     command_period_ms_ = 10;
     config_valid_ = false;
@@ -76,6 +82,8 @@ void SpringEduliteController::declare_parameters() {
   declare_parameter<double>("fire_increment_rad", -6.283185307);
   declare_parameter<double>("homing_velocity_rad_s", 0.5);
   declare_parameter<double>("homing_timeout_sec", 30.0);
+  declare_parameter<double>("zeroing_velocity_threshold_rad_s", 0.05);
+  declare_parameter<int>("zeroing_required_stable_feedback_count", 3);
   declare_parameter<int>("command_period_ms", 10);
   declare_parameter<int>("qos_depth", 1);
   declare_parameter<int>("logical_id", 4);
@@ -90,6 +98,10 @@ void SpringEduliteController::get_parameters() {
   get_parameter("fire_increment_rad", fire_increment_rad_);
   get_parameter("homing_velocity_rad_s", homing_velocity_rad_s_);
   get_parameter("homing_timeout_sec", homing_timeout_sec_);
+  get_parameter("zeroing_velocity_threshold_rad_s",
+                zeroing_velocity_threshold_rad_s_);
+  get_parameter("zeroing_required_stable_feedback_count",
+                zeroing_required_stable_feedback_count_);
   get_parameter("command_period_ms", command_period_ms_);
   get_parameter("qos_depth", qos_depth_);
   get_parameter("logical_id", logical_id_);
@@ -137,7 +149,10 @@ void SpringEduliteController::limit_switch_callback(
 
   if (is_limit_switch_on_ && current_state_ == State::HOMING && driver_ready_ &&
       !position_reference_set_) {
-    request_zero_reference();
+    current_state_ = State::ZEROING;
+    zeroing_stable_feedback_count_ = 0;
+    RCLCPP_INFO(get_logger(), "Spring limit detected. Holding the final homing "
+                              "target until motion settles.");
   }
 }
 
@@ -180,6 +195,18 @@ void SpringEduliteController::actuator_state_callback(
                                 "reset and homing restarted.");
     }
     position_reference_set_ = false;
+
+    if (current_state_ == State::ZEROING && !zero_request_pending_) {
+      if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
+        ++zeroing_stable_feedback_count_;
+      } else {
+        zeroing_stable_feedback_count_ = 0;
+      }
+      if (zeroing_stable_feedback_count_ >=
+          zeroing_required_stable_feedback_count_) {
+        request_zero_reference();
+      }
+    }
     return;
   }
 
@@ -202,7 +229,8 @@ void SpringEduliteController::timer_callback() {
 
   if (current_state_ == State::HOMING) {
     if (is_limit_switch_on_) {
-      request_zero_reference();
+      current_state_ = State::ZEROING;
+      zeroing_stable_feedback_count_ = 0;
       return;
     }
 
@@ -223,6 +251,21 @@ void SpringEduliteController::timer_callback() {
     return;
   }
 
+  if (current_state_ == State::ZEROING) {
+    if ((now() - homing_start_time_).seconds() >= homing_timeout_sec_) {
+      current_state_ = State::ERROR;
+      RCLCPP_ERROR(get_logger(),
+                   "Spring did not settle before the homing timeout. "
+                   "Target is held at %.6f rad.",
+                   target_position_rad_);
+      return;
+    }
+
+    // Keep the last homing target unchanged while the motor decelerates.
+    publish_target();
+    return;
+  }
+
   // READY and ERROR both keep the current accumulated position target.
   publish_target();
 }
@@ -231,6 +274,7 @@ void SpringEduliteController::reset_for_homing() {
   target_position_rad_ = 0.0;
   position_reference_set_ = false;
   zero_request_pending_ = false;
+  zeroing_stable_feedback_count_ = 0;
   current_state_ = State::HOMING;
   homing_start_time_ = now();
 }

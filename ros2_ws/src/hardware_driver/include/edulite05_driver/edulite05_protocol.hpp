@@ -157,6 +157,8 @@ private:
   int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
   float raw_position_ = 0.0f;
+  float last_wrapped_position_ = 0.0f;
+  bool raw_position_initialized_ = false;
   float position_offset_ = 0.0f;
   bool position_reference_is_set_ = false;
   bool provisional_position_reference_initialized_ = false;
