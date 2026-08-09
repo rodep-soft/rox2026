@@ -2,6 +2,6 @@ dribbler_controller_node:
   ros__parameters:
     target_topic: "/vesc/target"
     logical_id: 12
-    dribble_on_rpm: 500
+    dribble_on_rpm: 800
     command_period_ms: 50
     qos_depth: 1

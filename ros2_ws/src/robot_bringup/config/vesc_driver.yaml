@@ -6,7 +6,7 @@ vesc_driver:
     target_array_topic: "/vesc/target_array"
     state_topic: "/vesc/state"
     state_array_topic: "/vesc/state_array"
-    update_period_ms: 20 # pub,subをする周期
+    update_period_ms: 20              # pub,subをする周期
 
     motors:
       - upper_belt
@@ -15,13 +15,13 @@ vesc_driver:
 
     upper_belt:
       logical_id: 10
-      controller_id: 51 # モータID(10進数)
-      command_timeout_ms: 500 # コマンドが来ているかのタイムアウト用
-      feedback_timeout_ms: 500 # フィードバックが返ってきているかのタイムアウト用
-      max_rpm: 5600.0 # 最大回転数(モータ固有)
-      rpm_slew_rate: 1000.0 # 一秒間での加速量
-      startup_current_a: 10.0
-      rpm_control_threshold_rpm: 1500.0
+      controller_id: 51               # モータID(10進数)
+      command_timeout_ms: 500         # コマンドが来ているかのタイムアウト用
+      feedback_timeout_ms: 500        # フィードバックが返ってきているかのタイムアウト用
+      max_rpm: 5600.0                 # 最大回転数(モータ固有)
+      rpm_slew_rate: 1000.0           # 一秒間での加速量
+      startup_current_a: 10.0         # モータが停止している状態から回転させるための電流値
+      rpm_control_threshold_rpm: 1500.0 # 回転数制御を開始する閾値(この回転数以上で回転数制御を開始する)
 
     under_belt:
       logical_id: 11
@@ -29,7 +29,7 @@ vesc_driver:
       command_timeout_ms: 500
       feedback_timeout_ms: 500
       max_rpm: 5600.0
-      rpm_slew_rate: 1000.0 #一秒間での加速量
+      rpm_slew_rate: 1000.0
       startup_current_a: 10.0
       rpm_control_threshold_rpm: 1500.0
 
@@ -39,6 +39,6 @@ vesc_driver:
       command_timeout_ms: 500
       feedback_timeout_ms: 500
       max_rpm: 5600.0
-      rpm_slew_rate: 4000.0 #一秒間での加速量
+      rpm_slew_rate: 4000.0
       startup_current_a: 5.0
-      rpm_control_threshold_rpm: 1000.0
+      rpm_control_threshold_rpm: 200.0
