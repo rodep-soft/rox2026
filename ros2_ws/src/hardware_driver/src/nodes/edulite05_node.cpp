@@ -199,7 +199,8 @@ void Node::set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPo
     return;
   }
   response->success = true;
-  response->message = "Position reference updated";
+  response->message =
+      "Position reference request accepted; waiting for feedback confirmation";
 }
 
 void Node::command_timer_callback() {

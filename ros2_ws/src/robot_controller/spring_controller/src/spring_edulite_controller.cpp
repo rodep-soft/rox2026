@@ -183,9 +183,15 @@ void SpringEduliteController::actuator_state_callback(
     return;
   }
 
+  const bool reference_was_pending = zero_request_pending_;
   position_reference_set_ = true;
-  if (!zero_request_pending_) {
-    current_state_ = State::READY;
+  zero_request_pending_ = false;
+  current_state_ = State::READY;
+  if (reference_was_pending) {
+    target_position_rad_ = 0.0;
+    publish_target();
+    RCLCPP_INFO(get_logger(), "Spring homing completed after feedback "
+                              "confirmation. Target reset to 0 rad.");
   }
 }
 
@@ -243,21 +249,17 @@ void SpringEduliteController::request_zero_reference() {
       request,
       [this](rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedFuture
                  future) {
-        zero_request_pending_ = false;
         const auto response = future.get();
         if (!response->success) {
+          zero_request_pending_ = false;
           current_state_ = State::ERROR;
           RCLCPP_ERROR(get_logger(), "Failed to zero spring position: %s",
                        response->message.c_str());
           return;
         }
 
-        target_position_rad_ = 0.0;
-        position_reference_set_ = true;
-        current_state_ = State::READY;
-        publish_target();
-        RCLCPP_INFO(get_logger(), "Spring homing completed. Target and limit "
-                                  "position reset to 0 rad.");
+        RCLCPP_INFO(get_logger(), "Spring zero request accepted. Waiting for "
+                                  "EduLite feedback confirmation.");
       });
 }
 

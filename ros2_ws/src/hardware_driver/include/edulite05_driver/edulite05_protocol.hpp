@@ -119,6 +119,12 @@ private:
     ERROR
   };
 
+  enum class PositionReferenceUpdate {
+    IDLE,
+    CAPTURE_ON_NEXT_FEEDBACK,
+    CONFIRM_WITH_FEEDBACK
+  };
+
   struct InitializationParameter {
     uint16_t index;
     float value;
@@ -153,7 +159,6 @@ private:
   float target_ = 0.0f;
   bool target_received_ = false;
   bool connected_ = false;
-  bool configured_ = false;
   bool enabled_ = false;
   int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
@@ -161,6 +166,10 @@ private:
   float position_offset_ = 0.0f;
   bool position_reference_is_set_ = false;
   bool provisional_position_reference_initialized_ = false;
+  PositionReferenceUpdate position_reference_update_ =
+      PositionReferenceUpdate::IDLE;
+  float requested_reference_position_ = 0.0f;
+  int position_reference_confirmation_count_ = 0;
   TimePoint last_feedback_time_{};
   TimePoint last_request_time_{};
   TimePoint last_target_time_{};

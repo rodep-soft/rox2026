@@ -102,15 +102,15 @@ bool Protocol::set_current_position(float current_position_rad) {
       !std::isfinite(current_position_rad)) {
     return false;
   }
-  position_offset_ = current_position_rad - raw_position_;
-  feedback_.position = current_position_rad;
-  position_reference_is_set_ = true;
-  // Coordinate changes and the held target must be atomic. Keeping a target
-  // from the old coordinate system can command a full-speed move immediately
-  // after homing.
-  target_ = current_position_rad;
-  target_received_ = true;
-  last_target_time_ = Clock::now();
+  // The cached raw_position_ may predate the limit-switch event. Stop all
+  // position commands and establish the new coordinate system from the next
+  // feedback frame instead.
+  requested_reference_position_ = current_position_rad;
+  position_reference_update_ =
+      PositionReferenceUpdate::CAPTURE_ON_NEXT_FEEDBACK;
+  position_reference_confirmation_count_ = 0;
+  position_reference_is_set_ = false;
+  target_received_ = false;
   return true;
 }
 
@@ -121,13 +121,14 @@ bool Protocol::uses_position_control() const {
 
 std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
   const auto current_time = Clock::now();
+
   switch (initialization_step_) {
   case InitializationStep::WRITE_PARAMETER: {
     state_ = MotorState::INITIALIZING;
-    const auto &parameter =
-        initialization_parameters_[initialization_parameter_index_];
+    const auto &parameter = initialization_parameters_[initialization_parameter_index_];
     last_request_time_ = current_time;
     initialization_step_ = InitializationStep::WAIT_AFTER_WRITE;
+
     if (parameter.is_uint8) {
       return make_write_uint8_frame(config_.can_id, parameter.index,
                                     static_cast<uint8_t>(parameter.value));
@@ -194,20 +195,34 @@ bool Protocol::receive(const can_msgs::msg::Frame &message) {
   return false;
 }
 
+/// @brief フィードバックについてのデータを処理
+/// @param message
 void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   connected_ = true;
   last_feedback_time_ = Clock::now();
-  raw_position_ = decode_uint16(read_big_endian_uint16(message.data, 0),
-                                -4.0f * PI, 4.0f * PI);
+  raw_position_ = decode_uint16(read_big_endian_uint16(message.data, 0), -4.0f * PI, 4.0f * PI);
+  bool captured_reference_this_frame = false;
+  if (uses_position_control() &&
+      position_reference_update_ ==
+          PositionReferenceUpdate::CAPTURE_ON_NEXT_FEEDBACK) {
+    position_offset_ = requested_reference_position_ - raw_position_;
+    position_reference_update_ =
+        PositionReferenceUpdate::CONFIRM_WITH_FEEDBACK;
+    position_reference_confirmation_count_ = 0;
+    captured_reference_this_frame = true;
+  }
 
-  if (uses_position_control() && !position_reference_is_set_ &&
-      config_.position_reference_mode == PositionReferenceMode::YAML_OFFSET) {
+
+  // PositionReferenceMode::YAML_OFFSETの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
+  if (uses_position_control() && position_reference_update_ == PositionReferenceUpdate::IDLE &&
+      !position_reference_is_set_ && config_.position_reference_mode == PositionReferenceMode::YAML_OFFSET) {
     position_offset_ = config_.position_offset_rad;
     position_reference_is_set_ = true;
   }
 
-  if (uses_position_control() && !position_reference_is_set_ &&
-      config_.allow_unreferenced_position_commands &&
+  // PositionReferenceMode::SERVICEの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
+  if (uses_position_control() && position_reference_update_ == PositionReferenceUpdate::IDLE &&
+      !position_reference_is_set_ && config_.allow_unreferenced_position_commands &&
       !provisional_position_reference_initialized_) {
     position_offset_ = -raw_position_;
     provisional_position_reference_initialized_ = true;
@@ -220,6 +235,31 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
       decode_uint16(read_big_endian_uint16(message.data, 4), -6.0f, 6.0f);
   feedback_.temperature =
       static_cast<float>(read_big_endian_uint16(message.data, 6)) / 10.0f;
+
+  if (!captured_reference_this_frame &&
+      position_reference_update_ ==
+          PositionReferenceUpdate::CONFIRM_WITH_FEEDBACK) {
+    constexpr float reference_confirmation_tolerance_rad = 0.01f;
+    constexpr int required_reference_confirmations = 2;
+    if (std::fabs(feedback_.position - requested_reference_position_) <=
+        reference_confirmation_tolerance_rad) {
+      ++position_reference_confirmation_count_;
+    } else {
+      // The actuator may still be settling at the limit. Move the candidate
+      // origin to the newest feedback and require stable frames again.
+      position_offset_ = requested_reference_position_ - raw_position_;
+      feedback_.position = requested_reference_position_;
+      position_reference_confirmation_count_ = 0;
+    }
+    if (position_reference_confirmation_count_ >=
+        required_reference_confirmations) {
+      position_reference_is_set_ = true;
+      position_reference_update_ = PositionReferenceUpdate::IDLE;
+      target_ = requested_reference_position_;
+      target_received_ = true;
+      last_target_time_ = Clock::now();
+    }
+  }
   // Type2 ID bit21~16
   feedback_.fault_code = static_cast<uint32_t>((message.id >> 16) & 0x3F);
   // bit23~22
@@ -233,7 +273,6 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
       initialization_retry_count_ = 0;
       if (initialization_parameter_index_ >=
           initialization_parameters_.size()) {
-        configured_ = true;
         state_ = MotorState::READY;
         initialization_step_ = InitializationStep::READY;
       } else {
@@ -319,7 +358,6 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   ++initialization_parameter_index_;
   if (initialization_parameter_index_ >= initialization_parameters_.size()) {
     if (enabled_) {
-      configured_ = true;
       state_ = MotorState::READY;
       initialization_step_ = InitializationStep::READY;
     } else {
@@ -354,7 +392,6 @@ void Protocol::retry_initialization() {
   ++initialization_retry_count_;
   if (initialization_retry_count_ > MAX_INITIALIZATION_RETRIES) {
     state_ = MotorState::ERROR;
-    configured_ = false;
     enabled_ = false;
     initialization_step_ = InitializationStep::ERROR;
     error_time_ = Clock::now();
@@ -370,7 +407,6 @@ void Protocol::retry_initialization() {
 
 void Protocol::restart_initialization(bool clear_target) {
   state_ = MotorState::INITIALIZING;
-  configured_ = false;
   enabled_ = false;
   consecutive_non_run_feedback_count_ = 0;
   initialization_parameter_index_ = 0;
@@ -379,6 +415,9 @@ void Protocol::restart_initialization(bool clear_target) {
   if (uses_position_control()) {
     position_reference_is_set_ = false;
     provisional_position_reference_initialized_ = false;
+    position_reference_update_ = PositionReferenceUpdate::IDLE;
+    requested_reference_position_ = 0.0f;
+    position_reference_confirmation_count_ = 0;
   }
   if (clear_target) {
     target_received_ = false;
@@ -390,6 +429,9 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
   if (state_ != MotorState::READY || !target_received_) {
     return std::nullopt;
   }
+  if (position_reference_update_ != PositionReferenceUpdate::IDLE) {
+    return std::nullopt;
+  }
   if (uses_position_control() && !position_reference_is_set_ &&
       !(config_.allow_unreferenced_position_commands &&
         provisional_position_reference_initialized_)) {
@@ -397,10 +439,8 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
   }
 
   const auto current_time = Clock::now();
-  const auto command_period =
-      std::chrono::milliseconds(config_.command_period_ms);
-  if (last_command_time_ != TimePoint{} &&
-      current_time - last_command_time_ < command_period) {
+  const auto command_period = std::chrono::milliseconds(config_.command_period_ms);
+  if (last_command_time_ != TimePoint{} && current_time - last_command_time_ < command_period) {
     return std::nullopt;
   }
   last_command_time_ = current_time;
@@ -408,32 +448,24 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame() {
   if (config_.control_mode == ControlMode::VELOCITY) {
     auto velocity_target = target_;
     // 上位制御ノードが死んだ場合は停止
-    if (current_time - last_target_time_ >
-        std::chrono::milliseconds(config_.target_timeout_ms)) {
+    if (current_time - last_target_time_ > std::chrono::milliseconds(config_.target_timeout_ms)) {
       velocity_target = 0.0f;
     }
-    velocity_target =
-        std::clamp(velocity_target, -config_.speed_limit, config_.speed_limit);
-    return make_write_float_frame(config_.can_id, SPEED_REFERENCE,
-                                  velocity_target);
+    velocity_target = std::clamp(velocity_target, -config_.speed_limit, config_.speed_limit);
+    return make_write_float_frame(config_.can_id, SPEED_REFERENCE, velocity_target);
   }
 
-  // PP / CSPは指令が途絶えても
-  // 最後の位置を保持する
-  const auto absolute_position_target = std::clamp(
-      target_, config_.minimum_position_rad, config_.maximum_position_rad);
-  const auto motor_position_target =
-      absolute_position_target - position_offset_;
-  return make_write_float_frame(config_.can_id, POSITION_REFERENCE,
-                                motor_position_target);
+  // PP / CSPは指令が途絶えても最後の位置を保持する
+  const auto absolute_position_target = std::clamp(target_, config_.minimum_position_rad, config_.maximum_position_rad);
+  const auto motor_position_target = absolute_position_target - position_offset_;
+  return make_write_float_frame(config_.can_id, POSITION_REFERENCE,  motor_position_target);
 }
 
 void Protocol::watchdog() {
   if (state_ != MotorState::READY || !connected_) {
     return;
   }
-  if (Clock::now() - last_feedback_time_ <=
-      std::chrono::milliseconds(config_.feedback_timeout_ms)) {
+  if (Clock::now() - last_feedback_time_ <= std::chrono::milliseconds(config_.feedback_timeout_ms)) {
     return;
   }
   connected_ = false;
