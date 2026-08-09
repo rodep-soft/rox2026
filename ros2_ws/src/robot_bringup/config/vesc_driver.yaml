@@ -22,7 +22,6 @@ vesc_driver:
       rpm_slew_rate: 1000.0 # 一秒間での加速量
       startup_current_a: 10.0
       rpm_control_threshold_rpm: 1500.0
-      startup_current_timeout_ms: 1000
 
     under_belt:
       logical_id: 11
@@ -33,7 +32,6 @@ vesc_driver:
       rpm_slew_rate: 1000.0 #一秒間での加速量
       startup_current_a: 10.0
       rpm_control_threshold_rpm: 1500.0
-      startup_current_timeout_ms: 1000
 
     dribble:
       logical_id: 12
@@ -44,4 +42,3 @@ vesc_driver:
       rpm_slew_rate: 4000.0 #一秒間での加速量
       startup_current_a: 5.0
       rpm_control_threshold_rpm: 1000.0
-      startup_current_timeout_ms: 1000
