@@ -156,12 +156,13 @@ emergency stopがtransient local QoSで残る。
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
 | `lateral_axis_threshold` | double | 左右を`-1/0/+1`へ丸める閾値。`(0, 1]`、不正時0.7 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
-| `linear_x_limit` | double | 前後速度係数[m/s]。負値・非finiteなら2.0 |
-| `linear_y_limit` | double | 左右速度係数[m/s]。負値・非finiteなら2.0 |
-| `angular_z_limit` | double | 旋回速度係数[rad/s]。負値・非finiteなら2.0 |
-| `linear_x_scale` | double | 前後速度へ追加で掛ける倍率。非finiteなら1 |
-| `linear_y_scale` | double | 左右速度へ追加で掛ける倍率。非finiteなら1 |
-| `angular_z_scale` | double | 旋回速度へ追加で掛ける倍率。非finiteなら1 |
+| `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |
+| `linear_y_limit` | double | スティック全倒し時の最大左右速度[m/s] |
+| `angular_z_limit` | double | スティック全倒し時の最大旋回速度[rad/s] |
+
+Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
+変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは
+軸ごとに1つだけである。
 
 button・axis indexもすべてparameterである。対応表を変更する場合は
 `sensor_msgs/msg/Joy`の実データを確認し、README先頭の配置表と

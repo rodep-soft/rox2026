@@ -5,7 +5,7 @@
 ## Joyとmecanum
 
 - `joy_controller.yaml`: `axis_deadzone`、`axis_on_threshold`、`linear_x_limit`、`linear_y_limit`、`angular_z_limit`。
-- `mecanum_controller.yaml`: `wheel_radius`、`robot_length`、`robot_width`、`velocity_corrections`、各`*_sign`。
+- `mecanum_controller.yaml`: `wheel_radius`、`robot_length`、`robot_width`。
 
 ## Beltとdribble
 

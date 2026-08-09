@@ -41,7 +41,8 @@ joy_controller:
     # トリガー・DPAD軸をONとみなすしきい値
     axis_on_threshold: 0.7
 
-    # [m/s] 速度上限
+    # スティック全倒し時の最大速度。入力値もこの範囲に制限する。
+    # linear: [m/s]、angular: [rad/s]
     linear_x_limit: 2.0
     linear_y_limit: 2.0
     angular_z_limit: 2.0

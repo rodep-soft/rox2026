@@ -1,7 +1,7 @@
 # mecanum_controller_node
 
 機体速度`geometry_msgs/msg/Twist`を4輪のEduLite角速度へ変換するnodeである。
-mode制限、符号補正、車輪補正、最大50 rad/sへの比率維持制限を担当する。
+メカナム逆運動学、非常停止、最大50 rad/sへの比率維持制限を担当する。
 
 ## 関連ファイル
 
@@ -10,38 +10,36 @@ mode制限、符号補正、車輪補正、最大50 rad/sへの比率維持制�
 - 設定: `robot_bringup/config/mecanum_controller.yaml`
 - 起動: `robot_bringup/launch/controllers/mecanum_controller.launch.py`
 
-`publish_wheel_commands()`へ処理が集約されている。cmd_vel、mode、emergency callbackは
-内部値を更新した直後にこの関数を呼ぶ。
+`publish_wheel_commands()`へ計算とpublishを集約している。cmd_velを受信すると即時計算して
+publishする。非常停止の開始・解除も受信時に即時反映し、非常停止中だけ全輪ゼロ指令を
+`emergency_stop_period_ms`周期で再送する。通常走行中はtimerによる再送を行わない。
 
 ## 入出力
 
 | 種別 | topic | 型 |
 |---|---|---|
 | sub | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
-| sub | `/operation_mode` | `std_msgs/msg/UInt8` |
 | sub | `/emergency_stop` | `std_msgs/msg/Bool` |
 | pub | `/edulite/target_array` | `actuator_msgs/msg/ActuatorTargetArray` |
 
 ## 計算順
 
-1. `vx_sign`、`vy_sign`、`angular_z_sign`を掛ける。
-2. STOP・emergency stopなら全成分を0にする。
-3. SHOT_CYCLE・BELT_ONLYなら並進を0にし旋回だけ残す。
-4. 車輪半径と機体寸法を使い、FL・FR・RL・RRの逆運動学を計算する。
-5. `velocity_corrections`を車輪ごとに掛ける。
-6. 最大絶対値が上限を超えたら、全輪へ同じ縮小率を掛ける。
-7. 4つのrad/sをpublishする。
+1. 非常停止中なら機体速度の全成分を0にする。
+2. 車輪半径と機体寸法を使い、前左・前右・後左・後右の角速度を計算する。
+3. 4輪中で絶対値が最大の角速度を求める。
+4. 最大値が上限を超えた場合、`上限 / 最大値`を全輪へ掛ける。
+5. 4輪の目標角速度[rad/s]をpublishする。
 
-全輪を同じ比率で縮小するため、斜め入力でも移動方向と車輪間比率を保つ。
-modeが変わった瞬間にも最後のcmd_velから再計算し、次のJoy messageを待たない。
+車輪直径150 mmは半径`0.075 m`として計算する。全輪を同じ比率で縮小するため、
+斜め移動や旋回を含む指令でも移動方向と車輪間比率を保つ。
 
 ## 入力異常とparameter補正
 
 cmd_velの`linear.x`、`linear.y`、`angular.z`のどれかがNaN・Infなら、最後の指令を
 ゼロへ置き換えて全輪0をpublishする。
 
-半径、寸法、上限、QoS、符号、補正配列には起動時検証がある。不正値はWARN/ERROR後に
-安全な既定値へ補正し、nodeは起動を続ける。上限はEduLite仕様に合わせて50 rad/s以下。
+半径、寸法、上限、QoSには起動時検証がある。不正値はWARNまたはERROR後に安全な
+既定値へ補正し、nodeは起動を続ける。上限はEduLite仕様に合わせて50 rad/s以下。
 
 ## 確認方法
 
@@ -51,4 +49,4 @@ ros2 topic pub --once /mecanum/cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 ```
 
-車輪を浮かせた状態でFL、FR、RL、RRのtopicと実機対応、符号、補正係数を確認する。
+車輪を浮かせた状態で前左・前右・後左・後右のtopicと実機対応、回転方向を確認する。

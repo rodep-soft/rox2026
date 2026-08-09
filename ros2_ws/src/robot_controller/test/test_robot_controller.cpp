@@ -199,10 +199,12 @@ TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
   auto test_node = std::make_shared<rclcpp::Node>("test_mecanum_client");
 
   float fl_vel = 0.0f, fr_vel = 0.0f;
+  int received_command_count = 0;
   auto target_array_sub =
     test_node->create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
     "/edulite/target_array", 1,
-    [&fl_vel, &fr_vel](const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
+    [&fl_vel, &fr_vel, &received_command_count](
+      const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
       for (const auto & target : msg->actuators) {
         if (target.logical_id == 0) {
           fl_vel = target.target;
@@ -210,6 +212,7 @@ TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
           fr_vel = target.target;
         }
       }
+      ++received_command_count;
     });
 
   auto pub_cmd_vel = test_node->create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 1);
@@ -232,9 +235,9 @@ TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  // fl: -20 rad/s, fr: 20 rad/s
-  EXPECT_NEAR(fl_vel, -20.0f, 0.1f);
-  EXPECT_NEAR(fr_vel, 20.0f, 0.1f);
+  // 直径150 mm（半径0.075 m）なので、fl: -13.33 rad/s, fr: 13.33 rad/s
+  EXPECT_NEAR(fl_vel, -13.333f, 0.1f);
+  EXPECT_NEAR(fr_vel, 13.333f, 0.1f);
 
   // 2. 非常停止時に全輪 0 rad/s になるかのテスト
   std_msgs::msg::Bool estop_msg;
@@ -250,4 +253,31 @@ TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
   }
   EXPECT_NEAR(fl_vel, 0.0f, 0.001f);
   EXPECT_NEAR(fr_vel, 0.0f, 0.001f);
+
+  const int count_at_emergency_stop = received_command_count;
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(70)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_GE(received_command_count - count_at_emergency_stop, 2);
+  EXPECT_NEAR(fl_vel, 0.0f, 0.001f);
+  EXPECT_NEAR(fr_vel, 0.0f, 0.001f);
+
+  // 3. 上限超過時は全輪を同じ比率で縮小し、最大50 rad/sに収める。
+  estop_msg.data = false;
+  pub_estop->publish(estop_msg);
+  twist.linear.x = 4.0;
+  twist.linear.y = 1.0;
+  pub_cmd_vel->publish(twist);
+
+  start = std::chrono::steady_clock::now();
+  while (std::abs(fl_vel + 50.0f) > 0.1f &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_NEAR(fl_vel, -50.0f, 0.1f);
+  EXPECT_NEAR(fr_vel, 30.0f, 0.1f);
 }

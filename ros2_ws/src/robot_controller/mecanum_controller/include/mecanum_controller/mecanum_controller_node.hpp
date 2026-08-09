@@ -3,8 +3,6 @@
 
 #include <array>
 #include <cstdint>
-#include <string>
-#include <vector>
 
 #include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -19,14 +17,13 @@ public:
 private:
   enum WheelIndex
   {
-    FL = 0,
-    FR = 1,
-    RL = 2,
-    RR = 3,
+    FRONT_LEFT = 0,
+    FRONT_RIGHT = 1,
+    REAR_LEFT = 2,
+    REAR_RIGHT = 3,
   };
 
-  void get_parameters();
-  void create_interfaces();
+  void configure_parameters();
 
   /// @brief /mecanum/cmd_vel 受信時に呼ばれる。非有限値はゼロ速度へ置換して publish する。
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
@@ -46,22 +43,13 @@ private:
   bool emergency_stop_active_{false};
 
   // ロボット機構パラメータ
-  double wheel_radius_{0.05};
-  double robot_length_{0.47};
-  double robot_width_{0.41};
+  double wheel_radius_m_{0.075};
+  double robot_length_m_{0.47};
+  double robot_width_m_{0.41};
   double max_wheel_velocity_rad_s_{50.0};
-  std::vector<double> velocity_corrections_;
   std::array<uint16_t, 4> wheel_logical_ids_{0, 1, 2, 3};
-  std::string cmd_vel_topic_;
-  std::string emergency_stop_topic_;
-  std::string target_array_topic_;
-  double vx_sign_{1.0};
-  double vy_sign_{1.0};
-  double angular_z_sign_{1.0};
-  int command_period_ms_{20};
-  int qos_depth_{1};
 
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr emergency_stop_timer_;
 };
 
 #endif  // MECANUM_CONTROLLER__MECANUM_CONTROLLER_NODE_HPP_
