@@ -105,6 +105,12 @@ bool Protocol::set_current_position(float current_position_rad) {
   position_offset_ = current_position_rad - raw_position_;
   feedback_.position = current_position_rad;
   position_reference_is_set_ = true;
+  // Coordinate changes and the held target must be atomic. Keeping a target
+  // from the old coordinate system can command a full-speed move immediately
+  // after homing.
+  target_ = current_position_rad;
+  target_received_ = true;
+  last_target_time_ = Clock::now();
   return true;
 }
 
