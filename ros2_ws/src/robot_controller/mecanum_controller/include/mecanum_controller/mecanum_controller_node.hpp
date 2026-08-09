@@ -46,7 +46,7 @@ private:
   double wheel_radius_m_{0.075};
   double robot_length_m_{0.47};
   double robot_width_m_{0.41};
-  double max_wheel_velocity_rad_s_{50.0};
+  double max_wheel_vel_rad_s_{50.0};
   std::array<uint16_t, 4> wheel_logical_ids_{0, 1, 2, 3};
 
   rclcpp::TimerBase::SharedPtr emergency_stop_timer_;

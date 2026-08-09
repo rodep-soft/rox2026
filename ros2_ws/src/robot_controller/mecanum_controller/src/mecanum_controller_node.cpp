@@ -13,12 +13,9 @@ MecanumControllerNode::MecanumControllerNode()
 {
   configure_parameters();
 
-  const auto cmd_vel_topic =
-    declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
-  const auto emergency_stop_topic =
-    declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  const auto target_array_topic =
-    declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
+  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
+  const auto emergency_stop_topic = declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
+  const auto target_array_topic = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
   auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 20);
   auto qos_depth = declare_parameter<int>("qos_depth", 1);
 
@@ -63,13 +60,13 @@ void MecanumControllerNode::configure_parameters()
   wheel_radius_m_ = declare_parameter<double>("wheel_radius", 0.075);
   robot_length_m_ = declare_parameter<double>("robot_length", 0.47);
   robot_width_m_ = declare_parameter<double>("robot_width", 0.41);
-  max_wheel_velocity_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
-  const auto wheel_logical_ids =
-    declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
+  max_wheel_vel_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
+  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
 
   if (wheel_logical_ids.size() != wheel_logical_ids_.size()) {
     throw std::runtime_error("wheel_logical_ids must contain four elements");
   }
+
   for (std::size_t index = 0; index < wheel_logical_ids.size(); ++index) {
     if (wheel_logical_ids[index] < 0 || wheel_logical_ids[index] > 65535) {
       throw std::runtime_error("wheel_logical_ids values must be in [0, 65535]");
@@ -82,6 +79,7 @@ void MecanumControllerNode::configure_parameters()
     }
     wheel_logical_ids_[index] = logical_id;
   }
+
   if (!std::isfinite(wheel_radius_m_) || wheel_radius_m_ <= 0.0) {
     RCLCPP_WARN(
       get_logger(),
@@ -90,6 +88,7 @@ void MecanumControllerNode::configure_parameters()
       wheel_radius_m_);
     wheel_radius_m_ = 0.075;
   }
+
   if (!std::isfinite(robot_length_m_) || robot_length_m_ < 0.0) {
     RCLCPP_WARN(
       get_logger(),
@@ -97,6 +96,7 @@ void MecanumControllerNode::configure_parameters()
       robot_length_m_);
     robot_length_m_ = 0.47;
   }
+
   if (!std::isfinite(robot_width_m_) || robot_width_m_ < 0.0) {
     RCLCPP_WARN(
       get_logger(),
@@ -105,24 +105,22 @@ void MecanumControllerNode::configure_parameters()
     robot_width_m_ = 0.41;
   }
   constexpr double edulite_velocity_limit_rad_s = 50.0;
-  if (!std::isfinite(max_wheel_velocity_rad_s_) ||
-    max_wheel_velocity_rad_s_ <= 0.0 ||
-    max_wheel_velocity_rad_s_ > edulite_velocity_limit_rad_s)
+  if (!std::isfinite(max_wheel_vel_rad_s_) ||
+    max_wheel_vel_rad_s_ <= 0.0 ||
+    max_wheel_vel_rad_s_ > edulite_velocity_limit_rad_s)
   {
     RCLCPP_WARN(
       get_logger(),
       "max_wheel_velocity_rad_s must be in (0.0, 50.0]: %.6f. "
       "Using 50.0 rad/s.",
-      max_wheel_velocity_rad_s_);
-    max_wheel_velocity_rad_s_ = edulite_velocity_limit_rad_s;
+      max_wheel_vel_rad_s_);
+    max_wheel_vel_rad_s_ = edulite_velocity_limit_rad_s;
   }
 }
 
-void MecanumControllerNode::cmd_vel_callback(
-  const geometry_msgs::msg::Twist::SharedPtr msg)
+void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-  if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
-    !std::isfinite(msg->angular.z))
+  if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) || !std::isfinite(msg->angular.z))
   {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 1000,
@@ -144,49 +142,41 @@ void MecanumControllerNode::emergency_stop_callback(
 
 void MecanumControllerNode::publish_wheel_commands()
 {
-  double velocity_x_m_s = last_cmd_vel_.linear.x;
-  double velocity_y_m_s = last_cmd_vel_.linear.y;
-  double angular_velocity_rad_s = last_cmd_vel_.angular.z;
+  double vel_x_m_s = last_cmd_vel_.linear.x;
+  double vel_y_m_s = last_cmd_vel_.linear.y;
+  double angular_vel_rad_s = last_cmd_vel_.angular.z;
 
   if (emergency_stop_active_) {
-    velocity_x_m_s = 0.0;
-    velocity_y_m_s = 0.0;
-    angular_velocity_rad_s = 0.0;
+    vel_x_m_s = 0.0;
+    vel_y_m_s = 0.0;
+    angular_vel_rad_s = 0.0;
   }
 
+  // 逆運動学で4輪速度へ変換
   const double rotation_radius_m = (robot_length_m_ + robot_width_m_) / 2.0;
-  std::array<double, 4> wheel_velocities_rad_s;
-  wheel_velocities_rad_s[FRONT_LEFT] =
-    -(velocity_x_m_s + velocity_y_m_s - rotation_radius_m * angular_velocity_rad_s) /
-    wheel_radius_m_;
-  wheel_velocities_rad_s[FRONT_RIGHT] =
-    (velocity_x_m_s - velocity_y_m_s + rotation_radius_m * angular_velocity_rad_s) /
-    wheel_radius_m_;
-  wheel_velocities_rad_s[REAR_LEFT] =
-    -(velocity_x_m_s - velocity_y_m_s - rotation_radius_m * angular_velocity_rad_s) /
-    wheel_radius_m_;
-  wheel_velocities_rad_s[REAR_RIGHT] =
-    (velocity_x_m_s + velocity_y_m_s + rotation_radius_m * angular_velocity_rad_s) /
-    wheel_radius_m_;
+  std::array<double, 4> wheel_vels_rad_s;
+  wheel_vels_rad_s[FRONT_LEFT] = -(vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
+  wheel_vels_rad_s[FRONT_RIGHT] = (vel_x_m_s - vel_y_m_s + rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
+  wheel_vels_rad_s[REAR_LEFT] = -(vel_x_m_s - vel_y_m_s - rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
+  wheel_vels_rad_s[REAR_RIGHT] = (vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
 
-  double maximum_absolute_velocity_rad_s = 0.0;
-  for (const double wheel_velocity_rad_s : wheel_velocities_rad_s) {
-    maximum_absolute_velocity_rad_s =
-      std::max(maximum_absolute_velocity_rad_s, std::abs(wheel_velocity_rad_s));
+  // 上限超過時は全輪を同率で縮小する
+  double max_abs_wheel_vel_rad_s = 0.0;
+  for (const double wheel_vel_rad_s : wheel_vels_rad_s) {
+    max_abs_wheel_vel_rad_s = std::max(max_abs_wheel_vel_rad_s, std::abs(wheel_vel_rad_s));
   }
 
-  const double wheel_velocity_scale =
-    maximum_absolute_velocity_rad_s > max_wheel_velocity_rad_s_ ?
-    max_wheel_velocity_rad_s_ / maximum_absolute_velocity_rad_s : 1.0;
+  // 上限超過時は全輪を同率で縮小する
+  const double wheel_vel_scale = max_abs_wheel_vel_rad_s > max_wheel_vel_rad_s_ ?
+    max_wheel_vel_rad_s_ / max_abs_wheel_vel_rad_s : 1.0;
 
   actuator_msgs::msg::ActuatorTargetArray command_message;
   command_message.header.stamp = now();
-  command_message.actuators.reserve(wheel_velocities_rad_s.size());
-  for (std::size_t index = 0; index < wheel_velocities_rad_s.size(); ++index) {
+  command_message.actuators.reserve(wheel_vels_rad_s.size());
+  for (std::size_t index = 0; index < wheel_vels_rad_s.size(); ++index) {
     actuator_msgs::msg::ActuatorTarget target;
     target.logical_id = wheel_logical_ids_[index];
-    target.target =
-      static_cast<float>(wheel_velocities_rad_s[index] * wheel_velocity_scale);
+    target.target = static_cast<float>(wheel_vels_rad_s[index] * wheel_vel_scale);
     command_message.actuators.push_back(target);
   }
   target_array_pub_->publish(command_message);
