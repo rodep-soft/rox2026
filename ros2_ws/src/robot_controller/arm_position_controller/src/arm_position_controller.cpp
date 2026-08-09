@@ -98,6 +98,9 @@ void ArmPositionControllerNode::position_mode_callback(
   const auto new_mode = static_cast<PositionMode>(msg->data);
   if (new_mode != current_position_mode_ || in_shot_cycle_) {
     in_shot_cycle_ = false; // 手動割り込みで自動サイクルを解除
+    manual_transition_active_ = true;
+    manual_transition_start_time_ = now();
+    manual_transition_start_position_rad_ = last_command_position_rad_;
     RCLCPP_INFO(get_logger(), "Arm Mode Changed: %s -> %s",
                 mode_name(current_position_mode_), mode_name(new_mode));
     current_position_mode_ = new_mode;
@@ -111,6 +114,7 @@ void ArmPositionControllerNode::shot_cycle_callback(
   }
   RCLCPP_INFO(get_logger(),
               "Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE");
+  manual_transition_active_ = false;
   in_shot_cycle_ = true;
   shot_cycle_phase_ = ShotCyclePhase::OPENING;
   shot_cycle_start_time_ = now();
@@ -123,6 +127,7 @@ void ArmPositionControllerNode::emergency_stop_callback(
   if (msg->data != emergency_stop_active_) {
     if (msg->data) {
       in_shot_cycle_ = false;
+      manual_transition_active_ = false;
       RCLCPP_WARN(get_logger(),
                   "Emergency Stop Activated in ArmPositionController!");
     } else {
@@ -140,6 +145,7 @@ void ArmPositionControllerNode::emergency_stop_callback(
 void ArmPositionControllerNode::timer_callback() {
   if (emergency_stop_active_) {
     in_shot_cycle_ = false;
+    manual_transition_active_ = false;
     actuator_msgs::msg::ActuatorTarget msg;
     msg.logical_id = static_cast<uint16_t>(logical_id_);
     msg.target = static_cast<float>(dribble_position_rad_);
@@ -149,6 +155,27 @@ void ArmPositionControllerNode::timer_callback() {
   }
 
   double command_position_rad = target_position_rad();
+
+  if (manual_transition_active_ && !in_shot_cycle_) {
+    const double target = target_position_rad();
+    double max_velocity = returning_max_velocity_rad_s_;
+    if (current_position_mode_ == PositionMode::OPEN) {
+      max_velocity = opening_max_velocity_rad_s_;
+    } else if (current_position_mode_ == PositionMode::FEED) {
+      max_velocity = feeding_max_velocity_rad_s_;
+    }
+
+    const double elapsed =
+        (now() - manual_transition_start_time_).seconds();
+    const double duration = transition_duration_sec(
+        manual_transition_start_position_rad_, target, max_velocity);
+    command_position_rad = interpolated_position_rad(
+        manual_transition_start_position_rad_, target, elapsed, max_velocity);
+    if (elapsed >= duration) {
+      manual_transition_active_ = false;
+      command_position_rad = target;
+    }
+  }
 
   // Progress the automatic shot cycle with a smooth velocity-limited
   // trajectory.
@@ -247,12 +274,16 @@ float ArmPositionControllerNode::interpolated_position_rad(
     return static_cast<float>(to);
   }
   const double progress = std::clamp(elapsed_sec / duration, 0.0, 1.0);
-  const double smooth_progress = progress * progress * (3.0 - 2.0 * progress);
+  // Quintic smootherstep: velocity and acceleration are both zero at each
+  // endpoint, avoiding a mechanical shock when the shot phase changes.
+  const double smooth_progress =
+      progress * progress * progress *
+      (progress * (6.0 * progress - 15.0) + 10.0);
   return static_cast<float>(from + (to - from) * smooth_progress);
 }
 
 double ArmPositionControllerNode::transition_duration_sec(
     double from, double to, double max_velocity_rad_s) const {
-  // Smoothstep's peak derivative is 1.5, so this duration caps peak velocity.
-  return 1.5 * std::abs(to - from) / max_velocity_rad_s;
+  // Quintic smootherstep's peak derivative is 1.875.
+  return 1.875 * std::abs(to - from) / max_velocity_rad_s;
 }

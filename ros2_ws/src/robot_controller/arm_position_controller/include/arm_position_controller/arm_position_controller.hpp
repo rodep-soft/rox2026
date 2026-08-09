@@ -62,6 +62,10 @@ private:
   PositionMode current_position_mode_{PositionMode::DRIBBLE};
   bool emergency_stop_active_{false};
 
+  bool manual_transition_active_{false};
+  rclcpp::Time manual_transition_start_time_;
+  double manual_transition_start_position_rad_{0.35};
+
   bool in_shot_cycle_{false};
   ShotCyclePhase shot_cycle_phase_{ShotCyclePhase::OPENING};
   rclcpp::Time shot_cycle_start_time_;
