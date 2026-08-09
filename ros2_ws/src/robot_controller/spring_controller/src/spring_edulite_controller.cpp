@@ -258,8 +258,8 @@ void SpringEduliteController::request_zero_reference() {
           return;
         }
 
-        RCLCPP_INFO(get_logger(), "Spring zero request accepted. Waiting for "
-                                  "EduLite feedback confirmation.");
+        RCLCPP_INFO(get_logger(), "Spring zero reference updated from the latest "
+                                  "EduLite feedback.");
       });
 }
 

@@ -195,12 +195,12 @@ void Node::set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPo
   }
   if (!motor->set_current_position(request->position)) {
     response->success = false;
-    response->message = "Motor feedback has not been received";
+    response->message = "Fresh motor feedback is not available";
     return;
   }
   response->success = true;
-  response->message =
-      "Position reference request accepted; waiting for feedback confirmation";
+  response->message = "Position reference updated from latest feedback";
+  state_publisher_->publish(make_state_message(*motor));
 }
 
 void Node::command_timer_callback() {
