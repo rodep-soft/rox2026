@@ -6,7 +6,7 @@ spring_controller_node:
     qos_depth: 3
 
     # [rad/request] 発射要求1回で累積目標へ加算する角度 9周分
-    fire_increment_rad: 56.54866776
+    fire_increment_rad: -56.54866776
     # [rad/s] 未原点時に目標位置を負方向へずらす速度。
     homing_velocity_rad_s: 5.0
     # [s] リミットスイッチが見つからない場合のタイムアウト。
