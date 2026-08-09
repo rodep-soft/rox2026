@@ -5,10 +5,10 @@ spring_controller_node:
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
-    # [rad/request] 発射要求1回で累積目標へ加算する角度。必ず負値。
-    fire_increment_rad: -6.283185307
+    # [rad/request] 発射要求1回で累積目標へ加算する角度 9周分
+    fire_increment_rad: 56.54866776
     # [rad/s] 未原点時に目標位置を負方向へずらす速度。
-    homing_velocity_rad_s: 0.5
+    homing_velocity_rad_s: 5.0
     # [s] リミットスイッチが見つからない場合のタイムアウト。
     homing_timeout_sec: 30.0
 
