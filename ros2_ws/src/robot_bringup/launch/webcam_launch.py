@@ -2,7 +2,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -16,7 +20,9 @@ def launch_setup(context, *args, **kwargs):
     pixel_format = LaunchConfiguration("pixel_format").perform(context)
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
 
-    enable_apriltag = LaunchConfiguration("enable_apriltag").perform(context).lower() in [
+    enable_apriltag = LaunchConfiguration("enable_apriltag").perform(
+        context
+    ).lower() in [
         "true",
         "1",
     ]
@@ -47,7 +53,9 @@ def launch_setup(context, *args, **kwargs):
 
     if enable_apriltag:
         bringup_share = get_package_share_directory("robot_bringup")
-        apriltag_launch_file = os.path.join(bringup_share, "launch", "apriltag_launch.py")
+        apriltag_launch_file = os.path.join(
+            bringup_share, "launch", "apriltag_launch.py"
+        )
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
             launch_arguments={

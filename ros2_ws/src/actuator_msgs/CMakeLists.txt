@@ -13,15 +13,15 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
+rosidl_generate_interfaces(
+  ${PROJECT_NAME}
   "msg/ActuatorTarget.msg"
   "msg/ActuatorTargetArray.msg"
   "msg/ActuatorState.msg"
   "msg/ActuatorStateArray.msg"
   "srv/SetPosition.srv"
   DEPENDENCIES
-    std_msgs
-)
+  std_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

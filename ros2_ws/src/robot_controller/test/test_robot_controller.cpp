@@ -60,7 +60,8 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   executor.add_node(belt_node);
   executor.add_node(test_node);
 
-  const auto rpm_update = belt_node->set_parameters_atomically({
+  const auto rpm_update = belt_node->set_parameters_atomically(
+  {
     rclcpp::Parameter("underbelt_level_3_rpm", 4100),
     rclcpp::Parameter("upperbelt_level_3_rpm", 3900)});
   ASSERT_TRUE(rpm_update.successful);
@@ -99,7 +100,8 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   EXPECT_EQ(received_command_count, count_during_normal_operation);
 
   // 選択中レベルのparameter変更は、新しい上下RPMを即時送信する。
-  const auto active_level_update = belt_node->set_parameters_atomically({
+  const auto active_level_update = belt_node->set_parameters_atomically(
+  {
     rclcpp::Parameter("underbelt_level_3_rpm", 4200),
     rclcpp::Parameter("upperbelt_level_3_rpm", 3800)});
   ASSERT_TRUE(active_level_update.successful);
@@ -314,7 +316,8 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   }
   EXPECT_NEAR(last_position_rad, 0.35f, 0.01f);
 
-  const auto position_update = dribble_node->set_parameters_atomically({
+  const auto position_update = dribble_node->set_parameters_atomically(
+  {
     rclcpp::Parameter("open_position_rad", -0.5),
     rclcpp::Parameter("opening_max_velocity_rad_s", 10.0)});
   ASSERT_TRUE(position_update.successful);

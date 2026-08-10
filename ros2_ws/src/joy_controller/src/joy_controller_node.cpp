@@ -95,8 +95,9 @@ JoyControllerNode::JoyControllerNode()
     std::bind(&JoyControllerNode::loop_callback, this));
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
-    std::bind(&JoyControllerNode::parameter_callback, this,
-    std::placeholders::_1));
+    std::bind(
+      &JoyControllerNode::parameter_callback, this,
+      std::placeholders::_1));
 }
 
 rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
@@ -188,8 +189,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     std::isfinite(max_vel_y_m_s) && max_vel_y_m_s >= 0.0 &&
     std::isfinite(max_vel_z_rad_s) && max_vel_z_rad_s >= 0.0 &&
     std::isfinite(axis_deadzone) && axis_deadzone >= 0.0 &&
-    axis_deadzone < 1.0 && std::isfinite(axis_on_threshold) &&
-    axis_on_threshold > 0.0 && axis_on_threshold <= 1.0 &&
+    axis_deadzone<1.0 && std::isfinite(axis_on_threshold) &&
+      axis_on_threshold>0.0 && axis_on_threshold <= 1.0 &&
     ps_button >= 0 && home_button >= 0 && circle_button >= 0 &&
     dribble_enable_button >= 0 && game2_start_button >= 0 &&
     left_trigger_axis >= 0 && right_trigger_axis >= 0 &&
@@ -289,8 +290,7 @@ void JoyControllerNode::loop_callback()
     }
 
     // 5. L2 + ○ ボタンで自動シュートサイクル要求
-    if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_))
-    {
+    if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
       RCLCPP_INFO(get_logger(), "Shot cycle requested!");
       std_msgs::msg::Bool req; req.data = true;
       shot_cycle_request_pub_->publish(req);
@@ -323,9 +323,12 @@ void JoyControllerNode::loop_callback()
     }
 
     // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
-    const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
-    const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-    const bool spring_fire_triggered = is_l2_active && is_r2_active && !(was_l2_active && was_r2_active);
+    const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
+      last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
+    const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
+      last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
+    const bool spring_fire_triggered = is_l2_active && is_r2_active &&
+      !(was_l2_active && was_r2_active);
     if (spring_fire_triggered) {
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
     }
@@ -376,7 +379,8 @@ void JoyControllerNode::joy_timeout_timer_callback()
   }
 
   const auto now = std::chrono::steady_clock::now();
-  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_joy_received_time_).count();
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+    now - last_joy_received_time_).count();
 
   if (elapsed > joy_timeout_ms_ && !joy_timeout_active_) {
     joy_timeout_active_ = true;
@@ -470,7 +474,8 @@ bool JoyControllerNode::is_axis_just_triggered(
   const sensor_msgs::msg::Joy & msg, int index, bool positive) const
 {
   const double current_val = get_axis_value(msg, index);
-  const double last_val = last_joy_msg_.has_value() ? get_axis_value(last_joy_msg_.value(), index) : 0.0;
+  const double last_val =
+    last_joy_msg_.has_value() ? get_axis_value(last_joy_msg_.value(), index) : 0.0;
 
   if (positive) {
     return current_val >= axis_on_threshold_ && last_val < axis_on_threshold_;

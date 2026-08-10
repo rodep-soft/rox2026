@@ -77,7 +77,9 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     std::chrono::milliseconds(50),
     std::bind(&Game2TacticalShooterNode::control_loop, this));
 
-  RCLCPP_INFO(this->get_logger(), "Game2TacticalShooterNode initialized (DRIBBLE -> OPEN -> FEED Sequential Loading Mode).");
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Game2TacticalShooterNode initialized (DRIBBLE -> OPEN -> FEED Sequential Loading Mode).");
 }
 
 void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -86,7 +88,9 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = State::SEARCHING;
     active_row_ = 0; // 下段からスタート
-    RCLCPP_INFO(this->get_logger(), "▶️ Game 2 START! DRIBBLE -> OPEN -> FEED Auto-Loading Sequence Active.");
+    RCLCPP_INFO(
+      this->get_logger(),
+      "▶️ Game 2 START! DRIBBLE -> OPEN -> FEED Auto-Loading Sequence Active.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = State::STANDBY;
@@ -149,9 +153,10 @@ void Game2TacticalShooterNode::select_target_and_aim()
         row_panels.push_back(&info);
       }
     }
-    std::sort(row_panels.begin(), row_panels.end(), [](PanelTagInfo * a, PanelTagInfo * b) {
-      return a->col < b->col;
-    });
+    std::sort(
+      row_panels.begin(), row_panels.end(), [](PanelTagInfo * a, PanelTagInfo * b) {
+        return a->col < b->col;
+      });
 
     if (row_panels.empty()) {
       active_row_++;
@@ -196,8 +201,10 @@ void Game2TacticalShooterNode::select_target_and_aim()
         target_z_ = panel->z;
         target_valid_ = true;
         RCLCPP_INFO_THROTTLE(
-          this->get_logger(), *this->get_clock(), 2000,
-          "Row %d: Single isolated panel Tag %d -> Rotation Pinpoint Aiming at Center!", active_row_, panel->tag_id);
+          this->get_logger(),
+          *this->get_clock(), 2000,
+          "Row %d: Single isolated panel Tag %d -> Rotation Pinpoint Aiming at Center!", active_row_,
+          panel->tag_id);
         break;
       }
     }
@@ -264,11 +271,11 @@ void Game2TacticalShooterNode::control_loop()
     completed_msg.data = true;
     rpm_msg.data = 0.0f;
     dribble_msg.data = false;
-    
+
     RCLCPP_INFO_THROTTLE(
       this->get_logger(), *this->get_clock(), 5000,
       "🏆 GAME 2 ALL PANELS CLEARED! PERFECT VICTORY! 🏆");
-      
+
     cmd_vel_pub_->publish(cmd_vel);
     belt_rpm_pub_->publish(rpm_msg);
     shoot_trigger_pub_->publish(trigger_msg);
@@ -298,70 +305,75 @@ void Game2TacticalShooterNode::control_loop()
   switch (state_) {
     case State::SEARCHING:
     case State::ALIGNING: {
-      state_ = State::ALIGNING;
+        state_ = State::ALIGNING;
 
-      // 横スライド補正はオフ (100% 旋回のみでエイム)
-      cmd_vel.linear.y = 0.0;
-      // 前後距離補正
-      cmd_vel.linear.x = kp_dist_ * dist_err;
-      arm_pos_msg.data = 0; // STEP 1: DRIBBLE位置でボールを回転保持しながらアライメント！
-      
-      // カメラ角度誤差 (P項) ＋ IMUジャイロアクティブブレーキ (D項) によるハイブリッド旋回制御
-      double camera_p_term = -kp_yaw_ * y_err;
-      double imu_d_term = 0.0;
+        // 横スライド補正はオフ (100% 旋回のみでエイム)
+        cmd_vel.linear.y = 0.0;
+        // 前後距離補正
+        cmd_vel.linear.x = kp_dist_ * dist_err;
+        arm_pos_msg.data = 0; // STEP 1: DRIBBLE位置でボールを回転保持しながらアライメント！
 
-      // IMU受信中（過去1秒以内に受信あり）なら、ジャイロ反力をダンパーブレーキとして利用！
-      if (imu_received_ && (this->now() - last_imu_time_).seconds() < 1.0) {
-        imu_d_term = -kd_yaw_ * current_gyro_z_;
+        // カメラ角度誤差 (P項) ＋ IMUジャイロアクティブブレーキ (D項) によるハイブリッド旋回制御
+        double camera_p_term = -kp_yaw_ * y_err;
+        double imu_d_term = 0.0;
+
+        // IMU受信中（過去1秒以内に受信あり）なら、ジャイロ反力をダンパーブレーキとして利用！
+        if (imu_received_ && (this->now() - last_imu_time_).seconds() < 1.0) {
+          imu_d_term = -kd_yaw_ * current_gyro_z_;
+        }
+
+        double raw_wz = camera_p_term + imu_d_term;
+        cmd_vel.angular.z = std::clamp(raw_wz, -max_angular_z_, max_angular_z_);
+
+        // 照準完了チェック (誤差判定)
+        if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
+          RCLCPP_INFO(
+            this->get_logger(),
+            "Game2 Target Alignment ACQUIRED! STEP 2: Transitioning to OPEN position...");
+          state_ = State::PREPARING_SHOOT;
+          shoot_start_time_ = this->now();
+        }
+        break;
       }
-
-      double raw_wz = camera_p_term + imu_d_term;
-      cmd_vel.angular.z = std::clamp(raw_wz, -max_angular_z_, max_angular_z_);
-
-      // 照準完了チェック (誤差判定)
-      if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Target Alignment ACQUIRED! STEP 2: Transitioning to OPEN position...");
-        state_ = State::PREPARING_SHOOT;
-        shoot_start_time_ = this->now();
-      }
-      break;
-    }
 
     case State::PREPARING_SHOOT: {
-      // STEP 2: アームを一度パカッと開く (1: OPEN) でボールの拘束を解放
-      cmd_vel = geometry_msgs::msg::Twist{};
-      arm_pos_msg.data = 1; // 1: OPEN
+        // STEP 2: アームを一度パカッと開く (1: OPEN) でボールの拘束を解放
+        cmd_vel = geometry_msgs::msg::Twist{};
+        arm_pos_msg.data = 1; // 1: OPEN
 
-      if ((this->now() - shoot_start_time_).seconds() > 0.3) {
-        RCLCPP_INFO(this->get_logger(), "STEP 3: Transitioning to FEED position for belt loading...");
-        state_ = State::SHOOTING;
-        shoot_start_time_ = this->now();
+        if ((this->now() - shoot_start_time_).seconds() > 0.3) {
+          RCLCPP_INFO(
+            this->get_logger(), "STEP 3: Transitioning to FEED position for belt loading...");
+          state_ = State::SHOOTING;
+          shoot_start_time_ = this->now();
+        }
+        break;
       }
-      break;
-    }
 
     case State::SHOOTING: {
-      // STEP 3: アームを FEED (2: FEED) へ倒し込み、高速ベルトへボールを自動押し込み装填＆射出！
-      cmd_vel = geometry_msgs::msg::Twist{};
-      trigger_msg.data = true; // ベルト射出トリガーオン！
-      arm_pos_msg.data = 2;    // 2: FEED
+        // STEP 3: アームを FEED (2: FEED) へ倒し込み、高速ベルトへボールを自動押し込み装填＆射出！
+        cmd_vel = geometry_msgs::msg::Twist{};
+        trigger_msg.data = true; // ベルト射出トリガーオン！
+        arm_pos_msg.data = 2;  // 2: FEED
 
-      if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(this->get_logger(), "Game2 Ball Fired! Resetting arm to DRIBBLE position for next ball...");
-        state_ = State::WAITING_RESULT;
-        shoot_start_time_ = this->now();
+        if ((this->now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
+          RCLCPP_INFO(
+            this->get_logger(),
+            "Game2 Ball Fired! Resetting arm to DRIBBLE position for next ball...");
+          state_ = State::WAITING_RESULT;
+          shoot_start_time_ = this->now();
+        }
+        break;
       }
-      break;
-    }
 
     case State::WAITING_RESULT: {
-      cmd_vel = geometry_msgs::msg::Twist{};
-      arm_pos_msg.data = 0; // 次のボール受け取り用にアームを 0: DRIBBLE 位置へリセット
-      if ((this->now() - shoot_start_time_).seconds() > 1.2) {
-        state_ = State::ALIGNING;
+        cmd_vel = geometry_msgs::msg::Twist{};
+        arm_pos_msg.data = 0; // 次のボール受け取り用にアームを 0: DRIBBLE 位置へリセット
+        if ((this->now() - shoot_start_time_).seconds() > 1.2) {
+          state_ = State::ALIGNING;
+        }
+        break;
       }
-      break;
-    }
 
     default:
       break;

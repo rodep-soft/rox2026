@@ -20,11 +20,13 @@ def generate_launch_description():
                 executable="joy_node",
                 name="joy_node",
                 output="screen",
-                parameters=[{
-                    "device_id": ParameterValue(joy_device_id, value_type=int),
-                    "autorepeat_rate": 100.0,
-                    "coalesce_interval_ms": 10
-                }],
+                parameters=[
+                    {
+                        "device_id": ParameterValue(joy_device_id, value_type=int),
+                        "autorepeat_rate": 100.0,
+                        "coalesce_interval_ms": 10,
+                    }
+                ],
             ),
         ]
     )

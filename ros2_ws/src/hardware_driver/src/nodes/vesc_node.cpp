@@ -58,12 +58,18 @@ public:
   explicit Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
   : rclcpp::Node("vesc_driver", options)
   {
-    const auto can_tx_topic = declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
-    const auto can_rx_topic = declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
+    const auto can_tx_topic =
+      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+    const auto can_rx_topic =
+      declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
     const auto target_topic = declare_parameter<std::string>("target_topic", "/vesc/target");
-    const auto target_array_topic = declare_parameter<std::string>("target_array_topic", "/vesc/target_array");
+    const auto target_array_topic = declare_parameter<std::string>(
+      "target_array_topic",
+      "/vesc/target_array");
     const auto state_topic = declare_parameter<std::string>("state_topic", "/vesc/state");
-    const auto state_array_topic = declare_parameter<std::string>("state_array_topic", "/vesc/state_array");
+    const auto state_array_topic = declare_parameter<std::string>(
+      "state_array_topic",
+      "/vesc/state_array");
     const auto update_period_ms = declare_parameter<int64_t>("update_period_ms", 20);
     const auto motor_names = declare_parameter<std::vector<std::string>>(
       "motors", std::vector<std::string>{});
@@ -72,8 +78,11 @@ public:
       const auto prefix = name + ".";
       const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
       const auto controller_id = declare_parameter<int64_t>(prefix + "controller_id", -1);
-      const auto command_timeout_ms = declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
-      const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+      const auto command_timeout_ms =
+        declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
+      const auto feedback_timeout_ms = declare_parameter<int64_t>(
+        prefix + "feedback_timeout_ms",
+        500);
       const auto max_rpm = declare_parameter<double>(prefix + "max_rpm", 5600.0);
       const auto rpm_slew_rate = declare_parameter<double>(prefix + "rpm_slew_rate", 4000.0);
       const auto startup_current_a =
@@ -100,15 +109,16 @@ public:
                 name + ": rpm_control_threshold_rpm must be in (0, max_rpm]");
       }
 
-      motors_.emplace_back(MotorConfig{
-        static_cast<uint16_t>(logical_id),
-        static_cast<uint8_t>(controller_id),
-        max_rpm,
-        rpm_slew_rate,
-        startup_current_a,
-        rpm_control_threshold_rpm,
-        std::chrono::milliseconds(command_timeout_ms),
-        std::chrono::milliseconds(feedback_timeout_ms)});
+      motors_.emplace_back(
+        MotorConfig{
+          static_cast<uint16_t>(logical_id),
+          static_cast<uint8_t>(controller_id),
+          max_rpm,
+          rpm_slew_rate,
+          startup_current_a,
+          rpm_control_threshold_rpm,
+          std::chrono::milliseconds(command_timeout_ms),
+          std::chrono::milliseconds(feedback_timeout_ms)});
     }
 
     const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
@@ -132,7 +142,6 @@ public:
   }
 
 private:
-
   /// @brief 論理IDからモーターを検索
   /// @param logical_id 論理ID
   /// @return motorへのポインタ(見つからなければnullptr)
@@ -163,14 +172,17 @@ private:
   /// @return 接続されている場合はtrue、それ以外はfalse
   bool is_connected(const Motor & motor, std::chrono::steady_clock::time_point now) const
   {
-    return motor.feedback_received && now - motor.last_feedback_time <= motor.config.feedback_timeout;
+    return motor.feedback_received &&
+           now - motor.last_feedback_time <= motor.config.feedback_timeout;
   }
 
   /// @brief モーターの状態メッセージを作成
   /// @param motor モーター
   /// @param now 現在時刻
   /// @return 状態メッセージ
-  actuator_msgs::msg::ActuatorState make_state(const Motor & motor, std::chrono::steady_clock::time_point now) const
+  actuator_msgs::msg::ActuatorState make_state(
+    const Motor & motor,
+    std::chrono::steady_clock::time_point now) const
   {
     actuator_msgs::msg::ActuatorState message;
     message.logical_id = motor.config.logical_id;
@@ -215,10 +227,12 @@ private:
     }
 
     const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-    const auto rpm_control_start_rpm = std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
+    const auto rpm_control_start_rpm =
+      std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
     const auto measured_rpm = static_cast<double>(motor.measured_rpm);
     const bool rotating_in_target_direction = desired_rpm * measured_rpm > 0.0;
-    const bool rpm_control_start_reached = rotating_in_target_direction && std::abs(measured_rpm) >= rpm_control_start_rpm;
+    const bool rpm_control_start_reached = rotating_in_target_direction &&
+      std::abs(measured_rpm) >= rpm_control_start_rpm;
 
     if (!motor.rpm_control_active && motor.feedback_received && rpm_control_start_reached) {
       motor.rpm_control_active = true;
@@ -228,21 +242,28 @@ private:
     // モーターが停止している場合は、まずは電流制御で回転させる
     if (!motor.rpm_control_active) {
       const auto startup_current_a = std::copysign(motor.config.startup_current_a, desired_rpm);
-      can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, startup_current_a));
+      can_publisher_->publish(
+        protocol::make_set_current_frame(
+          motor.config.controller_id,
+          startup_current_a));
       return;
     }
 
     // RPM制御を行う場合は、目標RPMに向かってスロープ制御を行う
     // elapsed_secondsは、前回のスロープ制御からの経過時間を秒単位で表す
-    const auto elapsed_seconds = std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
+    const auto elapsed_seconds =
+      std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
     const auto maximum_step = motor.config.rpm_slew_rate * elapsed_seconds;
     motor.rpm_command += std::clamp(desired_rpm - motor.rpm_command, -maximum_step, maximum_step);
     const auto erpm_command = motor.rpm_command * motor_pole_pairs;
-    can_publisher_->publish(protocol::make_set_rpm_frame(motor.config.controller_id, static_cast<int32_t>(std::lround(erpm_command))));
+    can_publisher_->publish(
+      protocol::make_set_rpm_frame(
+        motor.config.controller_id,
+        static_cast<int32_t>(std::lround(erpm_command))));
   }
 
   /// @brief CANフレーム受信時のコールバック関数(即時にモーターの状態を配信する)
-  /// @param frame 
+  /// @param frame
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     protocol::Status1 status{};
@@ -253,7 +274,8 @@ private:
     if (motor == nullptr) {
       return;
     }
-    motor->measured_rpm = static_cast<float>(status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
+    motor->measured_rpm =
+      static_cast<float>(status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
     motor->measured_current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
@@ -270,7 +292,7 @@ private:
   }
 
   /// @brief 目標値が複数送られてきた場合のコールバック関数
-  /// @param message 
+  /// @param message
   void target_array_callback(
     const actuator_msgs::msg::ActuatorTargetArray::SharedPtr message)
   {
@@ -300,13 +322,14 @@ private:
   std::vector<Motor> motors_;
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_publisher_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_subscription_;
-  
+
   rclcpp::Subscription<actuator_msgs::msg::ActuatorTarget>::SharedPtr target_subscription_;
-  rclcpp::Subscription<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_subscription_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr
+    target_array_subscription_;
 
   rclcpp::Publisher<actuator_msgs::msg::ActuatorState>::SharedPtr state_publisher_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_array_publisher_;
-  
+
   rclcpp::TimerBase::SharedPtr timer_;
 };
 }  // namespace vesc_driver

@@ -10,12 +10,14 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class SpringEduliteController : public rclcpp::Node {
+class SpringEduliteController : public rclcpp::Node
+{
 public:
   SpringEduliteController();
 
 private:
-  enum class ControlState : uint8_t {
+  enum class ControlState : uint8_t
+  {
     HOMING,
     WAITING_FOR_STOP,
     READY,
@@ -26,7 +28,7 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void actuator_state_callback(
-      const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+    const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void control_timer_callback();
 
   void reset_for_homing();
@@ -58,11 +60,11 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
-      actuator_state_sub_;
+    actuator_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-      position_command_pub_;
+    position_command_pub_;
   rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedPtr
-      set_position_client_;
+    set_position_client_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };
 

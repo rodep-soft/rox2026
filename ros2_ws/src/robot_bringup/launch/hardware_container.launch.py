@@ -11,9 +11,7 @@ from launch_ros.descriptions import ComposableNode
 def generate_launch_description():
     bringup_share = get_package_share_directory("robot_bringup")
 
-    edulite05_config = os.path.join(
-        bringup_share, "config", "edulite05_driver_v2.yaml"
-    )
+    edulite05_config = os.path.join(bringup_share, "config", "edulite05_driver_v2.yaml")
     vesc_config = os.path.join(bringup_share, "config", "vesc_driver.yaml")
     stm32_config = os.path.join(bringup_share, "config", "stm32_driver.yaml")
 

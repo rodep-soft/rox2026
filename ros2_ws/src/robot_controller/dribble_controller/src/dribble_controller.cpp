@@ -9,9 +9,14 @@
 #include <stdexcept>
 
 DribbleControllerNode::DribbleControllerNode()
-    : Node("dribble_controller_node") {
-  const auto position_target_topic = declare_parameter<std::string>("position_target_topic", "/edulite/target");
-  const auto roller_target_topic = declare_parameter<std::string>("roller_target_topic", "/vesc/target");
+: Node("dribble_controller_node")
+{
+  const auto position_target_topic = declare_parameter<std::string>(
+    "position_target_topic",
+    "/edulite/target");
+  const auto roller_target_topic = declare_parameter<std::string>(
+    "roller_target_topic",
+    "/vesc/target");
   const auto command_period_ms = declare_parameter<int>("command_period_ms", 20);
   const auto qos_depth = declare_parameter<int>("qos_depth", 1);
   if (position_target_topic.empty() || roller_target_topic.empty()) {
@@ -27,44 +32,50 @@ DribbleControllerNode::DribbleControllerNode()
   const auto command_qos = rclcpp::QoS(qos_depth);
 
   position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
-      position_target_topic, command_qos);
+    position_target_topic, command_qos);
   roller_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
-      roller_target_topic, command_qos);
+    roller_target_topic, command_qos);
   // dribble_controller -> led_controller: shot cycle state.
   shot_cycle_state_pub_ = create_publisher<std_msgs::msg::UInt8>(
-      "/shot_cycle/state", rclcpp::QoS(1).reliable().transient_local());
+    "/shot_cycle/state", rclcpp::QoS(1).reliable().transient_local());
 
 
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-      "/dribble/position_mode", command_qos,
-      std::bind(&DribbleControllerNode::position_mode_callback, this,
-                std::placeholders::_1));
+    "/dribble/position_mode", command_qos,
+    std::bind(
+      &DribbleControllerNode::position_mode_callback, this,
+      std::placeholders::_1));
 
   dribble_enabled_sub_ = create_subscription<std_msgs::msg::Bool>(
-      "/dribble/enabled", command_qos,
-      std::bind(&DribbleControllerNode::dribble_enabled_callback, this,
-                std::placeholders::_1));
+    "/dribble/enabled", command_qos,
+    std::bind(
+      &DribbleControllerNode::dribble_enabled_callback, this,
+      std::placeholders::_1));
 
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
-      "/shot_cycle/request", command_qos,
-      std::bind(&DribbleControllerNode::shot_cycle_callback, this,
-                std::placeholders::_1));
+    "/shot_cycle/request", command_qos,
+    std::bind(
+      &DribbleControllerNode::shot_cycle_callback, this,
+      std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-      "/emergency_stop", emergency_stop_qos,
-      std::bind(&DribbleControllerNode::emergency_stop_callback, this,
-                std::placeholders::_1));
+    "/emergency_stop", emergency_stop_qos,
+    std::bind(
+      &DribbleControllerNode::emergency_stop_callback, this,
+      std::placeholders::_1));
 
   control_timer_ = create_wall_timer(
-      std::chrono::milliseconds(command_period_ms),
-      std::bind(&DribbleControllerNode::control_timer_callback, this));
+    std::chrono::milliseconds(command_period_ms),
+    std::bind(&DribbleControllerNode::control_timer_callback, this));
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
-      std::bind(&DribbleControllerNode::parameter_callback, this,
-                std::placeholders::_1));
+    std::bind(
+      &DribbleControllerNode::parameter_callback, this,
+      std::placeholders::_1));
 }
 
-void DribbleControllerNode::load_parameters() {
+void DribbleControllerNode::load_parameters()
+{
   dribble_position_rad_ = declare_parameter<double>("dribble_position_rad", 0.35);
   open_position_rad_ = declare_parameter<double>("open_position_rad", -1.0);
   feed_position_rad_ = declare_parameter<double>("feed_position_rad", 1.3);
@@ -77,19 +88,22 @@ void DribbleControllerNode::load_parameters() {
   const auto position_logical_id = declare_parameter<int>("position_logical_id", 5);
   const auto roller_logical_id = declare_parameter<int>("roller_logical_id", 12);
 
-  if (position_logical_id < 0 || position_logical_id > 65535 || roller_logical_id < 0 || roller_logical_id > 65535) {
+  if (position_logical_id < 0 || position_logical_id > 65535 || roller_logical_id < 0 ||
+    roller_logical_id > 65535)
+  {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
   if (dribble_on_rpm_ < 0) {
     throw std::runtime_error("dribble_on_rpm must be nonnegative");
   }
   if (!std::isfinite(dribble_position_rad_) || !std::isfinite(open_position_rad_) ||
-      !std::isfinite(feed_position_rad_) || !std::isfinite(open_duration_sec_) ||
-      !std::isfinite(feed_duration_sec_) || open_duration_sec_ < 0.0 ||
-      feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
-      !std::isfinite(feeding_max_velocity_rad_s_) ||
-      !std::isfinite(returning_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
-      feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0) {
+    !std::isfinite(feed_position_rad_) || !std::isfinite(open_duration_sec_) ||
+    !std::isfinite(feed_duration_sec_) || open_duration_sec_ < 0.0 ||
+    feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
+    !std::isfinite(feeding_max_velocity_rad_s_) ||
+    !std::isfinite(returning_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
+    feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0)
+  {
     throw std::runtime_error("position parameters, durations, or velocities are invalid");
   }
   position_logical_id_ = static_cast<uint16_t>(position_logical_id);
@@ -98,7 +112,8 @@ void DribbleControllerNode::load_parameters() {
 }
 
 void DribbleControllerNode::position_mode_callback(
-    const std_msgs::msg::UInt8::SharedPtr msg) {
+  const std_msgs::msg::UInt8::SharedPtr msg)
+{
   if (msg->data > static_cast<uint8_t>(PositionMode::FEED)) {
     return;
   }
@@ -112,16 +127,19 @@ void DribbleControllerNode::position_mode_callback(
   }
 }
 
-void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
   dribble_enabled_ = msg->data;
 }
 
-void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
   if (!msg->data || emergency_stop_active_) {
     return;
   }
-  RCLCPP_INFO(get_logger(),
-              "Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE");
+  RCLCPP_INFO(
+    get_logger(),
+    "Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE");
   manual_transition_active_ = false;
   shot_cycle_active_ = true;
   shot_cycle_phase_ = ShotCyclePhase::OPENING;
@@ -130,23 +148,28 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
   position_mode_ = PositionMode::OPEN;
 }
 
-void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg) {
+void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
   if (msg->data != emergency_stop_active_) {
     if (msg->data) {
       shot_cycle_active_ = false;
       manual_transition_active_ = false;
-      RCLCPP_WARN(get_logger(),
-                  "Emergency stop activated in dribble controller");
+      RCLCPP_WARN(
+        get_logger(),
+        "Emergency stop activated in dribble controller");
     } else {
-      RCLCPP_INFO(get_logger(),
-                  "Emergency stop released in dribble controller");
+      RCLCPP_INFO(
+        get_logger(),
+        "Emergency stop released in dribble controller");
     }
   }
   emergency_stop_active_ = msg->data;
   control_timer_callback();
 }
 
-rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callback(const std::vector<rclcpp::Parameter> & parameters) {
+rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callback(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
   auto dribble_position_rad = dribble_position_rad_;
   auto open_position_rad = open_position_rad_;
   auto feed_position_rad = feed_position_rad_;
@@ -220,14 +243,14 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 
   rcl_interfaces::msg::SetParametersResult result;
   result.successful =
-      std::isfinite(dribble_position_rad) && std::isfinite(open_position_rad) &&
-      std::isfinite(feed_position_rad) && std::isfinite(open_duration_sec) &&
-      std::isfinite(feed_duration_sec) && open_duration_sec >= 0.0 &&
-      feed_duration_sec >= 0.0 && std::isfinite(opening_max_vel_rad_s) &&
-      std::isfinite(feeding_max_vel_rad_s) && std::isfinite(returning_max_vel_rad_s) &&
-      opening_max_vel_rad_s > 0.0 && feeding_max_vel_rad_s > 0.0 &&
-      returning_max_vel_rad_s > 0.0 && dribble_on_rpm >= 0 &&
-      dribble_on_rpm <= std::numeric_limits<int>::max();
+    std::isfinite(dribble_position_rad) && std::isfinite(open_position_rad) &&
+    std::isfinite(feed_position_rad) && std::isfinite(open_duration_sec) &&
+    std::isfinite(feed_duration_sec) && open_duration_sec >= 0.0 &&
+    feed_duration_sec >= 0.0 && std::isfinite(opening_max_vel_rad_s) &&
+    std::isfinite(feeding_max_vel_rad_s) && std::isfinite(returning_max_vel_rad_s) &&
+    opening_max_vel_rad_s > 0.0 && feeding_max_vel_rad_s > 0.0 &&
+    returning_max_vel_rad_s > 0.0 && dribble_on_rpm >= 0 &&
+    dribble_on_rpm <= std::numeric_limits<int>::max();
   if (!result.successful) {
     result.reason = "positions must be finite, durations/RPM nonnegative, and velocities positive";
     return result;
@@ -258,12 +281,13 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 // タイマーコールバック（ステートマシン進行 + publish）
 // ────────────────────────────────────────────────────────────────────────────
 
-void DribbleControllerNode::control_timer_callback() {
+void DribbleControllerNode::control_timer_callback()
+{
   publish_shot_cycle_state();
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(
-      dribble_enabled_ && !emergency_stop_active_ ? dribble_on_rpm_ : 0);
+    dribble_enabled_ && !emergency_stop_active_ ? dribble_on_rpm_ : 0);
   roller_command_pub_->publish(roller_command);
 
   if (emergency_stop_active_) {
@@ -289,12 +313,12 @@ void DribbleControllerNode::control_timer_callback() {
     }
 
     const double elapsed_sec =
-        (now() - manual_transition_start_time_).seconds();
+      (now() - manual_transition_start_time_).seconds();
     const double move_duration_sec = transition_duration_sec(
-        manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s);
+      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s);
     position_command_rad = interpolated_position_rad(
-        manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
-        max_vel_rad_s);
+      manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
+      max_vel_rad_s);
     if (elapsed_sec >= move_duration_sec) {
       manual_transition_active_ = false;
       position_command_rad = mode_target_rad;
@@ -307,30 +331,30 @@ void DribbleControllerNode::control_timer_callback() {
     double hold_duration_sec = 0.0;
 
     switch (shot_cycle_phase_) {
-    case ShotCyclePhase::OPENING:
-      position_mode_ = PositionMode::OPEN;
-      phase_target_rad = open_position_rad_;
-      phase_max_vel_rad_s = opening_max_velocity_rad_s_;
-      hold_duration_sec = open_duration_sec_;
-      break;
-    case ShotCyclePhase::FEEDING:
-      position_mode_ = PositionMode::FEED;
-      phase_target_rad = feed_position_rad_;
-      phase_max_vel_rad_s = feeding_max_velocity_rad_s_;
-      hold_duration_sec = feed_duration_sec_;
-      break;
-    case ShotCyclePhase::RETURNING:
-      position_mode_ = PositionMode::DRIBBLE;
-      break;
+      case ShotCyclePhase::OPENING:
+        position_mode_ = PositionMode::OPEN;
+        phase_target_rad = open_position_rad_;
+        phase_max_vel_rad_s = opening_max_velocity_rad_s_;
+        hold_duration_sec = open_duration_sec_;
+        break;
+      case ShotCyclePhase::FEEDING:
+        position_mode_ = PositionMode::FEED;
+        phase_target_rad = feed_position_rad_;
+        phase_max_vel_rad_s = feeding_max_velocity_rad_s_;
+        hold_duration_sec = feed_duration_sec_;
+        break;
+      case ShotCyclePhase::RETURNING:
+        position_mode_ = PositionMode::DRIBBLE;
+        break;
     }
 
     const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
     const double move_duration_sec = transition_duration_sec(
-        shot_cycle_start_position_rad_, phase_target_rad,
-        phase_max_vel_rad_s);
+      shot_cycle_start_position_rad_, phase_target_rad,
+      phase_max_vel_rad_s);
     position_command_rad = interpolated_position_rad(
-        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec,
-        phase_max_vel_rad_s);
+      shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec,
+      phase_max_vel_rad_s);
 
     if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
       position_command_rad = phase_target_rad;
@@ -345,8 +369,9 @@ void DribbleControllerNode::control_timer_callback() {
         RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> DRIBBLE");
       } else {
         shot_cycle_active_ = false;
-        RCLCPP_INFO(get_logger(),
-                    "Shot Cycle Completed: Returned to DRIBBLE");
+        RCLCPP_INFO(
+          get_logger(),
+          "Shot Cycle Completed: Returned to DRIBBLE");
       }
     }
   }
@@ -358,11 +383,12 @@ void DribbleControllerNode::control_timer_callback() {
   position_command_pub_->publish(position_command);
 }
 
-void DribbleControllerNode::publish_shot_cycle_state() {
+void DribbleControllerNode::publish_shot_cycle_state()
+{
   std_msgs::msg::UInt8 state;
-  state.data = shot_cycle_active_
-      ? static_cast<uint8_t>(shot_cycle_phase_) + 1U
-      : 0U;
+  state.data = shot_cycle_active_ ?
+    static_cast<uint8_t>(shot_cycle_phase_) + 1U :
+    0U;
   shot_cycle_state_pub_->publish(state);
 }
 
@@ -370,38 +396,41 @@ void DribbleControllerNode::publish_shot_cycle_state() {
 // ヘルパー
 // ────────────────────────────────────────────────────────────────────────────
 
-double DribbleControllerNode::target_position_rad() const {
+double DribbleControllerNode::target_position_rad() const
+{
   switch (position_mode_) {
-  case PositionMode::DRIBBLE:
-    return dribble_position_rad_;
-  case PositionMode::OPEN:
-    return open_position_rad_;
-  case PositionMode::FEED:
-    return feed_position_rad_;
+    case PositionMode::DRIBBLE:
+      return dribble_position_rad_;
+    case PositionMode::OPEN:
+      return open_position_rad_;
+    case PositionMode::FEED:
+      return feed_position_rad_;
   }
   return dribble_position_rad_;
 }
 
 double DribbleControllerNode::interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec,
-    double max_vel_rad_s) const {
+  double start_rad, double target_rad, double elapsed_sec,
+  double max_vel_rad_s) const
+{
   const double duration_sec =
-      transition_duration_sec(start_rad, target_rad, max_vel_rad_s);
+    transition_duration_sec(start_rad, target_rad, max_vel_rad_s);
   if (duration_sec <= 0.0) {
     return target_rad;
   }
   const double progress =
-      std::clamp(elapsed_sec / duration_sec, 0.0, 1.0);
+    std::clamp(elapsed_sec / duration_sec, 0.0, 1.0);
   // Quintic smootherstep: velocity and acceleration are both zero at each
   // endpoint, avoiding a mechanical shock when the shot phase changes.
   const double smooth_progress =
-      progress * progress * progress *
-      (progress * (6.0 * progress - 15.0) + 10.0);
+    progress * progress * progress *
+    (progress * (6.0 * progress - 15.0) + 10.0);
   return start_rad + (target_rad - start_rad) * smooth_progress;
 }
 
 double DribbleControllerNode::transition_duration_sec(
-    double start_rad, double target_rad, double max_vel_rad_s) const {
+  double start_rad, double target_rad, double max_vel_rad_s) const
+{
   // Quintic smootherstep's peak derivative is 1.875.
   return 1.875 * std::abs(target_rad - start_rad) / max_vel_rad_s;
 }

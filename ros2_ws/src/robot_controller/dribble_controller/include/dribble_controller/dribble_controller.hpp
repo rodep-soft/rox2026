@@ -10,19 +10,22 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class DribbleControllerNode : public rclcpp::Node {
+class DribbleControllerNode : public rclcpp::Node
+{
 public:
   DribbleControllerNode();
 
 private:
-  enum class PositionMode : uint8_t {
+  enum class PositionMode : uint8_t
+  {
     DRIBBLE = 0,
     OPEN = 1,
     FEED = 2,
   };
 
   /// @brief 自動シュートサイクルの進行フェーズ
-  enum class ShotCyclePhase : uint8_t {
+  enum class ShotCyclePhase : uint8_t
+  {
     OPENING = 0,   ///< OPEN 位置へ移動中
     FEEDING = 1,   ///< FEED 位置へ押し込み中
     RETURNING = 2, ///< DRIBBLE 位置へ復帰中

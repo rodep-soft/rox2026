@@ -14,8 +14,12 @@ MecanumControllerNode::MecanumControllerNode()
   configure_parameters();
 
   const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
-  const auto emergency_stop_topic = declare_parameter<std::string>("emergency_stop_topic", "/emergency_stop");
-  const auto target_array_topic = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
+  const auto emergency_stop_topic = declare_parameter<std::string>(
+    "emergency_stop_topic",
+    "/emergency_stop");
+  const auto target_array_topic = declare_parameter<std::string>(
+    "target_array_topic",
+    "/edulite/target_array");
   auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 20);
   auto qos_depth = declare_parameter<int>("qos_depth", 1);
 
@@ -61,7 +65,8 @@ void MecanumControllerNode::configure_parameters()
   robot_length_m_ = declare_parameter<double>("robot_length", 0.47);
   robot_width_m_ = declare_parameter<double>("robot_width", 0.41);
   max_wheel_vel_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
-  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
+  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1,
+        2, 3});
 
   if (wheel_logical_ids.size() != wheel_logical_ids_.size()) {
     throw std::runtime_error("wheel_logical_ids must contain four elements");
@@ -120,8 +125,8 @@ void MecanumControllerNode::configure_parameters()
 
 void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-  if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) || !std::isfinite(msg->angular.z))
-  {
+  if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
+    !std::isfinite(msg->angular.z)) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 1000,
       "Non-finite cmd_vel received. Publishing zero wheel velocity.");
@@ -155,10 +160,14 @@ void MecanumControllerNode::publish_wheel_commands()
   // 逆運動学で4輪速度へ変換
   const double rotation_radius_m = (robot_length_m_ + robot_width_m_) / 2.0;
   std::array<double, 4> wheel_vels_rad_s;
-  wheel_vels_rad_s[FRONT_LEFT] = -(vel_x_m_s - vel_y_m_s + rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
-  wheel_vels_rad_s[FRONT_RIGHT] = (vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
-  wheel_vels_rad_s[REAR_LEFT] = -(vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
-  wheel_vels_rad_s[REAR_RIGHT] = (vel_x_m_s - vel_y_m_s - rotation_radius_m * angular_vel_rad_s) / wheel_radius_m_;
+  wheel_vels_rad_s[FRONT_LEFT] = -(vel_x_m_s - vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[FRONT_RIGHT] = (vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[REAR_LEFT] = -(vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[REAR_RIGHT] = (vel_x_m_s - vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
 
   // 上限超過時は全輪を同率で縮小する
   double max_abs_wheel_vel_rad_s = 0.0;

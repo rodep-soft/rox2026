@@ -10,7 +10,8 @@
 
 #include "can_msgs/msg/frame.hpp"
 
-namespace edulite05_driver {
+namespace edulite05_driver
+{
 constexpr uint8_t HOST_ID = 0xFD;
 constexpr uint8_t TYPE_FEEDBACK = 0x02;
 constexpr uint8_t TYPE_ENABLE = 0x03;
@@ -36,7 +37,8 @@ constexpr auto RESPONSE_TIMEOUT = std::chrono::milliseconds(100);
 constexpr auto ERROR_RETRY_PERIOD = std::chrono::milliseconds(200);
 constexpr float PI = 3.14159265358979323846f;
 
-enum class ControlMode : uint8_t {
+enum class ControlMode : uint8_t
+{
   PROFILE_POSITION = 1,
   VELOCITY = 2,
   CYCLIC_SYNCHRONOUS_POSITION = 5
@@ -46,7 +48,8 @@ enum class PositionReferenceMode : uint8_t { SERVICE, YAML_OFFSET };
 
 enum class MotorState : uint8_t { OFFLINE, INITIALIZING, READY, ERROR };
 
-struct MotorConfig {
+struct MotorConfig
+{
   std::string name;
   uint16_t logical_id = 0;
   uint8_t can_id = 0;
@@ -60,7 +63,7 @@ struct MotorConfig {
   bool current_feedback_enabled = false;
   uint32_t current_feedback_period_ms = 100;
   PositionReferenceMode position_reference_mode =
-      PositionReferenceMode::SERVICE;
+    PositionReferenceMode::SERVICE;
   float position_offset_rad = 0.0f;
   float minimum_position_rad = -1000.0f;
   float maximum_position_rad = 1000.0f;
@@ -68,7 +71,8 @@ struct MotorConfig {
   bool resume_position_on_startup = false;
 };
 
-struct MotorFeedback {
+struct MotorFeedback
+{
   float position = 0.0f;
   float velocity = 0.0f;
   float torque_nm = 0.0f;
@@ -77,17 +81,18 @@ struct MotorFeedback {
   uint32_t fault_code = 0;
 };
 
-class Protocol {
+class Protocol
+{
 public:
-  explicit Protocol(const MotorConfig &config);
+  explicit Protocol(const MotorConfig & config);
 
-  const std::string &name() const { return config_.name; }
-  uint16_t logical_id() const { return config_.logical_id; }
-  uint8_t can_id() const { return config_.can_id; }
-  ControlMode control_mode() const { return config_.control_mode; }
-  MotorState state() const { return state_; }
-  bool position_reference_is_set() const { return position_reference_is_set_; }
-  const MotorFeedback &feedback() const { return feedback_; }
+  const std::string & name() const {return config_.name;}
+  uint16_t logical_id() const {return config_.logical_id;}
+  uint8_t can_id() const {return config_.can_id;}
+  ControlMode control_mode() const {return config_.control_mode;}
+  MotorState state() const {return state_;}
+  bool position_reference_is_set() const {return position_reference_is_set_;}
+  const MotorFeedback & feedback() const {return feedback_;}
   std::string initialization_diagnostic() const;
 
   /// @brief 目標値を設定
@@ -102,7 +107,7 @@ public:
   /// @brief CANフレームを受信
   /// @param msg 受信したCANフレーム
   /// @return 処理結果 true: 値を受信できた，false: 受信できなかった
-  bool receive(const can_msgs::msg::Frame &message);
+  bool receive(const can_msgs::msg::Frame & message);
   /// @brief 目標値の送信が必要かどうか
   /// @return true: 送信が必要，false: 送信不要
   std::optional<can_msgs::msg::Frame> create_target_frame();
@@ -113,7 +118,8 @@ private:
   using Clock = std::chrono::steady_clock;
   using TimePoint = Clock::time_point;
 
-  enum class InitializationStep {
+  enum class InitializationStep
+  {
     DISABLE_FOR_POSITION_RESUME,
     WAIT_BEFORE_POSITION_RESUME,
     READ_CURRENT_MECHANICAL_POSITION,
@@ -128,7 +134,8 @@ private:
     ERROR
   };
 
-  struct InitializationParameter {
+  struct InitializationParameter
+  {
     uint16_t index;
     float value;
     bool is_uint8;
@@ -142,18 +149,19 @@ private:
   void restart_initialization(bool clear_target);
   /// @brief フィードバックを処理
   /// @param msg 受信したCANフレーム
-  void process_feedback(const can_msgs::msg::Frame &message);
+  void process_feedback(const can_msgs::msg::Frame & message);
   /// @brief パラメータ応答を処理
   /// @param msg 受信したCANフレーム
-  bool process_parameter_response(const can_msgs::msg::Frame &message);
+  bool process_parameter_response(const can_msgs::msg::Frame & message);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
   static can_msgs::msg::Frame
   make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
   static can_msgs::msg::Frame
   make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
-  static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id,
-                                                        uint16_t index);
+  static can_msgs::msg::Frame make_read_parameter_frame(
+    uint8_t motor_id,
+    uint16_t index);
   static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
   static can_msgs::msg::Frame make_disable_frame(uint8_t motor_id);
 

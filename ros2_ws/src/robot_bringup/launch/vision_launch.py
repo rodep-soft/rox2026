@@ -2,20 +2,29 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
 
 def launch_setup(context, *args, **kwargs):
     stereonet_version = LaunchConfiguration("stereonet_version").perform(context)
-    publish_visual_enabled = LaunchConfiguration("publish_visual_enabled").perform(context)
+    publish_visual_enabled = LaunchConfiguration("publish_visual_enabled").perform(
+        context
+    )
     publish_pcd_enabled = LaunchConfiguration("publish_pcd_enabled").perform(context)
     mipi_rotation = LaunchConfiguration("mipi_rotation").perform(context)
     mipi_channel = LaunchConfiguration("mipi_channel").perform(context)
     mipi_channel2 = LaunchConfiguration("mipi_channel2").perform(context)
 
-    enable_apriltag = LaunchConfiguration("enable_apriltag").perform(context).lower() in [
+    enable_apriltag = LaunchConfiguration("enable_apriltag").perform(
+        context
+    ).lower() in [
         "true",
         "1",
     ]
@@ -76,16 +85,21 @@ def launch_setup(context, *args, **kwargs):
         relay_script = os.path.join(bringup_share, "scripts", "camera_info_relay.py")
         camera_info_relay = ExecuteProcess(
             cmd=[
-                "python3", relay_script,
+                "python3",
+                relay_script,
                 "--ros-args",
-                "-p", "input_topic:=/StereoNetNode/rectify_left_image/camera_info",
-                "-p", "output_topic:=/StereoNetNode/camera_info",
+                "-p",
+                "input_topic:=/StereoNetNode/rectify_left_image/camera_info",
+                "-p",
+                "output_topic:=/StereoNetNode/camera_info",
             ],
             output="screen",
         )
         launch_nodes.append(camera_info_relay)
 
-        apriltag_launch_file = os.path.join(bringup_share, "launch", "apriltag_launch.py")
+        apriltag_launch_file = os.path.join(
+            bringup_share, "launch", "apriltag_launch.py"
+        )
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
             launch_arguments={
