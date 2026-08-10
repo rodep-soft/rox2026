@@ -1,19 +1,25 @@
-dribble_controller_node:
+/dribble_controller_node:
   ros__parameters:
-    # ドリブルモードtopic。std_msgs/msg/UInt8。
-    dribble_mode_topic: /dribble/mode
-    # hardware_driverへ送る目標回転数command topic。std_msgs/msg/Int16、単位はRPM。
-    dribble_rpm_topic: /dribble/rpm_command
-    qos_depth: 1
-    # spring_controllerから受ける停止要求topic。std_msgs/msg/Bool。
-    dribble_stop_request_topic: /dribble_stop_request
-    # spring_controllerへ返す停止完了topic。std_msgs/msg/Bool。
-    dribble_is_stopped_topic: /dribble_is_stopped
-
-    # dribble_modeがHIGH(1)、LOW(2)のときの目標回転数[RPM]。
-    low_rpm: 300.0
-    high_rpm: 600.0
-    # 停止要求時の減速度[RPM/s]。
-    stop_deceleration_rpm_s: 200.0
-    # RPM指令をpublishする周期[ms]。
+    # [rad] 各アーム目標位置
+    # 10度 = 約 0.1745 rad
+    dribble_position_rad: 0.28
+    open_position_rad: -0.98
+    feed_position_rad: 0.7
+    # [s] 自動シュートサイクルのタイミング
+    open_duration_sec: 0.0      # OPEN 姿勢を保持する時間
+    feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
+    # [rad/s] 区間ごとの最大角速度
+    opening_max_velocity_rad_s: 4.0   # DRIBBLE -> OPEN
+    feeding_max_velocity_rad_s: 15.0   # OPEN -> FEED
+    returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
+    # [RPM] ドリブルローラー有効時の回転数
+    dribble_on_rpm: 1500
+    # [ms] 指令再送周期
     command_period_ms: 10
+    # ROS 2 QoS queue depth
+    qos_depth: 1
+
+    position_logical_id: 5
+    roller_logical_id: 12
+    position_target_topic: "/edulite/target"
+    roller_target_topic: "/vesc/target"

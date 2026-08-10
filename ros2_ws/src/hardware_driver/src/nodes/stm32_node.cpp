@@ -10,6 +10,7 @@
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "std_msgs/msg/u_int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 #include "stm32_driver/stm32_protocol.hpp"
@@ -28,12 +29,12 @@ constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
 class Stm32Node : public rclcpp::Node
 {
 public:
-  Stm32Node()
-  : Node("stm32_driver_node"),
+  explicit Stm32Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("stm32_driver_node", options),
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now())
   {
     const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
-    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limitsw");
+    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limit_switchs");
     const auto imu_topic = declare_parameter<std::string>("imu_topic", "/imu/data");
     imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "imu_link");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
@@ -41,7 +42,7 @@ public:
 
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
 
-    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
+    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
     auto can_qos_sub = rclcpp::SensorDataQoS();
 
     rclcpp::SubscriptionOptions can_sub_options;
@@ -59,7 +60,7 @@ public:
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
       can_sub_options);
 
-    led_cmd_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    led_cmd_sub_ = create_subscription<std_msgs::msg::UInt16>(
       led_cmd_topic,
       10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
@@ -140,7 +141,7 @@ private:
 
   /// @brief LEDコマンドをSTM32へ送信する
   /// @param msg LEDコマンド
-  void led_callback(const std_msgs::msg::UInt8::SharedPtr msg)
+  void led_callback(const std_msgs::msg::UInt16::SharedPtr msg)
   {
     can_pub_->publish(protocol::make_led_frame(msg->data));
   }
@@ -159,7 +160,7 @@ private:
 
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr led_cmd_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt16>::SharedPtr led_cmd_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;
@@ -172,10 +173,12 @@ private:
 
 }  // namespace stm32_driver
 
-int main(int argc, char * argv[])
+int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<stm32_driver::Stm32Node>());
+  auto node = std::make_shared<stm32_driver::Stm32Node>();
+  rclcpp::spin(node);
+  node.reset();
   rclcpp::shutdown();
   return 0;
 }

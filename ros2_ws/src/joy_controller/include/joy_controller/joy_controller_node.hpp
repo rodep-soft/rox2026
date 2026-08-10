@@ -2,15 +2,14 @@
 #define JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
 
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
-#include <string>
+#include <optional>
+#include <vector>
 
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
-#include "robot_controller/action/dribble_position.hpp"
-#include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
@@ -22,131 +21,97 @@ public:
 private:
   enum class BeltRpmMode : uint8_t
   {
-    STOP = 1,
-    LEVEL_1,
-    LEVEL_2,
-    LEVEL_3,
+    STOP = 0,
+    LEVEL_1 = 1,
+    LEVEL_2 = 2,
+    LEVEL_3 = 3,
+    LEVEL_4 = 4,
   };
 
-  enum class DribbleRpmMode : uint8_t
+  enum class ArmPositionMode : uint8_t
   {
-    STOP = 1,
-    HIGH,
-    LOW,
+    DRIBBLE = 0,
+    OPEN = 1,
+    FEED = 2,
   };
-
-  void declare_parameters();
-  void get_parameters();
 
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
+  void loop_callback();
+  void joy_timeout_timer_callback();
+  void state_publish_timer_callback();
+  rcl_interfaces::msg::SetParametersResult parameter_callback(
+    const std::vector<rclcpp::Parameter> & parameters);
 
-  static bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
-  static double axis_value(const sensor_msgs::msg::Joy & msg, int index);
+  void publish_emergency_stop();
+  void publish_belt_mode();
+  void publish_dribble_enabled();
+  void publish_drive_reversed();
+  void publish_stop_commands();
+
+  // 直感的なエッジ検出・入力判定ヘルパー
+  bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
+  bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
+  double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
+  bool is_axis_just_triggered(const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
+
   double apply_axis_deadzone(double value) const;
-  static double apply_axis_limits(double value, double minimum, double maximum);
-
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  void send_dribble_position_goal(uint8_t command);
-  void publish_emergency_stop();
-  void publish_state_commands();
-  void publish_stop_commands();
-  void joy_timeout_callback();
-  void state_publish_timer_callback();
-  void update_chord_inputs(const sensor_msgs::msg::Joy & msg);
-  bool handle_emergency_stop();
-  void update_previous_chord_inputs();
+  int command_qos_depth_{1};
+  int joy_timeout_ms_{200};
+  int state_publish_period_ms_{20};
 
-  std::string joy_topic_;
-  std::string mecanum_cmd_vel_topic_, spring_fire_request_topic_, belt_fire_topic_,
-    belt_mode_topic_, dribble_mode_topic_;
-  std::string emergency_stop_topic_;
-  std::string dribble_position_action_;
-  int joy_qos_depth_;
-  int command_qos_depth_;
-  int joy_timeout_ms_;
-  int state_publish_period_ms_;
+  double max_vel_x_m_s_{2.0};
+  double max_vel_y_m_s_{2.0};
+  double max_vel_z_rad_s_{2.0};
+  double axis_deadzone_{0.05};
+  double axis_on_threshold_{0.7};
 
-  double linear_x_scale_;
-  double linear_y_scale_;
-  double angular_z_scale_;
-
-  double max_linear_x_;
-  double max_linear_y_;
-  double max_angular_z_;
-  double min_linear_x_;
-  double min_linear_y_;
-  double min_angular_z_;
-
-  double axis_deadzone_;
-  double axis_on_threshold_;
-
-  int intake_is_enable_button_;
-  int intake_button_on_;
-
-  int spring_fire_is_enable_button_;
-  int spring_fire_button_on_;
-
-  int belt_fire_is_enable_button_;
-  int belt_fire_button_on_;
-
-  int belt_mode_is_enable_button_;
-  int dribble_mode_is_enable_button_;
-
-  int emergency_stop_is_enable_button_;
-  int emergency_stop_button_on_;
-  int dribble_position_is_enable_button_;
-  int dribble_position_dribble_button_;
-  int dribble_position_shoot_button_;
-
-  int left_stick_x_axis_;
-  int left_stick_y_axis_;
-  int right_stick_x_axis_;
-
-  int mode_change_axis_;
+  int ps_button_{12};
+  int home_button_{13};
+  int circle_button_{2};
+  int dribble_enable_button_{5};
+  int game2_start_button_{9};
+  int left_trigger_axis_{3};
+  int right_trigger_axis_{4};
+  int left_stick_x_axis_{0};
+  int left_stick_y_axis_{1};
+  int right_stick_x_axis_{2};
+  int dpad_horizontal_axis_{6};
+  int dpad_vertical_axis_{7};
 
   geometry_msgs::msg::Twist cmd_vel_;
-  bool intake_enabled_{false};
-  bool spring_fire_enabled_{false};
-  bool belt_fire_enabled_{false};
+  bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
-  uint8_t dribble_rpm_mode_{static_cast<uint8_t>(DribbleRpmMode::STOP)};
+  bool dribble_enabled_{false};
+  bool game2_active_{false};
+  bool is_drive_reversed_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
-  bool emergency_stop_latched_{false};
-  bool intake_chord_on_{false};
-  bool spring_fire_chord_on_{false};
-  bool belt_fire_chord_on_{false};
-  bool belt_mode_up_chord_on_{false};
-  bool belt_mode_down_chord_on_{false};
-  bool dribble_mode_up_chord_on_{false};
-  bool dribble_mode_down_chord_on_{false};
-  bool emergency_stop_chord_on_{false};
-  bool dribble_position_dribble_chord_on_{false};
-  bool dribble_position_shoot_chord_on_{false};
-  bool pre_intake_chord_on_;
-  bool pre_spring_fire_chord_on_;
-  bool pre_belt_fire_chord_on_;
-  bool pre_belt_mode_up_chord_on_;
-  bool pre_belt_mode_down_chord_on_;
-  bool pre_dribble_mode_up_chord_on_;
-  bool pre_dribble_mode_down_chord_on_;
-  bool pre_emergency_stop_chord_on_;
-  bool pre_dribble_position_dribble_chord_on_;
-  bool pre_dribble_position_shoot_chord_on_;
+  std::optional<sensor_msgs::msg::Joy> last_joy_msg_{};
+  sensor_msgs::msg::Joy joy_msg_{};
 
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_publisher_, belt_fire_publisher_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_publisher_, dribble_mode_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_publisher_;
-  rclcpp_action::Client<robot_controller::action::DribblePosition>::SharedPtr
-    dribble_position_action_client_;
+
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
+
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
+
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
+  rclcpp::TimerBase::SharedPtr loop_timer_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+    parameter_callback_handle_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

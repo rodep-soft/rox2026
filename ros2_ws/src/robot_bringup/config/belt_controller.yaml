@@ -1,17 +1,18 @@
-belt_controller_node:
+/belt_controller_node:
   ros__parameters:
-    # ベルト射出状態topic。std_msgs/msg/Bool。
-    belt_fire_topic: /belt/fire_enabled
-    belt_mode_topic: /belt/mode
-    # hardware_driverへ送る目標回転数command topic。std_msgs/msg/Int16、単位はRPM。
-    belt_rpm_topic: /belt/rpm_command
-    qos_depth: 1
+    target_array_topic: "/vesc/target_array"
+    upperbelt_logical_id: 10
+    underbelt_logical_id: 11
 
-    # belt_modeがSTOP(0)のときの目標回転数[RPM]。安全のため0固定。
-    stop_rpm: 0
-    # belt_modeがLEVEL_1(1)〜LEVEL_3(3)のときの目標回転数[RPM]。
-    level_1_rpm: 3000
-    level_2_rpm: 4000
-    level_3_rpm: 5000
-    # RPM指令をpublishする周期[ms]。
-    command_period_ms: 10
+    underbelt_level_1_rpm: 3000
+    underbelt_level_2_rpm: 3500
+    underbelt_level_3_rpm: 4000
+    underbelt_level_4_rpm: 4500
+
+    upperbelt_level_1_rpm: 3000
+    upperbelt_level_2_rpm: 3500
+    upperbelt_level_3_rpm: 4000
+    upperbelt_level_4_rpm: 4500
+
+    emergency_stop_period_ms: 50
+    qos_depth: 1

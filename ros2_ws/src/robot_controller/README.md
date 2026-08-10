@@ -1,133 +1,112 @@
 # robot_controller
 
-`joy_controller`から受け取った機構として意味のある操作指令を、各機構の制御判断に変換するパッケージです。CANフレームの組み立てや送受信は行わず、hardware_driverへROS topicとして指令をpublishします。
+Joyから受けた機構指令と非常停止トピック（`/emergency_stop`）を制御判断へ変換し、各専門コントローラーノードが自律して `hardware_driver` へ機構目標値をパブリッシュする。
 
-## Node・topic構成
+## ノード構成・役割一覧
+
+1. **`mecanum_controller_node`**:
+   - 足回り（4輪オムニ/メカナム）の逆運動学計算および車輪速度出力。
+2. **`spring_controller_node`**:
+   - ばねの自動装填および解放（発射）制御。
+3. **`belt_controller_node`**:
+   - 上下ベルト（アンダー/アッパー）の目標RPM回転速度制御。
+4. **`dribble_controller_node`**:
+   - ドリブルローラーのRPMと姿勢角度（`DRIBBLE`, `OPEN`, `FEED`）を統合制御。
+
+---
+
+## システム全体系トピック・ノード構成
 
 ```mermaid
 flowchart LR
-  joy[joy_controller]
-  mecanum[mecanum_controller_node]
-  spring[spring_controller_node]
-  dribble[dribble_controller_node]
-  position[dribble_position_controller]
-  belt[belt_controller_node]
-  stm_driver[stm_driver_node]
-  robstride_driver[robstride_driver_node]
-  bridge[ros2socketcan_bridge]
+  subgraph input["操作入力"]
+    joy["joy_node"]
+    joy_controller["joy_controller"]
+    joy -->|"/joy"| joy_controller
+  end
 
-  joy -->|/mecanum/cmd_vel| mecanum
-  joy -->|/spring/fire_request| spring
-  joy -->|/dribble/mode| dribble
-  joy -->|/belt/fire_enabled, /belt/mode| belt
-  joy -->|/dribble/position\nDribblePosition Action| position
+  subgraph controllers["robot_controller"]
+    mecanum["mecanum_controller"]
+    spring["spring_controller"]
+    belt["belt_controller"]
+    dribble["dribble_controller"]
+  end
 
-  mecanum -->|/mecanum/*/vel_command\nstd_msgs/msg/Float32| robstride_driver
-  spring -->|/spring/vel_command\nstd_msgs/msg/Float32| robstride_driver
-  dribble -->|/dribble/rpm_command\nstd_msgs/msg/Int16| stm_driver
-  belt -->|/belt/rpm_command\nstd_msgs/msg/Int16| stm_driver
-  position -->|/dribble/position_command\nstd_msgs/msg/Float32| robstride_driver
-  robstride_driver -->|/limit_switches\nstd_msgs/msg/UInt8MultiArray| spring
-  spring -->|/dribble_stop_request\nstd_msgs/msg/Bool| dribble
-  dribble -->|/dribble_is_stopped\nstd_msgs/msg/Bool| spring
-  robstride_driver -->|/dribble/position_feedback\nstd_msgs/msg/Float32| position
+  subgraph drivers["hardware_driver"]
+    vesc["vesc_driver"]
+    edulite["edulite05_driver"]
+  end
 
-  stm_driver --> bridge
-  robstride_driver --> bridge
+  joy_controller -->|"/mecanum/cmd_vel"| mecanum
+  joy_controller -->|"/emergency_stop"| mecanum
+  joy_controller -->|"/emergency_stop"| spring
+  joy_controller -->|"/emergency_stop"| belt
+  joy_controller -->|"/emergency_stop"| dribble
+
+  joy_controller -->|"/belt/mode"| belt
+  joy_controller -->|"/dribble/enabled"| dribble
+  joy_controller -->|"/dribble/position_mode"| dribble
+  joy_controller -->|"/spring/fire_request"| spring
+  joy_controller -->|"/shot_cycle/request"| belt
+  belt -->|"/shot_cycle/start"| dribble
+
+  belt -->|"/vesc/target_array"| vesc
+  dribble -->|"/vesc/target"| vesc
+  mecanum -->|"/edulite/target_array"| edulite
+  spring -->|"/edulite/target (ID 4)"| edulite
+  dribble -->|"/edulite/target (ID 5)"| edulite
 ```
 
-`robot_controller`は機構として意味のある速度指令だけをpublishします。CAN ID、8 byteフレーム、エンディアン、STM32との通信仕様はdriver nodeが担当します。
+---
 
-`stm_driver_node`は`/belt/rpm_command`と`/dribble/rpm_command`をsubscribeし、STM32向けCANフレームへ変換して送信します。`robstride_driver_node`はメカナム各輪の速度指令、ばね速度指令、ドリブル位置指令を担当し、ドリブルの実位置を`/dribble/position_feedback`へpublishします。いずれも`robot_controller`にはCAN送受信処理を書きません。
+## システム全体の状態遷移・連携の仕組み
 
-## 操作指令topic
+### 1. 自動シュート（Shot Cycle）の連携フロー
+操縦者が **`L2 + ○`** ボタンを押すと、全自動で以下のシーケンスが実行されます。
 
-`joy_controller`は機構ごとに指令topicをpublishし、各controllerは必要なtopicだけをsubscribeします。topic名はYAMLパラメータで変更できます。
-
-## `mecanum_controller_node`
-
-- node名: `mecanum_controller_node`
-- 処理: `/mecanum/cmd_vel`の並進・角速度から、4輪メカナムのホイール角速度を計算します。
-
-| 種別 | topic名 | 型 | 内容 |
-| --- | --- | --- | --- |
-| subscribe | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 機体速度を受信 |
-| publish | `/mecanum/*/vel_command` | `std_msgs/msg/Float32` | 各輪のホイール角速度 `[rad/s]` |
-
-主なパラメータは`wheel_radius`、`robot_length`、`robot_width`、`velocity_corrections`、`vx_sign`、`vy_sign`、`angular_z_sign`です。`velocity_corrections`は出力配列と同じ順序の4要素ベクトルで、各ホイール速度に掛けます。motor IDとCAN仕様は保持せず、hardware_driver側で管理します。
-
-## `spring_controller_node`
-
-- node名: `spring_controller_node`
-- 処理: EduLite 05でばねを引き切り、発射後に再び装填する状態遷移を管理します。hardware_driverへは、CANではなくモータの速度指令だけをpublishします。
-
-| 種別 | topic名（既定値） | 型 | 内容 |
-| --- | --- | --- | --- |
-| subscribe | `/spring/fire_request` | `std_msgs/msg/Bool` | 発射操作を受信 |
-| subscribe | `/limit_switches` | `std_msgs/msg/UInt8MultiArray` | リミットスイッチ配列。`data`は`std::vector<uint8_t>`として扱い、`0=false`、非0を`true`と判定 |
-| publish | `/spring/vel_command` | `std_msgs/msg/Float32` | EduLite 05の目標速度 `[rad/s]` |
-
-状態は`LOAD`、`READY`、`FIRE`です。
-
-1. 起動時は`LOAD`で`loading_velocity_rad_s`をpublishし、ばねを引きます。
-2. 設定した`limit_switch_index`がtrueになると`READY`へ遷移し、`0 rad/s`をpublishします。
-3. `READY`中に限り、`/spring/fire_request`の`false → true`を受けると`FIRE`へ遷移します。`LOAD`中の発射操作は無視します。
-4. `FIRE`では`fire_velocity_rad_s`を`fire_duration_sec`の間publishし、完了後は`LOAD`に戻ります。
-
-topic名、リミットスイッチのindex、各速度、発射時間は`robot_bringup/config/spring_controller.yaml`で設定できます。起動には`robot_bringup/launch/spring_controller.launch.py`を使います。
-
-`stop_dribble_on_fire`が`true`の場合、`READY`で発射要求を受けると、
-`spring_controller_node`は`/dribble_stop_request`へ`true`をpublishします。
-`dribble_controller_node`が減速して`/dribble_is_stopped`を`true`にするまで、`FIRE`へ遷移しません。
-
-## `belt_controller_node`
-
-- node名: `belt_controller_node`
-- 処理: `/belt/mode`をベルトの目標回転数へ変換します。`/belt/fire_enabled`が`true`の間だけ、選択中の目標回転数をpublishします。
-
-| 種別 | topic名（既定値） | 型 | 内容 |
-| --- | --- | --- | --- |
-| subscribe | `/belt/fire_enabled` | `std_msgs/msg/Bool` | ベルト射出状態を受信 |
-| subscribe | `/belt/mode` | `std_msgs/msg/UInt8` | ベルト速度モードを受信 |
-| publish | `/belt/rpm_command` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
-
-`belt_mode`は`STOP (1)`、`LEVEL_1 (2)`、`LEVEL_2 (3)`、`LEVEL_3 (4)`の4段階です。`belt_is_fire`が`false`または`belt_mode`が`STOP`の場合は、`0 RPM`をpublishします。範囲外のmodeを受けた場合も、安全側として`0 RPM`をpublishします。
-
-`stop_rpm`、`level_1_rpm`〜`level_3_rpm`、指令周期は`robot_bringup/config/belt_controller.yaml`で設定できます。`stop_rpm`は安全のため`0 RPM`固定です。起動には`robot_bringup/launch/belt_controller.launch.py`を使います。
-
-## `dribble_position_controller`
-
-- node名: `dribble_position_controller`
-- 処理: RobStrideの実位置feedbackを確認しながら、ドリブル機構を指定位置へ移動する`DribblePosition` Action serverです。
-
-| 種別 | 名前（既定値） | 型 | 内容 |
-| --- | --- | --- | --- |
-| Action server | `/dribble/position` | `robot_controller/action/DribblePosition` | `DRIBBLE`または`SHOOT`の位置移動を受け付ける |
-| publish | `/dribble/position_command` | `std_msgs/msg/Float32` | hardware_driverへ送る目標位置 `[rad]` |
-| subscribe | `/dribble/position_feedback` | `std_msgs/msg/Float32` | hardware_driverから受ける実位置 `[rad]` |
-
-ActionはGoal、Feedback、ResultをまとめたROS 2の通信方式です。Goalで移動を依頼し、移動中は現在位置と目標位置をFeedbackで返します。`DRIBBLE` Actionはドリブル位置に到達すると成功します。`SHOOT` Actionは次の順で移動し、SHOOT位置で保持します。
-
-```text
-DRIBBLE → INTAKE → SHOOT
+```
+[ JoyController ]
+     │ L2+○ 押下 ➔ /shot_cycle/request (true) をパブリッシュ
+     ▼
+[ belt_controller ]
+     │ ベルトを目標RPM（Level 1〜6）に加速
+     │ 上下ベルトの実RPMが目標値に到達＆0.3秒安定維持（ready）を確認
+     ▼ /shot_cycle/start (true) をパブリッシュ
+[ dribble_controller ]
+     │
+     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームが開いてボールを受ける
+     │     │ 0.3秒間保持
+     │     ▼
+     ├──② [ Mode: FEED (1.3 rad) ] ───> ボールをベルトへグッと押し込み（シュート！）
+     │     │ 0.6秒間保持
+     │     ▼
+     └──③ [ Mode: DRIBBLE (0.35 rad) ] ─> 通常姿勢へ自動復帰
 ```
 
-各段階は、実位置が`position_tolerance_rad`以内に到達したことを確認してから次へ進みます。SHOOT位置からは、L1+×のDRIBBLE Actionまたは緊急停止操作でドリブル位置へ戻ります。L1+○はSHOOT Actionを開始します。
+---
 
-`dribble_position_rad`、`intake_position_rad`、`shoot_position_rad`、`position_tolerance_rad`と、Action名・topic名は`robot_bringup/config/dribble_position_controller.yaml`で設定できます。起動には`robot_bringup/launch/dribble_position_controller.launch.py`を使います。
+### 2. 各ノードごとの独立状態一覧
 
-## `dribble_controller_node`
+#### 🛞 `mecanum_controller`
+- **状態**: なし（純粋な4輪キネマティクス計算機）
+- **遷移**: `/emergency_stop == true` ➔ 0 rad/s 停止。それ以外 ➔ ジョイスティック入力に従い全方向走行。
 
-- node名: `dribble_controller_node`
-- 処理: `/dribble/mode`をドリブルの目標回転数へ変換します。ばね射出前の停止要求を受けた場合は、設定した減速度で`0 RPM`まで減速します。
+#### 🔫 `spring_controller`
+- **状態**: `LOAD` (自動再装填) ➔ `READY` (準備完了) ➔ `FIRE` (ばね解放)
+- **遷移**: リミットスイッチONで `READY`。`L1+○` 押下で `FIRE` 実行。
 
-| 種別 | topic名（既定値） | 型 | 内容 |
-| --- | --- | --- | --- |
-| subscribe | `/dribble/mode` | `std_msgs/msg/UInt8` | ドリブル速度モードを受信 |
-| subscribe | `/dribble_stop_request` | `std_msgs/msg/Bool` | ばねcontrollerからの停止要求 |
-| publish | `/dribble/rpm_command` | `std_msgs/msg/Int16` | hardware_driverへ送る目標回転数 `[RPM]` |
-| publish | `/dribble_is_stopped` | `std_msgs/msg/Bool` | 停止完了状態 |
+#### ──────── `belt_controller`
+- **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_4`)
+- **速度設定**: 各レベルの上下ベルトRPMを個別に設定でき、実行中のparameter変更にも対応
+- **送信方式**: 指令受信時は即時送信し、非常停止中のみゼロ指令を周期送信
+- **設定再読み込み**: `ros2 param load /belt_controller_node ros2_ws/src/robot_bringup/config/belt_controller.yaml`
+- **遷移**: 十字キー上下でレベル変更。`/emergency_stop == true` ➔ 0 RPM 停止。
 
-`dribble_mode`は`STOP (1)`、`HIGH (2)`、`LOW (3)`の3段階です。`LOW`と`HIGH`の目標回転数、停止時の減速度、指令周期は`robot_bringup/config/dribble_controller.yaml`で設定できます。
+#### 🌀 `dribble_controller`
+- **ローラー**: R1でON/OFF。非常停止時は0 RPM。
+- **姿勢**: `DRIBBLE`、`OPEN`、`FEED`。シュート時は自動シーケンス。
+- **非常停止**: ローラーを停止し、姿勢を`DRIBBLE`位置へ戻す。
 
-停止完了は、今回の実装では減速後の目標回転数が`0 RPM`へ到達した時点で通知します。実速度のCANフィードバックが追加されたら、実測速度が0付近であることを確認する方式へ変更します。
+#### 🎮 `joy_controller`
+- **状態**: `is_emergency_stop_` (非常停止: `HOME`ボタン) / `forward_reverse_` (前後反転: `PS`ボタン)
+- **保護**: 200ms以上の入力断時に自動で停止・非常停止を安全パブリッシュ。

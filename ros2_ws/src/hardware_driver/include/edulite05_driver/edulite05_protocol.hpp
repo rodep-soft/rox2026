@@ -1,100 +1,193 @@
-//#pragma once
+#pragma once
 
-#include <stdint.h>
-#include <array>
-#include <vector>
-#include <memory>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
 #include <string>
+#include <vector>
 
-struct Canframe
+#include "can_msgs/msg/frame.hpp"
+
+namespace edulite05_driver
 {
-  uint32_t id;
-  int dlc;
-  std::array<uint8_t, 8> data;
+constexpr uint8_t HOST_ID = 0xFD;
+constexpr uint8_t TYPE_FEEDBACK = 0x02;
+constexpr uint8_t TYPE_ENABLE = 0x03;
+constexpr uint8_t TYPE_DISABLE = 0x04;
+constexpr uint8_t TYPE_READ = 0x11;
+constexpr uint8_t TYPE_WRITE = 0x12;
+constexpr uint8_t RESET_STATUS_MODE = 0x00;
+constexpr uint8_t RUN_STATUS_MODE = 0x02;
+constexpr uint16_t RUN_MODE = 0x7005;
+constexpr uint16_t SPEED_REFERENCE = 0x700A;
+constexpr uint16_t POSITION_REFERENCE = 0x7016;
+constexpr uint16_t SPEED_LIMIT = 0x7017;
+constexpr uint16_t CURRENT_LIMIT = 0x7018;
+constexpr uint16_t MECHANICAL_POSITION = 0x7019;
+constexpr uint16_t CURRENT_FEEDBACK = 0x701A;
+constexpr uint16_t ACCELERATION = 0x7022;
+constexpr uint16_t PP_SPEED = 0x7024;
+constexpr uint16_t PP_ACCELERATION = 0x7025;
+constexpr int MAX_INITIALIZATION_RETRIES = 10;
+constexpr auto WRITE_SETTLING_TIME = std::chrono::milliseconds(2);
+constexpr auto POSITION_RESUME_SETTLING_TIME = std::chrono::milliseconds(100);
+constexpr auto RESPONSE_TIMEOUT = std::chrono::milliseconds(100);
+constexpr auto ERROR_RETRY_PERIOD = std::chrono::milliseconds(200);
+constexpr float PI = 3.14159265358979323846f;
+
+enum class ControlMode : uint8_t
+{
+  PROFILE_POSITION = 1,
+  VELOCITY = 2,
+  CYCLIC_SYNCHRONOUS_POSITION = 5
 };
 
-struct CanIdInfo
+enum class PositionReferenceMode : uint8_t { SERVICE, YAML_OFFSET };
+
+enum class MotorState : uint8_t { OFFLINE, INITIALIZING, READY, ERROR };
+
+struct MotorConfig
 {
-  uint8_t comm_type;   // Bit 28~24
-  uint8_t mode_status; // Bit 23~22
-  uint8_t fault_info;  // Bit 21~16
-  uint8_t motor_id;    // Bit 15~8
-  uint8_t host_id;     // Bit 7~0
+  std::string name;
+  uint16_t logical_id = 0;
+  uint8_t can_id = 0;
+  ControlMode control_mode = ControlMode::VELOCITY;
+  float current_limit = 11.0f;
+  float acceleration = 150.0f;
+  float speed_limit = 50.0f;
+  uint32_t command_period_ms = 10;
+  uint32_t target_timeout_ms = 200;
+  uint32_t feedback_timeout_ms = 500;
+  bool current_feedback_enabled = false;
+  uint32_t current_feedback_period_ms = 100;
+  PositionReferenceMode position_reference_mode =
+    PositionReferenceMode::SERVICE;
+  float position_offset_rad = 0.0f;
+  float minimum_position_rad = -1000.0f;
+  float maximum_position_rad = 1000.0f;
+  bool allow_unreferenced_position_commands = false;
+  bool resume_position_on_startup = false;
 };
 
-struct MotorFeedbackData
+struct MotorFeedback
 {
-  float angle;        // [rad] (-4pi ~ 4pi)
-  float velocity;     // [rad/s] (-50 ~ 50)
-  float torque;       // [Nm] (-6 ~ 6)
-  float temperature;  // [Celsius]
+  float position = 0.0f;
+  float velocity = 0.0f;
+  float torque_nm = 0.0f;
+  float current_a = std::numeric_limits<float>::quiet_NaN();
+  float temperature = 0.0f;
+  uint32_t fault_code = 0;
 };
 
-CanIdInfo decode_can_id(uint32_t can_id);
-MotorFeedbackData decode_feedback_data(const std::array<uint8_t, 8> & data);
-
-
-class Ed05CanframeCreater
+class Protocol
 {
 public:
-  Ed05CanframeCreater(uint8_t motor_id);
-  virtual ~Ed05CanframeCreater() = default;
+  explicit Protocol(const MotorConfig & config);
 
-  virtual std::vector<Canframe> create_init_frame() = 0;
-  virtual Canframe create_control_frame(float value) = 0;
-  Canframe terminate_motor();
+  const std::string & name() const {return config_.name;}
+  uint16_t logical_id() const {return config_.logical_id;}
+  uint8_t can_id() const {return config_.can_id;}
+  ControlMode control_mode() const {return config_.control_mode;}
+  MotorState state() const {return state_;}
+  bool position_reference_is_set() const {return position_reference_is_set_;}
+  const MotorFeedback & feedback() const {return feedback_;}
+  std::string initialization_diagnostic() const;
 
-protected:
-  struct ControlTargetInfo
+  /// @brief 目標値を設定
+  /// @param target
+  /// 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）
+  void set_target(float target);
+  bool set_current_position(float current_position_rad);
+
+  /// @brief 今回の呼び出しで初期化の際に送るフレームの取得
+  /// @return 初期化フレーム
+  std::optional<can_msgs::msg::Frame> create_initialization_frame();
+  /// @brief CANフレームを受信
+  /// @param msg 受信したCANフレーム
+  /// @return 処理結果 true: 値を受信できた，false: 受信できなかった
+  bool receive(const can_msgs::msg::Frame & message);
+  /// @brief 目標値の送信が必要かどうか
+  /// @return true: 送信が必要，false: 送信不要
+  std::optional<can_msgs::msg::Frame> create_target_frame();
+  std::optional<can_msgs::msg::Frame> create_current_feedback_frame();
+  void watchdog();
+
+private:
+  using Clock = std::chrono::steady_clock;
+  using TimePoint = Clock::time_point;
+
+  enum class InitializationStep
   {
-    char name[12];
-    uint16_t index;     // commtype18で使用
-    float value;
+    DISABLE_FOR_POSITION_RESUME,
+    WAIT_BEFORE_POSITION_RESUME,
+    READ_CURRENT_MECHANICAL_POSITION,
+    WAIT_FOR_CURRENT_MECHANICAL_POSITION,
+    WRITE_PARAMETER,
+    WAIT_AFTER_WRITE,
+    READ_PARAMETER,
+    WAIT_FOR_READ,
+    ENABLE,
+    WAIT_FOR_ENABLE,
+    READY,
+    ERROR
   };
 
-  uint8_t motor_id_;
-  int dlc_ = 8;
-  uint8_t host_id_ = 0xFD;
+  struct InitializationParameter
+  {
+    uint16_t index;
+    float value;
+    bool is_uint8;
+  };
 
-  uint32_t encode_can_id(uint8_t commtype_index);
-  std::array<uint8_t, 8> encode_commtype18_data(ControlTargetInfo target_info);
+  bool uses_position_control() const;
+  /// @brief 初期化のリトライ
+  void retry_initialization();
+  /// @brief モータの初期化からやり直すことを指示
+  /// @param clear_target やり直すモータの目標値を破棄するかどうか
+  void restart_initialization(bool clear_target);
+  /// @brief フィードバックを処理
+  /// @param msg 受信したCANフレーム
+  void process_feedback(const can_msgs::msg::Frame & message);
+  /// @brief パラメータ応答を処理
+  /// @param msg 受信したCANフレーム
+  bool process_parameter_response(const can_msgs::msg::Frame & message);
 
-  Canframe set_runmode(int value);
-  Canframe set_enable();
-  Canframe set_target_value(ControlTargetInfo target_info);
-  Canframe set_disable();
-  Canframe set_mechanicalzero();
-  Canframe set_angle_range(); // angleを-180~180にするための設定
+  static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
+  static can_msgs::msg::Frame
+  make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
+  static can_msgs::msg::Frame
+  make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
+  static can_msgs::msg::Frame make_read_parameter_frame(
+    uint8_t motor_id,
+    uint16_t index);
+  static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
+  static can_msgs::msg::Frame make_disable_frame(uint8_t motor_id);
+
+  MotorConfig config_;
+  MotorFeedback feedback_;
+  MotorState state_ = MotorState::INITIALIZING;
+  InitializationStep initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  std::vector<InitializationParameter> initialization_parameters_;
+  std::size_t initialization_parameter_index_ = 0;
+  float target_value_ = 0.0f;
+  bool has_target_ = false;
+  bool feedback_connected_ = false;
+  bool motor_enabled_ = false;
+  int consecutive_non_run_feedback_count_ = 0;
+  int initialization_retry_count_ = 0;
+  float motor_position_rad_ = 0.0f;
+  float last_wrapped_position_rad_ = 0.0f;
+  bool motor_position_initialized_ = false;
+  float logical_position_offset_rad_ = 0.0f;
+  bool position_reference_is_set_ = false;
+  bool unreferenced_origin_initialized_ = false;
+  TimePoint last_feedback_time_{};
+  TimePoint last_request_time_{};
+  TimePoint last_target_time_{};
+  TimePoint last_command_time_{};
+  TimePoint last_current_feedback_request_time_{};
+  TimePoint error_time_{};
 };
-
-class Velocity : public Ed05CanframeCreater
-{
-public:
-  explicit Velocity(uint8_t motor_id);
-  std::vector<Canframe> create_init_frame() override;
-  Canframe create_control_frame(float value) override;
-
-private:
-  std::array<ControlTargetInfo, 3> targets_info = {{
-    {"vel", 0x700A, 0.0f},     // 速度指令
-    {"limit_cur", 0x7018, 5.0f},     // 電流制限
-    {"acc_rad", 0x7022, 100.0f},     // 加速度制限
-  }};
-};
-
-class Position : public Ed05CanframeCreater
-{
-public:
-  explicit Position(uint8_t motor_id);
-  std::vector<Canframe> create_init_frame() override;
-  Canframe create_control_frame(float value) override;
-
-private:
-  std::array<ControlTargetInfo, 5> targets_info = {{
-    {"loc_ref", 0x7016, 0.0f}, // 位置指令
-    {"limit_cur", 0x7018, 5.0f}, // 電流制限
-    {"vel_max", 0x7024, 50.0f},  // 速度制限
-    {"acc_set", 0x7025, 100.0f}, // 加速度
-    //{"zero_sta", 0x7029, 1.0f},  //
-  }};
-};
+} // namespace edulite05_driver

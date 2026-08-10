@@ -82,7 +82,12 @@ sudo apt install -y \
   usbutils \
   can-utils \
   device-tree-compiler \
-  bluez bluez-tools
+  bluez bluez-tools \
+  v4l-utils \
+  ros-humble-v4l2-camera \
+  ros-humble-apriltag-ros
+
+
 
 #ca~~  :https認証用
 #gpg   :GPG署名の確認用

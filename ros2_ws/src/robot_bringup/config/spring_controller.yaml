@@ -1,28 +1,25 @@
-spring_controller_node:
+/spring_controller_node:
   ros__parameters:
-    # 操作指令を受信するtopic。
-    fire_request_topic: /spring/fire_request
+    # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）。
+    limit_switch_bit_offset: 0
+    # ROS 2 QoSのqueue depth。
+    qos_depth: 3
 
-    # hardware_driverがpublishするリミットスイッチ配列topic。
-    # UInt8MultiArrayのdataをvectorとして扱い、0をfalse、1をtrueとする。
-    limit_switch_topic: /limit_switches
-    limit_switch_index: 0
+    # [rad/request] 発射要求1回で累積目標へ加算する角度 9周分
+    fire_increment_rad: -43.9822971
+    # [rad/s] 未原点時に目標位置を負方向へずらす速度。
+    homing_velocity_rad_s: 5.0
+    # [s] リミットスイッチが見つからない場合のタイムアウト。
+    homing_timeout_sec: 50.0
+    # [rad/s] この速度以下を停止とみなす。
+    zeroing_velocity_threshold_rad_s: 0.05
+    # 停止判定に必要な連続フィードバック数。
+    zeroing_required_stable_feedback_count: 3
 
-    # hardware_driverへ送るEduLite 05の速度command topic。std_msgs/msg/Float32、単位はrad/s。
-    spring_velocity_command_topic: /spring/vel_command
-    qos_depth: 1
+    # [ms] 位置指令更新周期。
+    command_period_ms: 50
 
-    # 発射前にdribbleを停止させるか。std_msgs/msg/Boolの停止要求・完了topicを使用する。
-    stop_dribble_on_fire: true
-    dribble_stop_request_topic: /dribble_stop_request
-    dribble_is_stopped_topic: /dribble_is_stopped
-
-    # 正負の向きは機構の実装に合わせて調整する。
-    loading_velocity_rad_s: -5.0
-    fire_velocity_rad_s: -20.0
-
-    # FIRE状態を維持する時間[s]。
-    fire_duration_sec: 5.0
-
-    # 速度指令とdribble停止要求をpublishする周期[ms]。
-    command_period_ms: 10
+    logical_id: 4
+    target_topic: "/edulite/target"
+    state_topic: "/edulite/state"
+    set_position_service: "/edulite/set_position"

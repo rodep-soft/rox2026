@@ -7,172 +7,331 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include "actuator_msgs/msg/actuator_state.hpp"
+#include "actuator_msgs/msg/actuator_state_array.hpp"
+#include "actuator_msgs/msg/actuator_target.hpp"
+#include "actuator_msgs/msg/actuator_target_array.hpp"
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/float32.hpp"
-
 #include "vesc_driver/vesc_protocol.hpp"
 
 namespace vesc_driver
 {
+struct MotorConfig
+{
+  uint16_t logical_id;
+  uint8_t controller_id;
+  double max_rpm;
+  double rpm_slew_rate;
+  double startup_current_a;
+  double rpm_control_threshold_rpm;
+  std::chrono::milliseconds command_timeout;
+  std::chrono::milliseconds feedback_timeout;
+};
 
-using namespace std::chrono_literals;
+struct Motor
+{
+  explicit Motor(MotorConfig motor_config)
+  : config(std::move(motor_config)),
+    last_ramp_update_time(std::chrono::steady_clock::now())
+  {}
 
-constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
-constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
+  MotorConfig config;
+  double target_rpm{0.0};
+  double rpm_command{0.0};
+  float measured_rpm{std::numeric_limits<float>::quiet_NaN()};
+  float measured_current_a{std::numeric_limits<float>::quiet_NaN()};
+  bool command_received{false};
+  bool feedback_received{false};
+  bool rpm_control_active{false};
+  std::chrono::steady_clock::time_point last_command_time{};
+  std::chrono::steady_clock::time_point last_feedback_time{};
+  std::chrono::steady_clock::time_point last_ramp_update_time{};
+};
 
 class Node : public rclcpp::Node
 {
 public:
-  Node()
-  : rclcpp::Node("vesc_driver_node")
+  explicit Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : rclcpp::Node("vesc_driver", options)
   {
-    const auto target_rpm_topic =
-      declare_parameter<std::string>("target_rpm_topic", "/vesc/target/rpm");
-    const auto current_rpm_topic =
-      declare_parameter<std::string>("current_rpm_topic", "/vesc/current/rpm");
-    const auto controller_id = declare_parameter<int64_t>("controller_id", 1);
-    const auto command_timeout_ms =
-      declare_parameter<int64_t>("command_timeout_ms", 500);
-    const auto feedback_timeout_ms =
-      declare_parameter<int64_t>("feedback_timeout_ms", 500);
-    max_rpm_ = declare_parameter<double>("max_rpm", 5600.0);
-    rpm_slew_rate_ = declare_parameter<double>("rpm_slew_rate", 4000.0);
+    const auto can_tx_topic =
+      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+    const auto can_rx_topic =
+      declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
+    const auto target_topic = declare_parameter<std::string>("target_topic", "/vesc/target");
+    const auto target_array_topic = declare_parameter<std::string>(
+      "target_array_topic",
+      "/vesc/target_array");
+    const auto state_topic = declare_parameter<std::string>("state_topic", "/vesc/state");
+    const auto state_array_topic = declare_parameter<std::string>(
+      "state_array_topic",
+      "/vesc/state_array");
+    const auto update_period_ms = declare_parameter<int64_t>("update_period_ms", 20);
+    const auto motor_names = declare_parameter<std::vector<std::string>>(
+      "motors", std::vector<std::string>{});
 
-    const auto publish_subscribe_interval_ms = declare_parameter<int64_t>(
-      "publish_subscribe_interval_ms", 100);
+    for (const auto & name : motor_names) {
+      const auto prefix = name + ".";
+      const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
+      const auto controller_id = declare_parameter<int64_t>(prefix + "controller_id", -1);
+      const auto command_timeout_ms =
+        declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
+      const auto feedback_timeout_ms = declare_parameter<int64_t>(
+        prefix + "feedback_timeout_ms",
+        500);
+      const auto max_rpm = declare_parameter<double>(prefix + "max_rpm", 5600.0);
+      const auto rpm_slew_rate = declare_parameter<double>(prefix + "rpm_slew_rate", 4000.0);
+      const auto startup_current_a =
+        declare_parameter<double>(prefix + "startup_current_a", 5.0);
+      const auto rpm_control_threshold_rpm =
+        declare_parameter<double>(prefix + "rpm_control_threshold_rpm", 1000.0);
+      if (logical_id < 0 || logical_id > 65535) {
+        throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
+      }
+      if (controller_id < 0 || controller_id > 255) {
+        throw std::runtime_error(name + ": controller_id must be in [0, 255]");
+      }
+      if (max_rpm <= 0.0) {
+        throw std::runtime_error(name + ": max_rpm must be positive");
+      }
+      if (rpm_slew_rate <= 0.0) {
+        throw std::runtime_error(name + ": rpm_slew_rate must be positive");
+      }
+      if (startup_current_a <= 0.0) {
+        throw std::runtime_error(name + ": startup_current_a must be positive");
+      }
+      if (rpm_control_threshold_rpm <= 0.0 || rpm_control_threshold_rpm > max_rpm) {
+        throw std::runtime_error(
+                name + ": rpm_control_threshold_rpm must be in (0, max_rpm]");
+      }
 
-
-    controller_id_ = static_cast<uint8_t>(controller_id);
-    pole_pairs_ = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-
-    command_timeout_ = std::chrono::milliseconds(command_timeout_ms);
-    feedback_timeout_ = std::chrono::milliseconds(feedback_timeout_ms);
-
-    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(10))
-      .reliable()
-      .durability_volatile();
-
-    auto can_qos_sub = rclcpp::SensorDataQoS();
-
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
-    rpm_pub_ = create_publisher<std_msgs::msg::Float32>(current_rpm_topic, 10);
-
-    rclcpp::SubscriptionOptions can_sub_options;
-    can_sub_options.content_filter_options.filter_expression = "id = %0";
-    can_sub_options.content_filter_options.expression_parameters = {
-      std::to_string(
-        (protocol::STATUS_1_ID << 8) |
-        static_cast<uint32_t>(controller_id_))
-    };
-    can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      CAN_SUB_TOPIC, can_qos_sub,
-      std::bind(&Node::can_callback, this, std::placeholders::_1),
-      can_sub_options);
-
-    target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
-      target_rpm_topic, 10,
-      std::bind(&Node::target_rpm_callback, this, std::placeholders::_1));
-    last_ramp_update_time_ = std::chrono::steady_clock::now();
-    timer_ = create_wall_timer(
-      std::chrono::milliseconds(publish_subscribe_interval_ms),
-      std::bind(&Node::timer_callback, this));
-
-    if (!can_sub_->is_cft_enabled()) {
-      RCLCPP_WARN(
-        get_logger(),
-        "CAN content filter is not supported by the current RMW; "
-        "controller_id=%u will be filtered in the callback",
-        static_cast<unsigned int>(controller_id_));
+      motors_.emplace_back(
+        MotorConfig{
+          static_cast<uint16_t>(logical_id),
+          static_cast<uint8_t>(controller_id),
+          max_rpm,
+          rpm_slew_rate,
+          startup_current_a,
+          rpm_control_threshold_rpm,
+          std::chrono::milliseconds(command_timeout_ms),
+          std::chrono::milliseconds(feedback_timeout_ms)});
     }
-    RCLCPP_INFO(
-      get_logger(), "VESC driver started: controller_id=%u",
-      static_cast<unsigned int>(controller_id_));
+
+    const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+    const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
+
+    can_publisher_ = create_publisher<can_msgs::msg::Frame>(can_tx_topic, can_tx_qos);
+    can_subscription_ = create_subscription<can_msgs::msg::Frame>(
+      can_rx_topic, can_rx_qos,
+      std::bind(&Node::can_callback, this, std::placeholders::_1));
+    target_subscription_ = create_subscription<actuator_msgs::msg::ActuatorTarget>(
+      target_topic, 10, std::bind(&Node::target_callback, this, std::placeholders::_1));
+    target_array_subscription_ =
+      create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
+      target_array_topic, 10,
+      std::bind(&Node::target_array_callback, this, std::placeholders::_1));
+    state_publisher_ = create_publisher<actuator_msgs::msg::ActuatorState>(state_topic, 10);
+    state_array_publisher_ =
+      create_publisher<actuator_msgs::msg::ActuatorStateArray>(state_array_topic, 10);
+    timer_ = create_wall_timer(
+      std::chrono::milliseconds(update_period_ms), std::bind(&Node::timer_callback, this));
   }
 
 private:
+  /// @brief 論理IDからモーターを検索
+  /// @param logical_id 論理ID
+  /// @return motorへのポインタ(見つからなければnullptr)
+  Motor * find_by_logical_id(uint16_t logical_id)
+  {
+    const auto iterator = std::find_if(
+      motors_.begin(), motors_.end(), [logical_id](const Motor & motor) {
+        return motor.config.logical_id == logical_id;
+      });
+    return iterator == motors_.end() ? nullptr : &*iterator;
+  }
+
+  /// @brief controller IDからモーターを検索
+  /// @param controller_id Controller ID
+  /// @return motorへのポインタ(見つからなければnullptr)
+  Motor * find_by_controller_id(uint8_t controller_id)
+  {
+    const auto iterator = std::find_if(
+      motors_.begin(), motors_.end(), [controller_id](const Motor & motor) {
+        return motor.config.controller_id == controller_id;
+      });
+    return iterator == motors_.end() ? nullptr : &*iterator;
+  }
+
+  /// @brief モーターが接続されているかを判定
+  /// @param motor モーター
+  /// @param now 現在時刻
+  /// @return 接続されている場合はtrue、それ以外はfalse
+  bool is_connected(const Motor & motor, std::chrono::steady_clock::time_point now) const
+  {
+    return motor.feedback_received &&
+           now - motor.last_feedback_time <= motor.config.feedback_timeout;
+  }
+
+  /// @brief モーターの状態メッセージを作成
+  /// @param motor モーター
+  /// @param now 現在時刻
+  /// @return 状態メッセージ
+  actuator_msgs::msg::ActuatorState make_state(
+    const Motor & motor,
+    std::chrono::steady_clock::time_point now) const
+  {
+    actuator_msgs::msg::ActuatorState message;
+    message.logical_id = motor.config.logical_id;
+    message.position_reference_set = false;
+    message.velocity = motor.measured_rpm;
+    message.torque_nm = std::numeric_limits<float>::quiet_NaN();
+    message.current_a = motor.measured_current_a;
+    message.state = is_connected(motor, now) ?
+      actuator_msgs::msg::ActuatorState::STATE_READY :
+      actuator_msgs::msg::ActuatorState::STATE_OFFLINE;
+    return message;
+  }
+
+  void set_target(Motor & motor, float target_rpm)
+  {
+    const auto previous_target_rpm = motor.target_rpm;
+    motor.target_rpm = std::clamp(
+      static_cast<double>(target_rpm), -motor.config.max_rpm, motor.config.max_rpm);
+
+    const bool stopping = motor.target_rpm == 0.0;
+    const bool starting_or_reversing = previous_target_rpm * motor.target_rpm <= 0.0;
+    if (stopping || starting_or_reversing) {
+      motor.rpm_control_active = false;
+    }
+    motor.last_command_time = std::chrono::steady_clock::now();
+    motor.command_received = true;
+  }
+
+  void publish_motor_command(Motor & motor, std::chrono::steady_clock::time_point now)
+  {
+    if (!motor.command_received) {
+      return;
+    }
+
+    const auto command_timed_out = now - motor.last_command_time > motor.config.command_timeout;
+    const auto desired_rpm = command_timed_out ? 0.0 : motor.target_rpm;
+    if (desired_rpm == 0.0) {
+      motor.rpm_control_active = false;
+      motor.rpm_command = 0.0;
+      can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, 0.0));
+      return;
+    }
+
+    const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
+    const auto rpm_control_start_rpm =
+      std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
+    const auto measured_rpm = static_cast<double>(motor.measured_rpm);
+    const bool rotating_in_target_direction = desired_rpm * measured_rpm > 0.0;
+    const bool rpm_control_start_reached = rotating_in_target_direction &&
+      std::abs(measured_rpm) >= rpm_control_start_rpm;
+
+    if (!motor.rpm_control_active && motor.feedback_received && rpm_control_start_reached) {
+      motor.rpm_control_active = true;
+      motor.rpm_command = measured_rpm;
+    }
+
+    // モーターが停止している場合は、まずは電流制御で回転させる
+    if (!motor.rpm_control_active) {
+      const auto startup_current_a = std::copysign(motor.config.startup_current_a, desired_rpm);
+      can_publisher_->publish(
+        protocol::make_set_current_frame(
+          motor.config.controller_id,
+          startup_current_a));
+      return;
+    }
+
+    // RPM制御を行う場合は、目標RPMに向かってスロープ制御を行う
+    // elapsed_secondsは、前回のスロープ制御からの経過時間を秒単位で表す
+    const auto elapsed_seconds =
+      std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
+    const auto maximum_step = motor.config.rpm_slew_rate * elapsed_seconds;
+    motor.rpm_command += std::clamp(desired_rpm - motor.rpm_command, -maximum_step, maximum_step);
+    const auto erpm_command = motor.rpm_command * motor_pole_pairs;
+    can_publisher_->publish(
+      protocol::make_set_rpm_frame(
+        motor.config.controller_id,
+        static_cast<int32_t>(std::lround(erpm_command))));
+  }
+
+  /// @brief CANフレーム受信時のコールバック関数(即時にモーターの状態を配信する)
+  /// @param frame
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     protocol::Status1 status{};
-    if (!protocol::decode_status_1(*frame, status) ||
-      status.controller_id != controller_id_)
-    {
+    if (!protocol::decode_status_1(*frame, status)) {
       return;
     }
-
-    current_rpm_ = static_cast<float>(status.erpm / pole_pairs_);
-    current_ma_ = status.current_ma;
-    last_feedback_time_ = std::chrono::steady_clock::now();
-    feedback_received_ = true;
+    auto * motor = find_by_controller_id(status.controller_id);
+    if (motor == nullptr) {
+      return;
+    }
+    motor->measured_rpm =
+      static_cast<float>(status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
+    motor->measured_current_a = status.current_a;
+    motor->last_feedback_time = std::chrono::steady_clock::now();
+    motor->feedback_received = true;
+    state_publisher_->publish(make_state(*motor, motor->last_feedback_time));
   }
 
-  void target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
+  /// @brief 目標値が送られてきた場合のコールバック関数
+  /// @param message
+  void target_callback(const actuator_msgs::msg::ActuatorTarget::SharedPtr message)
   {
-    if (!std::isfinite(msg->data)) {
-      RCLCPP_WARN(get_logger(), "Ignoring non-finite target RPM");
-      return;
+    if (auto * motor = find_by_logical_id(message->logical_id)) {
+      set_target(*motor, message->target);
     }
+  }
 
-    target_rpm_ = std::clamp(static_cast<double>(msg->data), -max_rpm_, max_rpm_);
-    last_command_time_ = std::chrono::steady_clock::now();
-    command_received_ = true;
+  /// @brief 目標値が複数送られてきた場合のコールバック関数
+  /// @param message
+  void target_array_callback(
+    const actuator_msgs::msg::ActuatorTargetArray::SharedPtr message)
+  {
+    for (const auto & target : message->actuators) {
+      if (auto * motor = find_by_logical_id(target.logical_id)) {
+        set_target(*motor, target.target);
+      }
+    }
   }
 
   /// @brief 一定周期で送受信がされるように調整するコールバック関数
   void timer_callback()
   {
     const auto now = std::chrono::steady_clock::now();
+    actuator_msgs::msg::ActuatorStateArray state_array;
+    state_array.header.stamp = this->now();
+    state_array.actuators.reserve(motors_.size());
 
-    if (command_received_) {
-      const bool command_timed_out = now - last_command_time_ > command_timeout_;
-      const double desired_rpm = command_timed_out ? 0.0 : target_rpm_;
-      const double elapsed_seconds =
-        std::chrono::duration<double>(now - last_ramp_update_time_).count();
-      const double max_step = rpm_slew_rate_ * elapsed_seconds;
-      commanded_rpm_ += std::clamp(desired_rpm - commanded_rpm_, -max_step, max_step);
-
-      const double erpm = commanded_rpm_ * pole_pairs_;
-      can_pub_->publish(protocol::make_set_rpm_frame(controller_id_, std::lround(erpm)));
+    for (auto & motor : motors_) {
+      publish_motor_command(motor, now);
+      motor.last_ramp_update_time = now;
+      state_array.actuators.push_back(make_state(motor, now));
     }
-    last_ramp_update_time_ = now;
-
-    std_msgs::msg::Float32 feedback;
-    if (!feedback_received_ || now - last_feedback_time_ > feedback_timeout_) {
-      feedback.data = 0.0;
-    } else {
-      feedback.data = current_rpm_;
-      rpm_pub_->publish(feedback);
-      RCLCPP_DEBUG(this->get_logger(), "current_mA : %lf", current_ma_);
-    }
-
+    state_array_publisher_->publish(state_array);
   }
 
-  uint8_t controller_id_{1};
-  double pole_pairs_{7.0};
-  double max_rpm_{10000.0};
-  double rpm_slew_rate_{4000.0};
-  double target_rpm_{0.0};
-  double commanded_rpm_{0.0};
-  float current_ma_;
-  float current_rpm_{std::numeric_limits<float>::quiet_NaN()};
-  bool command_received_{false};
-  bool feedback_received_{false};
+  std::vector<Motor> motors_;
+  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_publisher_;
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_subscription_;
 
-  std::chrono::steady_clock::time_point last_command_time_;
-  std::chrono::steady_clock::time_point last_feedback_time_;
-  std::chrono::steady_clock::time_point last_ramp_update_time_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorTarget>::SharedPtr target_subscription_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr
+    target_array_subscription_;
 
-  std::chrono::milliseconds command_timeout_{500};
-  std::chrono::milliseconds feedback_timeout_{500};
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorState>::SharedPtr state_publisher_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_array_publisher_;
 
-  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr rpm_pub_;
-  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-  rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr target_rpm_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
-
 }  // namespace vesc_driver
 
 int main(int argc, char ** argv)

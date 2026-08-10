@@ -1,32 +1,44 @@
-vesc_upper_belt_driver:
+/vesc_driver:
   ros__parameters:
-    target_rpm_topic: "/upper/belt/target/rpm"
-    current_rpm_topic: "/upper/belt/current/rpm"
-    controller_id: 51                 # モータID(10進数)
-    command_timeout_ms: 500           # コマンドが来ているかのタイムアウト用
-    feedback_timeout_ms: 500          # フィードバックが返ってきているかのタイムアウト用
-    publish_subscribe_interval_ms: 50 # pub,subをする周期
-    max_rpm: 5600.0                   # 最大回転数(モータ固有)
-    rpm_slew_rate: 1000.0             # 一秒間での加速量
+    can_tx_topic: "/socketcan_bridge/tx"
+    can_rx_topic: "/socketcan_bridge/rx"
+    target_topic: "/vesc/target"
+    target_array_topic: "/vesc/target_array"
+    state_topic: "/vesc/state"
+    state_array_topic: "/vesc/state_array"
+    update_period_ms: 20              # pub,subをする周期
 
-vesc_under_belt_driver:
-  ros__parameters:
-    target_rpm_topic: "/under/belt/target/rpm"
-    current_rpm_topic: "/under/belt/current/rpm"
-    controller_id: 52
-    command_timeout_ms: 500
-    feedback_timeout_ms: 500
-    publish_subscribe_interval_ms: 50
-    max_rpm: 5600.0
-    rpm_slew_rate: 1000.0  #一秒間での加速量
+    motors:
+      - upper_belt
+      - under_belt
+      - dribble
 
-vesc_dribble_driver:
-  ros__parameters:
-    target_rpm_topic: "/dribble/target/rpm"
-    current_rpm_topic: "/dribble/current/rpm"
-    controller_id: 50
-    command_timeout_ms: 500
-    feedback_timeout_ms: 500
-    publish_subscribe_interval_ms: 50
-    max_rpm: 5600.0
-    rpm_slew_rate: 4000.0  #一秒間での加速量
+    upper_belt:
+      logical_id: 10
+      controller_id: 51               # モータID(10進数)
+      command_timeout_ms: 500         # コマンドが来ているかのタイムアウト用
+      feedback_timeout_ms: 500        # フィードバックが返ってきているかのタイムアウト用
+      max_rpm: 5600.0                 # 最大回転数(モータ固有)
+      rpm_slew_rate: 1000.0           # 一秒間での加速量
+      startup_current_a: 10.0         # モータが停止している状態から回転させるための電流値
+      rpm_control_threshold_rpm: 1500.0 # 回転数制御を開始する閾値(この回転数以上で回転数制御を開始する)
+
+    under_belt:
+      logical_id: 11
+      controller_id: 52
+      command_timeout_ms: 500
+      feedback_timeout_ms: 500
+      max_rpm: 5600.0
+      rpm_slew_rate: 1000.0
+      startup_current_a: 10.0
+      rpm_control_threshold_rpm: 1500.0
+
+    dribble:
+      logical_id: 12
+      controller_id: 50
+      command_timeout_ms: 500
+      feedback_timeout_ms: 500
+      max_rpm: 5600.0
+      rpm_slew_rate: 4000.0
+      startup_current_a: 3.0
+      rpm_control_threshold_rpm: 200.0

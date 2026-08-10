@@ -1,71 +1,42 @@
-joy_controller:
+/joy_controller:
   ros__parameters:
-    # subscribeする操作入力topic。sensor_msgs/msg/Joy。
-    joy_topic: /joy
-    mecanum_cmd_vel_topic: /mecanum/cmd_vel
-    spring_fire_request_topic: /spring/fire_request
-    belt_fire_topic: /belt/fire_enabled
-    belt_mode_topic: /belt/mode
-    dribble_mode_topic: /dribble/mode
-    # 非常停止状態を通知するtopic。std_msgs/msg/Bool。
-    emergency_stop_topic: /emergency_stop
-    # ドリブル位置移動Action。robot_controller/action/DribblePosition。
-    dribble_position_action: /dribble/position
-    joy_qos_depth: 3
+    # 機構指令を保持する件数
     command_qos_depth: 1
-    # Joy入力が途絶えた場合に停止するまでの時間[ms]。
+    # [ms] Joy入力断と判定してSTOPへ移るまでの時間
     joy_timeout_ms: 200
-    # ばね、ベルト、ドリブルmodeなどの状態指令をpublishする周期[ms]。
+    # [ms] 状態指令を再送する周期
     state_publish_period_ms: 20
 
-    # 取り入れる操作のボタン番号。
-    intake_is_enable_button: 6
-    intake_button_on: 3
+    # タッチパッドをHomeとして扱う (非常停止切替)
+    home_button: 13
 
-    # ばね射出操作のボタン番号。
-    spring_fire_is_enable_button: 7
-    spring_fire_button_on: 2
+    # L2とR2の同時押しでspring発射、L2+○で自動シュートを要求する
+    left_trigger_axis: 3
+    right_trigger_axis: 4
+    circle_button: 2
 
-    # ベルト射出操作のボタン番号。
-    belt_fire_is_enable_button: 6
-    belt_fire_button_on: 2
+    # R1でdribble回転をON/OFFする
+    dribble_enable_button: 5
+    # DPAD上/下でbelt levelを上げ下げする
+    dpad_vertical_axis: 7
 
-    # ベルトモード変更を有効化するボタン番号。
-    belt_mode_is_enable_button: 6
-    # ドリブルモード変更を有効化するボタン番号。
-    dribble_mode_is_enable_button: 7
+    # DPAD左右でarm位置を変更する(左側の十字キー)
+    dpad_horizontal_axis: 6
 
-    # 緊急停止操作のボタン番号。
-    emergency_stop_is_enable_button: 8
-    emergency_stop_button_on: 13
-
-    # ドリブル位置操作のボタン番号。L1 + ×でDRIBBLE、L1 + ○でSHOOT。
-    dribble_position_is_enable_button: 4
-    dribble_position_dribble_button: 1
-    dribble_position_shoot_button: 2
-
-    # 左スティック x 軸。
+    # 左スティックで前後左右並進、右スティック左右で旋回
     left_stick_x_axis: 0
-    # 左スティック y 軸。
     left_stick_y_axis: 1
-    # 右スティック x 軸。
     right_stick_x_axis: 2
-    # 十字キー上下軸。cpp 側では is_mode_up/down を判定する。
-    mode_change_axis: 7
-    # スティックの中心ずれを無効化する axis のデッドゾーン。
+    # PSボタンで前後左右の並進方向を反転
+    ps_button: 12
+
+    # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
-    # DPAD などの軸を ON とみなすしきい値。
+    # トリガー・DPAD軸をONとみなすしきい値
     axis_on_threshold: 0.7
 
-    # 前進方向の最大速度 [m/s]。
-    max_linear_x: 2.0
-    # 後退方向の最小速度 [m/s]。
-    min_linear_x: -2.0
-    # 左右方向の最大速度 [m/s]。
-    max_linear_y: 2.0
-    # 左右方向の最小速度 [m/s]。
-    min_linear_y: -2.0
-    # 反時計回り方向の最大角速度 [rad/s]。
-    max_angular_z: 2.0
-    # 時計回り方向の最小角速度 [rad/s]。
-    min_angular_z: -2.0
+    # スティック全倒し時の最大速度。入力値もこの範囲に制限
+    # linear: [m/s]、angular: [rad/s]
+    linear_x_limit: 2.0
+    linear_y_limit: 2.0
+    angular_z_limit: 2.0
