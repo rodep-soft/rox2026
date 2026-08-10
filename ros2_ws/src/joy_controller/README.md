@@ -81,7 +81,7 @@ BELT_ONLY中のCreateと、SHOT_CYCLE中のOptionsは無視する。
 | Home | STOPへ移動。STOP中はDRIVEへ戻る |
 | Create | STOP・DRIVEからSHOT_CYCLEへ移動。同modeの待機中はDRIVEへ戻る |
 | Options | STOP・DRIVEからBELT_ONLYへ移動。同mode中はDRIVEへ戻る |
-| DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_6の範囲で増減 |
+| DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_4の範囲で増減 |
 | R1 | dribble ON/OFF。DRIVE・SHOT_CYCLEだけで受理 |
 | L1 + ○ | Spring発射要求。DRIVEだけで、押下中にtrueを送る |
 | L2 + ○ | SHOT_CYCLE中の実行要求 |
@@ -177,8 +177,6 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | 2 | LEVEL_2 |
 | 3 | LEVEL_3 |
 | 4 | LEVEL_4 |
-| 5 | LEVEL_5 |
-| 6 | LEVEL_6 |
 
 ### position
 

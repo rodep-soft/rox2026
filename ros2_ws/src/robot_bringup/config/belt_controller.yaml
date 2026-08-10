@@ -3,11 +3,16 @@ belt_controller_node:
     target_array_topic: "/vesc/target_array"
     upperbelt_logical_id: 10
     underbelt_logical_id: 11
-    level_1_rpm: 3000
-    level_2_rpm: 3500
-    level_3_rpm: 4000
-    level_4_rpm: 4500
-    level_5_rpm: 5000
-    level_6_rpm: 5500
-    command_period_ms: 50
+
+    underbelt_level_1_rpm: 3000
+    underbelt_level_2_rpm: 3500
+    underbelt_level_3_rpm: 4000
+    underbelt_level_4_rpm: 4500
+
+    upperbelt_level_1_rpm: 3000
+    upperbelt_level_2_rpm: 3500
+    upperbelt_level_3_rpm: 4000
+    upperbelt_level_4_rpm: 4500
+
+    emergency_stop_period_ms: 50
     qos_depth: 1

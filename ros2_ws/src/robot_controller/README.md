@@ -96,7 +96,9 @@ flowchart LR
 - **遷移**: リミットスイッチONで `READY`。`L1+○` 押下で `FIRE` 実行。
 
 #### ──────── `belt_controller`
-- **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_6`: 3000〜5500 RPM)
+- **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_4`)
+- **速度設定**: 各レベルの上下ベルトRPMを個別に設定でき、実行中のparameter変更にも対応
+- **送信方式**: 指令受信時は即時送信し、非常停止中のみゼロ指令を周期送信
 - **遷移**: 十字キー上下でレベル変更。`/emergency_stop == true` ➔ 0 RPM 停止。
 
 #### 🌀 `dribble_controller`

@@ -143,7 +143,8 @@ void JoyControllerNode::loop_callback()
     const bool is_r2_active = get_axis_value(joy_msg_, right_trigger_axis_) <= -axis_on_threshold_;
     if (!is_r2_active) {
       if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
-        belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_6));
+        belt_rpm_mode_ = increment_mode(
+          belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_4));
         RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
         publish_belt_mode();
       }

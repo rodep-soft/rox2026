@@ -34,15 +34,21 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   auto test_node = std::make_shared<rclcpp::Node>("test_belt_client");
 
   float last_underbelt_rpm = -1.0f;
+  float last_upperbelt_rpm = -1.0f;
+  int received_command_count = 0;
   auto target_array_sub =
     test_node->create_subscription<actuator_msgs::msg::ActuatorTargetArray>(
     "/vesc/target_array", 1,
-    [&last_underbelt_rpm](const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
+    [&last_underbelt_rpm, &last_upperbelt_rpm, &received_command_count](
+      const actuator_msgs::msg::ActuatorTargetArray::SharedPtr msg) {
       for (const auto & target : msg->actuators) {
         if (target.logical_id == 11) {
           last_underbelt_rpm = target.target;
+        } else if (target.logical_id == 10) {
+          last_upperbelt_rpm = target.target;
         }
       }
+      ++received_command_count;
     });
 
   auto pub_belt_mode = test_node->create_publisher<std_msgs::msg::UInt8>("/belt/mode", 1);
@@ -53,33 +59,91 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   executor.add_node(belt_node);
   executor.add_node(test_node);
 
-  // 1. Level 3 (4000 RPM) のテスト
+  const auto rpm_update = belt_node->set_parameters_atomically({
+    rclcpp::Parameter("underbelt_level_3_rpm", 4100),
+    rclcpp::Parameter("upperbelt_level_3_rpm", 3900)});
+  ASSERT_TRUE(rpm_update.successful);
+  EXPECT_FALSE(
+    belt_node->set_parameter(
+      rclcpp::Parameter("underbelt_level_3_rpm", -1)).successful);
+  EXPECT_FALSE(
+    belt_node->set_parameter(
+      rclcpp::Parameter("qos_depth", 2)).successful);
+
+  // Level 3を受信した時点で、上下個別のRPMを即時送信する。
   std_msgs::msg::UInt8 mode_msg;
   mode_msg.data = 3;
   pub_belt_mode->publish(mode_msg);
 
   auto start = std::chrono::steady_clock::now();
-  while (last_underbelt_rpm != 4000 &&
+  while ((last_underbelt_rpm != 4100 || last_upperbelt_rpm != 3900) &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_EQ(last_underbelt_rpm, 4000);
+  EXPECT_EQ(last_underbelt_rpm, 4100);
+  EXPECT_EQ(last_upperbelt_rpm, 3900);
 
-  // 2. 非常停止発動のテスト
+  // 通常時は周期送信しない。
+  const int count_during_normal_operation = received_command_count;
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(120)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_EQ(received_command_count, count_during_normal_operation);
+
+  // 選択中レベルのparameter変更は、新しい上下RPMを即時送信する。
+  const auto active_level_update = belt_node->set_parameters_atomically({
+    rclcpp::Parameter("underbelt_level_3_rpm", 4200),
+    rclcpp::Parameter("upperbelt_level_3_rpm", 3800)});
+  ASSERT_TRUE(active_level_update.successful);
+  start = std::chrono::steady_clock::now();
+  while ((last_underbelt_rpm != 4200 || last_upperbelt_rpm != 3800) &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_EQ(last_underbelt_rpm, 4200);
+  EXPECT_EQ(last_upperbelt_rpm, 3800);
+
+  // 非常停止時は即時にゼロを送り、その後もタイマーでゼロを送り続ける。
   std_msgs::msg::Bool estop_msg;
   estop_msg.data = true;
   pub_estop->publish(estop_msg);
 
   start = std::chrono::steady_clock::now();
-  while (last_underbelt_rpm != 0 &&
+  while ((last_underbelt_rpm != 0 || last_upperbelt_rpm != 0) &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   EXPECT_EQ(last_underbelt_rpm, 0);
+  EXPECT_EQ(last_upperbelt_rpm, 0);
+
+  const int count_at_emergency_stop = received_command_count;
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(120)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_GE(received_command_count - count_at_emergency_stop, 2);
+
+  // 非常停止解除時は、選択中レベルの指令を即時再送する。
+  estop_msg.data = false;
+  pub_estop->publish(estop_msg);
+  start = std::chrono::steady_clock::now();
+  while ((last_underbelt_rpm != 4200 || last_upperbelt_rpm != 3800) &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_EQ(last_underbelt_rpm, 4200);
+  EXPECT_EQ(last_upperbelt_rpm, 3800);
 }
 
 TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)

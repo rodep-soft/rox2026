@@ -48,7 +48,7 @@ add_controller(
   belt_controller_node
   belt_controller
   belt_controller.cpp
-  actuator_msgs rclcpp std_msgs)
+  actuator_msgs rclcpp rcl_interfaces std_msgs)
 add_controller(
   dribble_controller_node
   dribble_controller
