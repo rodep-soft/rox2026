@@ -306,7 +306,10 @@ static void __attribute__((unused)) shining_LED_legacy(int received_LED_cmd) {
 #define DRIBBLE_PEAK_INTENSITY    255U
 #define DRIBBLE_GLOW_RADIUS_Q8 (4 * 256)
 #define FIRING_WAVE_MS             233U
-#define FIRING_GLOW_RADIUS_Q8  (3 * 256)
+#define FIRING_LAUNCHER_OUTER_RADIUS_Q8 (14 * 256)
+#define FIRING_LAUNCHER_FULL_RADIUS_Q8  (10 * 256)
+#define FIRING_CHASSIS_OUTER_RADIUS_Q8  (22 * 256)
+#define FIRING_CHASSIS_FULL_RADIUS_Q8   (17 * 256)
 
 /*
  * 投射全体が紫になった後、全LEDを赤に切り替えるまでの待ち時間。
@@ -754,15 +757,34 @@ static void LED_BlendFiringPA2(uint16_t pixel, uint16_t red_strength) {
 			(uint8_t)(background_blue * keep_strength / 255U));
 }
 
+static uint16_t LED_FiringRedStrength(int32_t distance_q8,
+		int32_t full_radius_q8, int32_t outer_radius_q8) {
+	if (distance_q8 <= full_radius_q8) {
+		return 255U;
+	}
+	if (distance_q8 >= outer_radius_q8) {
+		return 0U;
+	}
+
+	const uint32_t fade_width_q8 =
+			(uint32_t)(outer_radius_q8 - full_radius_q8);
+	const uint32_t strength_q8 =
+			(uint32_t)(outer_radius_q8 - distance_q8);
+	return (uint16_t)(strength_q8 * strength_q8 * 255U
+			/ (fade_width_q8 * fade_width_q8));
+}
+
 /* Preserve the launcher frame and blend one red wave from tip to root. */
 static void LED_RenderFiringLauncher(uint32_t elapsed_ms) {
-	const int32_t travel_levels = LAUNCHER_LEVEL_COUNT + 6;
-	int32_t head_q8 = -FIRING_GLOW_RADIUS_Q8;
+	const int32_t travel_q8 =
+			(int32_t)(LAUNCHER_LEVEL_COUNT - 1U) * 256
+			+ 2 * FIRING_LAUNCHER_OUTER_RADIUS_Q8;
+	int32_t head_q8 = -FIRING_LAUNCHER_OUTER_RADIUS_Q8;
 
 	if (elapsed_ms < FIRING_WAVE_MS) {
 		head_q8 = (int32_t)(LAUNCHER_LEVEL_COUNT - 1U) * 256
-				+ FIRING_GLOW_RADIUS_Q8
-				- (int32_t)(elapsed_ms * (uint32_t)travel_levels * 256U
+				+ FIRING_LAUNCHER_OUTER_RADIUS_Q8
+				- (int32_t)(elapsed_ms * (uint32_t)travel_q8
 						/ FIRING_WAVE_MS);
 	}
 
@@ -772,16 +794,9 @@ static void LED_RenderFiringLauncher(uint32_t elapsed_ms) {
 			distance_q8 = -distance_q8;
 		}
 
-		uint16_t red_strength = 0U;
-		if (distance_q8 < FIRING_GLOW_RADIUS_Q8) {
-			const uint32_t strength =
-					(uint32_t)(FIRING_GLOW_RADIUS_Q8 - distance_q8);
-			const uint32_t radius_squared =
-					(uint32_t)FIRING_GLOW_RADIUS_Q8
-							* (uint32_t)FIRING_GLOW_RADIUS_Q8;
-			red_strength = (uint16_t)(strength * strength * 255U
-					/ radius_squared);
-		}
+		const uint16_t red_strength = LED_FiringRedStrength(distance_q8,
+				FIRING_LAUNCHER_FULL_RADIUS_Q8,
+				FIRING_LAUNCHER_OUTER_RADIUS_Q8);
 
 		LED_BlendFiringPA6(level, red_strength);
 		LED_BlendFiringPA6(PA6_MAIN_LED_COUNT - 1U - level,
@@ -797,13 +812,14 @@ static void LED_RenderFiringLauncher(uint32_t elapsed_ms) {
 /* Preserve the previous chassis frame and blend one symmetric red wave over it. */
 static void LED_RenderFiringChassis(uint32_t elapsed_ms) {
 	const uint16_t max_distance = PA7_LED_NUM / 2U;
-	const int32_t travel_levels = (int32_t)max_distance + 8;
+	const int32_t travel_q8 = (int32_t)max_distance * 256
+			+ 2 * FIRING_CHASSIS_OUTER_RADIUS_Q8;
 	int32_t head_q8 = (int32_t)max_distance * 256
-			+ FIRING_GLOW_RADIUS_Q8;
+			+ FIRING_CHASSIS_OUTER_RADIUS_Q8;
 
 	if (elapsed_ms < FIRING_WAVE_MS) {
-		head_q8 = -FIRING_GLOW_RADIUS_Q8
-				+ (int32_t)(elapsed_ms * (uint32_t)travel_levels * 256U
+		head_q8 = -FIRING_CHASSIS_OUTER_RADIUS_Q8
+				+ (int32_t)(elapsed_ms * (uint32_t)travel_q8
 						/ FIRING_WAVE_MS);
 	}
 
@@ -821,16 +837,9 @@ static void LED_RenderFiringChassis(uint32_t elapsed_ms) {
 			distance_q8 = -distance_q8;
 		}
 
-		uint16_t red_strength = 0U;
-		if (distance_q8 < FIRING_GLOW_RADIUS_Q8) {
-			const uint32_t strength =
-					(uint32_t)(FIRING_GLOW_RADIUS_Q8 - distance_q8);
-			const uint32_t radius_squared =
-					(uint32_t)FIRING_GLOW_RADIUS_Q8
-							* (uint32_t)FIRING_GLOW_RADIUS_Q8;
-			red_strength = (uint16_t)(strength * strength * 255U
-					/ radius_squared);
-		}
+		const uint16_t red_strength = LED_FiringRedStrength(distance_q8,
+				FIRING_CHASSIS_FULL_RADIUS_Q8,
+				FIRING_CHASSIS_OUTER_RADIUS_Q8);
 
 		const uint16_t keep_strength = 255U - red_strength;
 		const uint8_t background_red = firing_pa7_background[i][0];
