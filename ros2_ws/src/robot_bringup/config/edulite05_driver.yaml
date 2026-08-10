@@ -72,7 +72,7 @@
       current_limit: 11.0
       acceleration: 150.0
       # 最大速度は 35 rad/s
-      speed_limit: 34.0
+      speed_limit: 33.0
       current_feedback_enabled: false
       command_period_ms: 10
       # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄する。
