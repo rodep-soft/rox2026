@@ -65,8 +65,9 @@ void MecanumControllerNode::configure_parameters()
   robot_length_m_ = declare_parameter<double>("robot_length", 0.47);
   robot_width_m_ = declare_parameter<double>("robot_width", 0.41);
   max_wheel_vel_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
-  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1,
-        2, 3});
+  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>(
+    "wheel_logical_ids", {0, 1,
+      2, 3});
 
   if (wheel_logical_ids.size() != wheel_logical_ids_.size()) {
     throw std::runtime_error("wheel_logical_ids must contain four elements");
@@ -126,7 +127,8 @@ void MecanumControllerNode::configure_parameters()
 void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
   if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
-    !std::isfinite(msg->angular.z)) {
+    !std::isfinite(msg->angular.z))
+  {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 1000,
       "Non-finite cmd_vel received. Publishing zero wheel velocity.");
