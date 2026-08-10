@@ -62,11 +62,29 @@ std::string Protocol::initialization_diagnostic() const {
   case InitializationStep::WAIT_BEFORE_MECHANICAL_ZERO:
     step_name = "wait_before_mechanical_zero";
     break;
+  case InitializationStep::SET_OPERATION_MODE_FOR_MECHANICAL_ZERO:
+    step_name = "set_operation_mode_for_mechanical_zero";
+    break;
+  case InitializationStep::WAIT_AFTER_OPERATION_MODE:
+    step_name = "wait_after_operation_mode";
+    break;
+  case InitializationStep::ENABLE_FOR_MECHANICAL_ZERO:
+    step_name = "enable_for_mechanical_zero";
+    break;
+  case InitializationStep::WAIT_FOR_MECHANICAL_ZERO_ENABLE:
+    step_name = "wait_for_mechanical_zero_enable";
+    break;
   case InitializationStep::SET_MECHANICAL_ZERO:
     step_name = "set_mechanical_zero";
     break;
   case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO:
     step_name = "wait_after_mechanical_zero";
+    break;
+  case InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO:
+    step_name = "disable_after_mechanical_zero";
+    break;
+  case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO_DISABLE:
+    step_name = "wait_after_mechanical_zero_disable";
     break;
   case InitializationStep::WRITE_PARAMETER:
     step_name = "write";
@@ -151,7 +169,26 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
     return make_disable_frame(config_.can_id);
   case InitializationStep::WAIT_BEFORE_MECHANICAL_ZERO:
     if (current_time - last_request_time_ >= WRITE_SETTLING_TIME) {
-      initialization_step_ = InitializationStep::SET_MECHANICAL_ZERO;
+      initialization_step_ =
+          InitializationStep::SET_OPERATION_MODE_FOR_MECHANICAL_ZERO;
+    }
+    break;
+  case InitializationStep::SET_OPERATION_MODE_FOR_MECHANICAL_ZERO:
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_AFTER_OPERATION_MODE;
+    return make_write_uint8_frame(config_.can_id, RUN_MODE, 0);
+  case InitializationStep::WAIT_AFTER_OPERATION_MODE:
+    if (current_time - last_request_time_ >= MECHANICAL_ZERO_SETTLING_TIME) {
+      initialization_step_ = InitializationStep::ENABLE_FOR_MECHANICAL_ZERO;
+    }
+    break;
+  case InitializationStep::ENABLE_FOR_MECHANICAL_ZERO:
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_FOR_MECHANICAL_ZERO_ENABLE;
+    return make_enable_frame(config_.can_id);
+  case InitializationStep::WAIT_FOR_MECHANICAL_ZERO_ENABLE:
+    if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
+      retry_initialization();
     }
     break;
   case InitializationStep::SET_MECHANICAL_ZERO:
@@ -159,7 +196,18 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
     initialization_step_ = InitializationStep::WAIT_AFTER_MECHANICAL_ZERO;
     return make_set_mechanical_zero_frame(config_.can_id);
   case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO:
+    if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
+      retry_initialization();
+    }
+    break;
+  case InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO:
+    last_request_time_ = current_time;
+    initialization_step_ =
+        InitializationStep::WAIT_AFTER_MECHANICAL_ZERO_DISABLE;
+    return make_disable_frame(config_.can_id);
+  case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO_DISABLE:
     if (current_time - last_request_time_ >= MECHANICAL_ZERO_SETTLING_TIME) {
+      enabled_ = false;
       initialization_step_ = InitializationStep::WRITE_PARAMETER;
     }
     break;
@@ -260,6 +308,18 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
     last_wrapped_position_ = wrapped_position;
   }
 
+  if (initialization_step_ == InitializationStep::WAIT_AFTER_MECHANICAL_ZERO) {
+    constexpr float mechanical_zero_tolerance_rad = 0.05f;
+    if (std::fabs(wrapped_position) <= mechanical_zero_tolerance_rad) {
+      raw_position_ = wrapped_position;
+      last_wrapped_position_ = wrapped_position;
+      position_offset_ = -raw_position_;
+      provisional_position_reference_initialized_ = true;
+      initialization_retry_count_ = 0;
+      initialization_step_ = InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO;
+    }
+  }
+
   // PositionReferenceMode::YAML_OFFSETの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
   if (uses_position_control() &&
       !position_reference_is_set_ && config_.position_reference_mode == PositionReferenceMode::YAML_OFFSET) {
@@ -289,6 +349,15 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
   const auto mode_status = static_cast<uint8_t>((message.id >> 22) & 0x03);
 
   // Enable完了確認
+
+  if (initialization_step_ ==
+      InitializationStep::WAIT_FOR_MECHANICAL_ZERO_ENABLE) {
+    if (mode_status == RUN_STATUS_MODE) {
+      initialization_retry_count_ = 0;
+      initialization_step_ = InitializationStep::SET_MECHANICAL_ZERO;
+    }
+    return;
+  }
 
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     if (mode_status == RUN_STATUS_MODE) {
@@ -422,6 +491,12 @@ void Protocol::retry_initialization() {
   }
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     initialization_step_ = InitializationStep::ENABLE;
+  } else if (initialization_step_ ==
+             InitializationStep::WAIT_FOR_MECHANICAL_ZERO_ENABLE) {
+    initialization_step_ = InitializationStep::ENABLE_FOR_MECHANICAL_ZERO;
+  } else if (initialization_step_ ==
+             InitializationStep::WAIT_AFTER_MECHANICAL_ZERO) {
+    initialization_step_ = InitializationStep::SET_MECHANICAL_ZERO;
   } else {
     // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
