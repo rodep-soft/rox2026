@@ -10,9 +10,8 @@
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-#include "arm_position_controller/arm_position_controller.hpp"
+#include "dribble_controller/dribble_controller.hpp"
 #include "belt_controller/belt_controller.hpp"
-#include "dribbler_controller/dribbler_controller.hpp"
 #include "mecanum_controller/mecanum_controller_node.hpp"
 
 class RobotControllerTest : public ::testing::Test
@@ -83,10 +82,10 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   EXPECT_EQ(last_underbelt_rpm, 0);
 }
 
-TEST_F(RobotControllerTest, DribblerControllerEnableAndEmergencyStopTest)
+TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 {
-  auto dribble_node = std::make_shared<DribblerControllerNode>();
-  auto test_node = std::make_shared<rclcpp::Node>("test_dribbler_client");
+  auto dribble_node = std::make_shared<DribbleControllerNode>();
+  auto test_node = std::make_shared<rclcpp::Node>("test_dribble_client");
 
   float last_dribble_rpm = -1.0f;
   auto target_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
@@ -105,19 +104,24 @@ TEST_F(RobotControllerTest, DribblerControllerEnableAndEmergencyStopTest)
   executor.add_node(dribble_node);
   executor.add_node(test_node);
 
-  // 1. Dribble ON (2000 RPM) のテスト
+  const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
+  ASSERT_TRUE(rpm_update.successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
+
+  // 1. runtime parameterで変更した900 RPMを出力する。
   std_msgs::msg::Bool enable_msg;
   enable_msg.data = true;
   pub_dribble_enable->publish(enable_msg);
 
   auto start = std::chrono::steady_clock::now();
-  while (last_dribble_rpm != 2000 &&
+  while (last_dribble_rpm != 900 &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_EQ(last_dribble_rpm, 2000);
+  EXPECT_EQ(last_dribble_rpm, 900);
 
   // 2. 非常停止で 0 RPM に落ちるかのテスト
   std_msgs::msg::Bool estop_msg;
@@ -134,63 +138,68 @@ TEST_F(RobotControllerTest, DribblerControllerEnableAndEmergencyStopTest)
   EXPECT_EQ(last_dribble_rpm, 0);
 }
 
-TEST_F(RobotControllerTest, ArmPositionControllerStateTransitionSequenceTest)
+TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
 {
-  auto arm_node = std::make_shared<ArmPositionControllerNode>();
-  auto test_node = std::make_shared<rclcpp::Node>("test_arm_client");
+  auto dribble_node = std::make_shared<DribbleControllerNode>();
+  auto test_node = std::make_shared<rclcpp::Node>("test_dribble_position_client");
 
-  float last_arm_pos = 999.0f;
-  auto sub_arm_pos = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
+  float last_position_rad = 999.0f;
+  auto position_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
     "/edulite/target", 1,
-    [&last_arm_pos](const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
+    [&last_position_rad](const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
       if (msg->logical_id == 5) {
-        last_arm_pos = msg->target;
+        last_position_rad = msg->target;
       }
     });
 
-  auto pub_arm_mode = test_node->create_publisher<std_msgs::msg::UInt8>(
+  auto position_mode_pub = test_node->create_publisher<std_msgs::msg::UInt8>(
     "/dribble/position_mode", 1);
 
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(arm_node);
+  executor.add_node(dribble_node);
   executor.add_node(test_node);
 
   // 状態0: 初期姿勢 DRIBBLE (0.35 rad)
   auto start = std::chrono::steady_clock::now();
-  while (std::abs(last_arm_pos - 0.35f) > 0.01f &&
+  while (std::abs(last_position_rad - 0.35f) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_arm_pos, 0.35f, 0.01f);
+  EXPECT_NEAR(last_position_rad, 0.35f, 0.01f);
 
-  // 状態1: OPEN 位置 (-1.0 rad) へ遷移
+  const auto position_update = dribble_node->set_parameters_atomically({
+    rclcpp::Parameter("open_position_rad", -0.5),
+    rclcpp::Parameter("opening_max_velocity_rad_s", 10.0)});
+  ASSERT_TRUE(position_update.successful);
+
+  // 状態1: runtime parameterで変更したOPEN位置 (-0.5 rad) へ遷移
   std_msgs::msg::UInt8 mode_msg;
   mode_msg.data = 1; // OPEN
-  pub_arm_mode->publish(mode_msg);
+  position_mode_pub->publish(mode_msg);
 
   start = std::chrono::steady_clock::now();
-  while (std::abs(last_arm_pos - (-1.0f)) > 0.01f &&
+  while (std::abs(last_position_rad - (-0.5f)) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_arm_pos, -1.0f, 0.01f);
+  EXPECT_NEAR(last_position_rad, -0.5f, 0.01f);
 
   // 状態2: FEED 位置 (1.3 rad) へ遷移
   mode_msg.data = 2; // FEED
-  pub_arm_mode->publish(mode_msg);
+  position_mode_pub->publish(mode_msg);
 
   start = std::chrono::steady_clock::now();
-  while (std::abs(last_arm_pos - 1.3f) > 0.01f &&
+  while (std::abs(last_position_rad - 1.3f) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_arm_pos, 1.3f, 0.01f);
+  EXPECT_NEAR(last_position_rad, 1.3f, 0.01f);
 }
 
 TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)

@@ -13,6 +13,7 @@ find_package(ament_cmake REQUIRED)
 find_package(actuator_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -49,15 +50,10 @@ add_controller(
   belt_controller.cpp
   actuator_msgs rclcpp std_msgs)
 add_controller(
-  dribbler_controller_node
-  dribbler_controller
-  dribbler_controller.cpp
-  actuator_msgs rclcpp std_msgs)
-add_controller(
-  arm_position_controller_node
-  arm_position_controller
-  arm_position_controller.cpp
-  actuator_msgs rclcpp std_msgs)
+  dribble_controller_node
+  dribble_controller
+  dribble_controller.cpp
+  actuator_msgs rclcpp rcl_interfaces std_msgs)
 add_controller(
   game2_tactical_shooter_node
   game2_shooter
@@ -70,8 +66,7 @@ set(controller_include_directories
     mecanum_controller
     spring_controller
     belt_controller
-    dribbler_controller
-    arm_position_controller
+    dribble_controller
     game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
   install(DIRECTORY ${directory}/include/ DESTINATION include)
@@ -89,8 +84,7 @@ if(BUILD_TESTING)
     target_link_libraries(
       test_robot_controller
       belt_controller_node_implementation
-      arm_position_controller_node_implementation
-      dribbler_controller_node_implementation
+      dribble_controller_node_implementation
       mecanum_controller_node_implementation)
   endif()
 endif()

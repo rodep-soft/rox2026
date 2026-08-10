@@ -58,8 +58,7 @@ def generate_launch_description():
     # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
-        "controllers/dribbler_controller.launch.py",
-        "controllers/arm_position_controller.launch.py",
+        "controllers/dribble_controller.launch.py",
         "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
         "input/joy_controller.launch.py",

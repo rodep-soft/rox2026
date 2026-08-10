@@ -21,8 +21,7 @@ def generate_launch_description():
 
     controller_launch_files = [
         "controllers/belt_controller.launch.py",
-        "controllers/dribbler_controller.launch.py",
-        "controllers/arm_position_controller.launch.py",
+        "controllers/dribble_controller.launch.py",
         "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
     ]

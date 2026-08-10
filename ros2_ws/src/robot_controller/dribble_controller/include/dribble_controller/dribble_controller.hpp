@@ -1,17 +1,18 @@
-#ifndef ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
-#define ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
+#ifndef DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_
+#define DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_
 
 #include <cstdint>
-#include <string>
+#include <vector>
 
 #include "actuator_msgs/msg/actuator_target.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class ArmPositionControllerNode : public rclcpp::Node {
+class DribbleControllerNode : public rclcpp::Node {
 public:
-  ArmPositionControllerNode();
+  DribbleControllerNode();
 
 private:
   enum class PositionMode : uint8_t {
@@ -31,9 +32,12 @@ private:
   void get_parameters();
 
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void timer_callback();
+  rcl_interfaces::msg::SetParametersResult parameter_callback(
+    const std::vector<rclcpp::Parameter> & parameters);
 
   /// @brief PositionMode に対応する文字列表現を返す
   const char *mode_name(PositionMode mode) const;
@@ -53,13 +57,15 @@ private:
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
+  int dribble_on_rpm_{800};
   int command_period_ms_{20};
   int qos_depth_{1};
-  int logical_id_{5};
-  std::string target_topic_{"/edulite/target"};
+  uint16_t position_logical_id_{5};
+  uint16_t roller_logical_id_{12};
 
   // ── 状態変数 ────────────────────────────────────────
   PositionMode current_position_mode_{PositionMode::DRIBBLE};
+  bool dribble_enabled_{false};
   bool emergency_stop_active_{false};
 
   bool manual_transition_active_{false};
@@ -74,11 +80,13 @@ private:
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-      position_command_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 
-#endif // ARM_POSITION_CONTROLLER__ARM_POSITION_CONTROLLER_HPP_
+#endif // DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_

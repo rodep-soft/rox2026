@@ -10,10 +10,8 @@ Joyから受けた機構指令と非常停止トピック（`/emergency_stop`）
    - ばねの自動装填および解放（発射）制御。
 3. **`belt_controller_node`**:
    - 上下ベルト（アンダー/アッパー）の目標RPM回転速度制御。
-4. **`dribbler_controller_node`**:
-   - ボール巻き込み用ドリブルローラーの目標RPM回転速度制御。
-5. **`arm_position_controller_node`**:
-   - ボール取り込み・押し出し供給用アームの角度位置制御（`DRIBBLE`, `OPEN`, `FEED`）。
+4. **`dribble_controller_node`**:
+   - ドリブルローラーのRPMと姿勢角度（`DRIBBLE`, `OPEN`, `FEED`）を統合制御。
 
 ---
 
@@ -31,8 +29,7 @@ flowchart LR
     mecanum["mecanum_controller"]
     spring["spring_controller"]
     belt["belt_controller"]
-    dribbler["dribbler_controller"]
-    arm["arm_position_controller"]
+    dribble["dribble_controller"]
   end
 
   subgraph drivers["hardware_driver"]
@@ -44,21 +41,20 @@ flowchart LR
   joy_controller -->|"/emergency_stop"| mecanum
   joy_controller -->|"/emergency_stop"| spring
   joy_controller -->|"/emergency_stop"| belt
-  joy_controller -->|"/emergency_stop"| dribbler
-  joy_controller -->|"/emergency_stop"| arm
+  joy_controller -->|"/emergency_stop"| dribble
 
   joy_controller -->|"/belt/mode"| belt
-  joy_controller -->|"/dribble/enabled"| dribbler
-  joy_controller -->|"/dribble/position_mode"| arm
+  joy_controller -->|"/dribble/enabled"| dribble
+  joy_controller -->|"/dribble/position_mode"| dribble
   joy_controller -->|"/spring/fire_request"| spring
   joy_controller -->|"/shot_cycle/request"| belt
-  belt -->|"/shot_cycle/start"| arm
+  belt -->|"/shot_cycle/start"| dribble
 
   belt -->|"/vesc/target_array"| vesc
-  dribbler -->|"/vesc/target"| vesc
+  dribble -->|"/vesc/target"| vesc
   mecanum -->|"/edulite/target_array"| edulite
   spring -->|"/edulite/target (ID 4)"| edulite
-  arm -->|"/edulite/target (ID 5)"| edulite
+  dribble -->|"/edulite/target (ID 5)"| edulite
 ```
 
 ---
@@ -76,7 +72,7 @@ flowchart LR
      │ ベルトを目標RPM（Level 1〜6）に加速
      │ 上下ベルトの実RPMが目標値に到達＆0.3秒安定維持（ready）を確認
      ▼ /shot_cycle/start (true) をパブリッシュ
-[ arm_position_controller ]
+[ dribble_controller ]
      │
      ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームがパカッと開いてボール受球
      │     │ (目標角度到達)
@@ -103,13 +99,10 @@ flowchart LR
 - **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_6`: 3000〜5500 RPM)
 - **遷移**: 十字キー上下でレベル変更。`/emergency_stop == true` ➔ 0 RPM 停止。
 
-#### 🌀 `dribbler_controller`
-- **状態**: `dribble_enabled_` (`true`: 2000 RPM / `false`: 0 RPM)
-- **遷移**: `R1` ボタンでON/OFF。`/emergency_stop == true` ➔ 0 RPM 停止。
-
-#### 🦾 `arm_position_controller`
-- **状態**: `PositionMode` (`DRIBBLE`: 0.35rad / `OPEN`: -1.0rad / `FEED`: 1.3rad)
-- **遷移**: `R2 + DPAD左右` で手動位置切替。シュート時は自動一貫シーケンス。`/emergency_stop == true` ➔ 強制的に `DRIBBLE` 位置復帰。
+#### 🌀 `dribble_controller`
+- **ローラー**: R1でON/OFF。非常停止時は0 RPM。
+- **姿勢**: `DRIBBLE`、`OPEN`、`FEED`。シュート時は自動シーケンス。
+- **非常停止**: ローラーを停止し、姿勢を`DRIBBLE`位置へ戻す。
 
 #### 🎮 `joy_controller`
 - **状態**: `is_emergency_stop_` (非常停止: `HOME`ボタン) / `forward_reverse_` (前後反転: `PS`ボタン)

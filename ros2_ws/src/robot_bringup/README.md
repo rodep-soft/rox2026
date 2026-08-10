@@ -178,6 +178,7 @@ ros2 launch robot_bringup test/robot_belt_dribble.launch.py
 | YAML | 対象 | 主な設定 |
 |---|---|---|
 | `joy_controller.yaml` | Joy変換 | button・axis index、timeout、速度上限 |
+| `dribble_controller.yaml` | dribble | ローラーRPM、姿勢角度、shot cycle時間・速度 |
 | `belt_dribble_controller.yaml` | belt・dribble | level RPM、許容差、feedback timeout |
 | `mecanum_controller.yaml` | mecanum | 寸法、補正係数、車輪速度上限 |
 | `spring_controller.yaml` | Spring | limit switch index、速度、時間 |
