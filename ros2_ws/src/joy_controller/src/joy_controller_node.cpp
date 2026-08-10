@@ -75,6 +75,10 @@ JoyControllerNode::JoyControllerNode()
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/start", command_qos);
+  // joy_controller -> led_controller: drive direction selected with the PS button.
+  drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
+
 
   publish_stop_commands();
 
@@ -278,6 +282,7 @@ void JoyControllerNode::loop_callback()
     // 4. PSボタンで前後反転
     if (is_button_just_pressed(joy_msg_, ps_button_)) {
       is_drive_reversed_ = !is_drive_reversed_;
+      publish_drive_reversed();
       RCLCPP_INFO(
         get_logger(), "Drive direction toggled: %s",
         is_drive_reversed_ ? "REVERSED" : "FORWARD");
@@ -386,6 +391,7 @@ void JoyControllerNode::state_publish_timer_callback()
   publish_emergency_stop();
   publish_belt_mode();
   publish_dribble_enabled();
+  publish_drive_reversed();
 }
 
 void JoyControllerNode::publish_emergency_stop()
@@ -408,6 +414,13 @@ void JoyControllerNode::publish_dribble_enabled()
   msg.data = dribble_enabled_;
   dribble_enabled_pub_->publish(msg);
 }
+void JoyControllerNode::publish_drive_reversed()
+{
+  std_msgs::msg::Bool msg;
+  msg.data = is_drive_reversed_;
+  drive_reversed_pub_->publish(msg);
+}
+
 
 void JoyControllerNode::publish_stop_commands()
 {

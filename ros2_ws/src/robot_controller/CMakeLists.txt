@@ -59,12 +59,19 @@ add_controller(
   game2_shooter
   game2_tactical_shooter_node.cpp
   geometry_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros)
+add_controller(
+  led_controller_node
+  led_controller
+  led_controller.cpp
+  rclcpp std_msgs)
+
 
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories
     mecanum_controller
     spring_controller
+    led_controller
     belt_controller
     dribble_controller
     game2_shooter)

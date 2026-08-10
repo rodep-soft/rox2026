@@ -45,6 +45,7 @@ private:
   void publish_emergency_stop();
   void publish_belt_mode();
   void publish_dribble_enabled();
+  void publish_drive_reversed();
   void publish_stop_commands();
 
   // 直感的なエッジ検出・入力判定ヘルパー
@@ -105,6 +106,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
 
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
   rclcpp::TimerBase::SharedPtr loop_timer_;

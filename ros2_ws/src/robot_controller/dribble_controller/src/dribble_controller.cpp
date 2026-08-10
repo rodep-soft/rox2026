@@ -30,6 +30,10 @@ DribbleControllerNode::DribbleControllerNode()
       position_target_topic, command_qos);
   roller_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
       roller_target_topic, command_qos);
+  // dribble_controller -> led_controller: shot cycle state.
+  shot_cycle_state_pub_ = create_publisher<std_msgs::msg::UInt8>(
+      "/shot_cycle/state", rclcpp::QoS(1).reliable().transient_local());
+
 
   position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
       "/dribble/position_mode", command_qos,
@@ -255,6 +259,7 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 // ────────────────────────────────────────────────────────────────────────────
 
 void DribbleControllerNode::control_timer_callback() {
+  publish_shot_cycle_state();
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(
@@ -351,6 +356,14 @@ void DribbleControllerNode::control_timer_callback() {
   position_command.target = static_cast<float>(position_command_rad);
   last_position_command_rad_ = position_command_rad;
   position_command_pub_->publish(position_command);
+}
+
+void DribbleControllerNode::publish_shot_cycle_state() {
+  std_msgs::msg::UInt8 state;
+  state.data = shot_cycle_active_
+      ? static_cast<uint8_t>(shot_cycle_phase_) + 1U
+      : 0U;
+  shot_cycle_state_pub_->publish(state);
 }
 
 // ────────────────────────────────────────────────────────────────────────────

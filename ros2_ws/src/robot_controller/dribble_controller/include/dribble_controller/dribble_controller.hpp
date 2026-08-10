@@ -35,6 +35,7 @@ private:
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void control_timer_callback();
+  void publish_shot_cycle_state();
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
@@ -81,6 +82,7 @@ private:
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr shot_cycle_state_pub_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 

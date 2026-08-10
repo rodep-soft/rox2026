@@ -23,6 +23,7 @@ def generate_launch_description():
         "controllers/belt_controller.launch.py",
         "controllers/dribble_controller.launch.py",
         "controllers/spring_controller.launch.py",
+        "controllers/led_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
     ]
 

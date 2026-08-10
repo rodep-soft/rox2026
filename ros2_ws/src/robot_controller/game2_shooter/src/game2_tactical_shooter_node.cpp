@@ -68,6 +68,9 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   dribble_enabled_pub_ = this->create_publisher<std_msgs::msg::Bool>("/dribble/enabled", 10);
   arm_position_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/dribble/position_mode", 10);
   completed_pub_ = this->create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
+  // game2_shooter -> led_controller: current Game2 sequence state.
+  state_pub_ = this->create_publisher<std_msgs::msg::UInt8>(
+    "/game2/state", rclcpp::QoS(1).reliable().transient_local());
 
   // Control Loop Timer (20Hz)
   timer_ = this->create_wall_timer(
@@ -227,6 +230,10 @@ void Game2TacticalShooterNode::control_loop()
   std_msgs::msg::Bool completed_msg;
 
   trigger_msg.data = false;
+  std_msgs::msg::UInt8 state_msg;
+  state_msg.data = static_cast<uint8_t>(state_);
+  state_pub_->publish(state_msg);
+
   dribble_msg.data = false;
   arm_pos_msg.data = 0; // 0: DRIBBLE
   completed_msg.data = false;
