@@ -2,7 +2,7 @@
   ros__parameters:
     # [rad] 各アーム目標位置
     # 10度 = 約 0.1745 rad
-    dribble_position_rad: 0.25
+    dribble_position_rad: 0.28
     open_position_rad: -0.98
     feed_position_rad: 0.7
     # [s] 自動シュートサイクルのタイミング
