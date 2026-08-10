@@ -3,8 +3,11 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
+#include <vector>
 
 #include "geometry_msgs/msg/twist.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -32,13 +35,12 @@ private:
     FEED = 2,
   };
 
-  void declare_parameters();
-  void get_parameters();
-
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
   void loop_callback();
   void joy_timeout_timer_callback();
   void state_publish_timer_callback();
+  rcl_interfaces::msg::SetParametersResult parameter_callback(
+    const std::vector<rclcpp::Parameter> & parameters);
 
   void publish_emergency_stop();
   void publish_belt_mode();
@@ -52,23 +54,19 @@ private:
   bool is_axis_just_triggered(const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
 
   double apply_axis_deadzone(double value) const;
-  static double apply_axis_limit(double value, double limit);
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  int joy_qos_depth_{1};
   int command_qos_depth_{1};
   int joy_timeout_ms_{200};
   int state_publish_period_ms_{20};
 
-  double linear_x_limit_{2.0};
-  double linear_y_limit_{2.0};
-  double angular_z_limit_{2.0};
+  double max_vel_x_m_s_{2.0};
+  double max_vel_y_m_s_{2.0};
+  double max_vel_z_rad_s_{2.0};
   double axis_deadzone_{0.05};
   double axis_on_threshold_{0.7};
 
-  int spring_fire_enable_button_{4};
-  int spring_fire_button_{2};
   int ps_button_{12};
   int home_button_{13};
   int circle_button_{2};
@@ -110,6 +108,8 @@ private:
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
   rclcpp::TimerBase::SharedPtr loop_timer_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+    parameter_callback_handle_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

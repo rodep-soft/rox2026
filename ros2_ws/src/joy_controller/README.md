@@ -83,7 +83,7 @@ BELT_ONLY中のCreateと、SHOT_CYCLE中のOptionsは無視する。
 | Options | STOP・DRIVEからBELT_ONLYへ移動。同mode中はDRIVEへ戻る |
 | DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_4の範囲で増減 |
 | R1 | dribble ON/OFF。DRIVE・SHOT_CYCLEだけで受理 |
-| L1 + ○ | Spring発射要求。DRIVEだけで、押下中にtrueを送る |
+| L2 + R2 | Spring発射要求。両方が押された瞬間に1回だけtrueを送る |
 | L2 + ○ | SHOT_CYCLE中の実行要求 |
 | R2 + DPAD左 | DRIBBLE位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
 | R2 + DPAD右 | OPEN位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
@@ -108,8 +108,8 @@ Joy通信が途切れた場合はSTOPへ移動し、Joy入力が復帰するま�
 9. 現在の入力を前回値として保存する。
 
 button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
-SpringだけはL1+○を押している間、周期timerからtrueを送り続ける。Spring controller側は
-そのtrueの立ち上がりだけを発射要求として扱う。
+SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続けても再発射しない。
+再発射する場合は、どちらか一方を離してから再度同時押しする。
 
 ## stick処理
 
@@ -139,7 +139,7 @@ emergency stopがtransient local QoSで残る。
 | callback | 実行契機 | 役割 |
 |---|---|---|
 | `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/mecanum/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
-| `state_publish_timer_callback` | `state_publish_period_ms`周期 | belt mode、dribble enabled、operation mode、spring fire requestを再送する。spring fire requestはDRIVE中かつL1+○を押している間だけtrueにする。 |
+| `state_publish_timer_callback` | `state_publish_period_ms`周期 | emergency stop、belt mode、dribble enabledを再送する。 |
 | `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視する。最後の入力から`joy_timeout_ms`を超えた場合は、STOPと各停止指令を即時publishする。 |
 | `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
 | `shot_cycle_complete_callback` | `/shot_cycle/complete`受信時 | shot cycle完了を受け取り、`auto_drive_on_shot_cycle_complete`に従ってDRIVEへ復帰する。 |
@@ -148,7 +148,6 @@ emergency stopがtransient local QoSで残る。
 
 | parameter | 型 | 説明 |
 |---|---|---|
-| `joy_qos_depth` | int | SensorDataQoSで保持するJoy入力件数。0以下なら1 |
 | `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | `int` | belt mode、dribble enabled、operation mode、spring fire requestの再送周期[ms] |
@@ -162,7 +161,23 @@ emergency stopがtransient local QoSで残る。
 
 Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
 変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは
-軸ごとに1つだけである。
+軸ごとに1つだけである。この3つの速度parameterは実行中にも変更できる。
+
+`/joy`のsubscriptionには、最新入力を優先する`SensorDataQoS`を使用する。
+
+### 実行中のYAML再読み込み
+
+次のコマンドで、速度、Joy timeout、deadzone、しきい値、button・axis配置を
+実行中のnodeへまとめて反映できる。
+
+```bash
+ros2 param load /joy_controller \
+  src/robot_bringup/config/joy_controller.yaml
+```
+
+`command_qos_depth`と`state_publish_period_ms`はROS interfaceまたはtimerの再生成が
+必要になるため、実行中には変更できない。YAML内の値が現在値と同じ場合は、そのまま
+読み込みを許可する。
 
 button・axis indexもすべてparameterである。対応表を変更する場合は
 `sensor_msgs/msg/Joy`の実データを確認し、README先頭の配置表と
