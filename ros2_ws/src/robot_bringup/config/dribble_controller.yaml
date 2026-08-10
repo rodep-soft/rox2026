@@ -9,11 +9,11 @@
     open_duration_sec: 0.0      # OPEN 姿勢を保持する時間
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 3.0   # DRIBBLE -> OPEN
-    feeding_max_velocity_rad_s: 6.0   # OPEN -> FEED
+    opening_max_velocity_rad_s: 4.0   # DRIBBLE -> OPEN
+    feeding_max_velocity_rad_s: 15.0   # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 1000
+    dribble_on_rpm: 1500
     # [ms] 指令再送周期
     command_period_ms: 10
     # ROS 2 QoS queue depth

@@ -95,5 +95,5 @@
       current_feedback_enabled: false
       current_feedback_period_ms: 100
       current_limit: 11.0
-      speed_limit: 3.0
+      speed_limit: 50.0
       acceleration: 150.0
