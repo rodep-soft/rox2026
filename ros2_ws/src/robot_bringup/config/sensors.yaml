@@ -18,7 +18,6 @@ mecanum_odometry_node:
     velocity_scale_yaw: 1.0
     velocity_filter_alpha: 0.35  # 1.0
 
-    # EKFIMU
     slip_compensation:
       enabled: true
       acceleration_threshold_x_m_s2: 1.0
