@@ -14,6 +14,9 @@
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1500
+    shot_cycle_opening_rpm: 1000   # DRIBBLE -> OPEN
+    shot_cycle_feeding_rpm: 500    # OPEN -> FEED
+    shot_cycle_returning_rpm: 1000 # FEED -> DRIBBLE
     # [ms] 指令再送周期
     command_period_ms: 10
     # ROS 2 QoS queue depth

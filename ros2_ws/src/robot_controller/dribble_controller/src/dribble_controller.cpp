@@ -85,6 +85,9 @@ void DribbleControllerNode::load_parameters()
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
+  shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
+  shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
+  shot_cycle_returning_rpm_ = declare_parameter<int>("shot_cycle_returning_rpm", 800);
   const auto position_logical_id = declare_parameter<int>("position_logical_id", 5);
   const auto roller_logical_id = declare_parameter<int>("roller_logical_id", 12);
 
@@ -93,8 +96,10 @@ void DribbleControllerNode::load_parameters()
   {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
-  if (dribble_on_rpm_ < 0) {
-    throw std::runtime_error("dribble_on_rpm must be nonnegative");
+  if (dribble_on_rpm_ < 0 || shot_cycle_opening_rpm_ < 0 ||
+    shot_cycle_feeding_rpm_ < 0 || shot_cycle_returning_rpm_ < 0)
+  {
+    throw std::runtime_error("roller RPM parameters must be nonnegative");
   }
   if (!std::isfinite(dribble_position_rad_) || !std::isfinite(open_position_rad_) ||
     !std::isfinite(feed_position_rad_) || !std::isfinite(open_duration_sec_) ||
@@ -179,12 +184,27 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
   auto feeding_max_vel_rad_s = feeding_max_velocity_rad_s_;
   auto returning_max_vel_rad_s = returning_max_velocity_rad_s_;
   int64_t dribble_on_rpm = dribble_on_rpm_;
+  int64_t shot_cycle_opening_rpm = shot_cycle_opening_rpm_;
+  int64_t shot_cycle_feeding_rpm = shot_cycle_feeding_rpm_;
+  int64_t shot_cycle_returning_rpm = shot_cycle_returning_rpm_;
   bool trajectory_changed = false;
 
   for (const auto & parameter : parameters) {
     const auto & name = parameter.get_name();
     if (name == "dribble_on_rpm") {
       dribble_on_rpm = parameter.as_int();
+      continue;
+    }
+    if (name == "shot_cycle_opening_rpm") {
+      shot_cycle_opening_rpm = parameter.as_int();
+      continue;
+    }
+    if (name == "shot_cycle_feeding_rpm") {
+      shot_cycle_feeding_rpm = parameter.as_int();
+      continue;
+    }
+    if (name == "shot_cycle_returning_rpm") {
+      shot_cycle_returning_rpm = parameter.as_int();
       continue;
     }
 
@@ -250,7 +270,13 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     std::isfinite(feeding_max_vel_rad_s) && std::isfinite(returning_max_vel_rad_s) &&
     opening_max_vel_rad_s > 0.0 && feeding_max_vel_rad_s > 0.0 &&
     returning_max_vel_rad_s > 0.0 && dribble_on_rpm >= 0 &&
-    dribble_on_rpm <= std::numeric_limits<int>::max();
+    dribble_on_rpm <= std::numeric_limits<int>::max() &&
+    shot_cycle_opening_rpm >= 0 &&
+    shot_cycle_opening_rpm <= std::numeric_limits<int>::max() &&
+    shot_cycle_feeding_rpm >= 0 &&
+    shot_cycle_feeding_rpm <= std::numeric_limits<int>::max() &&
+    shot_cycle_returning_rpm >= 0 &&
+    shot_cycle_returning_rpm <= std::numeric_limits<int>::max();
   if (!result.successful) {
     result.reason = "positions must be finite, durations/RPM nonnegative, and velocities positive";
     return result;
@@ -265,6 +291,9 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
   feeding_max_velocity_rad_s_ = feeding_max_vel_rad_s;
   returning_max_velocity_rad_s_ = returning_max_vel_rad_s;
   dribble_on_rpm_ = static_cast<int>(dribble_on_rpm);
+  shot_cycle_opening_rpm_ = static_cast<int>(shot_cycle_opening_rpm);
+  shot_cycle_feeding_rpm_ = static_cast<int>(shot_cycle_feeding_rpm);
+  shot_cycle_returning_rpm_ = static_cast<int>(shot_cycle_returning_rpm);
 
   if (trajectory_changed && manual_transition_active_) {
     manual_transition_start_time_ = now();
@@ -286,8 +315,7 @@ void DribbleControllerNode::control_timer_callback()
   publish_shot_cycle_state();
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
-  roller_command.target = static_cast<float>(
-    dribble_enabled_ && !emergency_stop_active_ ? dribble_on_rpm_ : 0);
+  roller_command.target = static_cast<float>(roller_target_rpm());
   roller_command_pub_->publish(roller_command);
 
   if (emergency_stop_active_) {
@@ -381,6 +409,26 @@ void DribbleControllerNode::control_timer_callback()
   position_command.target = static_cast<float>(position_command_rad);
   last_position_command_rad_ = position_command_rad;
   position_command_pub_->publish(position_command);
+}
+
+int DribbleControllerNode::roller_target_rpm() const
+{
+  if (!dribble_enabled_ || emergency_stop_active_) {
+    return 0;
+  }
+  if (!shot_cycle_active_) {
+    return dribble_on_rpm_;
+  }
+
+  switch (shot_cycle_phase_) {
+    case ShotCyclePhase::OPENING:
+      return shot_cycle_opening_rpm_;
+    case ShotCyclePhase::FEEDING:
+      return shot_cycle_feeding_rpm_;
+    case ShotCyclePhase::RETURNING:
+      return shot_cycle_returning_rpm_;
+  }
+  return dribble_on_rpm_;
 }
 
 void DribbleControllerNode::publish_shot_cycle_state()
