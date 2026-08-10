@@ -1,11 +1,35 @@
 mecanum_odometry_node:
   ros__parameters:
-    wheel_radius: 0.05     #車輪直径
-    robot_length: 0.47     #ロボットの長さ
-    robot_width: 0.41      #ロボットの幅
-    publish_rate_ms: 50.0
+    # mecanum_controller.yaml
+    wheel_radius: 0.075
+    robot_length: 0.355
+    robot_width: 0.353
+    wheel_logical_ids: [0, 1, 2, 3]  # FL, FR, RL, RR
+    state_array_topic: /edulite/state_array
+    odometry_topic: /wheel/odometry
+    odom_frame: odom
+    base_frame: base_link
+    publish_period_ms: 20.0
     feedback_timeout_ms: 250.0
-    wheel_feedback_topics: [/mecanum/fl/feedback, /mecanum/fr/feedback, /mecanum/rl/feedback, /mecanum/rr/feedback]
+
+    # / odom
+    velocity_scale_x: 1.0
+    velocity_scale_y: 1.0
+    velocity_scale_yaw: 1.0
+    velocity_filter_alpha: 0.35  # 1.0
+
+    # EKFIMU
+    slip_compensation:
+      enabled: true
+      acceleration_threshold_x_m_s2: 1.0
+      acceleration_threshold_y_m_s2: 0.7
+      angular_acceleration_threshold_rad_s2: 2.0
+      maximum_covariance_multiplier: 10.0
+
+    pose_covariance_xy: 0.02
+    pose_covariance_yaw: 0.05
+    twist_covariance_xy: 0.03
+    twist_covariance_yaw: 0.06
 
 #can_imu_node:
 #  ros__parameters:
