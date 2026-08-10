@@ -28,25 +28,22 @@ private:
     RETURNING = 2, ///< DRIBBLE 位置へ復帰中
   };
 
-  void declare_parameters();
-  void get_parameters();
+  void load_parameters();
 
   void position_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void timer_callback();
+  void control_timer_callback();
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
-  /// @brief PositionMode に対応する文字列表現を返す
-  const char *mode_name(PositionMode mode) const;
   /// @brief 現在モードに対応する目標位置 [rad] を返す
-  float target_position_rad() const;
-  float interpolated_position_rad(double from, double to, double elapsed_sec,
-                                  double max_velocity_rad_s) const;
-  double transition_duration_sec(double from, double to,
-                                 double max_velocity_rad_s) const;
+  double target_position_rad() const;
+  double interpolated_position_rad(
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s) const;
+  double transition_duration_sec(
+    double start_rad, double target_rad, double max_vel_rad_s) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
@@ -58,13 +55,11 @@ private:
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
   int dribble_on_rpm_{800};
-  int command_period_ms_{20};
-  int qos_depth_{1};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
 
   // ── 状態変数 ────────────────────────────────────────
-  PositionMode current_position_mode_{PositionMode::DRIBBLE};
+  PositionMode position_mode_{PositionMode::DRIBBLE};
   bool dribble_enabled_{false};
   bool emergency_stop_active_{false};
 
@@ -72,11 +67,11 @@ private:
   rclcpp::Time manual_transition_start_time_;
   double manual_transition_start_position_rad_{0.35};
 
-  bool in_shot_cycle_{false};
+  bool shot_cycle_active_{false};
   ShotCyclePhase shot_cycle_phase_{ShotCyclePhase::OPENING};
   rclcpp::Time shot_cycle_start_time_;
   double shot_cycle_start_position_rad_{0.35};
-  double last_command_position_rad_{0.35};
+  double last_position_command_rad_{0.35};
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr position_mode_sub_;
@@ -85,7 +80,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 

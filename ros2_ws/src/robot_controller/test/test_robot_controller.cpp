@@ -108,6 +108,8 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   ASSERT_TRUE(rpm_update.successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
 
   // 1. runtime parameterで変更した900 RPMを出力する。
   std_msgs::msg::Bool enable_msg;
