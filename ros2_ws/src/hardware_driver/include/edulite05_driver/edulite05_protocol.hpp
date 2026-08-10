@@ -91,7 +91,8 @@ public:
   std::string initialization_diagnostic() const;
 
   /// @brief 目標値を設定
-  /// @param target 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）
+  /// @param target
+  /// 目標値（VELOCITYモードでは速度[rad/s]，PP/CSPモードでは位置[rad]）
   void set_target(float target);
   bool set_current_position(float current_position_rad);
 
@@ -147,9 +148,12 @@ private:
   bool process_parameter_response(const can_msgs::msg::Frame &message);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
-  static can_msgs::msg::Frame make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
-  static can_msgs::msg::Frame make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
-  static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id, uint16_t index);
+  static can_msgs::msg::Frame
+  make_write_uint8_frame(uint8_t motor_id, uint16_t index, uint8_t value);
+  static can_msgs::msg::Frame
+  make_write_float_frame(uint8_t motor_id, uint16_t index, float value);
+  static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id,
+                                                        uint16_t index);
   static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
   static can_msgs::msg::Frame make_disable_frame(uint8_t motor_id);
 
@@ -159,18 +163,18 @@ private:
   InitializationStep initialization_step_ = InitializationStep::WRITE_PARAMETER;
   std::vector<InitializationParameter> initialization_parameters_;
   std::size_t initialization_parameter_index_ = 0;
-  float target_ = 0.0f;
-  bool target_received_ = false;
-  bool connected_ = false;
-  bool enabled_ = false;
+  float target_value_ = 0.0f;
+  bool has_target_ = false;
+  bool feedback_connected_ = false;
+  bool motor_enabled_ = false;
   int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
-  float raw_position_ = 0.0f;
-  float last_wrapped_position_ = 0.0f;
-  bool raw_position_initialized_ = false;
-  float position_offset_ = 0.0f;
+  float motor_position_rad_ = 0.0f;
+  float last_wrapped_position_rad_ = 0.0f;
+  bool motor_position_initialized_ = false;
+  float logical_position_offset_rad_ = 0.0f;
   bool position_reference_is_set_ = false;
-  bool provisional_position_reference_initialized_ = false;
+  bool unreferenced_origin_initialized_ = false;
   TimePoint last_feedback_time_{};
   TimePoint last_request_time_{};
   TimePoint last_target_time_{};
@@ -178,4 +182,4 @@ private:
   TimePoint last_current_feedback_request_time_{};
   TimePoint error_time_{};
 };
-}  // namespace edulite05_driver
+} // namespace edulite05_driver

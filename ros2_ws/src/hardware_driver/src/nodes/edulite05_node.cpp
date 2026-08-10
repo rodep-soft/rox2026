@@ -19,40 +19,63 @@ Node::Node() : rclcpp::Node("edulite05_driver") {
 }
 
 void Node::declare_and_load_parameters() {
-  can_tx_topic_ = declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
-  can_rx_topic_ = declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
-  target_topic_ = declare_parameter<std::string>("target_topic", "/edulite/target");
-  target_array_topic_ = declare_parameter<std::string>("target_array_topic", "/edulite/target_array");
-  state_topic_ = declare_parameter<std::string>("state_topic", "/edulite/state");
-  state_array_topic_ = declare_parameter<std::string>("state_array_topic","/edulite/state_array");
-  set_position_service_name_ = declare_parameter<std::string>("set_position_service", "/edulite/set_position");
+  can_tx_topic_ =
+      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+  can_rx_topic_ =
+      declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
+  target_topic_ =
+      declare_parameter<std::string>("target_topic", "/edulite/target");
+  target_array_topic_ = declare_parameter<std::string>("target_array_topic",
+                                                       "/edulite/target_array");
+  state_topic_ =
+      declare_parameter<std::string>("state_topic", "/edulite/state");
+  state_array_topic_ = declare_parameter<std::string>("state_array_topic",
+                                                      "/edulite/state_array");
+  set_position_service_name_ = declare_parameter<std::string>(
+      "set_position_service", "/edulite/set_position");
 
-  const auto motor_names = declare_parameter<std::vector<std::string>>("motors", std::vector<std::string>{});
+  const auto motor_names = declare_parameter<std::vector<std::string>>(
+      "motors", std::vector<std::string>{});
 
   for (const auto &motor_name : motor_names) {
     const auto prefix = motor_name + ".";
-    const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
+    const auto logical_id =
+        declare_parameter<int64_t>(prefix + "logical_id", -1);
     const auto can_id = declare_parameter<int64_t>(prefix + "can_id", -1);
-    const auto control_mode_name = declare_parameter<std::string>(prefix + "control_mode", "velocity");
-    const auto current_limit = declare_parameter<double>(prefix + "current_limit", 11.0);
-    const auto acceleration = declare_parameter<double>(prefix + "acceleration", 150.0);
-    const auto speed_limit = declare_parameter<double>(prefix + "speed_limit", 50.0);
-    const auto command_period_ms = declare_parameter<int64_t>(prefix + "command_period_ms", 10);
-    const auto target_timeout_ms = declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
-    const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
-    const auto current_feedback_enabled = declare_parameter<bool>(prefix + "current_feedback_enabled", false);
-    const auto current_feedback_period_ms = declare_parameter<int64_t>(prefix + "current_feedback_period_ms", 100);
-    const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
-    const auto allow_unreferenced_position_commands =
-        declare_parameter<bool>(prefix + "allow_unreferenced_position_commands", false);
+    const auto control_mode_name =
+        declare_parameter<std::string>(prefix + "control_mode", "velocity");
+    const auto current_limit =
+        declare_parameter<double>(prefix + "current_limit", 11.0);
+    const auto acceleration =
+        declare_parameter<double>(prefix + "acceleration", 150.0);
+    const auto speed_limit =
+        declare_parameter<double>(prefix + "speed_limit", 50.0);
+    const auto command_period_ms =
+        declare_parameter<int64_t>(prefix + "command_period_ms", 10);
+    const auto target_timeout_ms =
+        declare_parameter<int64_t>(prefix + "target_timeout_ms", 200);
+    const auto feedback_timeout_ms =
+        declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+    const auto current_feedback_enabled =
+        declare_parameter<bool>(prefix + "current_feedback_enabled", false);
+    const auto current_feedback_period_ms =
+        declare_parameter<int64_t>(prefix + "current_feedback_period_ms", 100);
+    const auto reference_mode_name = declare_parameter<std::string>(
+        prefix + "position_reference_mode", "service");
+    const auto allow_unreferenced_position_commands = declare_parameter<bool>(
+        prefix + "allow_unreferenced_position_commands", false);
     const auto resume_position_on_startup =
         declare_parameter<bool>(prefix + "resume_position_on_startup", false);
-    const auto position_offset_rad = declare_parameter<double>(prefix + "position_offset_rad", 0.0);
-    const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
-    const auto maximum_position_rad = declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
+    const auto position_offset_rad =
+        declare_parameter<double>(prefix + "position_offset_rad", 0.0);
+    const auto minimum_position_rad =
+        declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
+    const auto maximum_position_rad =
+        declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
 
     if (logical_id < 0 || logical_id > 65535) {
-      throw std::runtime_error(motor_name + ": logical_id must be in [0, 65535]");
+      throw std::runtime_error(motor_name +
+                               ": logical_id must be in [0, 65535]");
     }
     if (can_id < 0 || can_id > 255) {
       throw std::runtime_error(motor_name + ": can_id must be in [0, 255]");
@@ -80,7 +103,8 @@ void Node::declare_and_load_parameters() {
           motor_name +
           ": position_reference_mode must be service or yaml_offset");
     }
-    if (control_mode == ControlMode::VELOCITY && position_reference_mode != PositionReferenceMode::SERVICE) {
+    if (control_mode == ControlMode::VELOCITY &&
+        position_reference_mode != PositionReferenceMode::SERVICE) {
       throw std::runtime_error(
           motor_name +
           ": position_reference_mode is only valid for PP/CSP motors");
@@ -99,12 +123,11 @@ void Node::declare_and_load_parameters() {
         static_cast<uint32_t>(command_period_ms),
         static_cast<uint32_t>(target_timeout_ms),
         static_cast<uint32_t>(feedback_timeout_ms), current_feedback_enabled,
-        static_cast<uint32_t>(current_feedback_period_ms), position_reference_mode,
-        static_cast<float>(position_offset_rad),
+        static_cast<uint32_t>(current_feedback_period_ms),
+        position_reference_mode, static_cast<float>(position_offset_rad),
         static_cast<float>(minimum_position_rad),
         static_cast<float>(maximum_position_rad),
-        allow_unreferenced_position_commands,
-        resume_position_on_startup});
+        allow_unreferenced_position_commands, resume_position_on_startup});
 
     RCLCPP_INFO(
         get_logger(),
@@ -115,7 +138,8 @@ void Node::declare_and_load_parameters() {
 }
 
 void Node::create_interfaces() {
-  const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+  const auto can_tx_qos =
+      rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
   const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
 
   can_frame_publisher_ =
@@ -162,7 +186,8 @@ void Node::can_frame_callback(can_msgs::msg::Frame::SharedPtr message) {
   }
 }
 
-void Node::target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr message) {
+void Node::target_callback(
+    actuator_msgs::msg::ActuatorTarget::SharedPtr message) {
   if (auto *motor = find_motor_by_logical_id(message->logical_id)) {
     motor->set_target(message->target);
     return;
@@ -172,7 +197,8 @@ void Node::target_callback(actuator_msgs::msg::ActuatorTarget::SharedPtr message
                        static_cast<unsigned>(message->logical_id));
 }
 
-void Node::target_array_callback(actuator_msgs::msg::ActuatorTargetArray::SharedPtr message) {
+void Node::target_array_callback(
+    actuator_msgs::msg::ActuatorTargetArray::SharedPtr message) {
   for (const auto &target : message->actuators) {
     if (auto *motor = find_motor_by_logical_id(target.logical_id)) {
       motor->set_target(target.target);
@@ -184,7 +210,9 @@ void Node::target_array_callback(actuator_msgs::msg::ActuatorTargetArray::Shared
   }
 }
 
-void Node::set_position_callback(const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request, std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response) {
+void Node::set_position_callback(
+    const std::shared_ptr<actuator_msgs::srv::SetPosition::Request> request,
+    std::shared_ptr<actuator_msgs::srv::SetPosition::Response> response) {
   auto *motor = find_motor_by_logical_id(request->logical_id);
   if (motor == nullptr) {
     response->success = false;
@@ -222,7 +250,8 @@ void Node::command_timer_callback() {
   if (auto frame = initialization_motor.create_initialization_frame()) {
     can_frame_publisher_->publish(*frame);
   }
-  initialization_motor_index_ = (initialization_motor_index_ + 1) % motors_.size();
+  initialization_motor_index_ =
+      (initialization_motor_index_ + 1) % motors_.size();
   for (auto &motor : motors_) {
     if (auto frame = motor.create_target_frame()) {
       can_frame_publisher_->publish(*frame);
@@ -243,10 +272,9 @@ void Node::state_timer_callback() {
     message.actuators.push_back(make_state_message(motor));
     if (motor.state() != MotorState::READY) {
       const auto diagnostic = motor.initialization_diagnostic();
-      RCLCPP_WARN_THROTTLE(
-          get_logger(), *get_clock(), 2000,
-          "%s initialization incomplete: %s",
-          motor.name().c_str(), diagnostic.c_str());
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                           "%s initialization incomplete: %s",
+                           motor.name().c_str(), diagnostic.c_str());
     }
   }
   state_array_publisher_->publish(message);
@@ -295,7 +323,7 @@ Protocol *Node::find_motor_by_logical_id(uint16_t logical_id) {
                                      });
   return iterator == motors_.end() ? nullptr : &*iterator;
 }
-}  // namespace edulite05_driver
+} // namespace edulite05_driver
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
