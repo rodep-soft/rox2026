@@ -31,3 +31,13 @@ ros2 param set /dribble_controller_node dribble_on_rpm 1000
 ros2 param set /dribble_controller_node dribble_position_rad 0.4
 ros2 param set /dribble_controller_node feeding_max_velocity_rad_s 3.5
 ```
+
+YAML全体も実行中に再読み込みできる。
+
+```bash
+ros2 param load /dribble_controller_node \
+  ros2_ws/src/robot_bringup/config/dribble_controller.yaml
+```
+
+topic、logical ID、QoS、指令周期はnode再起動が必要なparameterである。同じ値なら
+YAML全体の読み込みを許可し、変更されている場合だけ拒否する。

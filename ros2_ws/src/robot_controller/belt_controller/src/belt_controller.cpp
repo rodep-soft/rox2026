@@ -142,12 +142,35 @@ rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
         break;
       }
     }
-    if (!matched) {
-      rcl_interfaces::msg::SetParametersResult result;
-      result.successful = false;
-      result.reason = name + " cannot be changed while the node is running";
-      return result;
+    if (matched) {
+      continue;
     }
+
+    bool restart_required = true;
+    bool value_unchanged = false;
+    if (name == "emergency_stop_period_ms" || name == "qos_depth") {
+      value_unchanged =
+        parameter.as_int() == get_parameter(name).as_int();
+    } else if (name == "underbelt_logical_id") {
+      value_unchanged = parameter.as_int() == underbelt_logical_id_;
+    } else if (name == "upperbelt_logical_id") {
+      value_unchanged = parameter.as_int() == upperbelt_logical_id_;
+    } else if (name == "target_array_topic") {
+      value_unchanged =
+        parameter.as_string() == get_parameter(name).as_string();
+    } else {
+      restart_required = false;
+    }
+
+    if (restart_required && value_unchanged) {
+      continue;
+    }
+
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = false;
+    result.reason = restart_required ? name + " requires a node restart" :
+      name + " is not a supported parameter";
+    return result;
   }
 
   for (std::size_t level = 0; level < num_levels; ++level) {

@@ -161,6 +161,34 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       continue;
     }
 
+    bool restart_required = true;
+    bool value_unchanged = false;
+    if (name == "command_period_ms" || name == "qos_depth") {
+      value_unchanged =
+        parameter.as_int() == get_parameter(name).as_int();
+    } else if (name == "position_logical_id") {
+      value_unchanged = parameter.as_int() == position_logical_id_;
+    } else if (name == "roller_logical_id") {
+      value_unchanged = parameter.as_int() == roller_logical_id_;
+    } else if (name == "position_target_topic" ||
+      name == "roller_target_topic")
+    {
+      value_unchanged =
+        parameter.as_string() == get_parameter(name).as_string();
+    } else {
+      restart_required = false;
+    }
+
+    if (restart_required) {
+      if (value_unchanged) {
+        continue;
+      }
+      rcl_interfaces::msg::SetParametersResult result;
+      result.successful = false;
+      result.reason = name + " requires a node restart";
+      return result;
+    }
+
     trajectory_changed = true;
     if (name == "dribble_position_rad") {
       dribble_position_rad = parameter.as_double();
@@ -181,7 +209,7 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     } else {
       rcl_interfaces::msg::SetParametersResult result;
       result.successful = false;
-      result.reason = name + " cannot be changed while the node is running";
+      result.reason = name + " is not a supported parameter";
       return result;
     }
   }

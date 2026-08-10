@@ -99,6 +99,7 @@ flowchart LR
 - **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_4`)
 - **速度設定**: 各レベルの上下ベルトRPMを個別に設定でき、実行中のparameter変更にも対応
 - **送信方式**: 指令受信時は即時送信し、非常停止中のみゼロ指令を周期送信
+- **設定再読み込み**: `ros2 param load /belt_controller_node ros2_ws/src/robot_bringup/config/belt_controller.yaml`
 - **遷移**: 十字キー上下でレベル変更。`/emergency_stop == true` ➔ 0 RPM 停止。
 
 #### 🌀 `dribble_controller`
