@@ -1,4 +1,4 @@
-joy_controller:
+/joy_controller:
   ros__parameters:
     # 機構指令を保持する件数
     command_qos_depth: 1

@@ -1,4 +1,4 @@
-stm32_driver_node:
+/stm32_driver_node:
   ros__parameters:
     imu_topic: /imu/data        # STM32が送るint16のクォータニオン成分に掛ける係数
     imu_frame_id: imu_link

@@ -1,4 +1,4 @@
-edulite05_driver:
+/edulite05_driver:
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
     can_rx_topic: "/socketcan_bridge/rx"

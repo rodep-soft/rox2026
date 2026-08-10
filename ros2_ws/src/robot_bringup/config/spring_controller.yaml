@@ -1,4 +1,4 @@
-spring_controller_node:
+/spring_controller_node:
   ros__parameters:
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）。
     limit_switch_bit_offset: 0

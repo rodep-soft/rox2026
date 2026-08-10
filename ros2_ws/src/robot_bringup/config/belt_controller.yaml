@@ -1,4 +1,4 @@
-belt_controller_node:
+/belt_controller_node:
   ros__parameters:
     target_array_topic: "/vesc/target_array"
     upperbelt_logical_id: 10
