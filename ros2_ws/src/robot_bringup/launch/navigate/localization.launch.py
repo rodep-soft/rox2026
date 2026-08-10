@@ -40,12 +40,7 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-            Node(
-                package="robot_controller",
-                executable="mecanum_odometry_node",
-                parameters=[sensor_config, {"use_sim_time": use_sim_time}],
-                output="screen",
-            ),
+            # Wheel odometry is started with the mecanum controller bringup.
             Node(
                 package="rox_navigation",
                 executable="tag_localization_node",
