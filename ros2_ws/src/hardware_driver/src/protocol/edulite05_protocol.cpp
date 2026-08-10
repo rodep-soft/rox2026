@@ -80,6 +80,18 @@ std::string Protocol::initialization_diagnostic() const {
   case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO:
     step_name = "wait_after_mechanical_zero";
     break;
+  case InitializationStep::WRITE_SAFE_POSITION_REFERENCE:
+    step_name = "write_safe_position_reference";
+    break;
+  case InitializationStep::WAIT_AFTER_SAFE_POSITION_WRITE:
+    step_name = "wait_after_safe_position_write";
+    break;
+  case InitializationStep::READ_SAFE_POSITION_REFERENCE:
+    step_name = "read_safe_position_reference";
+    break;
+  case InitializationStep::WAIT_FOR_SAFE_POSITION_READ:
+    step_name = "wait_for_safe_position_read";
+    break;
   case InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO:
     step_name = "disable_after_mechanical_zero";
     break;
@@ -200,6 +212,24 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
       retry_initialization();
     }
     break;
+  case InitializationStep::WRITE_SAFE_POSITION_REFERENCE:
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_AFTER_SAFE_POSITION_WRITE;
+    return make_write_float_frame(config_.can_id, POSITION_REFERENCE, 0.0f);
+  case InitializationStep::WAIT_AFTER_SAFE_POSITION_WRITE:
+    if (current_time - last_request_time_ >= WRITE_SETTLING_TIME) {
+      initialization_step_ = InitializationStep::READ_SAFE_POSITION_REFERENCE;
+    }
+    break;
+  case InitializationStep::READ_SAFE_POSITION_REFERENCE:
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_FOR_SAFE_POSITION_READ;
+    return make_read_parameter_frame(config_.can_id, POSITION_REFERENCE);
+  case InitializationStep::WAIT_FOR_SAFE_POSITION_READ:
+    if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
+      retry_initialization();
+    }
+    break;
   case InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO:
     last_request_time_ = current_time;
     initialization_step_ =
@@ -316,7 +346,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame &message) {
       position_offset_ = -raw_position_;
       provisional_position_reference_initialized_ = true;
       initialization_retry_count_ = 0;
-      initialization_step_ = InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO;
+      initialization_step_ = InitializationStep::WRITE_SAFE_POSITION_REFERENCE;
     }
   }
 
@@ -406,6 +436,21 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   }
   const auto index = static_cast<uint16_t>(message.data[0]) |
                      (static_cast<uint16_t>(message.data[1]) << 8);
+  if (initialization_step_ == InitializationStep::WAIT_FOR_SAFE_POSITION_READ) {
+    if (index != POSITION_REFERENCE) {
+      return false;
+    }
+    float value = 0.0f;
+    std::memcpy(&value, message.data.data() + 4, sizeof(float));
+    if (status == RESET_STATUS_MODE && std::isfinite(value) &&
+        std::fabs(value) < 0.001f) {
+      initialization_retry_count_ = 0;
+      initialization_step_ = InitializationStep::DISABLE_AFTER_MECHANICAL_ZERO;
+      return true;
+    }
+    retry_initialization();
+    return false;
+  }
   if (initialization_step_ == InitializationStep::READY &&
       config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
       status == RESET_STATUS_MODE) {
@@ -497,6 +542,9 @@ void Protocol::retry_initialization() {
   } else if (initialization_step_ ==
              InitializationStep::WAIT_AFTER_MECHANICAL_ZERO) {
     initialization_step_ = InitializationStep::SET_MECHANICAL_ZERO;
+  } else if (initialization_step_ ==
+             InitializationStep::WAIT_FOR_SAFE_POSITION_READ) {
+    initialization_step_ = InitializationStep::WRITE_SAFE_POSITION_REFERENCE;
   } else {
     // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
