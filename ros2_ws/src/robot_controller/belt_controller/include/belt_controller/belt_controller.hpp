@@ -3,11 +3,13 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
+#include "actuator_msgs/msg/actuator_target_array.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
-#include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class BeltControllerNode : public rclcpp::Node
@@ -16,7 +18,7 @@ public:
   BeltControllerNode();
 
 private:
-  static constexpr std::size_t kNumLevels = 6;  ///< ベルト速度レベル数（LEVEL_1〜6）
+  static constexpr std::size_t num_levels = 4;
 
   enum class BeltMode : uint8_t
   {
@@ -25,38 +27,33 @@ private:
     LEVEL_2 = 2,
     LEVEL_3 = 3,
     LEVEL_4 = 4,
-    LEVEL_5 = 5,
-    LEVEL_6 = 6,
   };
-
-  void declare_parameters();
-  void get_parameters();
 
   void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void timer_callback();
+  void emergency_stop_timer_callback();
+  rcl_interfaces::msg::SetParametersResult parameter_callback(
+    const std::vector<rclcpp::Parameter> & parameters);
 
-  /// @brief 現在のベルトモードまたは直接RPMに対応する目標RPMを返す
-  int belt_target_rpm() const;
+  void publish_command();
 
   bool emergency_stop_active_{false};
   BeltMode belt_mode_{BeltMode::STOP};
   int direct_target_rpm_{0};
   bool use_direct_target_rpm_{false};
 
-  /// @brief LEVEL_1〜6 の目標RPMテーブル（インデックス0=LEVEL_1, ..., 5=LEVEL_6）
-  std::array<int, kNumLevels> level_rpms_{3000, 3500, 4000, 4500, 5000, 5500};
-  int command_period_ms_{10};
-  int qos_depth_{1};
+  std::array<int, num_levels> underbelt_rpms_{3000, 3500, 4000, 4500};
+  std::array<int, num_levels> upperbelt_rpms_{3000, 3500, 4000, 4500};
+  uint16_t underbelt_logical_id_{11};
+  uint16_t upperbelt_logical_id_{10};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr belt_target_rpm_sub_;
-
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr underbelt_command_pub_;
-  rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr upperbelt_command_pub_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_pub_;
+  rclcpp::TimerBase::SharedPtr emergency_stop_timer_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 
 #endif  // BELT_CONTROLLER__BELT_CONTROLLER_HPP_

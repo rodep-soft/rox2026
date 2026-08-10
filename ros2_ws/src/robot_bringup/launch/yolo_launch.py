@@ -2,7 +2,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -18,7 +22,9 @@ def launch_setup(context, *args, **kwargs):
         # RDK X5 BPU 加速 YOLO ノード (hobot_dnn_node / dnn_node_sample)
         try:
             dnn_share = get_package_share_directory("dnn_node_sample")
-            dnn_launch_file = os.path.join(dnn_share, "launch", "dnn_node_sample.launch.py")
+            dnn_launch_file = os.path.join(
+                dnn_share, "launch", "dnn_node_sample.launch.py"
+            )
             yolo_node = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(dnn_launch_file),
                 launch_arguments={

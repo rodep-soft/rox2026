@@ -4,154 +4,127 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 MecanumControllerNode::MecanumControllerNode()
 : Node("mecanum_controller_node")
 {
-  declare_parameters();
-  get_parameters();
+  configure_parameters();
 
-  create_interfaces();
-}
+  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
+  const auto emergency_stop_topic = declare_parameter<std::string>(
+    "emergency_stop_topic",
+    "/emergency_stop");
+  const auto target_array_topic = declare_parameter<std::string>(
+    "target_array_topic",
+    "/edulite/target_array");
+  auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 20);
+  auto qos_depth = declare_parameter<int>("qos_depth", 1);
 
-void MecanumControllerNode::declare_parameters()
-{
-  declare_parameter<double>("wheel_radius", 0.05);
-  declare_parameter<double>("robot_length", 0.47);
-  declare_parameter<double>("robot_width", 0.41);
-  declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
-  declare_parameter<std::vector<double>>(
-    "velocity_corrections",
-    {1.0, 1.0, 1.0, 1.0});
-  declare_parameter<double>("vx_sign", 1.0);
-  declare_parameter<double>("vy_sign", 1.0);
-  declare_parameter<double>("angular_z_sign", 1.0);
-  declare_parameter<int>("command_period_ms", 20);
-  declare_parameter<int>("qos_depth", 1);
-}
-
-void MecanumControllerNode::get_parameters()
-{
-  get_parameter("wheel_radius", wheel_radius_);
-  get_parameter("robot_length", robot_length_);
-  get_parameter("robot_width", robot_width_);
-  get_parameter("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
-  get_parameter("velocity_corrections", velocity_corrections_);
-  get_parameter("vx_sign", vx_sign_);
-  get_parameter("vy_sign", vy_sign_);
-  get_parameter("angular_z_sign", angular_z_sign_);
-  get_parameter("command_period_ms", command_period_ms_);
-  get_parameter("qos_depth", qos_depth_);
-
-  if (command_period_ms_ <= 0) {
-    command_period_ms_ = 20;
+  if (cmd_vel_topic.empty() || emergency_stop_topic.empty() || target_array_topic.empty()) {
+    throw std::runtime_error("topic parameters must not be empty");
+  }
+  if (emergency_stop_period_ms <= 0) {
+    RCLCPP_WARN(get_logger(), "emergency_stop_period_ms must be positive. Using 20 ms.");
+    emergency_stop_period_ms = 20;
+  }
+  if (qos_depth <= 0) {
+    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using 1.");
+    qos_depth = 1;
   }
 
-  constexpr std::size_t kNumWheels = 4;
-  if (velocity_corrections_.size() != kNumWheels) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "velocity_corrections must contain %zu elements, but %zu were provided",
-      kNumWheels, velocity_corrections_.size());
-    velocity_corrections_.assign(kNumWheels, 1.0);
+  // /mecanum/cmd_vel: joy_controllerから機体座標系の速度指令を受け取る。
+  cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
+    cmd_vel_topic, rclcpp::QoS(qos_depth),
+    std::bind(&MecanumControllerNode::cmd_vel_callback, this, std::placeholders::_1));
+
+  // /emergency_stop: joy_controllerから非常停止状態を受け取る。
+  const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
+  emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
+    emergency_stop_topic, emergency_stop_qos,
+    std::bind(&MecanumControllerNode::emergency_stop_callback, this, std::placeholders::_1));
+
+  // /edulite/target_array: hardware_driverへ4輪の目標角速度[rad/s]を送る。
+  target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
+    target_array_topic, rclcpp::QoS(qos_depth));
+
+  // 非常停止中だけ全輪ゼロを周期再送し、単発メッセージの欠落や遅延に備える。
+  emergency_stop_timer_ = create_wall_timer(
+    std::chrono::milliseconds(emergency_stop_period_ms), [this]() {
+      if (emergency_stop_active_) {
+        publish_wheel_commands();
+      }
+    });
+}
+
+void MecanumControllerNode::configure_parameters()
+{
+  wheel_radius_m_ = declare_parameter<double>("wheel_radius", 0.075);
+  robot_length_m_ = declare_parameter<double>("robot_length", 0.47);
+  robot_width_m_ = declare_parameter<double>("robot_width", 0.41);
+  max_wheel_vel_rad_s_ = declare_parameter<double>("max_wheel_velocity_rad_s", 50.0);
+  const auto wheel_logical_ids = declare_parameter<std::vector<int64_t>>(
+    "wheel_logical_ids", {0, 1,
+      2, 3});
+
+  if (wheel_logical_ids.size() != wheel_logical_ids_.size()) {
+    throw std::runtime_error("wheel_logical_ids must contain four elements");
   }
-  for (std::size_t index = 0; index < velocity_corrections_.size(); ++index) {
-    if (!std::isfinite(velocity_corrections_[index])) {
-      RCLCPP_WARN(
-        get_logger(),
-        "velocity_corrections[%zu] must be finite: %.6f. Using 1.0.",
-        index, velocity_corrections_[index]);
-      velocity_corrections_[index] = 1.0;
+
+  for (std::size_t index = 0; index < wheel_logical_ids.size(); ++index) {
+    if (wheel_logical_ids[index] < 0 || wheel_logical_ids[index] > 65535) {
+      throw std::runtime_error("wheel_logical_ids values must be in [0, 65535]");
     }
+    const auto logical_id = static_cast<uint16_t>(wheel_logical_ids[index]);
+    if (std::find(wheel_logical_ids_.cbegin(), wheel_logical_ids_.cbegin() + index, logical_id) !=
+      wheel_logical_ids_.cbegin() + index)
+    {
+      throw std::runtime_error("wheel_logical_ids values must be unique");
+    }
+    wheel_logical_ids_[index] = logical_id;
   }
-  if (qos_depth_ <= 0) {
-    RCLCPP_WARN(
-      get_logger(),
-      "qos_depth must be positive. Using the default value of 1.");
-    qos_depth_ = 1;
-  }
-  if (!std::isfinite(wheel_radius_) || wheel_radius_ <= 0.0) {
+
+  if (!std::isfinite(wheel_radius_m_) || wheel_radius_m_ <= 0.0) {
     RCLCPP_WARN(
       get_logger(),
       "wheel_radius must be finite and greater than zero: %.6f. "
-      "Using 0.05 m.",
-      wheel_radius_);
-    wheel_radius_ = 0.05;
+      "Using 0.075 m.",
+      wheel_radius_m_);
+    wheel_radius_m_ = 0.075;
   }
-  if (!std::isfinite(robot_length_) || robot_length_ < 0.0) {
+
+  if (!std::isfinite(robot_length_m_) || robot_length_m_ < 0.0) {
     RCLCPP_WARN(
       get_logger(),
       "robot_length must be finite and zero or greater: %.6f. Using 0.47 m.",
-      robot_length_);
-    robot_length_ = 0.47;
+      robot_length_m_);
+    robot_length_m_ = 0.47;
   }
-  if (!std::isfinite(robot_width_) || robot_width_ < 0.0) {
+
+  if (!std::isfinite(robot_width_m_) || robot_width_m_ < 0.0) {
     RCLCPP_WARN(
       get_logger(),
       "robot_width must be finite and zero or greater: %.6f. Using 0.41 m.",
-      robot_width_);
-    robot_width_ = 0.41;
+      robot_width_m_);
+    robot_width_m_ = 0.41;
   }
   constexpr double edulite_velocity_limit_rad_s = 50.0;
-  if (!std::isfinite(max_wheel_velocity_rad_s_) ||
-    max_wheel_velocity_rad_s_ <= 0.0 ||
-    max_wheel_velocity_rad_s_ > edulite_velocity_limit_rad_s)
+  if (!std::isfinite(max_wheel_vel_rad_s_) ||
+    max_wheel_vel_rad_s_ <= 0.0 ||
+    max_wheel_vel_rad_s_ > edulite_velocity_limit_rad_s)
   {
     RCLCPP_WARN(
       get_logger(),
       "max_wheel_velocity_rad_s must be in (0.0, 50.0]: %.6f. "
       "Using 50.0 rad/s.",
-      max_wheel_velocity_rad_s_);
-    max_wheel_velocity_rad_s_ = edulite_velocity_limit_rad_s;
+      max_wheel_vel_rad_s_);
+    max_wheel_vel_rad_s_ = edulite_velocity_limit_rad_s;
   }
-  const auto validate_sign = [this](const char * name, double & value)
-    {
-      if (std::isfinite(value) && value != 0.0) {
-        return;
-      }
-      RCLCPP_WARN(
-        get_logger(), "%s must be finite and nonzero: %.6f. Using 1.0.",
-        name, value);
-      value = 1.0;
-    };
-  validate_sign("vx_sign", vx_sign_);
-  validate_sign("vy_sign", vy_sign_);
-  validate_sign("angular_z_sign", angular_z_sign_);
 }
 
-void MecanumControllerNode::create_interfaces()
-{
-  // /mecanum/cmd_vel: joy_controllerから受ける機体座標系の走行速度指令。
-  cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-    "/mecanum/cmd_vel", rclcpp::QoS(qos_depth_),
-    std::bind(
-      &MecanumControllerNode::cmd_vel_callback, this,
-      std::placeholders::_1));
-  const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
-  emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", state_qos,
-    std::bind(
-      &MecanumControllerNode::emergency_stop_callback, this,
-      std::placeholders::_1));
-  // 各/vel_command: hardware_driverへ送る4輪それぞれの目標角速度 [rad/s]。
-  constexpr std::array<const char *, 4> wheel_velocity_topics = {
-    "/mecanum/fl/vel_command",
-    "/mecanum/fr/vel_command",
-    "/mecanum/rl/vel_command",
-    "/mecanum/rr/vel_command",
-  };
-  for (std::size_t index = 0; index < wheel_velocity_pubs_.size(); ++index) {
-    wheel_velocity_pubs_[index] = create_publisher<std_msgs::msg::Float32>(
-      wheel_velocity_topics[index], rclcpp::QoS(qos_depth_));
-  }
-
-  timer_ = create_wall_timer(
-    std::chrono::milliseconds(command_period_ms_),
-    std::bind(&MecanumControllerNode::publish_wheel_commands, this));
-}
-
-void MecanumControllerNode::cmd_vel_callback(
-  const geometry_msgs::msg::Twist::SharedPtr msg)
+void MecanumControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
   if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
     !std::isfinite(msg->angular.z))
@@ -176,37 +149,46 @@ void MecanumControllerNode::emergency_stop_callback(
 
 void MecanumControllerNode::publish_wheel_commands()
 {
-  double vx = last_cmd_vel_.linear.x * vx_sign_;
-  double vy = last_cmd_vel_.linear.y * vy_sign_;
-  double wz = last_cmd_vel_.angular.z * angular_z_sign_;
+  double vel_x_m_s = last_cmd_vel_.linear.x;
+  double vel_y_m_s = last_cmd_vel_.linear.y;
+  double angular_vel_rad_s = last_cmd_vel_.angular.z;
 
   if (emergency_stop_active_) {
-    vx = 0.0;
-    vy = 0.0;
-    wz = 0.0;
+    vel_x_m_s = 0.0;
+    vel_y_m_s = 0.0;
+    angular_vel_rad_s = 0.0;
   }
 
-  const double half_lw = (robot_length_ + robot_width_) / 2.0;
-  std::array<double, 4> wheel_vels;
-  wheel_vels[FL] = -(vx + vy - half_lw * wz) / wheel_radius_;
-  wheel_vels[FR] = (vx - vy + half_lw * wz) / wheel_radius_;
-  wheel_vels[RL] = -(vx - vy - half_lw * wz) / wheel_radius_;
-  wheel_vels[RR] = (vx + vy + half_lw * wz) / wheel_radius_;
+  // 逆運動学で4輪速度へ変換
+  const double rotation_radius_m = (robot_length_m_ + robot_width_m_) / 2.0;
+  std::array<double, 4> wheel_vels_rad_s;
+  wheel_vels_rad_s[FRONT_LEFT] = -(vel_x_m_s - vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[FRONT_RIGHT] = (vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[REAR_LEFT] = -(vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
+  wheel_vels_rad_s[REAR_RIGHT] = (vel_x_m_s - vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+    wheel_radius_m_;
 
-  double maximum_wheel_velocity = 0.0;
-  std::array<double, 4> corrected_wheel_vels;
-  for (std::size_t index = 0; index < wheel_vels.size(); ++index) {
-    corrected_wheel_vels[index] = wheel_vels[index] * velocity_corrections_[index];
-    maximum_wheel_velocity =
-      std::max(maximum_wheel_velocity, std::abs(corrected_wheel_vels[index]));
+  // 上限超過時は全輪を同率で縮小する
+  double max_abs_wheel_vel_rad_s = 0.0;
+  for (const double wheel_vel_rad_s : wheel_vels_rad_s) {
+    max_abs_wheel_vel_rad_s = std::max(max_abs_wheel_vel_rad_s, std::abs(wheel_vel_rad_s));
   }
 
-  const double velocity_scale = (maximum_wheel_velocity > max_wheel_velocity_rad_s_) ?
-    (max_wheel_velocity_rad_s_ / maximum_wheel_velocity) : 1.0;
+  // 上限超過時は全輪を同率で縮小する
+  const double wheel_vel_scale = max_abs_wheel_vel_rad_s > max_wheel_vel_rad_s_ ?
+    max_wheel_vel_rad_s_ / max_abs_wheel_vel_rad_s : 1.0;
 
-  for (std::size_t index = 0; index < wheel_vels.size(); ++index) {
-    std_msgs::msg::Float32 cmd_msg;
-    cmd_msg.data = static_cast<float>(corrected_wheel_vels[index] * velocity_scale);
-    wheel_velocity_pubs_[index]->publish(cmd_msg);
+  actuator_msgs::msg::ActuatorTargetArray command_message;
+  command_message.header.stamp = now();
+  command_message.actuators.reserve(wheel_vels_rad_s.size());
+  for (std::size_t index = 0; index < wheel_vels_rad_s.size(); ++index) {
+    actuator_msgs::msg::ActuatorTarget target;
+    target.logical_id = wheel_logical_ids_[index];
+    target.target = static_cast<float>(wheel_vels_rad_s[index] * wheel_vel_scale);
+    command_message.actuators.push_back(target);
   }
+  target_array_pub_->publish(command_message);
 }

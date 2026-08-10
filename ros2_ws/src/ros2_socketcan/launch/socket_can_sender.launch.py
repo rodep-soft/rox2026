@@ -39,6 +39,10 @@ def generate_launch_description():
                 "enable_can_fd": LaunchConfiguration("enable_can_fd"),
                 "enable_frame_loopback": LaunchConfiguration("enable_frame_loopback"),
                 "timeout_sec": LaunchConfiguration("timeout_sec"),
+                # Lifecycle transitions are managed by the event handlers below.
+                # Disable the component fallback to avoid configuring/activating twice.
+                "auto_configure": False,
+                "auto_activate": False,
             }
         ],
         remappings=[("to_can_bus", LaunchConfiguration("to_can_bus_topic"))],

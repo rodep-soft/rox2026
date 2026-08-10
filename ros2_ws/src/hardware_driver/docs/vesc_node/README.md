@@ -1,57 +1,36 @@
 # vesc_node
 
-機械RPMとVESC CAN protocolのERPMを相互変換するdriver nodeである。同じ実行ファイルを
-node名とYAML parameterだけ変えてunderbelt、upperbelt、dribbleの3台へ使用する。
+3台のVESCを1ノードで管理し、上位ノードのlogical ID付きRPM指令をVESC CANフレームへ変換する。
 
-## 関連ファイル
+## ROSインターフェース
 
-- node: `hardware_driver/src/nodes/vesc_node.cpp`
-- protocol: `hardware_driver/include/vesc_driver/vesc_protocol.hpp`
-- 設定: `robot_bringup/config/vesc_driver.yaml`
-- 起動: `robot_bringup/launch/hardware.launch.py`
+| 種別 | 既定名 | 型 | 用途 |
+|---|---|---|---|
+| subscribe | `/vesc/target` | `actuator_msgs/msg/ActuatorTarget` | 1台の機械RPM指令 |
+| subscribe | `/vesc/target_array` | `actuator_msgs/msg/ActuatorTargetArray` | 複数台の機械RPM指令 |
+| publish | `/vesc/state` | `actuator_msgs/msg/ActuatorState` | CAN受信時に更新された1台の状態 |
+| publish | `/vesc/state_array` | `actuator_msgs/msg/ActuatorStateArray` | 全VESCの周期状態 |
 
-nodeのconstructorでparameterとROS interface、protocolヘッダでCAN encode/decodeを読む。
-次に`target_rpm_callback()`、`can_callback()`、`timer_callback()`の順に読むとよい。
+VESCでは`target`と`state.velocity`の単位を機械RPMとして扱う。上位ノードはlogical IDだけを使用し、VESC CAN controller IDとERPM変換はhardware_driver内に閉じ込める。
 
-## node割り当て
+`state.current_a`にはStatus 1で受信したモーター電流[A]を格納する。回生時などは負の値になる。
 
-| node | 機構 | CAN ID | target/current |
-|---|---|---:|---|
-| `vesc_upper_belt_driver` | upperbelt | 51 | `/upperbelt/.../rpm` |
-| `vesc_under_belt_driver` | underbelt | 52 | `/underbelt/.../rpm` |
-| `vesc_dribble_driver` | dribble | 50 | `/dribble/.../rpm` |
+## モーター別パラメーター
 
-値はYAMLを正とし、実機ID変更時はREADMEとYAMLを同時に確認する。
+| パラメーター | 内容 |
+|---|---|
+| `logical_id` | ROS側で使用する一意なID |
+| `controller_id` | VESC CAN ID |
+| `command_timeout_ms` | 指令断で0 RPMへ移る時間 |
+| `feedback_timeout_ms` | 接続切れと判定する時間 |
+| `max_rpm` | 機械RPM指令の絶対値上限 |
+| `rpm_slew_rate` | 1秒あたりの機械RPM変化量 |
+| `startup_current_a` | 始動時の電流指令 [A] |
+| `rpm_control_threshold_rpm` | 電流制御からRPM制御へ切り替える機械RPM |
 
-## command処理
+停止状態から回転を始める場合と回転方向を反転する場合は、`startup_current_a`による
+電流制御を行う。回転方向が指令と一致し、実回転数が
+`rpm_control_threshold_rpm`に達するとRPM制御へ移行する。目標RPMが閾値より低い場合は、
+目標RPMを移行判定値として使用する。時間経過だけではRPM制御へ移行しない。
 
-`std_msgs/msg/Int16`の機械RPMを受け、絶対値が`max_rpm`以内なら保存する。
-20 ms timerで`rpm_slew_rate`の範囲内で目標へ近づけ、極対数7を掛けてERPMへ
-変換し、extended CANのSET_RPMを送る。
-SET_RPM IDは`(3 << 8) | controller_id`、DLC 4、dataはbig-endianである。
-
-最後の有効commandから`command_timeout_ms`を超えると0 ERPMを周期送信する。
-一度もcommandを受けていない場合はCAN frameを送らない。
-
-## feedback処理
-
-extended CAN、DLC 8、packet ID 9のSTATUS_1だけをdecodeする。controller IDが
-自nodeと違うframeは無視する。ERPMを7で割り、四捨五入してInt16へ制限する。
-
-起動または最終feedbackから`feedback_timeout_ms`を超えるとcurrent RPMのpublishを
-停止する。0や古い値を代わりに出さない。復帰時はINFOを出して再開する。
-
-## parameter不正
-
-- `controller_id`: 0〜255
-- timeout: 1 ms以上
-- `max_rpm`: 1〜32767
-- `rpm_slew_rate`: 1秒あたりのRPM変化量
-
-違反時は例外でnode起動を失敗させる。RPM commandの上限超過はnodeを止めず、
-そのmessageだけをWARN付きで破棄する。
-
-## 調査
-
-targetは出るが回らない場合、CAN ID、上限拒否WARN、SET_RPM frameを確認する。
-currentが出ない場合、VESCのSTATUS_1周期送信、ID、feedback timeoutを確認する。
+現在の割り当てはupper beltがlogical ID 10、under beltが11、dribbleが12である。

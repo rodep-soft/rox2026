@@ -20,16 +20,16 @@ class CameraInfoRelay(Node):
     def __init__(self):
         super().__init__("camera_info_relay")
 
-        self.declare_parameter("input_topic", "/StereoNetNode/rectify_left_image/camera_info")
+        self.declare_parameter(
+            "input_topic", "/StereoNetNode/rectify_left_image/camera_info"
+        )
         self.declare_parameter("output_topic", "/StereoNetNode/camera_info")
 
         input_topic = self.get_parameter("input_topic").value
         output_topic = self.get_parameter("output_topic").value
 
         self.pub = self.create_publisher(CameraInfo, output_topic, 10)
-        self.sub = self.create_subscription(
-            CameraInfo, input_topic, self._relay_cb, 10
-        )
+        self.sub = self.create_subscription(CameraInfo, input_topic, self._relay_cb, 10)
 
         self.get_logger().info(f"Relaying: {input_topic} -> {output_topic}")
 

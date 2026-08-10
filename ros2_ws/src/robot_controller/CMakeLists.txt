@@ -5,69 +5,80 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 find_package(ament_cmake REQUIRED)
+find_package(actuator_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-add_executable(mecanum_controller_node mecanum_controller/src/mecanum_controller_node.cpp
-                                       mecanum_controller/src/main.cpp)
-target_include_directories(
+function(add_controller target directory implementation)
+  set(library_target ${target}_implementation)
+
+  add_library(${library_target} STATIC ${directory}/src/${implementation})
+  target_include_directories(${library_target}
+                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
+  ament_target_dependencies(${library_target} ${ARGN})
+
+  add_executable(${target} ${directory}/src/main.cpp)
+  target_link_libraries(${target} PRIVATE ${library_target})
+
+  set(controller_nodes
+      ${controller_nodes} ${target}
+      PARENT_SCOPE)
+endfunction()
+
+add_controller(
   mecanum_controller_node
-  PRIVATE mecanum_controller/include)
-ament_target_dependencies(
-  mecanum_controller_node geometry_msgs rclcpp std_msgs)
-
-add_executable(spring_controller_node spring_controller/src/spring_edulite_controller.cpp)
-target_include_directories(
-  spring_controller_node
-  PRIVATE spring_controller/include)
-ament_target_dependencies(
-  spring_controller_node rclcpp std_msgs)
-
-add_executable(belt_controller_node belt_controller/src/belt_controller.cpp belt_controller/src/main.cpp)
-target_include_directories(
+  mecanum_controller
+  mecanum_controller_node.cpp
+  actuator_msgs
+  geometry_msgs
+  rclcpp
+  std_msgs)
+add_controller(spring_controller_node spring_controller spring_edulite_controller.cpp actuator_msgs rclcpp std_msgs)
+add_controller(
   belt_controller_node
-  PRIVATE belt_controller/include)
-ament_target_dependencies(
-  belt_controller_node rclcpp std_msgs)
-
-add_executable(dribbler_controller_node dribbler_controller/src/dribbler_controller.cpp
-                                        dribbler_controller/src/main.cpp)
-target_include_directories(
-  dribbler_controller_node
-  PRIVATE dribbler_controller/include)
-ament_target_dependencies(
-  dribbler_controller_node rclcpp std_msgs)
-
-add_executable(arm_position_controller_node arm_position_controller/src/arm_position_controller.cpp
-                                            arm_position_controller/src/main.cpp)
-target_include_directories(
-  arm_position_controller_node
-  PRIVATE arm_position_controller/include)
-ament_target_dependencies(
-  arm_position_controller_node rclcpp std_msgs)
-
-add_executable(game2_tactical_shooter_node game2_shooter/src/game2_tactical_shooter_node.cpp
-                                           game2_shooter/src/main.cpp)
-target_include_directories(
+  belt_controller
+  belt_controller.cpp
+  actuator_msgs
+  rclcpp
+  rcl_interfaces
+  std_msgs)
+add_controller(
+  dribble_controller_node
+  dribble_controller
+  dribble_controller.cpp
+  actuator_msgs
+  rclcpp
+  rcl_interfaces
+  std_msgs)
+add_controller(
   game2_tactical_shooter_node
-  PRIVATE game2_shooter/include)
-ament_target_dependencies(
-  game2_tactical_shooter_node geometry_msgs rclcpp sensor_msgs std_msgs tf2 tf2_ros)
+  game2_shooter
+  game2_tactical_shooter_node.cpp
+  geometry_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
+  tf2
+  tf2_ros)
+add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs)
 
-install(TARGETS mecanum_controller_node spring_controller_node belt_controller_node dribbler_controller_node
-                arm_position_controller_node game2_tactical_shooter_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY mecanum_controller/include/ DESTINATION include)
-install(DIRECTORY spring_controller/include/ DESTINATION include)
-install(DIRECTORY belt_controller/include/ DESTINATION include)
-install(DIRECTORY dribbler_controller/include/ DESTINATION include)
-install(DIRECTORY arm_position_controller/include/ DESTINATION include)
-install(DIRECTORY game2_shooter/include/ DESTINATION include)
+set(controller_include_directories mecanum_controller spring_controller led_controller belt_controller
+                                   dribble_controller game2_shooter)
+foreach(directory IN LISTS controller_include_directories)
+  install(DIRECTORY ${directory}/include/ DESTINATION include)
+endforeach()
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -77,13 +88,10 @@ if(BUILD_TESTING)
 
   find_package(ament_cmake_gtest QUIET)
   if(ament_cmake_gtest_FOUND)
-    ament_add_gtest(
-      test_robot_controller test/test_robot_controller.cpp belt_controller/src/belt_controller.cpp
-      arm_position_controller/src/arm_position_controller.cpp dribbler_controller/src/dribbler_controller.cpp
-      mecanum_controller/src/mecanum_controller_node.cpp)
-    target_include_directories(test_robot_controller PRIVATE belt_controller/include arm_position_controller/include
-                                                             dribbler_controller/include mecanum_controller/include)
-    ament_target_dependencies(test_robot_controller rclcpp std_msgs geometry_msgs sensor_msgs)
+    ament_add_gtest(test_robot_controller test/test_robot_controller.cpp)
+    target_link_libraries(
+      test_robot_controller belt_controller_node_implementation dribble_controller_node_implementation
+      mecanum_controller_node_implementation spring_controller_node_implementation)
   endif()
 endif()
 

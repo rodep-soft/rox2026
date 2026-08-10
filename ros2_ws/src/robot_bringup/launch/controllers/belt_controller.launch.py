@@ -6,11 +6,11 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    config_dir = os.path.join(
+    parameter_file = os.path.join(
         get_package_share_directory("robot_bringup"),
         "config",
+        "belt_controller.yaml",
     )
-    parameter_file = os.path.join(config_dir, "belt_controller.yaml")
 
     return LaunchDescription(
         [

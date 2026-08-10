@@ -16,8 +16,11 @@ STM32とのheartbeat、LED指令、limit switch受信を担当する。belt・dr
 |---|---:|---:|---|
 | RDK→STM32 | `0x101` | 0 | heartbeat |
 | STM32→RDK | `0x100` | 0 | heartbeat応答 |
-| RDK→STM32 | `0x201` | 1 | `/led/cmd`のUInt8 |
+| RDK→STM32 | `0x201` | 2 | `/led/cmd`のUInt16 |
 | STM32→RDK | `0x202` | 1 | limit switch 8 bit |
+
+LED command was extended to DLC 2: data[0] is the display mode and data[1] is
+the status flags. The ROS topic type is `std_msgs/msg/UInt16` (little endian).
 
 standard data frameだけを受け、上記受信ID以外は早期returnする。
 

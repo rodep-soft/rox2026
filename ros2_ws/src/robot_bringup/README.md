@@ -153,7 +153,7 @@ ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev
 | `use_edulite_dribble_position` | `true` | dribble位置用EduLite |
 
 SocketCAN bridgeはhardwareの選択に関係なく起動する。VESCのnode名は
-`vesc_driver_1`〜`3`で、各nodeは同じ`vesc_driver.yaml`から自分の名前に対応する
+`vesc_driver`で、1つのnodeが`vesc_driver.yaml`から全モーターに対応する
 parameterだけを読む。
 
 ## 機構別テストlaunch
@@ -178,6 +178,7 @@ ros2 launch robot_bringup test/robot_belt_dribble.launch.py
 | YAML | 対象 | 主な設定 |
 |---|---|---|
 | `joy_controller.yaml` | Joy変換 | button・axis index、timeout、速度上限 |
+| `dribble_controller.yaml` | dribble | ローラーRPM、姿勢角度、shot cycle時間・速度 |
 | `belt_dribble_controller.yaml` | belt・dribble | level RPM、許容差、feedback timeout |
 | `mecanum_controller.yaml` | mecanum | 寸法、補正係数、車輪速度上限 |
 | `spring_controller.yaml` | Spring | limit switch index、速度、時間 |

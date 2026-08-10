@@ -1,7 +1,8 @@
 # spring_controller_node
 
-Springの装填、待機、発射、異常停止を管理し、EduLite 05へ速度指令を送るnodeである。
-装填完了はSTM32がpublishするlimit switch状態から判断する。
+ばね用EduLite 05を一方向のProfile Position制御で動かすノード。
+起動時とEduLite再接続時にリミットスイッチで原点を取り、通常運転では
+発射要求ごとに累積位置目標へ1周分の負角度を加算する。
 
 ## 関連ファイル
 
@@ -10,58 +11,79 @@ Springの装填、待機、発射、異常停止を管理し、EduLite 05へ速�
 - 設定: `robot_bringup/config/spring_controller.yaml`
 - 起動: `robot_bringup/launch/controllers/spring_controller.launch.py`
 
-constructorの設定検証後、mode・fire・emergency・limit callbackを読み、
-最後に`timer_callback()`のstate switchを読むと全体を把握しやすい。
-
 ## 入出力
 
-| 種別 | topic | 型 | 内容 |
+| 種別 | topic/service | 型 | 内容 |
 |---|---|---|---|
-| sub | `/operation_mode` | `UInt8` | 発射可否 |
-| sub | `/emergency_stop` | `Bool` | 発射中断 |
-| sub | `/spring/fire_request` | `Bool` | 発射要求 |
-| sub | `/limit_switchs` | `UInt8` | STM32からのリミットスイッチbit列 |
-| pub | `/spring/vel_command` | `Float32` | EduLite速度[rad/s] |
+| sub | `/emergency_stop` | `Bool` | trueの間は目標値の更新を停止 |
+| sub | `/spring/fire_request` | `Bool` | 立ち上がりごとに1周分を加算 |
+| sub | `/limit_switchs` | `UInt8` | ホーミング用リミットスイッチ |
+| sub | `/edulite/state` | `ActuatorState` | 接続状態と原点設定状態 |
+| pub | `/edulite/target` | `ActuatorTarget` | logical ID 4の累積位置[rad] |
+| client | `/edulite/set_position` | `SetPosition` | リミット位置を0 radに設定 |
 
 ## 状態遷移
 
 ```text
-起動 → LOAD ── switch ON ──→ READY
-         │                    │
-         └ timeout → ERROR    └ fire要求 → FIRE
-              │                             │
-              └ switch ON → READY           └ duration経過 → LOAD
+起動・再接続
+    │
+    │ state.position_reference_set == false
+    ▼
+ HOMING ── limit ON / set_position(0)成功 ──→ READY
+    │                                         │
+    └──────── timeout → ERROR                 └ fire要求
+                                                  target += fire_increment_rad
 ```
 
-- `LOAD`: switch OFFの間、`loading_velocity_rad_s`を送る。
-- `READY`: switch ONで0 rad/s。switchがOFFへ戻るとLOAD。
-- `FIRE`: `fire_duration_sec`の間、`fire_velocity_rad_s`を送る。
-- `ERROR`: LOAD timeout後に0 rad/s。switch ONだけでREADYへ復帰。
+### HOMING
 
-発射要求はfalse→trueの立ち上がりだけを見る。設定正常、DRIVE、非常停止なし、
-READY、switch ONの全条件を満たした場合だけ予約される。
+EduLiteドライバは未原点中も`position_reference_set=false`を配信する。
+上位ノードは`command_period_ms`ごとに次の差分を累積目標へ加える。
 
-## STOP・非常停止の注意
+```text
+-homing_velocity_rad_s * command_period_ms / 1000
+```
 
-STOP、SHOT_CYCLE、BELT_ONLY、emergency stopではFIREを中断する。ただし未装填なら
-`prepare_spring_for_stop()`がLOADを開始するため、Spring motorは0にならず装填方向へ
-回り続ける。現在の`/emergency_stop`はSpringの即時motor停止ではない。
+したがってホーミング指令は負方向へゆっくり進む。リミット検出後、
+上位ノードが`/edulite/set_position`を呼び、現在位置と累積目標を0 radへ戻す。
 
-## parameterと異常
+### READY
 
-速度は有限かつ絶対値50 rad/s以下、duration・timeoutは0より大きい必要がある。
-設定不正ではnodeは動作を続けるが、毎周期0 rad/sをpublishする。
+発射要求のfalse→true立ち上がりごとに次だけを実行する。
 
-`limit_switch_bit_offset`で、受信した`/limit_switchs`のbyte内から装填判定に使うbit位置を指定する。
-LOADが`load_timeout_sec`を超える場合はERRORログにswitch値と速度を出す。
+```text
+target_position_rad += fire_increment_rad
+```
+
+`fire_increment_rad`は必ず負値とする。装填・発射タイマーや逆方向への復帰処理はない。
+リミットスイッチは通常発射中には使用しない。
+
+## 再接続と非常停止
+
+EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ破棄する。
+再びREADYになっても`position_reference_set=false`なら、必ずHOMINGから再開する。
+
+非常停止中は累積目標値を変更しない。解除後も同じ目標位置を維持する。
+非常停止中に届いた発射要求は拒否する。
+
+## 主なパラメータ
+
+| parameter | 内容 |
+|---|---|
+| `fire_increment_rad` | 発射要求1回で加算する負角度[rad] |
+| `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
+| `homing_timeout_sec` | ホーミングのタイムアウト[s] |
+| `command_period_ms` | 位置目標の更新・再送周期[ms] |
+| `limit_switch_bit_offset` | リミットスイッチbyte内の使用bit |
 
 ## 確認方法
 
 ```bash
+ros2 topic echo /edulite/state
 ros2 topic echo /limit_switchs
-ros2 topic echo /spring/vel_command
+ros2 topic echo /edulite/target
 ros2 topic pub --once /spring/fire_request std_msgs/msg/Bool "{data: true}"
 ```
 
-単体発射前にDRIVEであること、対象switchがONであること、機構周辺が安全であることを
-必ず確認する。
+発射前に、logical ID 4の`position_reference_set`がtrueであることと、
+機構周辺が安全であることを確認する。

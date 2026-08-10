@@ -54,14 +54,15 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 
 | 入力 | 動作 |
 |---|---|
-| Home | 非常停止のON/OFFを切替。ON時は走行、belt、dribblerへ停止指令を送る |
-| Options | Game2自動戦術モードのON/OFFを切替 |
-| DPAD上 / 下 | R2を押していないとき、belt modeをSTOPとLEVEL_1〜LEVEL_6の範囲で増減 |
-| R1 | dribbler ON/OFF |
-| L1 + R1 + △ | Spring発射要求 |
-| L2 + ○ | armの自動shot cycleを要求 |
-| DPAD左 | armをOPEN位置へ移動 |
-| DPAD右 | armをFEED位置へ移動 |
+| Home | STOPへ移動。STOP中はDRIVEへ戻る |
+| Create | STOP・DRIVEからSHOT_CYCLEへ移動。同modeの待機中はDRIVEへ戻る |
+| Options | STOP・DRIVEからBELT_ONLYへ移動。同mode中はDRIVEへ戻る |
+| DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_4の範囲で増減 |
+| R1 | dribble ON/OFF。DRIVE・SHOT_CYCLEだけで受理 |
+| L2 + R2 | Spring発射要求。両方が押された瞬間に1回だけtrueを送る |
+| L2 + ○ | SHOT_CYCLE中の実行要求 |
+| R2 + DPAD左 | DRIBBLE位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
+| R2 + DPAD右 | OPEN位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
 | PS | `linear.x/y`の前後左右反転 |
 
 Game2モード中にスティック入力があれば、Game2モードを解除して手動走行へ戻る。
@@ -78,7 +79,9 @@ Joy通信が途切れた場合は、走行0、belt STOP、dribbler OFFをpublish
 5. Game2が有効でなければ、stick入力を`cmd_vel`へ変換してpublishする。
 6. 現在の入力を前回値として保存する。
 
-button・DPAD操作は基本的に立ち上がり判定なので、押し続けても連続実行しない。
+button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
+SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続けても再発射しない。
+再発射する場合は、どちらか一方を離してから再度同時押しする。
 
 ## stick処理
 
@@ -103,27 +106,44 @@ button・DPAD操作は基本的に立ち上がり判定なので、押し続け�
 
 | callback | 実行契機 | 役割 |
 |---|---|---|
-| `joy_callback` | `/joy`受信時 | 最新のJoyメッセージと受信時刻を保存する。 |
-| `loop_callback` | 10ms周期 | 保存した入力の立ち上がりを判定し、非常停止、機構指令、Game2切替、走行指令を処理する。 |
-| `state_publish_timer_callback` | `state_publish_period_ms`周期 | emergency stop、belt mode、dribbler enabledを再送する。 |
-| `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視し、超過時に走行・belt・dribblerの停止指令を送る。 |
+| `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/mecanum/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
+| `state_publish_timer_callback` | `state_publish_period_ms`周期 | emergency stop、belt mode、dribble enabledを再送する。 |
+| `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視する。最後の入力から`joy_timeout_ms`を超えた場合は、STOPと各停止指令を即時publishする。 |
+| `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
+| `shot_cycle_complete_callback` | `/shot_cycle/complete`受信時 | shot cycle完了を受け取り、`auto_drive_on_shot_cycle_complete`に従ってDRIVEへ復帰する。 |
 
 ## parameter
 
 | parameter | 型 | 説明 |
 |---|---|---|
-| `joy_qos_depth` | int | SensorDataQoSで保持するJoy入力件数。0以下なら1 |
 | `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | `int` | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
-| `linear_x_limit` | double | 前後速度係数[m/s]。負値・非finiteなら2.0 |
-| `linear_y_limit` | double | 左右速度係数[m/s]。負値・非finiteなら2.0 |
-| `angular_z_limit` | double | 旋回速度係数[rad/s]。負値・非finiteなら2.0 |
-| `linear_x_scale` | double | 前後速度へ追加で掛ける倍率。非finiteなら1 |
-| `linear_y_scale` | double | 左右速度へ追加で掛ける倍率。非finiteなら1 |
-| `angular_z_scale` | double | 旋回速度へ追加で掛ける倍率。非finiteなら1 |
+| `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |
+| `linear_y_limit` | double | スティック全倒し時の最大左右速度[m/s] |
+| `angular_z_limit` | double | スティック全倒し時の最大旋回速度[rad/s] |
+
+Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
+変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは
+軸ごとに1つだけである。この3つの速度parameterは実行中にも変更できる。
+
+`/joy`のsubscriptionには、最新入力を優先する`SensorDataQoS`を使用する。
+
+### 実行中のYAML再読み込み
+
+次のコマンドで、速度、Joy timeout、deadzone、しきい値、button・axis配置を
+実行中のnodeへまとめて反映できる。
+
+```bash
+ros2 param load /joy_controller \
+  src/robot_bringup/config/joy_controller.yaml
+```
+
+`command_qos_depth`と`state_publish_period_ms`はROS interfaceまたはtimerの再生成が
+必要になるため、実行中には変更できない。YAML内の値が現在値と同じ場合は、そのまま
+読み込みを許可する。
 
 button・axis indexもすべてparameterである。対応表を変更する場合は
 `sensor_msgs/msg/Joy`の実データを確認し、README先頭の配置表と
@@ -138,8 +158,6 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | 2 | LEVEL_2 |
 | 3 | LEVEL_3 |
 | 4 | LEVEL_4 |
-| 5 | LEVEL_5 |
-| 6 | LEVEL_6 |
 
 ### position
 
