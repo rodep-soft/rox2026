@@ -74,11 +74,11 @@ flowchart LR
      ▼ /shot_cycle/start (true) をパブリッシュ
 [ dribble_controller ]
      │
-     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームがパカッと開いてボール受球
-     │     │ (目標角度到達)
+     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームが開いてボールを受ける
+     │     │ 0.3秒間保持
      │     ▼
      ├──② [ Mode: FEED (1.3 rad) ] ───> ボールをベルトへグッと押し込み（シュート！）
-     │     │ (目標角度到達 ➔ 0.6秒保持)
+     │     │ 0.6秒間保持
      │     ▼
      └──③ [ Mode: DRIBBLE (0.35 rad) ] ─> 通常姿勢へ自動復帰
 ```
