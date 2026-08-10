@@ -62,11 +62,11 @@ std::string Protocol::initialization_diagnostic() const {
   case InitializationStep::WAIT_BEFORE_POSITION_RESUME:
     step_name = "wait_before_position_resume";
     break;
-  case InitializationStep::READ_STORED_POSITION_REFERENCE:
-    step_name = "read_stored_position_reference";
+  case InitializationStep::READ_CURRENT_MECHANICAL_POSITION:
+    step_name = "read_current_mechanical_position";
     break;
-  case InitializationStep::WAIT_FOR_STORED_POSITION_REFERENCE:
-    step_name = "wait_for_stored_position_reference";
+  case InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION:
+    step_name = "wait_for_current_mechanical_position";
     break;
   case InitializationStep::WRITE_PARAMETER:
     step_name = "write";
@@ -95,7 +95,12 @@ std::string Protocol::initialization_diagnostic() const {
   }
   std::ostringstream stream;
   stream << "step=" << step_name;
-  if (initialization_parameter_index_ < initialization_parameters_.size()) {
+  if (initialization_step_ == InitializationStep::READ_CURRENT_MECHANICAL_POSITION ||
+      initialization_step_ == InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION) {
+    stream << " register=0x" << std::hex << std::uppercase
+           << MECHANICAL_POSITION;
+  } else if (initialization_parameter_index_ <
+             initialization_parameters_.size()) {
     stream << " register=0x" << std::hex << std::uppercase
            << initialization_parameters_[initialization_parameter_index_].index;
   }
@@ -150,16 +155,15 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
     initialization_step_ = InitializationStep::WAIT_BEFORE_POSITION_RESUME;
     return make_disable_frame(config_.can_id);
   case InitializationStep::WAIT_BEFORE_POSITION_RESUME:
-    if (current_time - last_request_time_ >= POSITION_RESUME_SETTLING_TIME &&
-        raw_position_initialized_) {
-      initialization_step_ = InitializationStep::READ_STORED_POSITION_REFERENCE;
+    if (current_time - last_request_time_ >= POSITION_RESUME_SETTLING_TIME) {
+      initialization_step_ = InitializationStep::READ_CURRENT_MECHANICAL_POSITION;
     }
     break;
-  case InitializationStep::READ_STORED_POSITION_REFERENCE:
+  case InitializationStep::READ_CURRENT_MECHANICAL_POSITION:
     last_request_time_ = current_time;
-    initialization_step_ = InitializationStep::WAIT_FOR_STORED_POSITION_REFERENCE;
-    return make_read_parameter_frame(config_.can_id, POSITION_REFERENCE);
-  case InitializationStep::WAIT_FOR_STORED_POSITION_REFERENCE:
+    initialization_step_ = InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION;
+    return make_read_parameter_frame(config_.can_id, MECHANICAL_POSITION);
+  case InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION:
     if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
       retry_initialization();
     }
@@ -339,24 +343,22 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame &message) {
   const auto index = static_cast<uint16_t>(message.data[0]) |
                      (static_cast<uint16_t>(message.data[1]) << 8);
   if (initialization_step_ ==
-      InitializationStep::WAIT_FOR_STORED_POSITION_REFERENCE) {
-    if (index != POSITION_REFERENCE) {
+      InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION) {
+    if (index != MECHANICAL_POSITION) {
       return false;
     }
-    float stored_position = 0.0f;
-    std::memcpy(&stored_position, message.data.data() + 4, sizeof(float));
-    if (status != RESET_STATUS_MODE || !std::isfinite(stored_position)) {
+    float current_position = 0.0f;
+    std::memcpy(&current_position, message.data.data() + 4, sizeof(float));
+    if (status != RESET_STATUS_MODE || !std::isfinite(current_position)) {
       retry_initialization();
       return false;
     }
     constexpr float feedback_position_period = 8.0f * PI;
-    const float resumed_position =
-        last_wrapped_position_ +
-        std::round((stored_position - last_wrapped_position_) /
-                   feedback_position_period) *
-            feedback_position_period;
-    raw_position_ = resumed_position;
-    position_offset_ = -resumed_position;
+    raw_position_ = current_position;
+    last_wrapped_position_ =
+        std::remainder(current_position, feedback_position_period);
+    raw_position_initialized_ = true;
+    position_offset_ = -current_position;
     feedback_.position = 0.0f;
     provisional_position_reference_initialized_ = true;
     initialization_retry_count_ = 0;
@@ -449,8 +451,8 @@ void Protocol::retry_initialization() {
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     initialization_step_ = InitializationStep::ENABLE;
   } else if (initialization_step_ ==
-             InitializationStep::WAIT_FOR_STORED_POSITION_REFERENCE) {
-    initialization_step_ = InitializationStep::READ_STORED_POSITION_REFERENCE;
+             InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION) {
+    initialization_step_ = InitializationStep::READ_CURRENT_MECHANICAL_POSITION;
   } else {
     // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
