@@ -306,7 +306,7 @@ void JoyControllerNode::loop_callback()
     if (game2_active_) {
       double raw_vx = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
       double raw_vy = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
-      double raw_wz = apply_axis_deadzone(get_axis_value(joy_msg_, right_stick_x_axis_));
+      double raw_wz = apply_axis_deadzone(-get_axis_value(joy_msg_, right_stick_x_axis_));
 
       if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
         game2_active_ = false;
@@ -344,7 +344,7 @@ void JoyControllerNode::loop_callback()
     // 10. アナログスティックによるメカナム走行速度の算出 (Game 2 モード非アクティブ時)
     if (!game2_active_) {
       double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
-      double raw_vy = -get_axis_value(joy_msg_, left_stick_x_axis_);
+      double raw_vy = get_axis_value(joy_msg_, left_stick_x_axis_);
       double raw_wz = -get_axis_value(joy_msg_, right_stick_x_axis_);
 
       if (is_drive_reversed_) {
