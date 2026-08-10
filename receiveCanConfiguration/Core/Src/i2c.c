@@ -38,7 +38,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00201D2B;
+  hi2c1.Init.Timing = 0x00100004;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -60,7 +60,7 @@ void MX_I2C1_Init(void)
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 4) != HAL_OK)
   {
     Error_Handler();
   }

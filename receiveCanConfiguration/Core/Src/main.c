@@ -19,12 +19,14 @@
 #include "limit_switch.h"
 #include "LED_lite.h"
 #include "bno055_hal.h"
+#include "bno055_calibration.h"
+//#include "bno055_uart.h"
 #include <stdbool.h>
 
 // --- CANから受け取る指令値 ---
 volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
 volatile int received_LED_cmd;
-volatile uint8_t received_LED_status = 0U;
+volatile int received_LED_status;
 
 // --- CAN通信用の変数 ---
 CAN_RxHeaderTypeDef RxHeader;
@@ -47,6 +49,8 @@ uint8_t b;
 
 #define BNO055_RETRY_INTERVAL_MS  1000U
 #define BNO055_MAX_READ_ERRORS    3U
+#define BNO055_CALIBRATION_CHECK_PERIOD_MS 1000U
+#define BNO055_CALIBRATION_STABLE_SAMPLES 5U
 #define CAN_RETRY_INTERVAL_MS       1000U
 #define CAN_MAX_TX_ERRORS           10U
 
@@ -61,10 +65,11 @@ uint32_t last_bno055_retry_time = 0;
 uint32_t bno055_init_error_count = 0;
 uint32_t bno055_read_error_count = 0;
 uint32_t bno055_tx_count = 0;
-volatile BNO055_Status debug_bno_init_status = BNO055_ERROR;
-volatile uint16_t debug_bno_i2c_address = 0U;
-volatile uint8_t debug_bno_chip_id = 0U;
-volatile uint32_t debug_bno_init_duration_ms = 0U;
+uint32_t last_bno055_calibration_check_time = 0;
+uint32_t bno055_calibration_save_error_count = 0;
+bool bno055_calibration_profile_saved = false;
+bool bno055_calibration_profile_restored = false;
+uint8_t bno055_calibration_stable_count = 0U;
 
 BNO055_Handle bno055;
 BNO055_Quaternion imu_quat;
@@ -74,6 +79,28 @@ BNO055_Calibration imu_calib;
 uint32_t last_loop_time;
 uint32_t last_bno_com_time;
 uint32_t bno_com_priod;
+
+volatile uint32_t debug_invalid_quat_count = 0;
+volatile int16_t debug_bad_qx = 0;
+volatile int16_t debug_bad_qy = 0;
+volatile int16_t debug_bad_qz = 0;
+volatile int16_t debug_bad_qw = 0;
+volatile uint32_t debug_bad_norm_sq = 0;
+
+volatile uint8_t debug_page_id = 0;
+volatile uint8_t debug_system_status = 0;
+//volatile uint8_t debug_self_test = 0;
+volatile uint8_t debug_system_error = 0;
+
+volatile uint8_t debug_operation_mode  = 0xFFU;
+volatile uint8_t debug_sys_status = 0xFFU;
+volatile uint8_t debug_self_test = 0xFFU;
+volatile uint8_t debug_sys_error = 0xFFU;
+
+volatile int16_t debug_gyro_x = 0;
+volatile int16_t debug_gyro_y = 0;
+volatile int16_t debug_gyro_z = 0;
+volatile BNO055_Status debug_gyro_status = BNO055_ERROR;
 
 /* USER CODE END Includes */
 
@@ -1015,67 +1042,89 @@ void shining_LED(int received_LED_cmd) {
 	show();
 }
 
-#define BNO055_REG_CHIP_ID_LOCAL 0x00U
-#define BNO055_CHIP_ID_LOCAL     0xA0U
-#define BNO055_PROBE_TIMEOUT_MS  5U
-
-static bool BNO055_ProbeAddress(uint16_t address, uint8_t *chip_id) {
-	if (HAL_I2C_IsDeviceReady(&hi2c1, address, 1U,
-			BNO055_PROBE_TIMEOUT_MS) != HAL_OK) {
-		return false;
-	}
-
-	if (HAL_I2C_Mem_Read(&hi2c1, address, BNO055_REG_CHIP_ID_LOCAL,
-			I2C_MEMADD_SIZE_8BIT, chip_id, 1U,
-			BNO055_PROBE_TIMEOUT_MS) != HAL_OK) {
-		return false;
-	}
-
-	return *chip_id == BNO055_CHIP_ID_LOCAL;
-}
-
+//BNO055の初期化関数
 static bool BNO055_TryInitialize(void) {
-	const uint32_t start_ms = HAL_GetTick();
-	uint16_t address = 0U;
-	uint8_t chip_id = 0U;
-	BNO055_Status status = BNO055_ERROR;
+	BNO055_Status status;
+	uint8_t calibration_profile[BNO055_CALIBRATION_PROFILE_SIZE];
 
-	/* Detect both legal BNO055 addresses without a long blocking reset. */
-	if (BNO055_ProbeAddress(BNO055_I2C_ADDR_LOW, &chip_id)) {
-		address = BNO055_I2C_ADDR_LOW;
-	} else if (BNO055_ProbeAddress(BNO055_I2C_ADDR_HIGH, &chip_id)) {
-		address = BNO055_I2C_ADDR_HIGH;
+	/*
+	 * NDOF uses accelerometer + gyroscope + magnetometer.  The quaternion is
+	 * therefore referenced to gravity and magnetic north instead of only to
+	 * the orientation at startup (IMUPLUS).
+	 */
+	status = BNO055_Init(&bno055, &hi2c1,
+	BNO055_I2C_ADDR_LOW, BNO055_MODE_NDOF);
+
+	/* A valid Flash profile removes the need for manual calibration at boot. */
+	bno055_calibration_profile_restored = false;
+	bno055_calibration_profile_saved =
+			BNO055_CalibrationStorageLoad(calibration_profile);
+	if ((status == BNO055_OK) && bno055_calibration_profile_saved) {
+		status = BNO055_ApplyCalibrationProfile(&bno055, calibration_profile);
+		bno055_calibration_profile_restored = (status == BNO055_OK);
 	}
 
-	debug_bno_i2c_address = address;
-	debug_bno_chip_id = chip_id;
-
-	if (address != 0U) {
-		bno055.hi2c = &hi2c1;
-		bno055.address = address;
-		bno055.mode = BNO055_MODE_CONFIG;
-
-		/* Restore the operating mode; do not reset and wait 700 ms on retry. */
-		status = BNO055_SetMode(&bno055, BNO055_MODE_CONFIG);
-		if (status == BNO055_OK) {
-			status = BNO055_SetMode(&bno055, BNO055_MODE_NDOF);
-		}
-	}
-
-	debug_bno_init_status = status;
-	debug_bno_init_duration_ms = HAL_GetTick() - start_ms;
-
+	//初期化に成功したら，デバック用に各種ステータスを読み取って終了
 	if (status == BNO055_OK) {
 		bno055_connected = true;
 		bno055_read_error_count = 0;
-
+		HAL_Delay(10);
+		(void)BNO055_ReadOperationMode(&bno055,
+				(uint8_t*) &debug_operation_mode );
+		HAL_Delay(2U);
+		(void)BNO055_ReadSystemStatus(&bno055,
+				(uint8_t*) &debug_sys_status, (uint8_t*) &debug_self_test,
+				(uint8_t*) &debug_sys_error);
 		return true;
 	}
-
+	// 失敗したら，再度呼ばれるまで待機
 	bno055_connected = false;
 	bno055_init_error_count++;
 
 	return false;
+}
+
+static void BNO055_CalibrationTask(uint32_t now_ms) {
+	uint8_t calibration_profile[BNO055_CALIBRATION_PROFILE_SIZE];
+
+	if (!bno055_connected || bno055_calibration_profile_saved) {
+		return;
+	}
+	if ((uint32_t)(now_ms - last_bno055_calibration_check_time) <
+			BNO055_CALIBRATION_CHECK_PERIOD_MS) {
+		return;
+	}
+	last_bno055_calibration_check_time = now_ms;
+
+	if (BNO055_ReadCalibration(&bno055, &imu_calib) != BNO055_OK) {
+		bno055_calibration_stable_count = 0U;
+		return;
+	}
+	if (!BNO055_IsFullyCalibrated(&imu_calib)) {
+		bno055_calibration_stable_count = 0U;
+		return;
+	}
+	if (bno055_calibration_stable_count < BNO055_CALIBRATION_STABLE_SAMPLES) {
+		bno055_calibration_stable_count++;
+	}
+	if (bno055_calibration_stable_count < BNO055_CALIBRATION_STABLE_SAMPLES) {
+		return;
+	}
+
+	/* This path runs only once in the lifetime of the saved profile. */
+	if ((BNO055_ReadCalibrationProfile(&bno055, calibration_profile) == BNO055_OK) &&
+			BNO055_CalibrationStorageSave(calibration_profile)) {
+		bno055_calibration_profile_saved = true;
+	} else {
+		bno055_calibration_save_error_count++;
+	}
+}
+
+/* Reset a wedged I2C peripheral before attempting to configure the sensor. */
+static bool BNO055_Recover(void) {
+	(void)HAL_I2C_DeInit(&hi2c1);
+	MX_I2C1_Init();
+	return BNO055_TryInitialize();
 }
 static bool CAN_TryInitialize(void) {
 	CAN_FilterTypeDef filter = { 0 };
@@ -1133,7 +1182,47 @@ static bool CAN_TryInitialize(void) {
 	can_connected = true;
 	can_tx_error_count = 0;
 	can_restart_count++;
+	CAN_ResetTxDiagnostics();
+	LimitSwitch_Init(HAL_GetTick());
 
+	return true;
+}
+
+static bool BNO055_ReadAndSend(void) {
+	BNO055_Status read_status = BNO055_ReadQuaternion(&bno055, &imu_quat);
+	if (read_status != BNO055_OK) {
+		return false;
+	}
+	bno055_read_error_count = 0;
+
+	int32_t qx = imu_quat.x;
+	int32_t qy = imu_quat.y;
+	int32_t qz = imu_quat.z;
+	int32_t qw = imu_quat.w;
+
+	uint64_t norm_sq = (uint32_t) (qx * qx + qy * qy + qz * qz + qw * qw);
+	const uint64_t nominal = 16384UL * 16384UL;
+	const uint64_t lower = nominal * 90UL / 100UL;
+	const uint64_t upper = nominal * 110UL / 100UL;
+	if ((norm_sq < lower) || (norm_sq > upper)) {
+		debug_invalid_quat_count++;
+		debug_bad_qx = imu_quat.x;
+		debug_bad_qy = imu_quat.y;
+		debug_bad_qz = imu_quat.z;
+		debug_bad_qw = imu_quat.w;
+		debug_bad_norm_sq = norm_sq;
+	}
+
+	CAN_SendResult send_result = CAN_SendBno055Quaternion(
+			imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w);
+	if (send_result == CAN_SEND_OK) {
+		can_tx_error_count = 0;
+		bno055_tx_count++;
+		bno_com_priod = HAL_GetTick() - last_bno_com_time;
+		last_bno_com_time = HAL_GetTick();
+	} else if (send_result == CAN_SEND_ERROR) {
+		can_tx_error_count++;
+	}
 	return true;
 }
 
@@ -1192,89 +1281,73 @@ int main(void)
 
 	// LEDの初期化
 	last_can_rx_time = HAL_GetTick();
+	last_loop_time = HAL_GetTick();
+	last_bno_com_time = last_loop_time;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		// --- 1. 通信のタイムアウト＆非常停止の監視 ---
+		//ループ周期調整
 		uint32_t now = HAL_GetTick();
-		if ((now - last_loop_time) >= LOOP_TIME) {
-			last_loop_time += LOOP_TIME;
+		if ((uint32_t)(now - last_loop_time) < LOOP_TIME) {
+			HAL_Delay(1);
+			continue;
+		}
+		last_loop_time = now;
 
-			if (!can_connected) {
-				if ((uint32_t) (now - last_can_retry_time)
-						>= CAN_RETRY_INTERVAL_MS) {
-					last_can_retry_time = now;
-					CAN_TryInitialize();
-				}
+		// CANが切れていないかの確認
+		if (!can_connected) {
+			if ((uint32_t) (now - last_can_retry_time) >= CAN_RETRY_INTERVAL_MS) {
+				last_can_retry_time = now;
+				CAN_TryInitialize();
 			}
-			if (!bno055_connected) {
-				if ((uint32_t) (now - last_bno055_retry_time)
-						>= BNO055_RETRY_INTERVAL_MS) {
-					last_bno055_retry_time = now;
-					BNO055_TryInitialize();
-				}
+		}
+		if (can_tx_error_count >= CAN_MAX_TX_ERRORS) {
+			can_connected = false;
+			can_tx_error_count = 0;
+			last_can_retry_time = now;
+		}
+		if (can_connected && !CAN_TxHealthTask(now)) {
+			/* Mailboxes stayed full: abort stale frames and restart immediately. */
+			can_connected = false;
+			can_tx_error_count = 0;
+			last_can_retry_time = now;
+			(void)CAN_TryInitialize();
+		}
+		if (!bno055_connected) {
+			if ((uint32_t) (now - last_bno055_retry_time)
+					>= BNO055_RETRY_INTERVAL_MS) {
+				last_bno055_retry_time = now;
+				BNO055_Recover();
 			}
+			// errorの許容値を超えたら再起動を試みる
+		}
+		if (bno055_read_error_count >= BNO055_MAX_READ_ERRORS) {
+			bno055_connected = false;
+			bno055_read_error_count = 0;
+			last_bno055_retry_time = now;
+		}
 
+		BNO055_CalibrationTask(now);
+
+		/* ---- 10 ms application tasks ---- */
+		if (can_connected) {
 			if (bno055_connected) {
-				BNO055_Status read_status = BNO055_ReadQuaternion(&bno055,
-						&imu_quat);
-				if (read_status == BNO055_OK) {
-					bno055_read_error_count = 0;
-					if (can_connected) {
-						uint8_t TxData[8];
-						CAN_TxHeaderTypeDef TxHeader1 = { 0 };
-						uint32_t TxMailbox1;
-						TxHeader1.StdId = 0x320;
-						TxHeader1.ExtId = 0;
-						TxHeader1.RTR = CAN_RTR_DATA;
-						TxHeader1.IDE = CAN_ID_STD;
-						TxHeader1.DLC = 8;
-						TxHeader1.TransmitGlobalTime = DISABLE;
-
-						TxData[0] = (uint8_t) (imu_quat.x);
-						TxData[1] = (uint8_t) (imu_quat.x >> 8);
-						TxData[2] = (uint8_t) (imu_quat.y);
-						TxData[3] = (uint8_t) (imu_quat.y >> 8);
-						TxData[4] = (uint8_t) (imu_quat.z);
-						TxData[5] = (uint8_t) (imu_quat.z >> 8);
-						TxData[6] = (uint8_t) (imu_quat.w);
-						TxData[7] = (uint8_t) (imu_quat.w >> 8);
-
-						if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) > 0U) {
-							if (HAL_CAN_AddTxMessage(&hcan, &TxHeader1, TxData,
-									&TxMailbox1) == HAL_OK) {
-								can_tx_error_count = 0;
-								bno055_tx_count++;
-								bno_com_priod = HAL_GetTick()- last_bno_com_time;
-								last_bno_com_time = HAL_GetTick();
-							} else {
-								can_tx_error_count++;
-							}
-						}
-
-						if (can_tx_error_count >= CAN_MAX_TX_ERRORS) {
-							can_connected = false;
-							can_tx_error_count = 0;
-							last_can_retry_time = now;
-						}
-					}
-				} else {
+				if (!BNO055_ReadAndSend()) {
 					bno055_read_error_count++;
-					if (bno055_read_error_count >= BNO055_MAX_READ_ERRORS) {
-						bno055_connected = false;
-						bno055_read_error_count = 0;
-						last_bno055_retry_time = now;
-					}
 				}
 			}
 
-			// --- 5. リミットスイッチの状態を更新＆送信 ---
-			if (can_connected) {
-				LimitSwitch_UpdateAndSend(&hcan);
+			if (!LimitSwitch_Task(now)) {
+				can_tx_error_count++;
 			}
+
+			if (CAN_HeartbeatTask(now) == CAN_SEND_ERROR) {
+				can_tx_error_count++;
+			}
+		}
 
 			if ((now - last_can_rx_time) > CAN_TIMEOUT_MS) {
 				is_timeout = 1; //timeout中
@@ -1284,8 +1357,6 @@ int main(void)
 				// --- 6. LEDの点灯更新 ---
 				shining_LED(received_LED_cmd);
 			}
-
-		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1366,9 +1437,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 }
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
 	uint32_t err = HAL_CAN_GetError(hcan);
-	if (err & HAL_CAN_ERROR_BOF) {
+	if ((err & HAL_CAN_ERROR_BOF) != 0U) {
 		can_connected = false;
 		last_can_retry_time = HAL_GetTick();
+	} else if (err != HAL_CAN_ERROR_NONE) {
+		can_tx_error_count++;
 	}
 }
 /* USER CODE END 4 */

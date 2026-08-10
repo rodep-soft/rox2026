@@ -11,6 +11,7 @@ extern "C" {
 
 #define BNO055_I2C_ADDR_LOW   (0x28U << 1)
 #define BNO055_I2C_ADDR_HIGH  (0x29U << 1)
+#define BNO055_CALIBRATION_PROFILE_SIZE 22U
 
 typedef enum {
     BNO055_OK = 0,
@@ -75,6 +76,13 @@ BNO055_Status BNO055_ReadSystemStatus(BNO055_Handle *dev,
                                       uint8_t *self_test,
                                       uint8_t *system_error);
 bool BNO055_IsFullyCalibrated(const BNO055_Calibration *calib);
+BNO055_Status BNO055_ReadOperationMode(BNO055_Handle *dev,uint8_t *mode);
+BNO055_Status BNO055_ReadCalibrationProfile(
+    BNO055_Handle *dev,
+    uint8_t profile[BNO055_CALIBRATION_PROFILE_SIZE]);
+BNO055_Status BNO055_ApplyCalibrationProfile(
+    BNO055_Handle *dev,
+    const uint8_t profile[BNO055_CALIBRATION_PROFILE_SIZE]);
 
 #ifdef __cplusplus
 }
