@@ -1,4 +1,4 @@
-dribble_controller_node:
+/dribble_controller_node:
   ros__parameters:
     # [rad] 各アーム目標位置
     # 10度 = 約 0.1745 rad
