@@ -17,7 +17,7 @@
 #define BNO055_CHIP_ID_VALUE     0xA0U
 #define BNO055_PWR_MODE_NORMAL   0x00U
 #define BNO055_RESET_COMMAND     0x20U
-#define BNO055_TIMEOUT_MS        100U
+#define BNO055_TIMEOUT_MS         10U
 
 static BNO055_Status bno055_from_hal(HAL_StatusTypeDef status)
 {
