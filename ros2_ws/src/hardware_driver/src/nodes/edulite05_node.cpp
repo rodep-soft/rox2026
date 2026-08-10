@@ -45,6 +45,8 @@ void Node::declare_and_load_parameters() {
     const auto reference_mode_name = declare_parameter<std::string>(prefix + "position_reference_mode", "service");
     const auto allow_unreferenced_position_commands =
         declare_parameter<bool>(prefix + "allow_unreferenced_position_commands", false);
+    const auto set_mechanical_zero_on_startup =
+        declare_parameter<bool>(prefix + "set_mechanical_zero_on_startup", false);
     const auto position_offset_rad = declare_parameter<double>(prefix + "position_offset_rad", 0.0);
     const auto minimum_position_rad = declare_parameter<double>(prefix + "minimum_position_rad", -1000.0);
     const auto maximum_position_rad = declare_parameter<double>(prefix + "maximum_position_rad", 1000.0);
@@ -83,6 +85,11 @@ void Node::declare_and_load_parameters() {
           motor_name +
           ": position_reference_mode is only valid for PP/CSP motors");
     }
+    if (set_mechanical_zero_on_startup && control_mode == ControlMode::VELOCITY) {
+      throw std::runtime_error(
+          motor_name +
+          ": set_mechanical_zero_on_startup is only valid for PP/CSP motors");
+    }
 
     motors_.emplace_back(MotorConfig{
         motor_name, static_cast<uint16_t>(logical_id),
@@ -96,7 +103,8 @@ void Node::declare_and_load_parameters() {
         static_cast<float>(position_offset_rad),
         static_cast<float>(minimum_position_rad),
         static_cast<float>(maximum_position_rad),
-        allow_unreferenced_position_commands});
+        allow_unreferenced_position_commands,
+        set_mechanical_zero_on_startup});
 
     RCLCPP_INFO(
         get_logger(),

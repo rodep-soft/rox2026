@@ -21,6 +21,9 @@ float decode_uint16(uint16_t value, float minimum, float maximum) {
 }
 
 Protocol::Protocol(const MotorConfig &config) : config_(config) {
+  if (config_.set_mechanical_zero_on_startup) {
+    initialization_step_ = InitializationStep::DISABLE_FOR_MECHANICAL_ZERO;
+  }
   // 最初に必ずrun_mode
   initialization_parameters_.push_back(
       {RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.control_mode)),
@@ -53,6 +56,18 @@ Protocol::Protocol(const MotorConfig &config) : config_(config) {
 std::string Protocol::initialization_diagnostic() const {
   const char *step_name = "unknown";
   switch (initialization_step_) {
+  case InitializationStep::DISABLE_FOR_MECHANICAL_ZERO:
+    step_name = "disable_for_mechanical_zero";
+    break;
+  case InitializationStep::WAIT_BEFORE_MECHANICAL_ZERO:
+    step_name = "wait_before_mechanical_zero";
+    break;
+  case InitializationStep::SET_MECHANICAL_ZERO:
+    step_name = "set_mechanical_zero";
+    break;
+  case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO:
+    step_name = "wait_after_mechanical_zero";
+    break;
   case InitializationStep::WRITE_PARAMETER:
     step_name = "write";
     break;
@@ -129,6 +144,25 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame() {
   const auto current_time = Clock::now();
 
   switch (initialization_step_) {
+  case InitializationStep::DISABLE_FOR_MECHANICAL_ZERO:
+    state_ = MotorState::INITIALIZING;
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_BEFORE_MECHANICAL_ZERO;
+    return make_disable_frame(config_.can_id);
+  case InitializationStep::WAIT_BEFORE_MECHANICAL_ZERO:
+    if (current_time - last_request_time_ >= WRITE_SETTLING_TIME) {
+      initialization_step_ = InitializationStep::SET_MECHANICAL_ZERO;
+    }
+    break;
+  case InitializationStep::SET_MECHANICAL_ZERO:
+    last_request_time_ = current_time;
+    initialization_step_ = InitializationStep::WAIT_AFTER_MECHANICAL_ZERO;
+    return make_set_mechanical_zero_frame(config_.can_id);
+  case InitializationStep::WAIT_AFTER_MECHANICAL_ZERO:
+    if (current_time - last_request_time_ >= MECHANICAL_ZERO_SETTLING_TIME) {
+      initialization_step_ = InitializationStep::WRITE_PARAMETER;
+    }
+    break;
   case InitializationStep::WRITE_PARAMETER: {
     state_ = MotorState::INITIALIZING;
     const auto &parameter = initialization_parameters_[initialization_parameter_index_];
@@ -501,5 +535,15 @@ can_msgs::msg::Frame Protocol::make_read_parameter_frame(uint8_t motor_id,
 
 can_msgs::msg::Frame Protocol::make_enable_frame(uint8_t motor_id) {
   return make_base_frame(TYPE_ENABLE, motor_id);
+}
+
+can_msgs::msg::Frame Protocol::make_disable_frame(uint8_t motor_id) {
+  return make_base_frame(TYPE_DISABLE, motor_id);
+}
+
+can_msgs::msg::Frame Protocol::make_set_mechanical_zero_frame(uint8_t motor_id) {
+  auto message = make_base_frame(TYPE_SET_MECHANICAL_ZERO, motor_id);
+  message.data[0] = 1;
+  return message;
 }
 }  // namespace edulite05_driver

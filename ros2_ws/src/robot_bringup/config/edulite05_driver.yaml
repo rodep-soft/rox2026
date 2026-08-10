@@ -62,6 +62,8 @@
       control_mode: pp
 
       position_reference_mode: service
+      # Discard stale multi-turn PP target before homing after a ROS restart.
+      set_mechanical_zero_on_startup: true
       # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
       allow_unreferenced_position_commands: true
       minimum_position_rad: -1000000.0
