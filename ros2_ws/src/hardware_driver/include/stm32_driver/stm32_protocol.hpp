@@ -28,7 +28,7 @@ can_msgs::msg::Frame make_alive_frame();
 /// @brief LEDコマンド用CANフレームを生成する
 /// @param command LEDコマンド
 /// @return 送信用CANフレーム
-can_msgs::msg::Frame make_led_frame(uint8_t command);
+can_msgs::msg::Frame make_led_frame(uint16_t command);
 
 /// @brief 標準CANデータフレームかを確認する
 /// @param frame 受信したCANフレーム

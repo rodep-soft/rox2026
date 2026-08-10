@@ -1,0 +1,4 @@
+/led_controller_node:
+  ros__parameters:
+    publish_period_ms: 100
+    firing_display_ms: 500

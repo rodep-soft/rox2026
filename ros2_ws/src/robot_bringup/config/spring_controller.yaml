@@ -1,19 +1,25 @@
-spring_controller_node:
+/spring_controller_node:
   ros__parameters:
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）。
     limit_switch_bit_offset: 0
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
-    # [rad/s] 装填時に出す速度。正負の向きは機構に合わせる。
-    loading_velocity_rad_s: -10.0
-    # [rad/s] 発射時に出す速度。正負の向きは機構に合わせる。
-    fire_velocity_rad_s: -20.0
+    # [rad/request] 発射要求1回で累積目標へ加算する角度 9周分
+    fire_increment_rad: -43.9822971
+    # [rad/s] 未原点時に目標位置を負方向へずらす速度。
+    homing_velocity_rad_s: 5.0
+    # [s] リミットスイッチが見つからない場合のタイムアウト。
+    homing_timeout_sec: 50.0
+    # [rad/s] この速度以下を停止とみなす。
+    zeroing_velocity_threshold_rad_s: 0.05
+    # 停止判定に必要な連続フィードバック数。
+    zeroing_required_stable_feedback_count: 3
 
-    # [s] 発射速度を維持する時間。
-    fire_duration_sec: 0.3
-    # [s] 装填異常としてERROR停止するまでの上限時間。
-    load_timeout_sec: 18.0
+    # [ms] 位置指令更新周期。
+    command_period_ms: 50
 
-    # [ms] 速度指令を再送する周期。
-    command_period_ms: 10
+    logical_id: 4
+    target_topic: "/edulite/target"
+    state_topic: "/edulite/state"
+    set_position_service: "/edulite/set_position"

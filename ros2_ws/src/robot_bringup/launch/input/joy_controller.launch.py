@@ -21,16 +21,10 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "device",
-                default_value="/dev/input/js0",
-                description="Input device read by joy_node",
-            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(launch_dir, "input", "joy.launch.py")
                 ),
-                launch_arguments={"device": LaunchConfiguration("device")}.items(),
             ),
             Node(
                 package="joy_controller",

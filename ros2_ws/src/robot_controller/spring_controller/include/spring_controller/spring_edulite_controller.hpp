@@ -3,9 +3,11 @@
 
 #include <cstdint>
 
+#include "actuator_msgs/msg/actuator_state.hpp"
+#include "actuator_msgs/msg/actuator_target.hpp"
+#include "actuator_msgs/srv/set_position.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class SpringEduliteController : public rclcpp::Node
@@ -14,72 +16,56 @@ public:
   SpringEduliteController();
 
 private:
-  enum class State : uint8_t
+  enum class ControlState : uint8_t
   {
+    HOMING,
+    WAITING_FOR_STOP,
     READY,
-    LOAD,
-    FIRE,
-    ERROR
-  };
-  enum class OperationMode : uint8_t
-  {
-    STOP,
-    DRIVE,
-    SHOT_CYCLE,
-    BELT_ONLY
+    ERROR,
   };
 
-  void declare_parameters();
-  void get_parameters();
-
-  // /operation_mode受信時に呼ばれる。不正値はSTOPとし、DRIVE以外になった場合は発射を中断してLOAD/READYへ戻す。
-  void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
-  // /spring/fire_requestの立上りで呼ばれる。設定正常・非常停止なし・DRIVE・READY・装填完了の
-  // 全条件を満たす場合だけ発射待ちにする。それ以外は理由をログに出して無視する。
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  // /emergency_stop受信時に呼ばれる。trueならFIREを中断し、次のtimerでLOAD/READYに対応する速度を出す。
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  void actuator_state_callback(
+    const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+  void control_timer_callback();
 
-  // 設定周期で呼ばれる。設定不正なら0 rad/sを出し、正常時はLOAD/READY/FIRE/ERRORを遷移して
-  // /spring/vel_commandへ速度をpublishする。LOAD timeout時はERRORへ移行する。
-  void timer_callback();
+  void reset_for_homing();
+  void request_zero_reference();
+  void publish_target();
 
-  // 設定正常・非常停止なし・operation_modeがDRIVEのときだけtrueを返す。
-  bool spring_fire_allowed() const;
-  // 発射待ちを解除し、装填済みならREADY、未装填ならLOADへ戻す。ERRORは維持する。
-  void prepare_spring_for_stop();
-  void start_loading();
-  void start_fire();
-  // ログ表示や拒否理由判定のための小さな補助関数。
-  const char * state_name(State state) const;
-  const char * operation_mode_name(OperationMode mode) const;
-  void log_fire_request_rejection() const;
+  ControlState control_state_{ControlState::HOMING};
+  bool emergency_stop_active_{true};
+  bool fire_request_active_{false};
+  bool limit_switch_active_{false};
+  bool actuator_ready_{false};
+  bool position_reference_set_{false};
+  bool zero_reference_request_pending_{false};
 
-  State now_state_{State::LOAD};
-  OperationMode operation_mode_{OperationMode::STOP};
   int limit_switch_bit_offset_{0};
-  bool is_configuration_valid_{true};
-  bool is_loaded_{false};
-  bool emergency_stop_active_{false};
-  bool previous_fire_request_{false};
-  bool fire_pending_{false};
-  bool limit_switch_received_{false};
-  uint8_t last_limit_switch_value_{0};
-  double loading_velocity_rad_s_{0.0};
-  double fire_velocity_rad_s_{0.0};
-  double fire_duration_sec_{0.0};
-  double load_timeout_sec_{5.0};
   int command_period_ms_{10};
-  int qos_depth_{1};
-  rclcpp::Time fire_start_time_;
-  rclcpp::Time load_start_time_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_sub_;
+  int stopped_feedback_count_{0};
+  int required_stopped_feedback_count_{3};
+  double fire_increment_rad_{-6.283185307};
+  double homing_velocity_rad_s_{0.5};
+  double homing_timeout_sec_{30.0};
+  double zeroing_velocity_threshold_rad_s_{0.05};
+  double target_position_rad_{0.0};
+  uint16_t logical_id_{4};
+
+  rclcpp::Time homing_started_at_;
+
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr spring_velocity_pub_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
+    actuator_state_sub_;
+  rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
+    position_command_pub_;
+  rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedPtr
+    set_position_client_;
+  rclcpp::TimerBase::SharedPtr control_timer_;
 };
 
-#endif  // SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
+#endif // SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_

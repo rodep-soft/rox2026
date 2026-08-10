@@ -35,9 +35,111 @@ ros2 launch robot_bringup robot.launch.py can_interface:=can1
 - EduLite driver 6台
 - belt・dribble、mecanum、Spring、dribble位置controller
 - `joy_node`とjoy_controller
+- （オプション）`enable_vision:=true` 指定時に `hobot_stereonet` ビジョンノード
+
+```bash
+# ビジョン機能 ＋ AprilTag 検出付きで通常起動する場合
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true
+```
 
 Joy deviceの既定値は`/dev/input/js0`である。別deviceを使う場合は通常起動へ
 `device:=/dev/input/js1`のように渡す。
+
+## vision_launch.py & apriltag_launch.py (230AI ビジョン・AprilTag 検出)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `stereonet_version` | `v2.4_int16` | hobot_stereonet モデルバージョン (`v2.4_int16`, `v2.5_int16` 等) |
+| `enable_apriltag` | `false` | AprilTag 検出ノードを同時に起動するか |
+| `tag_family` | `tag36h11` | AprilTag ファミリー (`tag36h11`, `tag25h9`, `tag16h5`) |
+| `tag_size` | `0.16` | AprilTag の一辺のサイズ (メートル単位, 例: `0.16` = 16cm) |
+| `publish_visual_enabled` | `True` | Web UI 表示用の描画画像トピック配信 |
+| `publish_pcd_enabled` | `True` | PointCloud2 トピック (`~/stereonet_pointcloud2`) 配信 |
+
+起動例:
+```bash
+# ビジョン ＋ AprilTag 検出を起動
+ros2 launch robot_bringup vision_launch.py enable_apriltag:=true tag_family:=tag36h11 tag_size:=0.16
+
+# AprilTag 単体起動（補正済み左画像を入力トピックとして使用）
+ros2 launch robot_bringup apriltag_launch.py image_topic:=/StereoNetNode/rectify_left_image
+```
+AprilTag 検出結果は `/tf` および `/detections` トピック等に出力されます。
+Web可視化確認は、ブラウザから `http://<RDK_IP>:8000` にアクセスしてください。
+
+## yolo_launch.py (RDK X5 BPU 加速 YOLO ボール検出)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `image_topic` | `/StereoNetNode/rectify_left_image` | YOLO 入力画像トピック |
+| `model_name` | `yolov5s` | 使用モデル (`yolov5s`, `yolov8n` 等) |
+| `score_threshold` | `0.4` | 検出確信度しきい値 (0.0 〜 1.0) |
+| `use_bpu` | `true` | RDK X5 BPU ハードウェアアクセラレータ使用 |
+
+起動例:
+```bash
+# YOLO ボール検出ノード単体起動
+ros2 launch robot_bringup yolo_launch.py
+
+# 230AI ビジョン ＋ YOLO ボール検出を起動
+ros2 launch robot_bringup vision_launch.py enable_yolo:=true
+
+# ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
+## game2_shooter.launch.py (Game 2 パネル自動戦術射出ノード)
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `base_frame` | `base_link` | ロボット基準フレーム ID |
+| `target_distance` | `1.5` | Game2 パネルまでの射程距離 (メートル) |
+| `rpm_bottom` | `3000.0` | 下段パネル用射出ベルト RPM |
+| `rpm_middle` | `4500.0` | 中段パネル用射出ベルト RPM |
+| `rpm_top` | `6000.0` | 上段パネル用射出ベルト RPM |
+
+起動例:
+```bash
+# Game 2 パネル戦術自動射出ノード単体起動
+ros2 launch robot_bringup game2_shooter.launch.py
+
+# ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ Game 2 自動戦術ノードを一括起動
+ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_game2:=true
+```
+## game2.launch.py (Game 2 試合本番用一括起動 Launch)
+
+Game 2 試合に必要なモジュールのみを最軽量でピンポイント起動します（正面 CSI カメラ ＋ AprilTag 検出 ＋ Game 2 戦術ノード ＋ 全コントローラー）。
+
+起動例:
+```bash
+# Game 2 試合本番用ワンコマンド起動
+ros2 launch robot_bringup game2.launch.py
+
+# パラメータ調整して起動 (例: 射程距離 1.8m、ベルト回転数変更)
+ros2 launch robot_bringup game2.launch.py target_distance:=1.8 rpm_bottom:=3200.0 rpm_top:=6200.0
+```
+
+
+
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `video_device` | `/dev/video0` | V4L2 カメラのデバイスパス |
+| `image_width` | `640` | 画像幅 |
+| `image_height` | `480` | 画像高さ |
+| `pixel_format` | `YUYV` | ピクセルフォーマット (`YUYV`, `mjpeg` 等) |
+| `enable_apriltag` | `false` | Webカメラ画像からの AprilTag 検出を有効化 |
+
+起動例:
+```bash
+# Webカメラ (/dev/video0) を単体起動
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0
+
+# Webカメラ ＋ AprilTag 検出を同時に起動
+ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
+
+# ロボット全体起動と同時に Webカメラも起動
+ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
+```
+配信トピック: `/webcam/image_raw`, `/webcam/camera_info`
 
 ## hardware.launch.py
 
@@ -51,7 +153,7 @@ Joy deviceの既定値は`/dev/input/js0`である。別deviceを使う場合は
 | `use_edulite_dribble_position` | `true` | dribble位置用EduLite |
 
 SocketCAN bridgeはhardwareの選択に関係なく起動する。VESCのnode名は
-`vesc_driver_1`〜`3`で、各nodeは同じ`vesc_driver.yaml`から自分の名前に対応する
+`vesc_driver`で、1つのnodeが`vesc_driver.yaml`から全モーターに対応する
 parameterだけを読む。
 
 ## 機構別テストlaunch
@@ -76,6 +178,7 @@ ros2 launch robot_bringup test/robot_belt_dribble.launch.py
 | YAML | 対象 | 主な設定 |
 |---|---|---|
 | `joy_controller.yaml` | Joy変換 | button・axis index、timeout、速度上限 |
+| `dribble_controller.yaml` | dribble | ローラーRPM、姿勢角度、shot cycle時間・速度 |
 | `belt_dribble_controller.yaml` | belt・dribble | level RPM、許容差、feedback timeout |
 | `mecanum_controller.yaml` | mecanum | 寸法、補正係数、車輪速度上限 |
 | `spring_controller.yaml` | Spring | limit switch index、速度、時間 |

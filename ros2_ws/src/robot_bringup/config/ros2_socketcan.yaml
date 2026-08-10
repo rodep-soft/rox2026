@@ -25,6 +25,6 @@
       /socketcan_bridge/tx:
         subscription:
           history: keep_last
-          depth: 10
+          depth: 500
           reliability: reliable
           durability: volatile
