@@ -15,7 +15,6 @@ constexpr uint8_t HOST_ID = 0xFD;
 constexpr uint8_t TYPE_FEEDBACK = 0x02;
 constexpr uint8_t TYPE_ENABLE = 0x03;
 constexpr uint8_t TYPE_DISABLE = 0x04;
-constexpr uint8_t TYPE_SET_MECHANICAL_ZERO = 0x06;
 constexpr uint8_t TYPE_READ = 0x11;
 constexpr uint8_t TYPE_WRITE = 0x12;
 constexpr uint8_t RESET_STATUS_MODE = 0x00;
@@ -31,7 +30,7 @@ constexpr uint16_t PP_SPEED = 0x7024;
 constexpr uint16_t PP_ACCELERATION = 0x7025;
 constexpr int MAX_INITIALIZATION_RETRIES = 10;
 constexpr auto WRITE_SETTLING_TIME = std::chrono::milliseconds(2);
-constexpr auto MECHANICAL_ZERO_SETTLING_TIME = std::chrono::milliseconds(100);
+constexpr auto POSITION_RESUME_SETTLING_TIME = std::chrono::milliseconds(100);
 constexpr auto RESPONSE_TIMEOUT = std::chrono::milliseconds(100);
 constexpr auto ERROR_RETRY_PERIOD = std::chrono::milliseconds(200);
 constexpr float PI = 3.14159265358979323846f;
@@ -65,7 +64,7 @@ struct MotorConfig {
   float minimum_position_rad = -1000.0f;
   float maximum_position_rad = 1000.0f;
   bool allow_unreferenced_position_commands = false;
-  bool set_mechanical_zero_on_startup = false;
+  bool resume_position_on_startup = false;
 };
 
 struct MotorFeedback {
@@ -113,16 +112,10 @@ private:
   using TimePoint = Clock::time_point;
 
   enum class InitializationStep {
-    DISABLE_FOR_MECHANICAL_ZERO,
-    WAIT_BEFORE_MECHANICAL_ZERO,
-    SET_OPERATION_MODE_FOR_MECHANICAL_ZERO,
-    WAIT_AFTER_OPERATION_MODE,
-    ENABLE_FOR_MECHANICAL_ZERO,
-    WAIT_FOR_MECHANICAL_ZERO_ENABLE,
-    SET_MECHANICAL_ZERO,
-    WAIT_AFTER_MECHANICAL_ZERO,
-    DISABLE_AFTER_MECHANICAL_ZERO,
-    WAIT_AFTER_MECHANICAL_ZERO_DISABLE,
+    DISABLE_FOR_POSITION_RESUME,
+    WAIT_BEFORE_POSITION_RESUME,
+    READ_STORED_POSITION_REFERENCE,
+    WAIT_FOR_STORED_POSITION_REFERENCE,
     WRITE_PARAMETER,
     WAIT_AFTER_WRITE,
     READ_PARAMETER,
@@ -158,7 +151,6 @@ private:
   static can_msgs::msg::Frame make_read_parameter_frame(uint8_t motor_id, uint16_t index);
   static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
   static can_msgs::msg::Frame make_disable_frame(uint8_t motor_id);
-  static can_msgs::msg::Frame make_set_mechanical_zero_frame(uint8_t motor_id);
 
   MotorConfig config_;
   MotorFeedback feedback_;
