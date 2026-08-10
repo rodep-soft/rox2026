@@ -85,7 +85,8 @@ if(BUILD_TESTING)
       test_robot_controller
       belt_controller_node_implementation
       dribble_controller_node_implementation
-      mecanum_controller_node_implementation)
+      mecanum_controller_node_implementation
+      spring_controller_node_implementation)
   endif()
 endif()
 

@@ -13,6 +13,7 @@
 #include "dribble_controller/dribble_controller.hpp"
 #include "belt_controller/belt_controller.hpp"
 #include "mecanum_controller/mecanum_controller_node.hpp"
+#include "spring_controller/spring_edulite_controller.hpp"
 
 class RobotControllerTest : public ::testing::Test
 {
@@ -144,6 +145,79 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   }
   EXPECT_EQ(last_underbelt_rpm, 4200);
   EXPECT_EQ(last_upperbelt_rpm, 3800);
+}
+
+TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
+{
+  auto spring_node = std::make_shared<SpringEduliteController>();
+  auto test_node = std::make_shared<rclcpp::Node>("test_spring_client");
+
+  float last_position_rad = 0.0f;
+  int received_command_count = 0;
+  auto target_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
+    "/edulite/target", 1,
+    [&last_position_rad, &received_command_count](
+      const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
+      if (msg->logical_id == 4) {
+        last_position_rad = msg->target;
+        ++received_command_count;
+      }
+    });
+
+  auto state_pub = test_node->create_publisher<actuator_msgs::msg::ActuatorState>(
+    "/edulite/state", 1);
+  auto fire_pub = test_node->create_publisher<std_msgs::msg::Bool>(
+    "/spring/fire_request", 1);
+  auto emergency_stop_pub = test_node->create_publisher<std_msgs::msg::Bool>(
+    "/emergency_stop", rclcpp::QoS(1).reliable().transient_local());
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(spring_node);
+  executor.add_node(test_node);
+
+  actuator_msgs::msg::ActuatorState state_msg;
+  state_msg.logical_id = 4;
+  state_msg.state = actuator_msgs::msg::ActuatorState::STATE_READY;
+  state_msg.position_reference_set = true;
+  state_pub->publish(state_msg);
+
+  auto start = std::chrono::steady_clock::now();
+  while (received_command_count == 0 &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    state_pub->publish(state_msg);
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  std_msgs::msg::Bool fire_msg;
+  fire_msg.data = true;
+  fire_pub->publish(fire_msg);
+  start = std::chrono::steady_clock::now();
+  while (std::abs(last_position_rad - (-6.283185307f)) > 0.01f &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_NEAR(last_position_rad, -6.283185307f, 0.01f);
+
+  fire_msg.data = false;
+  fire_pub->publish(fire_msg);
+  std_msgs::msg::Bool emergency_stop_msg;
+  emergency_stop_msg.data = true;
+  emergency_stop_pub->publish(emergency_stop_msg);
+  executor.spin_some();
+
+  const float position_before_rejected_fire = last_position_rad;
+  fire_msg.data = true;
+  fire_pub->publish(fire_msg);
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(100)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_NEAR(last_position_rad, position_before_rejected_fire, 0.001f);
 }
 
 TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
