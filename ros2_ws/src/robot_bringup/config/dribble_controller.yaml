@@ -1,15 +1,16 @@
 dribble_controller_node:
   ros__parameters:
     # [rad] 各アーム目標位置
-    dribble_position_rad: 0.35
+    # 10度 = 約 0.1745 rad
+    dribble_position_rad: 0.20
     open_position_rad: -1.0
-    feed_position_rad: 1.3
+    feed_position_rad: 0.5
     # [s] 自動シュートサイクルのタイミング
-    open_duration_sec: 0.3      # OPEN 姿勢を保持する時間
-    feed_duration_sec: 0.6      # FEED 押し込みを保持する時間
+    open_duration_sec: 0.1      # OPEN 姿勢を保持する時間
+    feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 2.0   # DRIBBLE -> OPEN
-    feeding_max_velocity_rad_s: 3.0   # OPEN -> FEED
+    opening_max_velocity_rad_s: 3.0   # DRIBBLE -> OPEN
+    feeding_max_velocity_rad_s: 4.0   # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 800

@@ -40,5 +40,5 @@ vesc_driver:
       feedback_timeout_ms: 500
       max_rpm: 5600.0
       rpm_slew_rate: 4000.0
-      startup_current_a: 5.0
+      startup_current_a: 3.0
       rpm_control_threshold_rpm: 200.0

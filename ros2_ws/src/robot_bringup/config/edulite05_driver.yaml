@@ -69,7 +69,7 @@ edulite05_driver:
 
       current_limit: 11.0
       acceleration: 150.0
-      # EduLite 05 rejects 40 rad/s in PP mode (0x7024 readback fails).
+      # 最大速度は 35 rad/s
       speed_limit: 35.0
       current_feedback_enabled: false
       command_period_ms: 10
