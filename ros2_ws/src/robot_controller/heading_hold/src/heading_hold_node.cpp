@@ -268,7 +268,6 @@ private:
       integral_error_rad_s_ + heading_error_rad * safe_dt_s,
       -integral_limit_rad_s_, integral_limit_rad_s_);
 
-    // D????????????IMU???????????????
     const double correction_rad_s = std::clamp(
       kp_ * heading_error_rad + ki_ * integral_error_rad_s_ -
       kd_ * current_angular_velocity_z_rad_s_,
