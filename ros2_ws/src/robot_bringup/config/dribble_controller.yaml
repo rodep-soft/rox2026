@@ -1,28 +1,33 @@
 /dribble_controller_node:
   ros__parameters:
-    # [rad] 各アーム目標位置
     # 10度 = 約 0.1745 rad
-    dribble_position_rad: 0.28
-    open_position_rad: -0.98
-    feed_position_rad: 0.7
+    # [rad] 各アーム目標位置
+    dribble_position_rad: 0.28    # DRIBBLE姿勢
+    open_position_rad: -0.98      # OPEN姿勢
+    feed_position_rad: 0.7        # FEED姿勢(発射機構に押し込む姿勢)
+    
     # [s] 自動シュートサイクルのタイミング
     open_duration_sec: 0.0      # OPEN 姿勢を保持する時間
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
+    
     # [rad/s] 区間ごとの最大角速度
     opening_max_velocity_rad_s: 4.0   # DRIBBLE -> OPEN
-    feeding_max_velocity_rad_s: 15.0   # OPEN -> FEED
+    feeding_max_velocity_rad_s: 15.0  # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
+    
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1500
-    shot_cycle_opening_rpm: 500   # DRIBBLE -> OPEN
+    shot_cycle_opening_rpm: 500     # DRIBBLE -> OPEN
     shot_cycle_feeding_rpm: 1500    # OPEN -> FEED
-    shot_cycle_returning_rpm: 1000 # FEED -> DRIBBLE
+    shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
+    
     # [ms] 指令再送周期
     command_period_ms: 10
+    
     # ROS 2 QoS queue depth
     qos_depth: 1
 
-    position_logical_id: 5
-    roller_logical_id: 12
+    position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
+    roller_logical_id: 12   # ROS2上の認識ID(ドリブルローラー)
     position_target_topic: "/edulite/target"
     roller_target_topic: "/vesc/target"

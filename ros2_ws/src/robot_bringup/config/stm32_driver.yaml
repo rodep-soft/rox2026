@@ -1,9 +1,9 @@
 /stm32_driver_node:
   ros__parameters:
-    imu_topic: /imu/data        # STM32が送るint16のクォータニオン成分に掛ける係数
+    imu_topic: /imu/data
     imu_frame_id: imu_link
     led_cmd_topic: "/led/cmd"   # LEDのコマンドを制御ノードから受信するトピック
-    limit_sw_topic: "/limit_switchs"      # limitswのデータを制御ノードへ送信するトピック
-    timeout_ms: 500             # タイムアウト検知時間
+    limit_sw_topic: "/limit_switchs" # limitswのデータを制御ノードへ送信するトピック
+    timeout_ms: 500             # stm32のタイムアウト検知時間
     keep_alive_period_ms: 100   # heartbeatの送信と判断周期
-   # publish_period_ms: 10       # 制御ノードに送るimudataの現在の送信周期
+   # publish_period_ms: 10      # 制御ノードに送るimudataの現在の送信周期
