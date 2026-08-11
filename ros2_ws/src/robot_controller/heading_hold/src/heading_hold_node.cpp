@@ -205,6 +205,7 @@ private:
     double roll_rad = 0.0;
     double pitch_rad = 0.0;
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
+    current_yaw_rad_ = -current_yaw_rad_;
     current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
     last_imu_time_ = now();
   }
