@@ -17,12 +17,19 @@ STM32とのheartbeat、LED指令、limit switch受信を担当する。belt・dr
 | RDK→STM32 | `0x101` | 0 | heartbeat |
 | STM32→RDK | `0x100` | 0 | heartbeat応答 |
 | RDK→STM32 | `0x201` | 2 | `/led/cmd`のUInt16 |
-| STM32→RDK | `0x202` | 1 | limit switch 8 bit |
+| STM32→RDK | `0x310` | 1 | limit switch 8 bit |
+| STM32→RDK | `0x320` | 8 | quaternion X, Y, Z, W（int16 LE、1/16384） |
+| STM32→RDK | `0x321` | 6 | angular velocity X, Y, Z（int16 LE、1/16 deg/s） |
+| STM32→RDK | `0x322` | 6 | linear acceleration X, Y, Z（int16 LE、1/100 m/s²） |
 
 LED command was extended to DLC 2: data[0] is the display mode and data[1] is
 the status flags. The ROS topic type is `std_msgs/msg/UInt16` (little endian).
 
 standard data frameだけを受け、上記受信ID以外は早期returnする。
+
+IMUの各CANフレームは最新値として保持し、姿勢を一度受信した後は受信のたびに
+`sensor_msgs/msg/Imu`として`/imu/data`へpublishする。角速度はrad/sへ変換する。
+角速度または並進加速度が未受信の場合、対応する`covariance[0]`は`-1`とする。
 
 ## limit switch
 
