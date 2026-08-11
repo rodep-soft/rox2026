@@ -2,8 +2,10 @@
 
 #define BNO055_REG_CHIP_ID       0x00U
 #define BNO055_REG_PAGE_ID       0x07U
+#define BNO055_REG_GYRO_X_LSB    0x14U
 #define BNO055_REG_EULER_H_LSB   0x1AU
 #define BNO055_REG_QUAT_W_LSB    0x20U
+#define BNO055_REG_LINEAR_ACCEL_X_LSB 0x28U
 #define BNO055_REG_TEMP          0x34U
 #define BNO055_REG_CALIB_STAT    0x35U
 #define BNO055_REG_SELFTEST      0x36U
@@ -18,7 +20,8 @@
 #define BNO055_CHIP_ID_VALUE     0xA0U
 #define BNO055_PWR_MODE_NORMAL   0x00U
 #define BNO055_RESET_COMMAND     0x20U
-#define BNO055_TIMEOUT_MS        5U
+#define BNO055_TIMEOUT_MS        50U
+#define BNO055_IO_RETRIES        3U
 
 volatile uint8_t debug_data[8];
 
@@ -42,13 +45,21 @@ static BNO055_Status bno055_read(BNO055_Handle *dev,
         return BNO055_ERROR;
     }
 
-    return bno055_from_hal(HAL_I2C_Mem_Read(dev->hi2c,
-                                            dev->address,
-                                            reg,
-                                            I2C_MEMADD_SIZE_8BIT,
-                                            data,
-                                            length,
-                                            BNO055_TIMEOUT_MS));
+    HAL_StatusTypeDef hal_status = HAL_ERROR;
+    for (uint32_t retry = 0U; retry < BNO055_IO_RETRIES; ++retry) {
+        hal_status = HAL_I2C_Mem_Read(dev->hi2c,
+                                     dev->address,
+                                     reg,
+                                     I2C_MEMADD_SIZE_8BIT,
+                                     data,
+                                     length,
+                                     BNO055_TIMEOUT_MS);
+        if (hal_status == HAL_OK) {
+            return BNO055_OK;
+        }
+        HAL_Delay(2U);
+    }
+    return bno055_from_hal(hal_status);
 }
 
 static BNO055_Status bno055_write_u8(BNO055_Handle *dev, uint8_t reg, uint8_t value)
@@ -57,13 +68,21 @@ static BNO055_Status bno055_write_u8(BNO055_Handle *dev, uint8_t reg, uint8_t va
         return BNO055_ERROR;
     }
 
-    return bno055_from_hal(HAL_I2C_Mem_Write(dev->hi2c,
-                                             dev->address,
-                                             reg,
-                                             I2C_MEMADD_SIZE_8BIT,
-                                             &value,
-                                             1U,
-                                             BNO055_TIMEOUT_MS));
+    HAL_StatusTypeDef hal_status = HAL_ERROR;
+    for (uint32_t retry = 0U; retry < BNO055_IO_RETRIES; ++retry) {
+        hal_status = HAL_I2C_Mem_Write(dev->hi2c,
+                                      dev->address,
+                                      reg,
+                                      I2C_MEMADD_SIZE_8BIT,
+                                      &value,
+                                      1U,
+                                      BNO055_TIMEOUT_MS);
+        if (hal_status == HAL_OK) {
+            return BNO055_OK;
+        }
+        HAL_Delay(2U);
+    }
+    return bno055_from_hal(hal_status);
 }
 
 static int16_t bno055_decode_i16_le(const uint8_t *data)
@@ -193,6 +212,8 @@ BNO055_Status BNO055_ReadQuaternion(
     if ((dev == NULL) || (quat == NULL)) {
         return BNO055_ERROR;
     }
+    /* This BNO055 setup does not reliably support a multi-byte transfer.
+     * Keep the proven one-register-at-a-time access. */
     for (uint8_t i = 0U; i < sizeof(data); ++i) {
         const BNO055_Status status =
             bno055_read(dev,
@@ -217,6 +238,43 @@ BNO055_Status BNO055_ReadQuaternion(
     return BNO055_OK;
 }
 
+static BNO055_Status bno055_read_vector3_i16(BNO055_Handle *dev,
+                                              uint8_t first_register,
+                                              BNO055_Vector3Int16 *vector)
+{
+    uint8_t data[6];
+    if ((dev == NULL) || (vector == NULL)) {
+        return BNO055_ERROR;
+    }
+
+    /* Multi-byte reads are unreliable on this hardware, so retain the
+     * proven one-register-per-I2C-transaction access method. */
+    for (uint8_t i = 0U; i < sizeof(data); ++i) {
+        const BNO055_Status status = bno055_read(
+            dev, (uint8_t)(first_register + i), &data[i], 1U);
+        if (status != BNO055_OK) {
+            return status;
+        }
+    }
+
+    vector->x = bno055_decode_i16_le(&data[0]);
+    vector->y = bno055_decode_i16_le(&data[2]);
+    vector->z = bno055_decode_i16_le(&data[4]);
+    return BNO055_OK;
+}
+
+BNO055_Status BNO055_ReadGyroscope(BNO055_Handle *dev,
+                                    BNO055_Vector3Int16 *gyro)
+{
+    return bno055_read_vector3_i16(dev, BNO055_REG_GYRO_X_LSB, gyro);
+}
+
+BNO055_Status BNO055_ReadLinearAcceleration(BNO055_Handle *dev,
+                                             BNO055_Vector3Int16 *accel)
+{
+    return bno055_read_vector3_i16(
+        dev, BNO055_REG_LINEAR_ACCEL_X_LSB, accel);
+}
 BNO055_Status BNO055_ReadEuler(BNO055_Handle *dev, BNO055_Euler *euler)
 {
     uint8_t data[6];

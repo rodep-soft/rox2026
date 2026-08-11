@@ -95,10 +95,10 @@ void MX_CAN_Init(void)
   hcan.Init.Prescaler = 2;
   hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan.Init.TimeSeg1 = CAN_BS1_11TQ;
-  hcan.Init.TimeSeg2 = CAN_BS2_4TQ;
+  hcan.Init.TimeSeg1 = CAN_BS1_13TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan.Init.TimeTriggeredMode = DISABLE;
-  hcan.Init.AutoBusOff = ENABLE;
+  hcan.Init.AutoBusOff = DISABLE;
   hcan.Init.AutoWakeUp = DISABLE;
   hcan.Init.AutoRetransmission = DISABLE;
   hcan.Init.ReceiveFifoLocked = DISABLE;
@@ -201,6 +201,27 @@ CAN_SendResult CAN_SendBno055Quaternion(int16_t x, int16_t y,
   return CAN_SendFrame(CAN_ID_BNO055_QUATERNION, data, sizeof(data));
 }
 
+static CAN_SendResult CAN_SendVector3Int16(uint32_t can_id,
+                                           int16_t x, int16_t y, int16_t z)
+{
+  const uint16_t values[3] = {(uint16_t)x, (uint16_t)y, (uint16_t)z};
+  uint8_t data[6];
+  for (uint32_t i = 0U; i < 3U; ++i) {
+    data[i * 2U] = (uint8_t)(values[i] & 0xFFU);
+    data[i * 2U + 1U] = (uint8_t)(values[i] >> 8);
+  }
+  return CAN_SendFrame(can_id, data, sizeof(data));
+}
+
+CAN_SendResult CAN_SendBno055AngularVelocity(int16_t x, int16_t y, int16_t z)
+{
+  return CAN_SendVector3Int16(CAN_ID_BNO055_ANGULAR_VELOCITY, x, y, z);
+}
+
+CAN_SendResult CAN_SendBno055LinearAcceleration(int16_t x, int16_t y, int16_t z)
+{
+  return CAN_SendVector3Int16(CAN_ID_BNO055_LINEAR_ACCELERATION, x, y, z);
+}
 CAN_SendResult CAN_HeartbeatTask(uint32_t now_ms)
 {
   if (CAN_TimeReached(now_ms, next_heartbeat_time_ms) == 0) {
@@ -241,7 +262,7 @@ void CAN_ResetTxDiagnostics(void)
   /* Keep this lifetime counter visible across CAN peripheral restarts. */
   tx_diagnostics.stall_recovery_count = stall_recovery_count;
   tx_diagnostics.last_hal_status = HAL_OK;
-  next_heartbeat_time_ms = HAL_GetTick();
+  next_heartbeat_time_ms = HAL_GetTick() + CAN_HEARTBEAT_PHASE_MS;
   tx_busy_since_ms = 0U;
   tx_busy_active = false;
 }

@@ -48,6 +48,11 @@ typedef struct {
     float roll_deg;
     float pitch_deg;
 } BNO055_Euler;
+typedef struct {
+    int16_t x;
+    int16_t y;
+    int16_t z;
+} BNO055_Vector3Int16;
 
 typedef struct {
     uint8_t system;
@@ -69,6 +74,8 @@ BNO055_Status BNO055_Init(BNO055_Handle *dev,
 BNO055_Status BNO055_SetMode(BNO055_Handle *dev, BNO055_OperationMode mode);
 BNO055_Status BNO055_ReadQuaternion(BNO055_Handle *dev, BNO055_Quaternion *quat);
 BNO055_Status BNO055_ReadEuler(BNO055_Handle *dev, BNO055_Euler *euler);
+BNO055_Status BNO055_ReadGyroscope(BNO055_Handle *dev, BNO055_Vector3Int16 *gyro);
+BNO055_Status BNO055_ReadLinearAcceleration(BNO055_Handle *dev, BNO055_Vector3Int16 *accel);
 BNO055_Status BNO055_ReadCalibration(BNO055_Handle *dev, BNO055_Calibration *calib);
 BNO055_Status BNO055_ReadTemperature(BNO055_Handle *dev, int8_t *temperature_c);
 BNO055_Status BNO055_ReadSystemStatus(BNO055_Handle *dev,

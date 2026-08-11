@@ -41,8 +41,11 @@ extern CAN_HandleTypeDef hcan;
 /* Application CAN protocol (11-bit standard IDs). */
 #define CAN_ID_STM32_HEARTBEAT  0x100U
 #define CAN_ID_LIMIT_SWITCH     0x310U
-#define CAN_ID_BNO055_QUATERNION 0x320U
+#define CAN_ID_BNO055_QUATERNION          0x320U
+#define CAN_ID_BNO055_ANGULAR_VELOCITY    0x321U
+#define CAN_ID_BNO055_LINEAR_ACCELERATION 0x322U
 #define CAN_HEARTBEAT_PERIOD_MS  100U
+#define CAN_HEARTBEAT_PHASE_MS    50U
 #define CAN_TX_STALL_TIMEOUT_MS  100U
 
 /* USER CODE END Private defines */
@@ -71,6 +74,8 @@ CAN_SendResult CAN_SendHeartbeat(void);
 CAN_SendResult CAN_SendLimitSwitch(uint8_t switch_bits);
 CAN_SendResult CAN_SendBno055Quaternion(int16_t x, int16_t y,
                                         int16_t z, int16_t w);
+CAN_SendResult CAN_SendBno055AngularVelocity(int16_t x, int16_t y, int16_t z);
+CAN_SendResult CAN_SendBno055LinearAcceleration(int16_t x, int16_t y, int16_t z);
 CAN_SendResult CAN_HeartbeatTask(uint32_t now_ms);
 /* Returns false after aborting mailboxes that stayed full for 100 ms. */
 bool CAN_TxHealthTask(uint32_t now_ms);
@@ -84,3 +89,4 @@ const volatile CAN_TxDiagnostics *CAN_GetTxDiagnostics(void);
 #endif
 
 #endif /* __CAN_H__ */
+

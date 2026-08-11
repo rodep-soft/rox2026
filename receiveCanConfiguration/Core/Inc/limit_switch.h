@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-#define LIMIT_SWITCH_PERIOD_MS       10U
+#define LIMIT_SWITCH_PERIOD_MS       20U
+#define LIMIT_SWITCH_PHASE_MS        20U
 
 /* Call once after CAN startup/restart. */
 void LimitSwitch_Init(uint32_t now_ms);

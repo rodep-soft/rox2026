@@ -27,6 +27,9 @@
 volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
 volatile int received_LED_cmd;
 volatile int received_LED_status;
+/* Diagnostic: 1 forces a constant color while BNO055 remains active. */
+volatile uint8_t led_static_test_enabled = 0U;
+volatile uint8_t debug_led_effective_mode = 0U;
 
 // --- CAN通信用の変数 ---
 CAN_RxHeaderTypeDef RxHeader;
@@ -35,6 +38,7 @@ volatile uint8_t DataReadyFlag = 0;
 #define CAN_TIMEOUT_MS 500
 volatile uint32_t last_can_rx_time = 0;
 volatile uint8_t is_timeout = 1;
+volatile int32_t debug_can_rx_elapsed_ms = 0;
 
 volatile uint32_t debug_last_id = 0;       // 最後に受信したID
 volatile uint8_t debug_last_data[8] = { 0 };       // 最後に受信したデータ
@@ -47,6 +51,7 @@ uint8_t b;
 
 #define LOOP_TIME                   10U
 
+#define BNO055_ACTIVE_MODE BNO055_MODE_IMUPLUS
 #define BNO055_RETRY_INTERVAL_MS  1000U
 #define BNO055_MAX_READ_ERRORS    3U
 #define BNO055_CALIBRATION_CHECK_PERIOD_MS 1000U
@@ -65,6 +70,11 @@ uint32_t last_bno055_retry_time = 0;
 uint32_t bno055_init_error_count = 0;
 uint32_t bno055_read_error_count = 0;
 uint32_t bno055_tx_count = 0;
+uint8_t bno055_sample_phase = 0U;
+volatile BNO055_Status debug_bno_init_status = BNO055_ERROR;
+volatile BNO055_Status debug_bno_read_status = BNO055_ERROR;
+volatile uint16_t debug_bno_i2c_address = 0U;
+volatile uint32_t debug_bno_i2c_error = HAL_I2C_ERROR_NONE;
 uint32_t last_bno055_calibration_check_time = 0;
 uint32_t bno055_calibration_save_error_count = 0;
 bool bno055_calibration_profile_saved = false;
@@ -73,6 +83,8 @@ uint8_t bno055_calibration_stable_count = 0U;
 
 BNO055_Handle bno055;
 BNO055_Quaternion imu_quat;
+BNO055_Vector3Int16 imu_angular_velocity;
+BNO055_Vector3Int16 imu_linear_acceleration;
 BNO055_Euler imu_euler;
 BNO055_Calibration imu_calib;
 
@@ -101,6 +113,10 @@ volatile int16_t debug_gyro_x = 0;
 volatile int16_t debug_gyro_y = 0;
 volatile int16_t debug_gyro_z = 0;
 volatile BNO055_Status debug_gyro_status = BNO055_ERROR;
+volatile int16_t debug_accel_x = 0;
+volatile int16_t debug_accel_y = 0;
+volatile int16_t debug_accel_z = 0;
+volatile BNO055_Status debug_accel_status = BNO055_ERROR;
 
 /* USER CODE END Includes */
 
@@ -410,12 +426,6 @@ static uint8_t LED_TriangleWave(uint32_t now_ms, uint32_t period_ms) {
 		return (uint8_t)(phase * 255U / half);
 	}
 	return (uint8_t)((period_ms - phase) * 255U / half);
-}
-
-/* Smooth 0..255..0 curve with no abrupt change at either end. */
-static uint8_t LED_SmoothPulse(uint32_t now_ms, uint32_t period_ms) {
-	const uint32_t x = LED_TriangleWave(now_ms, period_ms);
-	return (uint8_t)(x * x * (765U - 2U * x) / (255U * 255U));
 }
 
 static uint8_t LED_GlowIntensity(uint16_t distance) {
@@ -886,6 +896,14 @@ static void LED_RenderFiringChassis(uint32_t elapsed_ms) {
 void shining_LED(int received_LED_cmd) {
 	const uint32_t now_ms = HAL_GetTick();
 	const uint8_t mode = (uint8_t)received_LED_cmd;
+	debug_led_effective_mode = mode;
+	if (led_static_test_enabled != 0U) {
+		/* Fixed, low-current cyan. No time-dependent animation data. */
+		LED_SetAll(0U, 80U, 100U);
+		LED_SetLauncherAll(0U, 80U, 100U);
+		show();
+		return;
+	}
 	static uint8_t previous_mode = 0xFFU;
 	static bool loading_wait_started = false;
 	static uint32_t loading_wait_start_ms = 0U;
@@ -903,24 +921,13 @@ void shining_LED(int received_LED_cmd) {
 	}
 
 	switch (mode) {
-	case 0U: /* STARTUP: steady light cyan with a gentle brightness sway */
-	{
-		const uint8_t pulse = LED_SmoothPulse(now_ms, 2400U);
-		const uint8_t green = (uint8_t)(145U + (uint16_t)pulse * 30U / 255U);
-		const uint8_t blue = (uint8_t)(185U + (uint16_t)pulse * 35U / 255U);
-		LED_SetAll(0U, green, blue);
-		LED_SetLauncherAll(0U, green, blue);
+	case 0U: /* STARTUP: steady light cyan */
+	case 1U: /* READY: steady light cyan */
+		/* Do not modulate the complete strips. Global brightness modulation
+		 * appears as synchronized flicker when the BNO055 task adds jitter. */
+		LED_SetAll(0U, 160U, 205U);
+		LED_SetLauncherAll(0U, 160U, 205U);
 		break;
-	}
-	case 1U: /* READY: steady light cyan with a gentle brightness sway */
-	{
-		const uint8_t pulse = LED_SmoothPulse(now_ms, 2400U);
-		const uint8_t green = (uint8_t)(145U + (uint16_t)pulse * 30U / 255U);
-		const uint8_t blue = (uint8_t)(185U + (uint16_t)pulse * 35U / 255U);
-		LED_SetAll(0U, green, blue);
-		LED_SetLauncherAll(0U, green, blue);
-		break;
-	}
 	case 2U: /* EMERGENCY_STOP: two red gradients, 600 ms per lap */
 		for (uint16_t i = 0U; i < PA6_MAIN_LED_COUNT; i++) {
 			const uint8_t red = Emergency_GetIntensityFor(i,
@@ -1015,10 +1022,10 @@ void shining_LED(int received_LED_cmd) {
 		LED_SetLauncherAll(0U, pulse, pulse);
 		break;
 	}
-	case 9U: /* ERROR: fast red blink, 100 ms on/off */
+	case 9U: /* ERROR: solid red on CAN timeout */
 	default:
 	{
-		const uint8_t red = ((now_ms / 100U) & 1U) ? 255U : 0U;
+		const uint8_t red = 255U;
 		LED_SetAll(red, 0U, 0U);
 		LED_SetLauncherAll(red, 0U, 0U);
 		break;
@@ -1042,26 +1049,79 @@ void shining_LED(int received_LED_cmd) {
 	show();
 }
 
+/*
+ * Recover an I2C bus held busy by a slave: release SDA, pulse SCL up to
+ * nine times, generate a STOP condition, then restore I2C1 alternate pins.
+ */
+static void BNO055_RecoverI2CBus(void) {
+	GPIO_InitTypeDef gpio = { 0 };
+
+	(void)HAL_I2C_DeInit(&hi2c1);
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+	gpio.Mode = GPIO_MODE_OUTPUT_OD;
+	gpio.Pull = GPIO_PULLUP;
+	gpio.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &gpio);
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_Delay(2U);
+
+	for (uint32_t pulse = 0U;
+			(pulse < 9U) &&
+			(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == GPIO_PIN_RESET);
+			++pulse) {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+		HAL_Delay(1U);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+		HAL_Delay(1U);
+	}
+
+	/* STOP: SDA low -> SCL high -> SDA high. */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+	HAL_Delay(1U);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	HAL_Delay(1U);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_Delay(2U);
+
+	HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6 | GPIO_PIN_7);
+	MX_I2C1_Init();
+}
 //BNO055の初期化関数
 static bool BNO055_TryInitialize(void) {
 	BNO055_Status status;
 	uint8_t calibration_profile[BNO055_CALIBRATION_PROFILE_SIZE];
 
 	/*
-	 * NDOF uses accelerometer + gyroscope + magnetometer.  The quaternion is
-	 * therefore referenced to gravity and magnetic north instead of only to
-	 * the orientation at startup (IMUPLUS).
+	 * IMUPLUS uses the accelerometer and gyroscope without the magnetometer.
+	 * This provides a gravity-referenced relative orientation and avoids magnetic
+	 * disturbances from motors and the robot frame.
 	 */
 	status = BNO055_Init(&bno055, &hi2c1,
-	BNO055_I2C_ADDR_LOW, BNO055_MODE_NDOF);
+		BNO055_I2C_ADDR_LOW, BNO055_ACTIVE_MODE);
+	if (status != BNO055_OK) {
+		status = BNO055_Init(&bno055, &hi2c1,
+			BNO055_I2C_ADDR_HIGH, BNO055_ACTIVE_MODE);
+	}
+	debug_bno_init_status = status;
+	debug_bno_i2c_address = bno055.address;
+	debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
 
 	/* A valid Flash profile removes the need for manual calibration at boot. */
 	bno055_calibration_profile_restored = false;
 	bno055_calibration_profile_saved =
 			BNO055_CalibrationStorageLoad(calibration_profile);
 	if ((status == BNO055_OK) && bno055_calibration_profile_saved) {
-		status = BNO055_ApplyCalibrationProfile(&bno055, calibration_profile);
-		bno055_calibration_profile_restored = (status == BNO055_OK);
+		const BNO055_Status calibration_status =
+			BNO055_ApplyCalibrationProfile(&bno055, calibration_profile);
+		bno055_calibration_profile_restored =
+			(calibration_status == BNO055_OK);
+		/* Optional calibration restore must not mark the sensor disconnected. */
+		if (calibration_status != BNO055_OK) {
+			(void)BNO055_SetMode(&bno055, BNO055_ACTIVE_MODE);
+		}
 	}
 
 	//初期化に成功したら，デバック用に各種ステータスを読み取って終了
@@ -1100,7 +1160,9 @@ static void BNO055_CalibrationTask(uint32_t now_ms) {
 		bno055_calibration_stable_count = 0U;
 		return;
 	}
-	if (!BNO055_IsFullyCalibrated(&imu_calib)) {
+	/* IMUPLUS does not use the magnetometer, so mag calibration is irrelevant. */
+	if ((imu_calib.system != 3U) || (imu_calib.gyro != 3U) ||
+		(imu_calib.accel != 3U)) {
 		bno055_calibration_stable_count = 0U;
 		return;
 	}
@@ -1122,8 +1184,7 @@ static void BNO055_CalibrationTask(uint32_t now_ms) {
 
 /* Reset a wedged I2C peripheral before attempting to configure the sensor. */
 static bool BNO055_Recover(void) {
-	(void)HAL_I2C_DeInit(&hi2c1);
-	MX_I2C1_Init();
+	BNO055_RecoverI2CBus();
 	return BNO055_TryInitialize();
 }
 static bool CAN_TryInitialize(void) {
@@ -1189,43 +1250,69 @@ static bool CAN_TryInitialize(void) {
 }
 
 static bool BNO055_ReadAndSend(void) {
-	BNO055_Status read_status = BNO055_ReadQuaternion(&bno055, &imu_quat);
-	if (read_status != BNO055_OK) {
+	BNO055_Status status = BNO055_ReadQuaternion(&bno055, &imu_quat);
+	debug_bno_read_status = status;
+	if (status != BNO055_OK) {
+		debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
 		return false;
 	}
-	bno055_read_error_count = 0;
 
-	int32_t qx = imu_quat.x;
-	int32_t qy = imu_quat.y;
-	int32_t qz = imu_quat.z;
-	int32_t qw = imu_quat.w;
-
-	uint64_t norm_sq = (uint32_t) (qx * qx + qy * qy + qz * qz + qw * qw);
-	const uint64_t nominal = 16384UL * 16384UL;
-	const uint64_t lower = nominal * 90UL / 100UL;
-	const uint64_t upper = nominal * 110UL / 100UL;
-	if ((norm_sq < lower) || (norm_sq > upper)) {
-		debug_invalid_quat_count++;
-		debug_bad_qx = imu_quat.x;
-		debug_bad_qy = imu_quat.y;
-		debug_bad_qz = imu_quat.z;
-		debug_bad_qw = imu_quat.w;
-		debug_bad_norm_sq = norm_sq;
+	/* Quaternion is sampled every slot (100 Hz). Read only one vector in each
+	 * slot so that I2C work and CAN traffic remain bounded: gyro and linear
+	 * acceleration alternate at 50 Hz each. */
+	const bool read_gyro = (bno055_sample_phase == 0U);
+	if (read_gyro) {
+		debug_gyro_status = BNO055_ReadGyroscope(
+				&bno055, &imu_angular_velocity);
+		status = debug_gyro_status;
+		if (status == BNO055_OK) {
+			debug_gyro_x = imu_angular_velocity.x;
+			debug_gyro_y = imu_angular_velocity.y;
+			debug_gyro_z = imu_angular_velocity.z;
+		}
+	} else {
+		debug_accel_status = BNO055_ReadLinearAcceleration(
+				&bno055, &imu_linear_acceleration);
+		status = debug_accel_status;
+		if (status == BNO055_OK) {
+			debug_accel_x = imu_linear_acceleration.x;
+			debug_accel_y = imu_linear_acceleration.y;
+			debug_accel_z = imu_linear_acceleration.z;
+		}
+	}
+	if (status != BNO055_OK) {
+		debug_bno_read_status = status;
+		debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+		return false;
 	}
 
-	CAN_SendResult send_result = CAN_SendBno055Quaternion(
+	debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+	bno055_read_error_count = 0U;
+
+	const CAN_SendResult quat_result = CAN_SendBno055Quaternion(
 			imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w);
-	if (send_result == CAN_SEND_OK) {
-		can_tx_error_count = 0;
-		bno055_tx_count++;
-		bno_com_priod = HAL_GetTick() - last_bno_com_time;
-		last_bno_com_time = HAL_GetTick();
-	} else if (send_result == CAN_SEND_ERROR) {
+	const CAN_SendResult vector_result = read_gyro
+			? CAN_SendBno055AngularVelocity(
+					imu_angular_velocity.x, imu_angular_velocity.y,
+					imu_angular_velocity.z)
+			: CAN_SendBno055LinearAcceleration(
+					imu_linear_acceleration.x, imu_linear_acceleration.y,
+					imu_linear_acceleration.z);
+
+	if ((quat_result == CAN_SEND_ERROR) ||
+			(vector_result == CAN_SEND_ERROR)) {
 		can_tx_error_count++;
+	} else if ((quat_result == CAN_SEND_OK) &&
+			(vector_result == CAN_SEND_OK)) {
+		bno055_sample_phase ^= 1U;
+		can_tx_error_count = 0U;
+		bno055_tx_count++;
+		const uint32_t tx_now = HAL_GetTick();
+		bno_com_priod = tx_now - last_bno_com_time;
+		last_bno_com_time = tx_now;
 	}
 	return true;
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -1261,13 +1348,12 @@ int main(void)
   MX_CAN_Init();
   MX_TIM15_Init();
   MX_TIM3_Init();
-
   MX_TIM17_Init();
   MX_I2C1_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-
-	LED_Init();
-	HAL_Delay(100);
+	BNO055_RecoverI2CBus();
+	HAL_Delay(1500);
 	//BNO055初期化
 	bno055_connected = BNO055_TryInitialize();
 	last_bno055_retry_time = HAL_GetTick();
@@ -1280,6 +1366,9 @@ int main(void)
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
 
 	// LEDの初期化
+#if LED_FEATURE_ENABLED
+	LED_Init();
+#endif
 	last_can_rx_time = HAL_GetTick();
 	last_loop_time = HAL_GetTick();
 	last_bno_com_time = last_loop_time;
@@ -1292,10 +1381,13 @@ int main(void)
 		//ループ周期調整
 		uint32_t now = HAL_GetTick();
 		if ((uint32_t)(now - last_loop_time) < LOOP_TIME) {
-			HAL_Delay(1);
+			HAL_Delay(1U);
 			continue;
 		}
 		last_loop_time = now;
+
+		/* Stop the previous LED DMA/timers before any BNO055 I2C access. */
+		LED_WaitForIdle();
 
 		// CANが切れていないかの確認
 		if (!can_connected) {
@@ -1320,7 +1412,7 @@ int main(void)
 			if ((uint32_t) (now - last_bno055_retry_time)
 					>= BNO055_RETRY_INTERVAL_MS) {
 				last_bno055_retry_time = now;
-				BNO055_Recover();
+				bno055_connected = BNO055_Recover();
 			}
 			// errorの許容値を超えたら再起動を試みる
 		}
@@ -1332,31 +1424,40 @@ int main(void)
 
 		BNO055_CalibrationTask(now);
 
-		/* ---- 10 ms application tasks ---- */
+		/* ---- Deterministic 10 ms CAN slot ----
+		 * LimitSW/heartbeat are due on different slots and consume at most one
+		 * mailbox. Quaternion plus one vector consume the remaining two. */
 		if (can_connected) {
-			if (bno055_connected) {
-				if (!BNO055_ReadAndSend()) {
-					bno055_read_error_count++;
-				}
-			}
-
-			if (!LimitSwitch_Task(now)) {
-				can_tx_error_count++;
-			}
-
 			if (CAN_HeartbeatTask(now) == CAN_SEND_ERROR) {
 				can_tx_error_count++;
 			}
+			if (!LimitSwitch_Task(now)) {
+				can_tx_error_count++;
+			}
+			if (bno055_connected && !BNO055_ReadAndSend()) {
+				bno055_read_error_count++;
+			}
 		}
-
-			if ((now - last_can_rx_time) > CAN_TIMEOUT_MS) {
-				is_timeout = 1; //timeout中
-				/* 通信タイムアウト中は、他の表示よりcase 9を優先する。 */
+#if LED_FEATURE_ENABLED
+			/* Separate the final BNO055 I2C edge from the WS2812 DMA start. */
+			if (bno055_connected) {
+				HAL_Delay(2U);
+			}
+			/* HAL_GetTick() must be sampled here, not at the beginning of the
+			 * loop. A CAN IRQ may make last_can_rx_time newer than the old loop
+			 * timestamp; signed subtraction treats that race as "not timed out"
+			 * instead of wrapping to a huge uint32_t value. */
+			const uint32_t timeout_now = HAL_GetTick();
+			debug_can_rx_elapsed_ms =
+					(int32_t)(timeout_now - last_can_rx_time);
+			if (debug_can_rx_elapsed_ms > (int32_t)CAN_TIMEOUT_MS) {
+				is_timeout = 1U;
 				shining_LED(9);
 			} else {
 				// --- 6. LEDの点灯更新 ---
 				shining_LED(received_LED_cmd);
 			}
+#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1421,6 +1522,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 //            debug_last_data[i] = RxData[i];
 //        }
 		debug_rx_count++;
+		/* Any successfully received CAN frame proves that the bus is alive.
+		 * Do not flash the LEDs merely because heartbeat ID 0x101 was delayed. */
+		last_can_rx_time = HAL_GetTick();
+		is_timeout = 0U;
 		// ------------------------------------------------------------
 		// --- 指定フォーマットの解析処理（ID: 0x20n） ---
 		if (RxHeader.StdId == 0x101) {

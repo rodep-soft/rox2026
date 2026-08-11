@@ -1,0 +1,5 @@
+diff a/receiveCanConfiguration/receiveCanConfiguration.ioc b/receiveCanConfiguration/receiveCanConfiguration.ioc	(rejected hunks)
+@@ -42,7 +42,7 @@ Dma.TIM3_CH1/TRIG.2.RequestParameters=Instance,Direction,PeriphInc,MemInc,PeriphD
+ Dma.TIM3_CH4/UP.3.Direction=DMA_PERIPH_TO_MEMORY
+-Dma.TIM3_CH4/UP.3.Direction=DMA_PERIPH_TO_MEMORY
++Dma.TIM3_CH4/UP.3.Direction=DMA_MEMORY_TO_PERIPH

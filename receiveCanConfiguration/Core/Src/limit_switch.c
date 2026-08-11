@@ -19,14 +19,14 @@ static uint8_t read_switch_bits(void)
 
 void LimitSwitch_Init(uint32_t now_ms)
 {
-    next_switch_time_ms = now_ms;
+    next_switch_time_ms = now_ms + LIMIT_SWITCH_PHASE_MS;
 }
 
 bool LimitSwitch_Task(uint32_t now_ms)
 {
     bool ok = true;
 
-    if (now_ms - next_switch_time_ms >= 0) {
+    if ((int32_t)(now_ms - next_switch_time_ms) >= 0) {
         uint8_t switch_bits = read_switch_bits();
         next_switch_time_ms = now_ms + LIMIT_SWITCH_PERIOD_MS;
         if (CAN_SendLimitSwitch(switch_bits) == CAN_SEND_ERROR) {
