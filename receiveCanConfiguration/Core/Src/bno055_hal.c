@@ -2,8 +2,10 @@
 
 #define BNO055_REG_CHIP_ID       0x00U
 #define BNO055_REG_PAGE_ID       0x07U
+#define BNO055_REG_GYRO_X_LSB    0x14U
 #define BNO055_REG_EULER_H_LSB   0x1AU
 #define BNO055_REG_QUAT_W_LSB    0x20U
+#define BNO055_REG_LINEAR_ACCEL_X_LSB 0x28U
 #define BNO055_REG_TEMP          0x34U
 #define BNO055_REG_CALIB_STAT    0x35U
 #define BNO055_REG_SELFTEST      0x36U
@@ -13,11 +15,15 @@
 #define BNO055_REG_OPR_MODE      0x3DU
 #define BNO055_REG_PWR_MODE      0x3EU
 #define BNO055_REG_SYS_TRIGGER   0x3FU
+#define BNO055_REG_ACC_OFFSET_X_LSB 0x55U
 
 #define BNO055_CHIP_ID_VALUE     0xA0U
 #define BNO055_PWR_MODE_NORMAL   0x00U
 #define BNO055_RESET_COMMAND     0x20U
-#define BNO055_TIMEOUT_MS        100U
+#define BNO055_TIMEOUT_MS        50U
+#define BNO055_IO_RETRIES        3U
+
+volatile uint8_t debug_data[8];
 
 static BNO055_Status bno055_from_hal(HAL_StatusTypeDef status)
 {
@@ -39,13 +45,21 @@ static BNO055_Status bno055_read(BNO055_Handle *dev,
         return BNO055_ERROR;
     }
 
-    return bno055_from_hal(HAL_I2C_Mem_Read(dev->hi2c,
-                                            dev->address,
-                                            reg,
-                                            I2C_MEMADD_SIZE_8BIT,
-                                            data,
-                                            length,
-                                            BNO055_TIMEOUT_MS));
+    HAL_StatusTypeDef hal_status = HAL_ERROR;
+    for (uint32_t retry = 0U; retry < BNO055_IO_RETRIES; ++retry) {
+        hal_status = HAL_I2C_Mem_Read(dev->hi2c,
+                                     dev->address,
+                                     reg,
+                                     I2C_MEMADD_SIZE_8BIT,
+                                     data,
+                                     length,
+                                     BNO055_TIMEOUT_MS);
+        if (hal_status == HAL_OK) {
+            return BNO055_OK;
+        }
+        HAL_Delay(2U);
+    }
+    return bno055_from_hal(hal_status);
 }
 
 static BNO055_Status bno055_write_u8(BNO055_Handle *dev, uint8_t reg, uint8_t value)
@@ -54,13 +68,21 @@ static BNO055_Status bno055_write_u8(BNO055_Handle *dev, uint8_t reg, uint8_t va
         return BNO055_ERROR;
     }
 
-    return bno055_from_hal(HAL_I2C_Mem_Write(dev->hi2c,
-                                             dev->address,
-                                             reg,
-                                             I2C_MEMADD_SIZE_8BIT,
-                                             &value,
-                                             1U,
-                                             BNO055_TIMEOUT_MS));
+    HAL_StatusTypeDef hal_status = HAL_ERROR;
+    for (uint32_t retry = 0U; retry < BNO055_IO_RETRIES; ++retry) {
+        hal_status = HAL_I2C_Mem_Write(dev->hi2c,
+                                      dev->address,
+                                      reg,
+                                      I2C_MEMADD_SIZE_8BIT,
+                                      &value,
+                                      1U,
+                                      BNO055_TIMEOUT_MS);
+        if (hal_status == HAL_OK) {
+            return BNO055_OK;
+        }
+        HAL_Delay(2U);
+    }
+    return bno055_from_hal(hal_status);
 }
 
 static int16_t bno055_decode_i16_le(const uint8_t *data)
@@ -151,33 +173,108 @@ BNO055_Status BNO055_Init(BNO055_Handle *dev,
     return BNO055_SetMode(dev, mode);
 }
 
-BNO055_Status BNO055_ReadQuaternion(BNO055_Handle *dev, BNO055_Quaternion *quat)
+//BNO055_Status BNO055_ReadQuaternion(BNO055_Handle *dev, BNO055_Quaternion *quat)
+//{
+//    uint8_t data[8];
+//    BNO055_Status status;
+//
+//    if (quat == NULL) {
+//        return BNO055_ERROR;
+//    }
+//
+//    status = bno055_read(dev, BNO055_REG_QUAT_W_LSB, data, sizeof(data));
+//    if (status != BNO055_OK) {
+//        return status;
+//    }
+//
+//    //CAN経由で送信するためint16のスケールなしに変更
+////    const float scale = 1.0f / 16384.0f;
+////    quat->w = (float)bno055_decode_i16_le(&data[0]) * scale;
+////    quat->x = (float)bno055_decode_i16_le(&data[2]) * scale;
+////    quat->y = (float)bno055_decode_i16_le(&data[4]) * scale;
+////    quat->z = (float)bno055_decode_i16_le(&data[6]) * scale;
+//    for (uint8_t i = 0; i < 8; i++) {
+//        debug_data[i] = data[i];
+//    }
+//      quat->w = bno055_decode_i16_le(&data[0]);
+//      quat->x = bno055_decode_i16_le(&data[2]);
+//      quat->y = bno055_decode_i16_le(&data[4]);
+//      quat->z = bno055_decode_i16_le(&data[6]);
+//    return BNO055_OK;
+//}
+
+BNO055_Status BNO055_ReadQuaternion(
+    BNO055_Handle *dev,
+    BNO055_Quaternion *quat)
 {
     uint8_t data[8];
-    BNO055_Status status;
 
-    if (quat == NULL) {
+    if ((dev == NULL) || (quat == NULL)) {
         return BNO055_ERROR;
     }
-
-    status = bno055_read(dev, BNO055_REG_QUAT_W_LSB, data, sizeof(data));
-    if (status != BNO055_OK) {
-        return status;
+    /* This BNO055 setup does not reliably support a multi-byte transfer.
+     * Keep the proven one-register-at-a-time access. */
+    for (uint8_t i = 0U; i < sizeof(data); ++i) {
+        const BNO055_Status status =
+            bno055_read(dev,
+                        (uint8_t)(BNO055_REG_QUAT_W_LSB + i),
+                        &data[i],
+                        1U);
+        if (status != BNO055_OK) {
+            return status;
+        }
     }
 
-    //CAN経由で送信するためint16のスケールなしに変更
-//    const float scale = 1.0f / 16384.0f;
-//    quat->w = (float)bno055_decode_i16_le(&data[0]) * scale;
-//    quat->x = (float)bno055_decode_i16_le(&data[2]) * scale;
-//    quat->y = (float)bno055_decode_i16_le(&data[4]) * scale;
-//    quat->z = (float)bno055_decode_i16_le(&data[6]) * scale;
-      quat->w = bno055_decode_i16_le(&data[0]);
-      quat->x = bno055_decode_i16_le(&data[2]);
-      quat->y = bno055_decode_i16_le(&data[4]);
-      quat->z = bno055_decode_i16_le(&data[6]);
+    const int16_t w = bno055_decode_i16_le(&data[0]);
+    const int16_t x = bno055_decode_i16_le(&data[2]);
+    const int16_t y = bno055_decode_i16_le(&data[4]);
+    const int16_t z = bno055_decode_i16_le(&data[6]);
+
+    quat->w = w;
+    quat->x = x;
+    quat->y = y;
+    quat->z = z;
+
     return BNO055_OK;
 }
 
+static BNO055_Status bno055_read_vector3_i16(BNO055_Handle *dev,
+                                              uint8_t first_register,
+                                              BNO055_Vector3Int16 *vector)
+{
+    uint8_t data[6];
+    if ((dev == NULL) || (vector == NULL)) {
+        return BNO055_ERROR;
+    }
+
+    /* Multi-byte reads are unreliable on this hardware, so retain the
+     * proven one-register-per-I2C-transaction access method. */
+    for (uint8_t i = 0U; i < sizeof(data); ++i) {
+        const BNO055_Status status = bno055_read(
+            dev, (uint8_t)(first_register + i), &data[i], 1U);
+        if (status != BNO055_OK) {
+            return status;
+        }
+    }
+
+    vector->x = bno055_decode_i16_le(&data[0]);
+    vector->y = bno055_decode_i16_le(&data[2]);
+    vector->z = bno055_decode_i16_le(&data[4]);
+    return BNO055_OK;
+}
+
+BNO055_Status BNO055_ReadGyroscope(BNO055_Handle *dev,
+                                    BNO055_Vector3Int16 *gyro)
+{
+    return bno055_read_vector3_i16(dev, BNO055_REG_GYRO_X_LSB, gyro);
+}
+
+BNO055_Status BNO055_ReadLinearAcceleration(BNO055_Handle *dev,
+                                             BNO055_Vector3Int16 *accel)
+{
+    return bno055_read_vector3_i16(
+        dev, BNO055_REG_LINEAR_ACCEL_X_LSB, accel);
+}
 BNO055_Status BNO055_ReadEuler(BNO055_Handle *dev, BNO055_Euler *euler)
 {
     uint8_t data[6];
@@ -265,4 +362,79 @@ bool BNO055_IsFullyCalibrated(const BNO055_Calibration *calib)
            (calib->gyro == 3U) &&
            (calib->accel == 3U) &&
            (calib->mag == 3U);
+}
+
+BNO055_Status BNO055_ReadOperationMode(
+    BNO055_Handle *dev,
+    uint8_t *mode)
+{
+    if (mode == NULL) {
+        return BNO055_ERROR;
+    }
+
+    return bno055_read(
+        dev,
+        BNO055_REG_OPR_MODE,
+        mode,
+        1U
+    );
+}
+
+BNO055_Status BNO055_ReadCalibrationProfile(
+    BNO055_Handle *dev,
+    uint8_t profile[BNO055_CALIBRATION_PROFILE_SIZE])
+{
+    BNO055_Status status;
+    BNO055_OperationMode previous_mode;
+
+    if ((dev == NULL) || (profile == NULL)) {
+        return BNO055_ERROR;
+    }
+
+    previous_mode = dev->mode;
+    status = BNO055_SetMode(dev, BNO055_MODE_CONFIG);
+    if (status != BNO055_OK) {
+        return status;
+    }
+
+    /* Single-register reads are retained because burst reads are unstable. */
+    for (uint8_t i = 0U; i < BNO055_CALIBRATION_PROFILE_SIZE; ++i) {
+        status = bno055_read(dev,
+            (uint8_t)(BNO055_REG_ACC_OFFSET_X_LSB + i), &profile[i], 1U);
+        if (status != BNO055_OK) {
+            (void)BNO055_SetMode(dev, previous_mode);
+            return status;
+        }
+    }
+
+    return BNO055_SetMode(dev, previous_mode);
+}
+
+BNO055_Status BNO055_ApplyCalibrationProfile(
+    BNO055_Handle *dev,
+    const uint8_t profile[BNO055_CALIBRATION_PROFILE_SIZE])
+{
+    BNO055_Status status;
+    BNO055_OperationMode previous_mode;
+
+    if ((dev == NULL) || (profile == NULL)) {
+        return BNO055_ERROR;
+    }
+
+    previous_mode = dev->mode;
+    status = BNO055_SetMode(dev, BNO055_MODE_CONFIG);
+    if (status != BNO055_OK) {
+        return status;
+    }
+
+    for (uint8_t i = 0U; i < BNO055_CALIBRATION_PROFILE_SIZE; ++i) {
+        status = bno055_write_u8(dev,
+            (uint8_t)(BNO055_REG_ACC_OFFSET_X_LSB + i), profile[i]);
+        if (status != BNO055_OK) {
+            (void)BNO055_SetMode(dev, previous_mode);
+            return status;
+        }
+    }
+
+    return BNO055_SetMode(dev, previous_mode);
 }
