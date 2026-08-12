@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-/* PB4/TIM16/DMA1 Channel3 and PA7/TIM17/DMA1 Channel1 only. */
+/* PB4/TIM16/DMA1 Channel3 and PB5/TIM17/DMA1 Channel1 only. */
 typedef struct { uint8_t r, g, b; } RGB_t;
 
 #define WS_PERIOD_TICKS 80U
@@ -11,17 +11,17 @@ typedef struct { uint8_t r, g, b; } RGB_t;
 #define WS_T1H_TICKS 51U
 #define WS_RESET_SLOTS 80U
 #define PB4_PWM_COUNT (WS_RESET_SLOTS + PB4_LED_NUM * 24U + WS_RESET_SLOTS)
-#define PA7_PWM_COUNT (WS_RESET_SLOTS + PA7_LED_NUM * 24U + WS_RESET_SLOTS)
+#define PB5_PWM_COUNT (WS_RESET_SLOTS + PB5_LED_NUM * 24U + WS_RESET_SLOTS)
 #define LED_MIN_FRAME_INTERVAL_MS 20U
 
 static RGB_t pb4Buffer[PB4_LED_NUM];
-static RGB_t pa7Buffer[PA7_LED_NUM];
+static RGB_t pb5Buffer[PB5_LED_NUM];
 static uint16_t pb4PwmData[PB4_PWM_COUNT];
-static uint16_t pa7PwmData[PA7_PWM_COUNT];
+static uint16_t pb5PwmData[PB5_PWM_COUNT];
 static bool ledChanged = true;
 static volatile bool ledDmaBusy = false;
 static volatile bool pb4DmaDone = true;
-static volatile bool pa7DmaDone = true;
+static volatile bool pb5DmaDone = true;
 static uint32_t ledDmaStartMs;
 static uint32_t lastLedFrameMs;
 
@@ -82,7 +82,7 @@ static void stopTransfer(void) {
     __HAL_TIM_SET_COMPARE(&htim16, TIM_CHANNEL_1, 0U);
     __HAL_TIM_SET_COMPARE(&htim17, TIM_CHANNEL_1, 0U);
     pb4DmaDone = true;
-    pa7DmaDone = true;
+    pb5DmaDone = true;
     ledDmaBusy = false;
 }
 
@@ -90,7 +90,7 @@ static bool startTransfer(void) {
     configureTimer(TIM16);
     configureTimer(TIM17);
     pb4DmaDone = false;
-    pa7DmaDone = false;
+    pb5DmaDone = false;
 
     if (HAL_TIM_PWM_Start_DMA(&htim16, TIM_CHANNEL_1,
                               (uint32_t *)pb4PwmData,
@@ -99,8 +99,8 @@ static bool startTransfer(void) {
         return false;
     }
     if (HAL_TIM_PWM_Start_DMA(&htim17, TIM_CHANNEL_1,
-                              (uint32_t *)pa7PwmData,
-                              PA7_PWM_COUNT) != HAL_OK) {
+                              (uint32_t *)pb5PwmData,
+                              PB5_PWM_COUNT) != HAL_OK) {
         stopTransfer();
         return false;
     }
@@ -118,12 +118,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
     } else if (htim->Instance == TIM17) {
         (void)HAL_TIM_PWM_Stop_DMA(&htim17, TIM_CHANNEL_1);
         __HAL_TIM_SET_COMPARE(&htim17, TIM_CHANNEL_1, 0U);
-        pa7DmaDone = true;
+        pb5DmaDone = true;
     }
 }
 static bool serviceDma(void) {
     if (!ledDmaBusy) return true;
-    if (pb4DmaDone && pa7DmaDone) {
+    if (pb4DmaDone && pb5DmaDone) {
         ledDmaBusy = false;
         ++led_show_count;
         return true;
@@ -145,7 +145,6 @@ void LED_WaitForIdle(void) {
 void LED_Init(void) {
     GPIO_InitTypeDef gpio = {0};
     __HAL_RCC_DMA1_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_TIM16_CLK_ENABLE();
     __HAL_RCC_TIM17_CLK_ENABLE();
@@ -156,9 +155,9 @@ void LED_Init(void) {
     gpio.Pin = GPIO_PIN_4;
     gpio.Alternate = GPIO_AF1_TIM16;
     HAL_GPIO_Init(GPIOB, &gpio);
-    gpio.Pin = GPIO_PIN_7;
-    gpio.Alternate = GPIO_AF1_TIM17;
-    HAL_GPIO_Init(GPIOA, &gpio);
+    gpio.Pin = GPIO_PIN_5;
+    gpio.Alternate = GPIO_AF10_TIM17;
+    HAL_GPIO_Init(GPIOB, &gpio);
 
     led_initialized = 1U;
 #if LED_DMA_ENABLED
@@ -176,27 +175,31 @@ void getPixelPA6(uint16_t i, uint8_t *r, uint8_t *g, uint8_t *b) {
     *r = pb4Buffer[i].r; *g = pb4Buffer[i].g; *b = pb4Buffer[i].b;
 }
 void setPixelPA7(uint16_t i, uint8_t r, uint8_t g, uint8_t b) {
-    setBuffer(pa7Buffer, PA7_LED_NUM, i, r, g, b);
+    setBuffer(pb5Buffer, PB5_LED_NUM, i, r, g, b);
 }
 void getPixelPA7(uint16_t i, uint8_t *r, uint8_t *g, uint8_t *b) {
-    if (i >= PA7_LED_NUM || !r || !g || !b) return;
-    *r = pa7Buffer[i].r; *g = pa7Buffer[i].g; *b = pa7Buffer[i].b;
+    if (i >= PB5_LED_NUM || !r || !g || !b) return;
+    *r = pb5Buffer[i].r; *g = pb5Buffer[i].g; *b = pb5Buffer[i].b;
 }
-/* Removed PA2/PA4 output: retained only so existing animation code links. */
+/* Former PA2 left-middle pixels now continue on PB4 at physical 44..36. */
 void setPixelPA2(uint16_t i, uint8_t r, uint8_t g, uint8_t b) {
-    (void)i; (void)r; (void)g; (void)b;
+    if (i >= PA2_LED_NUM) return;
+    setBuffer(pb4Buffer, PB4_LED_NUM,
+              (uint16_t)(PB4_LED_NUM - 1U - i), r, g, b);
 }
 void getPixelPA2(uint16_t i, uint8_t *r, uint8_t *g, uint8_t *b) {
-    (void)i;
-    if (!r || !g || !b) return;
-    *r = 0U; *g = 0U; *b = 0U;
+    if (i >= PA2_LED_NUM || !r || !g || !b) return;
+    const uint16_t physical = (uint16_t)(PB4_LED_NUM - 1U - i);
+    *r = pb4Buffer[physical].r;
+    *g = pb4Buffer[physical].g;
+    *b = pb4Buffer[physical].b;
 }
 void setPixel(uint16_t i, uint8_t r, uint8_t g, uint8_t b) {
     setPixelPA7(i, r, g, b);
 }
 void clear(void) {
     memset(pb4Buffer, 0, sizeof(pb4Buffer));
-    memset(pa7Buffer, 0, sizeof(pa7Buffer));
+    memset(pb5Buffer, 0, sizeof(pb5Buffer));
     ledChanged = true;
 }
 void show(void) {
@@ -209,7 +212,7 @@ void show(void) {
     const uint32_t now = HAL_GetTick();
     if ((uint32_t)(now - lastLedFrameMs) < LED_MIN_FRAME_INTERVAL_MS) return;
     buildData(pb4Buffer, PB4_LED_NUM, pb4PwmData, PB4_PWM_COUNT);
-    buildData(pa7Buffer, PA7_LED_NUM, pa7PwmData, PA7_PWM_COUNT);
+    buildData(pb5Buffer, PB5_LED_NUM, pb5PwmData, PB5_PWM_COUNT);
     ledChanged = false;
     if (!startTransfer()) {
         ++led_dma_timeout_count;

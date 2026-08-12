@@ -11,11 +11,11 @@
 #define LED_FEATURE_ENABLED 1U
 #endif
 
-/* Enable one strip first so power/noise and timer/DMA conflicts can be isolated. */
+/* Two physical LED outputs: launcher/middle on PB4, chassis on PB5. */
 #define LED_OUTPUT_PB4 (1U << 0)
-#define LED_OUTPUT_PA7 (1U << 1)
+#define LED_OUTPUT_PB5 (1U << 1)
 #ifndef LED_OUTPUT_MASK
-#define LED_OUTPUT_MASK (LED_OUTPUT_PB4 | LED_OUTPUT_PA7)
+#define LED_OUTPUT_MASK (LED_OUTPUT_PB4 | LED_OUTPUT_PB5)
 #endif
 
 /* Limit each RGB component to 25% while diagnosing supply-voltage/noise issues. */
@@ -29,12 +29,15 @@
 #endif
 
 /* Independent SK6812/WS2812-compatible RGB strips (NEO_GRB, 800 kHz). */
-#define PB4_LED_NUM 29U
-#define PA6_LED_NUM PB4_LED_NUM
-#define PA7_LED_NUM 38U
-#define PA2_LED_NUM 9U /* logical compatibility only; no physical output */
+#define PB4_LED_NUM 45U
+#define PB5_LED_NUM 38U
 
-/* Existing setPixel() calls address the PA7 chassis strip. */
+/* Compatibility names retained so the existing animation code is unchanged. */
+#define PA6_LED_NUM PB4_LED_NUM
+#define PA7_LED_NUM PB5_LED_NUM
+#define PA2_LED_NUM 9U /* maps to PB4[44..36], root to front */
+
+/* Existing setPixel()/setPixelPA7() calls now address the PB5 chassis strip. */
 #define LED_NUM PA7_LED_NUM
 
 /* Debugger watch values used to verify that disabled LED code starts no DMA. */
