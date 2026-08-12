@@ -1,9 +1,10 @@
 /belt_controller_node:
   ros__parameters:
     target_array_topic: "/vesc/target_array"
-    upperbelt_logical_id: 10
-    underbelt_logical_id: 11
+    upperbelt_logical_id: 10    #ROS2上の認識ID(上側のベルト)
+    underbelt_logical_id: 11    #ROS2上の認識ID(下側のベルト)
 
+    # レベルごとの回転数(上下で別々の回転数に設定可能)
     underbelt_level_1_rpm: 3000
     underbelt_level_2_rpm: 3500
     underbelt_level_3_rpm: 4000
@@ -13,6 +14,7 @@
     upperbelt_level_2_rpm: 3500
     upperbelt_level_3_rpm: 4000
     upperbelt_level_4_rpm: 4500
-
+    
+    # 緊急停止時のデータ配信周期
     emergency_stop_period_ms: 50
     qos_depth: 1

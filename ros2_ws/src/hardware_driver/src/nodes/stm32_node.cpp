@@ -47,11 +47,13 @@ public:
 
     rclcpp::SubscriptionOptions can_sub_options;
     can_sub_options.content_filter_options.filter_expression =
-      "id = %0 OR id = %1 OR id = %2";
+      "id = %0 OR id = %1 OR id = %2 OR id = %3 OR id = %4";
     can_sub_options.content_filter_options.expression_parameters = {
       std::to_string(protocol::HEARTBEAT_FROM_STM),
       std::to_string(protocol::LIMIT_SWITCH_STATE),
-      std::to_string(protocol::QUATERNION)};
+      std::to_string(protocol::QUATERNION),
+      std::to_string(protocol::ANGULAR_VELOCITY),
+      std::to_string(protocol::LINEAR_ACCELERATION)};
 
     can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
@@ -97,7 +99,29 @@ private:
     int16_t z = 0;
     int16_t w = 0;
     if (protocol::decode_quaternion(*frame, x, y, z, w)) {
-      publish_imu(x, y, z, w);
+      update_orientation(x, y, z, w);
+      publish_imu();
+      return;
+    }
+
+    if (protocol::decode_angular_velocity(*frame, x, y, z)) {
+      imu_.angular_velocity.x = static_cast<double>(x) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+      imu_.angular_velocity.y = static_cast<double>(y) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+      imu_.angular_velocity.z = static_cast<double>(z) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+      angular_velocity_received_ = true;
+      publish_imu();
+      return;
+    }
+
+    if (protocol::decode_linear_acceleration(*frame, x, y, z)) {
+      imu_.linear_acceleration.x =
+        static_cast<double>(x) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+      imu_.linear_acceleration.y =
+        static_cast<double>(y) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+      imu_.linear_acceleration.z =
+        static_cast<double>(z) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+      linear_acceleration_received_ = true;
+      publish_imu();
       return;
     }
 
@@ -109,12 +133,12 @@ private:
     }
   }
 
-  /// @brief スケールを掛けたクォータニオンからIMUメッセージを送信する
+  /// @brief スケールを掛けたクォータニオンを最新のIMUメッセージへ反映する
   /// @param x X成分
   /// @param y Y成分
   /// @param z Z成分
   /// @param w W成分
-  void publish_imu(int16_t x, int16_t y, int16_t z, int16_t w)
+  void update_orientation(int16_t x, int16_t y, int16_t z, int16_t w)
   {
     const auto qx = static_cast<double>(x) * protocol::QUATERNION_SCALE_INV;
     const auto qy = static_cast<double>(y) * protocol::QUATERNION_SCALE_INV;
@@ -127,16 +151,26 @@ private:
       return;
     }
 
-    sensor_msgs::msg::Imu imu;
-    imu.header.stamp = now();
-    imu.header.frame_id = imu_frame_id_;
-    imu.orientation.x = qx / norm;
-    imu.orientation.y = qy / norm;
-    imu.orientation.z = qz / norm;
-    imu.orientation.w = qw / norm;
-    imu.angular_velocity_covariance[0] = -1.0;//使用していないことを明記
-    imu.linear_acceleration_covariance[0] = -1.0;
-    imu_pub_->publish(imu);
+    imu_.orientation.x = qx / norm;
+    imu_.orientation.y = qy / norm;
+    imu_.orientation.z = qz / norm;
+    imu_.orientation.w = qw / norm;
+    orientation_received_ = true;
+  }
+
+  /// @brief 受信済みの最新値をIMUメッセージとして送信する
+  void publish_imu()
+  {
+    // 有効な姿勢が得られるまでは不正なゼロクォータニオンをpublishしない。
+    if (!orientation_received_) {
+      return;
+    }
+
+    imu_.header.stamp = now();
+    imu_.header.frame_id = imu_frame_id_;
+    imu_.angular_velocity_covariance[0] = angular_velocity_received_ ? 0.0 : -1.0;
+    imu_.linear_acceleration_covariance[0] = linear_acceleration_received_ ? 0.0 : -1.0;
+    imu_pub_->publish(imu_);
   }
 
   /// @brief LEDコマンドをSTM32へ送信する
@@ -166,6 +200,10 @@ private:
   rclcpp::TimerBase::SharedPtr alive_timer_;
 
   std::string imu_frame_id_;
+  sensor_msgs::msg::Imu imu_;
+  bool orientation_received_{false};
+  bool angular_velocity_received_{false};
+  bool linear_acceleration_received_{false};
   std::chrono::steady_clock::time_point last_heartbeat_from_stm32_;
   std::chrono::milliseconds heartbeat_timeout_{0};
   bool heartbeat_timed_out_{false};
