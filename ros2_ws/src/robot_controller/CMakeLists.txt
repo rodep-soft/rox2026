@@ -83,17 +83,21 @@ ament_target_dependencies(
 
 add_executable(heading_hold_node heading_hold/src/heading_hold_node.cpp)
 ament_target_dependencies(
-  heading_hold_node geometry_msgs rcl_interfaces rclcpp sensor_msgs std_msgs tf2
+  heading_hold_node
+  geometry_msgs
+  rcl_interfaces
+  rclcpp
+  sensor_msgs
+  std_msgs
+  tf2
   tf2_geometry_msgs)
 
 list(APPEND controller_nodes mecanum_odometry_node heading_hold_node)
 
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
-set(
-  controller_include_directories
-  mecanum_controller spring_controller led_controller belt_controller
-  dribble_controller game2_shooter)
+set(controller_include_directories mecanum_controller spring_controller led_controller belt_controller
+                                   dribble_controller game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
   install(DIRECTORY ${directory}/include/ DESTINATION include)
 endforeach()
@@ -111,9 +115,7 @@ if(BUILD_TESTING)
       test_robot_controller belt_controller_node_implementation dribble_controller_node_implementation
       mecanum_controller_node_implementation spring_controller_node_implementation)
     ament_add_gtest(test_mecanum_odometry test/test_mecanum_odometry.cpp)
-    target_include_directories(
-      test_mecanum_odometry
-      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mecanum_controller/include)
+    target_include_directories(test_mecanum_odometry PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mecanum_controller/include)
   endif()
 endif()
 
