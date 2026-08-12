@@ -337,7 +337,8 @@ static void __attribute__((unused)) shining_LED_legacy(int received_LED_cmd) {
 #define EMERGENCY_BRIGHTNESS      220U
 #define PA6_MAIN_LED_COUNT         20U
 #define LAUNCHER_SIDE_COUNT         9U
-#define LAUNCHER_SIDE_LOOP_COUNT   20U
+#define MIDDLE_FRONT_LED_COUNT      7U
+#define LAUNCHER_SIDE_LOOP_COUNT   25U
 #define LAUNCHER_LEVEL_COUNT       10U
 #define LED_FRONT_CENTER           15U
 #define LED_REAR_CENTER            34U
@@ -451,9 +452,6 @@ static void LED_SetLauncherAll(uint8_t red, uint8_t green, uint8_t blue) {
 	for (uint16_t i = 0U; i < PA6_LED_NUM; i++) {
 		setPixelPA6(i, red, green, blue);
 	}
-	for (uint16_t i = 0U; i < PA2_LED_NUM; i++) {
-		setPixelPA2(i, red, green, blue);
-	}
 }
 
 static void LED_SetLauncherLevel(uint16_t level,
@@ -467,6 +465,12 @@ static void LED_SetLauncherLevel(uint16_t level,
 	if (level < LAUNCHER_SIDE_COUNT) {
 		setPixelPA6(PA6_MAIN_LED_COUNT + level, red, green, blue);
 		setPixelPA2(level, red, green, blue);
+	} else {
+		/* The seven front-facing middle pixels are at the launcher tip level. */
+		for (uint16_t i = 0U; i < MIDDLE_FRONT_LED_COUNT; i++) {
+			setPixelPA6(PA6_MAIN_LED_COUNT + LAUNCHER_SIDE_COUNT + i,
+					red, green, blue);
+		}
 	}
 }
 
@@ -650,24 +654,13 @@ static bool LED_RenderShotOpeningLauncher(uint32_t now_ms, bool entering) {
 	return shot_opening_phase == 2U;
 }
 
-/* PA6[20..28] -> PA6[10] -> PA6[9] -> PA2[8..0]. */
+/* PB4[20..44]: right middle 9 -> front 7 -> left middle 9. */
 static void LED_RenderLauncherSideEmergency(uint32_t now_ms) {
 	for (uint16_t loop_pixel = 0U;
 			loop_pixel < LAUNCHER_SIDE_LOOP_COUNT; loop_pixel++) {
 		const uint8_t red = Emergency_GetIntensityFor(loop_pixel,
 				LAUNCHER_SIDE_LOOP_COUNT, now_ms, false);
-
-		if (loop_pixel < LAUNCHER_SIDE_COUNT) {
-			setPixelPA6(PA6_MAIN_LED_COUNT + loop_pixel, red, 0U, 0U);
-		} else if (loop_pixel == LAUNCHER_SIDE_COUNT) {
-			setPixelPA6(10U, red, 0U, 0U);
-		} else if (loop_pixel == (LAUNCHER_SIDE_COUNT + 1U)) {
-			setPixelPA6(9U, red, 0U, 0U);
-		} else {
-			const uint16_t left_pixel =
-					LAUNCHER_SIDE_LOOP_COUNT - 1U - loop_pixel;
-			setPixelPA2(left_pixel, red, 0U, 0U);
-		}
+		setPixelPA6(PA6_MAIN_LED_COUNT + loop_pixel, red, 0U, 0U);
 	}
 }
 
@@ -842,6 +835,12 @@ static void LED_RenderFiringLauncher(uint32_t elapsed_ms) {
 			LED_BlendFiringPA6(PA6_MAIN_LED_COUNT + level,
 					red_strength);
 			LED_BlendFiringPA2(level, red_strength);
+		} else {
+			for (uint16_t i = 0U; i < MIDDLE_FRONT_LED_COUNT; i++) {
+				LED_BlendFiringPA6(
+						PA6_MAIN_LED_COUNT + LAUNCHER_SIDE_COUNT + i,
+						red_strength);
+			}
 		}
 	}
 }
@@ -1022,10 +1021,10 @@ void shining_LED(int received_LED_cmd) {
 		LED_SetLauncherAll(0U, pulse, pulse);
 		break;
 	}
-	case 9U: /* ERROR: solid red on CAN timeout */
+	case 9U: /* ERROR: fast red blink, 100 ms on/off */
 	default:
 	{
-		const uint8_t red = 255U;
+		const uint8_t red = ((now_ms / 100U) & 1U) ? 255U : 0U;
 		LED_SetAll(red, 0U, 0U);
 		LED_SetLauncherAll(red, 0U, 0U);
 		break;
