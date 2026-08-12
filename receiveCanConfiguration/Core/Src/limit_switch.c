@@ -1,76 +1,48 @@
 #include "limit_switch.h"
-#include "main.h" // GPIOの定義(LIMIT_SW1_Pinなど)を読み込むため必要
+#include "main.h"
 
-// 最後にCAN送信した時刻を記録しておく
-static uint32_t last_send_time = 0;
+static uint32_t next_switch_time_ms;
 
-static uint32_t last_pushed_time = 0;
-// 送信回数を記録するデバッグ用変数
-volatile uint32_t debug_tx_count = 0;
-uint8_t TxData[8] = {0};
-HAL_StatusTypeDef ret;
-uint32_t can_error;
-uint32_t mailbox_free;
+static uint8_t read_switch_bits(void)
+{
+    uint8_t bits = 0U;
 
-void LimitSwitch_UpdateAndSend(CAN_HandleTypeDef *hcan) {
+    /* Inputs are active-low: bit=1 means that the switch is pressed. */
+    if (HAL_GPIO_ReadPin(LIMIT_SW1_GPIO_Port, LIMIT_SW1_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 0);
+    }
+    if (HAL_GPIO_ReadPin(LIMIT_SW2_GPIO_Port, LIMIT_SW2_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 1);
+    }
+#ifdef LIMIT_SW3_Pin
+    if (HAL_GPIO_ReadPin(LIMIT_SW3_GPIO_Port, LIMIT_SW3_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 2);
+    }
+#endif
+#ifdef LIMIT_SW4_Pin
+    if (HAL_GPIO_ReadPin(LIMIT_SW4_GPIO_Port, LIMIT_SW4_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 3);
+    }
+#endif
+    return bits;
+}
 
-    // 現在の時刻を取得（ミリ秒）
-    uint32_t current_time = HAL_GetTick();
+void LimitSwitch_Init(uint32_t now_ms)
+{
+    next_switch_time_ms = now_ms + LIMIT_SWITCH_PHASE_MS;
+}
 
-    // 前回送信した時刻から10ms以上経過しているかチェック
-    if ((current_time - last_send_time) >= 10) {
+bool LimitSwitch_Task(uint32_t now_ms)
+{
+    bool ok = true;
 
-        // 送信時刻を更新
-        last_send_time = current_time;
-
-        // 4つのピンの状態を読み取る
-        GPIO_PinState sw1 = HAL_GPIO_ReadPin(LIMIT_SW1_GPIO_Port, LIMIT_SW1_Pin);
-        GPIO_PinState sw2 = HAL_GPIO_ReadPin(LIMIT_SW2_GPIO_Port, LIMIT_SW2_Pin);
-        GPIO_PinState sw3 = HAL_GPIO_ReadPin(LIMIT_SW3_GPIO_Port, LIMIT_SW3_Pin);
-        GPIO_PinState sw4 = HAL_GPIO_ReadPin(LIMIT_SW4_GPIO_Port, LIMIT_SW4_Pin);
-
-        CAN_TxHeaderTypeDef TxHeader;
-
-        uint32_t TxMailbox;
-
-        TxHeader.StdId = 0x202;
-        TxHeader.ExtId = 0;
-        TxHeader.RTR = CAN_RTR_DATA;
-        TxHeader.IDE = CAN_ID_STD;
-        TxHeader.DLC = 1; // 1バイト送信で十分
-
-        // TxData[0] を一度 0 で初期化
-        TxData[0] = 0;
-
-        // スイッチが押された(RESET)なら、該当するビットを 1 にする
-        // (離されている時は 0 のままになる)
-        if (sw1 == GPIO_PIN_RESET) { TxData[0] |= (1 << 0); } // 0ビット目を立てる
-        if (sw2 == GPIO_PIN_RESET) { TxData[0] |= (1 << 1); } // 1ビット目を立てる
-        if (sw3 == GPIO_PIN_RESET) { TxData[0] |= (1 << 2); } // 2ビット目を立てる
-        if (sw4 == GPIO_PIN_RESET) { TxData[0] |= (1 << 3); } // 3ビット目を立てる
-
-        // 送信をリクエストし、無事にバッファに入った場合のみカウントを増やす
-//        if (HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox) == HAL_OK) {
-//            debug_tx_count++;
-//        }
-
-
-        ret = HAL_CAN_AddTxMessage(hcan, &TxHeader, TxData, &TxMailbox);
-
-        can_error = HAL_CAN_GetError(hcan);
-        mailbox_free = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
+    if ((int32_t)(now_ms - next_switch_time_ms) >= 0) {
+        uint8_t switch_bits = read_switch_bits();
+        next_switch_time_ms = now_ms + LIMIT_SWITCH_PERIOD_MS;
+        if (CAN_SendLimitSwitch(switch_bits) == CAN_SEND_ERROR) {
+            ok = false;
+        }
     }
 
-    if((current_time - last_pushed_time) >= 100) {
-    	last_pushed_time = current_time;
-    	CAN_TxHeaderTypeDef HbTxHeader;
-    	uint32_t HbTxMailbox;
-
-        HbTxHeader.StdId = 0x100/* 空信号用のID (0x30nなど) */;
-        HbTxHeader.ExtId = 0;
-        HbTxHeader.RTR = CAN_RTR_DATA;
-        HbTxHeader.IDE = CAN_ID_STD;
-        HbTxHeader.DLC = 0; // 空信号
-        HAL_CAN_AddTxMessage(hcan, &HbTxHeader, TxData, &HbTxMailbox);
-    }
+    return ok;
 }
