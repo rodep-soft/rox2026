@@ -39,6 +39,7 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
+  int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
@@ -59,6 +60,9 @@ private:
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
   int dribble_on_rpm_{800};
+  int shot_cycle_opening_rpm_{800};
+  int shot_cycle_feeding_rpm_{500};
+  int shot_cycle_returning_rpm_{800};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
 

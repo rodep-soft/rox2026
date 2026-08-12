@@ -25,6 +25,7 @@ install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
@@ -34,6 +35,9 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_slew_rate_limiter test/test_slew_rate_limiter.cpp)
+  target_include_directories(test_slew_rate_limiter PRIVATE include)
 endif()
 
 ament_package()

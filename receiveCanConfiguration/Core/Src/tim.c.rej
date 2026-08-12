@@ -1,6 +1,0 @@
-diff a/receiveCanConfiguration/Core/Src/tim.c b/receiveCanConfiguration/Core/Src/tim.c	(rejected hunks)
-@@ -253,7 +253,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
-     /* TIM3_CH4_UP Init */
-     hdma_tim3_ch4_up.Instance = DMA1_Channel3;
--    hdma_tim3_ch4_up.Init.Direction = DMA_PERIPH_TO_MEMORY;
-+    hdma_tim3_ch4_up.Init.Direction = DMA_MEMORY_TO_PERIPH;

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geometry_msgs/msg/twist.hpp"
+#include "joy_controller/slew_rate_limiter.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -47,12 +48,14 @@ private:
   void publish_dribble_enabled();
   void publish_drive_reversed();
   void publish_stop_commands();
+  void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
+  void update_acceleration_limits();
 
-  // 直感的なエッジ検出・入力判定ヘルパー
   bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
   bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
   double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
-  bool is_axis_just_triggered(const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
+  bool is_axis_just_triggered(
+    const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
 
   double apply_axis_deadzone(double value) const;
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
@@ -65,6 +68,12 @@ private:
   double max_vel_x_m_s_{2.0};
   double max_vel_y_m_s_{2.0};
   double max_vel_z_rad_s_{2.0};
+  double acceleration_x_m_s2_{2.0};
+  double acceleration_y_m_s2_{2.0};
+  double acceleration_yaw_rad_s2_{4.0};
+  double deceleration_x_m_s2_{3.0};
+  double deceleration_y_m_s2_{3.0};
+  double deceleration_yaw_rad_s2_{6.0};
   double axis_deadzone_{0.05};
   double axis_on_threshold_{0.7};
 
@@ -82,6 +91,12 @@ private:
   int dpad_vertical_axis_{7};
 
   geometry_msgs::msg::Twist cmd_vel_;
+  joy_controller::SlewRateLimiter velocity_limiter_x_{2.0, 3.0};
+  joy_controller::SlewRateLimiter velocity_limiter_y_{2.0, 3.0};
+  joy_controller::SlewRateLimiter velocity_limiter_yaw_{4.0, 6.0};
+  std::chrono::steady_clock::time_point last_velocity_update_time_{};
+  bool velocity_limiter_initialized_{false};
+
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
   bool dribble_enabled_{false};
@@ -94,9 +109,7 @@ private:
   std::optional<sensor_msgs::msg::Joy> last_joy_msg_{};
   sensor_msgs::msg::Joy joy_msg_{};
 
-
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
-
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_pub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
@@ -105,13 +118,11 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
-
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
   rclcpp::TimerBase::SharedPtr loop_timer_;
-  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
-    parameter_callback_handle_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 
 #endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

@@ -60,6 +60,37 @@ bool decode_quaternion(
   return true;
 }
 
+namespace
+{
+
+bool decode_vector3(
+  const can_msgs::msg::Frame & frame, uint32_t expected_id,
+  int16_t & x, int16_t & y, int16_t & z)
+{
+  if (frame.id != expected_id || frame.dlc != 3 * sizeof(int16_t)) {
+    return false;
+  }
+
+  x = decode_int16_le(frame.data, 0);
+  y = decode_int16_le(frame.data, sizeof(int16_t));
+  z = decode_int16_le(frame.data, 2 * sizeof(int16_t));
+  return true;
+}
+
+}  // namespace
+
+bool decode_angular_velocity(
+  const can_msgs::msg::Frame & frame, int16_t & x, int16_t & y, int16_t & z)
+{
+  return decode_vector3(frame, ANGULAR_VELOCITY, x, y, z);
+}
+
+bool decode_linear_acceleration(
+  const can_msgs::msg::Frame & frame, int16_t & x, int16_t & y, int16_t & z)
+{
+  return decode_vector3(frame, LINEAR_ACCELERATION, x, y, z);
+}
+
 bool decode_limit_switch(const can_msgs::msg::Frame & frame, uint8_t & state)
 {
   if (frame.id != LIMIT_SWITCH_STATE || frame.dlc != 1) {

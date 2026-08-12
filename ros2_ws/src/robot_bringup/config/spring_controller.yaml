@@ -1,22 +1,27 @@
 /spring_controller_node:
   ros__parameters:
-    # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）。
+  
+    # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）
     limit_switch_bit_offset: 0
     # ROS 2 QoSのqueue depth。
     qos_depth: 3
 
-    # [rad/request] 発射要求1回で累積目標へ加算する角度 9周分
+    # [rad/request] 発射要求1回で累積目標へ加算する角度 7周分
     fire_increment_rad: -43.9822971
-    # [rad/s] 未原点時に目標位置を負方向へずらす速度。
+    
+    # [rad/s] 未原点時に目標位置を負方向へずらす速度
     homing_velocity_rad_s: 5.0
-    # [s] リミットスイッチが見つからない場合のタイムアウト。
+    
+    # [s] リミットスイッチが見つからない場合のタイムアウト
     homing_timeout_sec: 50.0
-    # [rad/s] この速度以下を停止とみなす。
+    
+    # [rad/s] この速度以下を停止とみなす
     zeroing_velocity_threshold_rad_s: 0.05
-    # 停止判定に必要な連続フィードバック数。
+    
+    # 停止判定に必要な連続フィードバック数
     zeroing_required_stable_feedback_count: 3
 
-    # [ms] 位置指令更新周期。
+    # [ms] 位置指令更新周期
     command_period_ms: 50
 
     logical_id: 4
