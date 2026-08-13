@@ -12,7 +12,7 @@
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 6.0   # DRIBBLE -> OPEN
+    opening_max_velocity_rad_s: 6.0   # DRIBBLE -> OPEN (最大速度6.0 rad/s)
     feeding_max_velocity_rad_s: 10.0  # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     
