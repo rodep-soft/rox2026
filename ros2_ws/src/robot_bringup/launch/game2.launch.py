@@ -1,75 +1,48 @@
 import os
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def launch_setup(context, *args, **kwargs):
+    base_frame = LaunchConfiguration("base_frame").perform(context)
+    kp_yaw = float(LaunchConfiguration("kp_yaw").perform(context))
+    max_angular_z = float(LaunchConfiguration("max_angular_z").perform(context))
+    rpm_bottom = float(LaunchConfiguration("rpm_bottom").perform(context))
+    rpm_middle = float(LaunchConfiguration("rpm_middle").perform(context))
+    rpm_top = float(LaunchConfiguration("rpm_top").perform(context))
+    target_distance = float(LaunchConfiguration("target_distance").perform(context))
+
+    game2_node = Node(
+        package="robot_controller",
+        executable="game2_auto_node",
+        name="game2_auto_node",
+        output="screen",
+        parameters=[
+            {
+                "base_frame": base_frame,
+                "kp_yaw": kp_yaw,
+                "max_angular_z": max_angular_z,
+                "target_distance": target_distance,
+                "rpm_bottom": rpm_bottom,
+                "rpm_middle": rpm_middle,
+                "rpm_top": rpm_top,
+            }
+        ],
+    )
+
+    return [game2_node]
 
 
 def generate_launch_description():
-    launch_dir = os.path.join(
-        get_package_share_directory("robot_bringup"),
-        "launch",
-    )
-
-    def include(launch_file, **kwargs):
-        return IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file)),
-            **kwargs,
-        )
-
-    # 1. ハードウェアドライバ類 (VESC, CAN, STM32, BNO055 IMU等)
-    hardware_launch = include(
-        "hardware.launch.py",
-        launch_arguments={
-            "enable_imu": LaunchConfiguration("enable_imu"),
-        }.items(),
-    )
-
-    # 2. 正面 CSI ステレオカメラ ＋ AprilTag 検出器ノード
-    vision_launch = include(
-        "vision_launch.py",
-        launch_arguments={
-            "stereonet_version": LaunchConfiguration("stereonet_version"),
-            "enable_apriltag": "true",
-            "enable_yolo": "false",
-        }.items(),
-    )
-
-    # 3. Game 2 パネル自動戦術射出ノード (低感度旋回パラメータ適用)
-    game2_shooter_launch = include(
-        "game2_shooter.launch.py",
-        launch_arguments={
-            "kp_yaw": LaunchConfiguration("kp_yaw"),
-            "max_angular_z": LaunchConfiguration("max_angular_z"),
-            "target_distance": LaunchConfiguration("target_distance"),
-            "rpm_bottom": LaunchConfiguration("rpm_bottom"),
-            "rpm_middle": LaunchConfiguration("rpm_middle"),
-            "rpm_top": LaunchConfiguration("rpm_top"),
-        }.items(),
-    )
-
-    # 4. モータ・機構コントローラーノード ＋ コントローラー入力
-    launch_files = [
-        "controllers/belt_controller.launch.py",
-        "controllers/dribble_controller.launch.py",
-        "controllers/spring_controller.launch.py",
-        "controllers/mecanum_controller.launch.py",
-        "input/joy_controller.launch.py",
-    ]
-
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "enable_imu",
-                default_value="true",
-                description="Enable BNO055 IMU & Heading PID Controller",
-            ),
-            DeclareLaunchArgument(
-                "stereonet_version",
-                default_value="v2.4_int16",
-                description="hobot_stereonet model version for 230AI",
+                "base_frame",
+                default_value="base_link",
+                description="Robot base frame ID",
             ),
             DeclareLaunchArgument(
                 "kp_yaw",
@@ -84,26 +57,23 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "target_distance",
                 default_value="1.5",
-                description="Target distance for Game 2 shooting in meters",
+                description="Target shooting distance from Game2 panels in meters",
             ),
             DeclareLaunchArgument(
                 "rpm_bottom",
                 default_value="3000.0",
-                description="Belt RPM for bottom row panels",
+                description="Shooting belt RPM for Game2 bottom row panels",
             ),
             DeclareLaunchArgument(
                 "rpm_middle",
                 default_value="4500.0",
-                description="Belt RPM for middle row panels",
+                description="Shooting belt RPM for Game2 middle row panels",
             ),
             DeclareLaunchArgument(
                 "rpm_top",
                 default_value="6000.0",
-                description="Belt RPM for top row panels",
+                description="Shooting belt RPM for Game2 top row panels",
             ),
-            hardware_launch,
-            vision_launch,
-            game2_shooter_launch,
-            *[include(launch_file) for launch_file in launch_files],
+            OpaqueFunction(function=launch_setup),
         ]
     )

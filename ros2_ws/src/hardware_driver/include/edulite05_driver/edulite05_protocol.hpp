@@ -93,6 +93,7 @@ public:
   MotorState state() const {return state_;}
   bool position_reference_is_set() const {return position_reference_is_set_;}
   const MotorFeedback & feedback() const {return feedback_;}
+  int initialization_retry_count() const {return initialization_retry_count_;}
   std::string initialization_diagnostic() const;
 
   /// @brief 目標値を設定
