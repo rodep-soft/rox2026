@@ -1,23 +1,20 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    bringup_dir = get_package_share_directory("robot_bringup")
+    config_path = os.path.join(bringup_dir, "config", "game1_shooter.yaml")
+
     node = Node(
         package="robot_controller",
         executable="game1_auto_shooter_node",
         name="game1_auto_shooter_node",
         output="screen",
-        parameters=[
-            {
-                "kp_linear": 1.0,
-                "kp_angular": 1.5,
-                "max_linear_vel": 1.5,
-                "max_angular_vel": 1.0,
-                "pos_tolerance": 0.08,
-                "yaw_tolerance": 0.05,
-            }
-        ],
+        parameters=[config_path],
     )
 
     return LaunchDescription([node])

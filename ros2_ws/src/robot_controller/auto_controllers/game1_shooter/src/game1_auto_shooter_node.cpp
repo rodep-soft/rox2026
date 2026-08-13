@@ -16,6 +16,27 @@ Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
   pos_tolerance_   = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_   = declare_parameter<double>("yaw_tolerance", 0.05);
 
+  // YAML からの Waypoint 読み込み
+  wp_gate_.x        = declare_parameter<double>("wp_gate_x", 1.5);
+  wp_gate_.y        = declare_parameter<double>("wp_gate_y", 0.0);
+  wp_gate_.yaw      = declare_parameter<double>("wp_gate_yaw", 0.0);
+
+  wp_around_gate_.x   = declare_parameter<double>("wp_around_gate_x", 2.5);
+  wp_around_gate_.y   = declare_parameter<double>("wp_around_gate_y", 1.0);
+  wp_around_gate_.yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0);
+
+  wp_ball_.x        = declare_parameter<double>("wp_ball_x", 3.5);
+  wp_ball_.y        = declare_parameter<double>("wp_ball_y", 0.0);
+  wp_ball_.yaw      = declare_parameter<double>("wp_ball_yaw", 0.0);
+
+  wp_pass_area_.x   = declare_parameter<double>("wp_pass_area_x", 2.0);
+  wp_pass_area_.y   = declare_parameter<double>("wp_pass_area_y", -1.0);
+  wp_pass_area_.yaw = declare_parameter<double>("wp_pass_area_yaw", -1.5708);
+
+  wp_start_.x       = declare_parameter<double>("wp_start_x", 0.0);
+  wp_start_.y       = declare_parameter<double>("wp_start_y", 0.0);
+  wp_start_.yaw     = declare_parameter<double>("wp_start_yaw", 0.0);
+
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,
     std::bind(&Game1AutoShooterNode::start_callback, this, std::placeholders::_1));
