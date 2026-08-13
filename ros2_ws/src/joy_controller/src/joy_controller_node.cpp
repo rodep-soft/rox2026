@@ -115,155 +115,65 @@ JoyControllerNode::JoyControllerNode()
 rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
   const std::vector<rclcpp::Parameter> & parameters)
 {
-  int joy_timeout_ms = joy_timeout_ms_;
-  double max_vel_x_m_s = max_vel_x_m_s_;
-  double max_vel_y_m_s = max_vel_y_m_s_;
-  double max_vel_z_rad_s = max_vel_z_rad_s_;
-  double acceleration_x_m_s2 = acceleration_x_m_s2_;
-  double acceleration_y_m_s2 = acceleration_y_m_s2_;
-  double acceleration_yaw_rad_s2 = acceleration_yaw_rad_s2_;
-  double deceleration_x_m_s2 = deceleration_x_m_s2_;
-  double deceleration_y_m_s2 = deceleration_y_m_s2_;
-  double deceleration_yaw_rad_s2 = deceleration_yaw_rad_s2_;
-  double axis_deadzone = axis_deadzone_;
-  double axis_on_threshold = axis_on_threshold_;
-  int ps_button = ps_button_;
-  int home_button = home_button_;
-  int circle_button = circle_button_;
-  int dribble_enable_button = dribble_enable_button_;
-  int game2_start_button = game2_start_button_;
-  int left_trigger_axis = left_trigger_axis_;
-  int right_trigger_axis = right_trigger_axis_;
-  int left_stick_x_axis = left_stick_x_axis_;
-  int left_stick_y_axis = left_stick_y_axis_;
-  int right_stick_x_axis = right_stick_x_axis_;
-  int dpad_horizontal_axis = dpad_horizontal_axis_;
-  int dpad_vertical_axis = dpad_vertical_axis_;
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
 
-  for (const auto & parameter : parameters) {
-    const auto & name = parameter.get_name();
-    if (name == "command_qos_depth") {
-      if (parameter.as_int() != command_qos_depth_) {
-        rcl_interfaces::msg::SetParametersResult result;
+  for (const auto & param : parameters) {
+    const auto & name = param.get_name();
+
+    // 再起動が必要なパラメータの変更を拒否
+    if (name == "command_qos_depth" || name == "state_publish_period_ms") {
+      if (param.as_int() != (name == "command_qos_depth" ? command_qos_depth_ : state_publish_period_ms_)) {
         result.successful = false;
-        result.reason = "command_qos_depth requires a node restart";
+        result.reason = name + " requires a node restart";
         return result;
       }
-    } else if (name == "state_publish_period_ms") {
-      if (parameter.as_int() != state_publish_period_ms_) {
-        rcl_interfaces::msg::SetParametersResult result;
+      continue;
+    }
+
+    // パラメータ値の適用 (int / double 自動分岐)
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      const int val = static_cast<int>(param.as_int());
+      if (val < 0 && name != "joy_timeout_ms") {
         result.successful = false;
-        result.reason = "state_publish_period_ms requires a node restart";
+        result.reason = name + " must be non-negative";
         return result;
       }
-    } else if (name == "joy_timeout_ms") {
-      joy_timeout_ms = static_cast<int>(parameter.as_int());
-    } else if (name == "linear_x_limit") {
-      max_vel_x_m_s = parameter.as_double();
-    } else if (name == "linear_y_limit") {
-      max_vel_y_m_s = parameter.as_double();
-    } else if (name == "angular_z_limit") {
-      max_vel_z_rad_s = parameter.as_double();
-    } else if (name == "linear_x_acceleration_limit") {
-      acceleration_x_m_s2 = parameter.as_double();
-    } else if (name == "linear_y_acceleration_limit") {
-      acceleration_y_m_s2 = parameter.as_double();
-    } else if (name == "angular_z_acceleration_limit") {
-      acceleration_yaw_rad_s2 = parameter.as_double();
-    } else if (name == "linear_x_deceleration_limit") {
-      deceleration_x_m_s2 = parameter.as_double();
-    } else if (name == "linear_y_deceleration_limit") {
-      deceleration_y_m_s2 = parameter.as_double();
-    } else if (name == "angular_z_deceleration_limit") {
-      deceleration_yaw_rad_s2 = parameter.as_double();
-    } else if (name == "axis_deadzone") {
-      axis_deadzone = parameter.as_double();
-    } else if (name == "axis_on_threshold") {
-      axis_on_threshold = parameter.as_double();
-    } else if (name == "ps_button") {
-      ps_button = static_cast<int>(parameter.as_int());
-    } else if (name == "home_button") {
-      home_button = static_cast<int>(parameter.as_int());
-    } else if (name == "circle_button") {
-      circle_button = static_cast<int>(parameter.as_int());
-    } else if (name == "dribble_enable_button") {
-      dribble_enable_button = static_cast<int>(parameter.as_int());
-    } else if (name == "game2_start_button") {
-      game2_start_button = static_cast<int>(parameter.as_int());
-    } else if (name == "left_trigger_axis") {
-      left_trigger_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "right_trigger_axis") {
-      right_trigger_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "left_stick_x_axis") {
-      left_stick_x_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "left_stick_y_axis") {
-      left_stick_y_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "right_stick_x_axis") {
-      right_stick_x_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "dpad_horizontal_axis") {
-      dpad_horizontal_axis = static_cast<int>(parameter.as_int());
-    } else if (name == "dpad_vertical_axis") {
-      dpad_vertical_axis = static_cast<int>(parameter.as_int());
-    } else {
-      rcl_interfaces::msg::SetParametersResult result;
-      result.successful = false;
-      result.reason = name + " cannot be changed while the node is running";
-      return result;
+      if (name == "joy_timeout_ms") joy_timeout_ms_ = val;
+      else if (name == "ps_button") ps_button_ = val;
+      else if (name == "home_button") home_button_ = val;
+      else if (name == "circle_button") circle_button_ = val;
+      else if (name == "dribble_enable_button") dribble_enable_button_ = val;
+      else if (name == "game2_start_button") game2_start_button_ = val;
+      else if (name == "left_trigger_axis") left_trigger_axis_ = val;
+      else if (name == "right_trigger_axis") right_trigger_axis_ = val;
+      else if (name == "left_stick_x_axis") left_stick_x_axis_ = val;
+      else if (name == "left_stick_y_axis") left_stick_y_axis_ = val;
+      else if (name == "right_stick_x_axis") right_stick_x_axis_ = val;
+      else if (name == "dpad_horizontal_axis") dpad_horizontal_axis_ = val;
+      else if (name == "dpad_vertical_axis") dpad_vertical_axis_ = val;
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+      const double val = param.as_double();
+      if (!std::isfinite(val) || val < 0.0) {
+        result.successful = false;
+        result.reason = name + " must be valid positive number";
+        return result;
+      }
+      if (name == "linear_x_limit") max_vel_x_m_s_ = val;
+      else if (name == "linear_y_limit") max_vel_y_m_s_ = val;
+      else if (name == "angular_z_limit") max_vel_z_rad_s_ = val;
+      else if (name == "linear_x_acceleration_limit") acceleration_x_m_s2_ = val;
+      else if (name == "linear_y_acceleration_limit") acceleration_y_m_s2_ = val;
+      else if (name == "angular_z_acceleration_limit") acceleration_yaw_rad_s2_ = val;
+      else if (name == "linear_x_deceleration_limit") deceleration_x_m_s2_ = val;
+      else if (name == "linear_y_deceleration_limit") deceleration_y_m_s2_ = val;
+      else if (name == "angular_z_deceleration_limit") deceleration_yaw_rad_s2_ = val;
+      else if (name == "axis_deadzone") axis_deadzone_ = val;
+      else if (name == "axis_on_threshold") axis_on_threshold_ = val;
     }
   }
 
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful =
-    joy_timeout_ms > 0 &&
-    std::isfinite(max_vel_x_m_s) && max_vel_x_m_s >= 0.0 &&
-    std::isfinite(max_vel_y_m_s) && max_vel_y_m_s >= 0.0 &&
-    std::isfinite(max_vel_z_rad_s) && max_vel_z_rad_s >= 0.0 &&
-    std::isfinite(acceleration_x_m_s2) && acceleration_x_m_s2 > 0.0 &&
-    std::isfinite(acceleration_y_m_s2) && acceleration_y_m_s2 > 0.0 &&
-    std::isfinite(acceleration_yaw_rad_s2) && acceleration_yaw_rad_s2 > 0.0 &&
-    std::isfinite(deceleration_x_m_s2) && deceleration_x_m_s2 > 0.0 &&
-    std::isfinite(deceleration_y_m_s2) && deceleration_y_m_s2 > 0.0 &&
-    std::isfinite(deceleration_yaw_rad_s2) && deceleration_yaw_rad_s2 > 0.0 &&
-    std::isfinite(axis_deadzone) && axis_deadzone >= 0.0 &&
-    axis_deadzone<1.0 && std::isfinite(axis_on_threshold) &&
-      axis_on_threshold>0.0 && axis_on_threshold <= 1.0 &&
-    ps_button >= 0 && home_button >= 0 && circle_button >= 0 &&
-    dribble_enable_button >= 0 && game2_start_button >= 0 &&
-    left_trigger_axis >= 0 && right_trigger_axis >= 0 &&
-    left_stick_x_axis >= 0 && left_stick_y_axis >= 0 &&
-    right_stick_x_axis >= 0 && dpad_horizontal_axis >= 0 &&
-    dpad_vertical_axis >= 0;
-  if (!result.successful) {
-    result.reason = "Joy parameters contain an invalid value";
-    return result;
-  }
-
-  joy_timeout_ms_ = joy_timeout_ms;
-  max_vel_x_m_s_ = max_vel_x_m_s;
-  max_vel_y_m_s_ = max_vel_y_m_s;
-  max_vel_z_rad_s_ = max_vel_z_rad_s;
-  acceleration_x_m_s2_ = acceleration_x_m_s2;
-  acceleration_y_m_s2_ = acceleration_y_m_s2;
-  acceleration_yaw_rad_s2_ = acceleration_yaw_rad_s2;
-  deceleration_x_m_s2_ = deceleration_x_m_s2;
-  deceleration_y_m_s2_ = deceleration_y_m_s2;
-  deceleration_yaw_rad_s2_ = deceleration_yaw_rad_s2;
   update_acceleration_limits();
-  axis_deadzone_ = axis_deadzone;
-  axis_on_threshold_ = axis_on_threshold;
-  ps_button_ = ps_button;
-  home_button_ = home_button;
-  circle_button_ = circle_button;
-  dribble_enable_button_ = dribble_enable_button;
-  game2_start_button_ = game2_start_button;
-  left_trigger_axis_ = left_trigger_axis;
-  right_trigger_axis_ = right_trigger_axis;
-  left_stick_x_axis_ = left_stick_x_axis;
-  left_stick_y_axis_ = left_stick_y_axis;
-  right_stick_x_axis_ = right_stick_x_axis;
-  dpad_horizontal_axis_ = dpad_horizontal_axis;
-  dpad_vertical_axis_ = dpad_vertical_axis;
-
   if (joy_received_) {
     last_joy_msg_ = joy_msg_;
   }
