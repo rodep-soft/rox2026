@@ -29,6 +29,7 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
   void actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+  void vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
@@ -89,6 +90,7 @@ private:
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr actuator_state_sub_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr vesc_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
