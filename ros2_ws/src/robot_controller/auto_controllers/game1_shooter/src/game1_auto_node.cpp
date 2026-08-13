@@ -1,4 +1,4 @@
-#include "game1_shooter/game1_auto_node.hpp"
+#include "game1_/game1_auto_node.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -39,19 +39,19 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,
-    std::bind(&Game1AutoShooterNode::start_callback, this, std::placeholders::_1));
+    std::bind(&Game1AutoNode::start_callback, this, std::placeholders::_1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "/imu/data", rclcpp::SensorDataQoS(),
-    std::bind(&Game1AutoShooterNode::imu_callback, this, std::placeholders::_1));
+    std::bind(&Game1AutoNode::imu_callback, this, std::placeholders::_1));
 
   odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
     "/odometry/filtered", 10,
-    std::bind(&Game1AutoShooterNode::odom_callback, this, std::placeholders::_1));
+    std::bind(&Game1AutoNode::odom_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "/detection", 10,
-    std::bind(&Game1AutoShooterNode::ball_detection_callback, this, std::placeholders::_1));
+    std::bind(&Game1AutoNode::ball_detection_callback, this, std::placeholders::_1));
 
   cmd_vel_pub_         = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
@@ -62,12 +62,12 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   // 20 Hz 制御ループ
   timer_ = create_wall_timer(
     std::chrono::milliseconds(50),
-    std::bind(&Game1AutoShooterNode::control_loop, this));
+    std::bind(&Game1AutoNode::control_loop, this));
 
-  RCLCPP_INFO(get_logger(), "Game1AutoShooterNode initialized with EKF /odometry/filtered feedback.");
+  RCLCPP_INFO(get_logger(), "Game1AutoNode initialized with EKF /odometry/filtered feedback.");
 }
 
-void Game1AutoShooterNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   odom_received_ = true;
   current_x_ = msg->pose.pose.position.x;
