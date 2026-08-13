@@ -12,6 +12,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/int32.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
 #include "robot_msgs/msg/belt_mode.hpp"
 
@@ -31,6 +32,7 @@ private:
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_dribble_enabled(bool enabled);
+  void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
   void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
@@ -84,6 +86,7 @@ private:
 
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
+  int shot_cycle_opening_rpm_{1500};
   bool dribble_enabled_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
@@ -102,6 +105,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;

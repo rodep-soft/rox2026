@@ -61,6 +61,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/system/emergency_stop", emergency_stop_qos,
     std::bind(&DribbleControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
+  opening_rpm_sub_ = create_subscription<std_msgs::msg::Int32>(
+    "/dribble/command_opening_rpm", command_qos,
+    std::bind(&DribbleControllerNode::opening_rpm_callback, this, std::placeholders::_1));
+
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),
     std::bind(&DribbleControllerNode::control_timer_callback, this));
@@ -191,6 +195,14 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
   }
   emergency_stop_active_ = msg->data;
   control_timer_callback();
+}
+
+void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg)
+{
+  if (msg->data >= 0 && msg->data <= 5600) {
+    shot_cycle_opening_rpm_ = msg->data;
+    RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM", shot_cycle_opening_rpm_);
+  }
 }
 
 rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callback(
