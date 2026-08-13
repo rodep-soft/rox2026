@@ -27,12 +27,14 @@ AutoGame1Node::AutoGame1Node(const rclcpp::NodeOptions & options)
   cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
     cmd_vel_topic_, rclcpp::QoS(10));
 
-  // 障害物長方形 (PolygonStamped) の Publisher 3つを作成
+  // 障害物長方形 (PolygonStamped) の Publisher 3つを作成（TRANSIENT_LOCAL QoS）
   for (size_t i = 0; i < 3; ++i) {
     const std::string topic_name = "/obstacle_polygon_" + std::to_string(i + 1);
     obstacle_polygon_publishers_[i] = create_publisher<geometry_msgs::msg::PolygonStamped>(
-      topic_name, rclcpp::QoS(10));
+      topic_name, rclcpp::QoS(1).transient_local());
   }
+  // 起動時に固定障害物ポリゴンを1回だけラッチ送信
+  publish_obstacle_polygons();
 
   // /joy:
   // ジョイスティックからの操作入力を受信する。
@@ -43,14 +45,9 @@ AutoGame1Node::AutoGame1Node(const rclcpp::NodeOptions & options)
     std::bind(&AutoGame1Node::joy_callback, this, std::placeholders::_1));
 
   // nav2 NavigateThroughPoses Action Client:
-  // 複数通過点をスムーズに走行するためのNav2アクションクライアント。
-  nav_through_poses_client_ = rclcpp_action::create_client<NavigateThroughPoses>(
-    this, nav_through_poses_action_name_);
-
-  // nav2 NavigateToPose Action Client:
-  // 単一の目標位置（パスエリア、スタート位置）へ移動するためのNav2アクションクライアント。
-  nav_to_pose_client_ = rclcpp_action::create_client<NavigateToPose>(
-    this, nav_to_pose_action_name_);
+  // 複数通過点および単一目的地のナビゲーションを共通処理するNav2アクションクライアント。
+  nav_client_ = rclcpp_action::create_client<NavigateThroughPoses>(
+    this, nav_action_name_);
 
   // キック機構 Action Client:
   // ゲート通過中のボール射出（キック）を実行・完了検出するためのアクションクライアント。
@@ -68,8 +65,7 @@ void AutoGame1Node::declare_parameters()
   // トピック・アクション名
   declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
   declare_parameter<std::string>("joy_topic", "/joy");
-  declare_parameter<std::string>("nav_through_poses_action_name", "navigate_through_poses");
-  declare_parameter<std::string>("nav_to_pose_action_name", "navigate_to_pose");
+  declare_parameter<std::string>("nav_action_name", "navigate_through_poses");
   declare_parameter<std::string>("kick_action_name", "kick");
   declare_parameter<std::string>("global_frame_id", "map");
   declare_parameter<std::string>("robot_base_frame_id", "base_link");
@@ -111,8 +107,7 @@ void AutoGame1Node::get_parameters()
 {
   get_parameter("cmd_vel_topic", cmd_vel_topic_);
   get_parameter("joy_topic", joy_topic_);
-  get_parameter("nav_through_poses_action_name", nav_through_poses_action_name_);
-  get_parameter("nav_to_pose_action_name", nav_to_pose_action_name_);
+  get_parameter("nav_action_name", nav_action_name_);
   get_parameter("kick_action_name", kick_action_name_);
   get_parameter("global_frame_id", global_frame_id_);
   get_parameter("robot_base_frame_id", robot_base_frame_id_);
@@ -167,19 +162,20 @@ void AutoGame1Node::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   if (auto_stop_toggle_button_on_ && !pre_auto_stop_toggle_button_on_) {
     if (current_state_ == State::AUTO_STOP) {
       RCLCPP_INFO(get_logger(), "Joy input: Resuming auto drive. Switching to GO_TO_KICK_START.");
+      reset_all_nav_goals();
       current_state_ = State::GO_TO_KICK_START;
     } else {
-      RCLCPP_INFO(get_logger(), "Joy input: Auto stop requested.");
+      RCLCPP_INFO(get_logger(), "Joy input: Auto stop requested. Canceling all active Nav2 goals.");
       previous_state_ = current_state_;
       current_state_ = State::AUTO_STOP;
+      reset_all_nav_goals();
     }
   }
 
   // スタート地点復帰ボタンの立ち上がり判定
   if (return_to_start_button_on_ && !pre_return_to_start_button_on_) {
     RCLCPP_INFO(get_logger(), "Joy input: Return to start requested. Switching to RETURN_TO_START.");
-    cancel_nav_through_poses_goal();
-    cancel_nav_to_pose_goal();
+    reset_all_nav_goals();
     current_state_ = State::RETURN_TO_START;
   }
 
@@ -192,7 +188,6 @@ void AutoGame1Node::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 // 役割: 現在のステートに応じた処理・遷移判定を実行し、必要に応じて cmd_vel を publish する。
 void AutoGame1Node::control_timer_callback()
 {
-  publish_obstacle_polygons();
   process_state_machine();
 }
 
@@ -226,7 +221,8 @@ void AutoGame1Node::process_state_machine()
 
 void AutoGame1Node::process_auto_stop()
 {
-  // 自動停止状態: 走行速度0を出力し、Nav2をキャンセルする
+  // 自動停止状態: アクティブなNav2のアクションを確実にキャンセルし、走行速度0を出力する
+  reset_all_nav_goals();
   geometry_msgs::msg::Twist stop_cmd;
   cmd_vel_publisher_->publish(stop_cmd);
 }
@@ -239,12 +235,12 @@ void AutoGame1Node::process_go_to_kick_start()
   // 状態変更: Nav2 Goal未送信の場合はキック開始点・終了点への NavigateThroughPoses を送信する（開始点直前での減速を防止するため先のkick_endも同時に含める）。
   // 出力: 距離 < kick_start_reach_threshold_ に達したら Nav2をキャンセルし PREPARE_KICK へ移行する。
 
-  if (!nav_through_poses_goal_handle_ && !nav_through_poses_completed_) {
+  if (!nav_goal_handle_ && !nav_completed_) {
     RCLCPP_INFO(
       get_logger(),
       "State: GO_TO_KICK_START. Sending goals to Kick Start and Kick End (preventing deceleration).");
     std::vector<geometry_msgs::msg::PoseStamped> poses = {kick_start_pose_, kick_end_pose_};
-    send_nav_through_poses_goal(poses);
+    send_nav_goal(poses);
     return;
   }
 
@@ -256,7 +252,7 @@ void AutoGame1Node::process_go_to_kick_start()
         get_logger(),
         "Reached Kick Start threshold (dist: %.3f m <= %.3f m). Transitioning to PREPARE_KICK.",
         dist, kick_start_reach_threshold_);
-      cancel_nav_through_poses_goal();
+      cancel_nav_goal();
       current_state_ = State::PREPARE_KICK;
       kick_action_active_ = false;
       kick_action_completed_ = false;
@@ -314,8 +310,8 @@ void AutoGame1Node::process_prepare_kick()
   if (kick_action_completed_) {
     RCLCPP_INFO(get_logger(), "Kick action completed. Transitioning to GO_TO_GATE_FAR_SIDE.");
     current_state_ = State::GO_TO_GATE_FAR_SIDE;
-    nav_through_poses_completed_ = false;
-    nav_through_poses_goal_handle_ = nullptr;
+    nav_completed_ = false;
+    nav_goal_handle_ = nullptr;
   }
 }
 
@@ -327,19 +323,19 @@ void AutoGame1Node::process_go_to_gate_far_side()
   // 状態変更: Nav2 Goal未送信の場合は残り通過点を NavigateThroughPoses で送信する。
   // 出力: Nav2 到着完了 (Succeeded) で FOLLOW_BALL へ遷移する。
 
-  if (!nav_through_poses_goal_handle_ && !nav_through_poses_completed_) {
+  if (!nav_goal_handle_ && !nav_completed_) {
     RCLCPP_INFO(get_logger(), "State: GO_TO_GATE_FAR_SIDE. Sending goals for remaining waypoints and far side.");
     std::vector<geometry_msgs::msg::PoseStamped> poses = {
       kick_end_pose_, waypoint3_pose_, gate_far_side_pose_};
-    send_nav_through_poses_goal(poses);
+    send_nav_goal(poses);
     return;
   }
 
-  if (nav_through_poses_completed_) {
+  if (nav_completed_) {
     RCLCPP_INFO(get_logger(), "Reached gate far side. Transitioning to FOLLOW_BALL.");
     current_state_ = State::FOLLOW_BALL;
-    nav_through_poses_completed_ = false;
-    nav_through_poses_goal_handle_ = nullptr;
+    nav_completed_ = false;
+    nav_goal_handle_ = nullptr;
   }
 }
 
@@ -349,29 +345,29 @@ void AutoGame1Node::process_follow_ball()
   // 概要: 自前Twist追従ロジック用の拡張用プレースホルダー。現状は自動的に次状態へ移行する。
   RCLCPP_INFO(get_logger(), "State: FOLLOW_BALL (Placeholder). Transitioning to CARRY_BALL_TO_PASS_AREA.");
   current_state_ = State::CARRY_BALL_TO_PASS_AREA;
-  nav_to_pose_completed_ = false;
-  nav_to_pose_goal_handle_ = nullptr;
+  nav_completed_ = false;
+  nav_goal_handle_ = nullptr;
 }
 
 void AutoGame1Node::process_carry_ball_to_pass_area()
 {
   // 4. ボールをパスエリアに運ぶ状態
   // 入力: pass_area_pose_
-  // 前提: ボールを保持しパスエリアへ搬送する
-  // 状態変更: pass_area_pose_ への NavigateToPose Goal を送信する。
+  // 前提: ボールを保持しパスエリアへ搬送する（統一化した send_nav_goal で送信。将来通過点追加も可能）
+  // 状態変更: pass_area_pose_ への NavigateThroughPoses Goal を送信する。
   // 出力: Nav2 到着完了 (Succeeded) で RETURN_TO_START へ遷移する。
 
-  if (!nav_to_pose_goal_handle_ && !nav_to_pose_completed_) {
-    RCLCPP_INFO(get_logger(), "State: CARRY_BALL_TO_PASS_AREA. Sending NavigateToPose goal to Pass Area.");
-    send_nav_to_pose_goal(pass_area_pose_);
+  if (!nav_goal_handle_ && !nav_completed_) {
+    RCLCPP_INFO(get_logger(), "State: CARRY_BALL_TO_PASS_AREA. Sending Nav goal to Pass Area.");
+    send_nav_goal({pass_area_pose_});
     return;
   }
 
-  if (nav_to_pose_completed_) {
+  if (nav_completed_) {
     RCLCPP_INFO(get_logger(), "Reached Pass Area. Transitioning to RETURN_TO_START.");
     current_state_ = State::RETURN_TO_START;
-    nav_to_pose_completed_ = false;
-    nav_to_pose_goal_handle_ = nullptr;
+    nav_completed_ = false;
+    nav_goal_handle_ = nullptr;
   }
 }
 
@@ -379,33 +375,31 @@ void AutoGame1Node::process_return_to_start()
 {
   // 5. スタート位置に戻る状態
   // 入力: start_pose_
-  // 前提: パスエリアでの作業完了
-  // 状態変更: start_pose_ への NavigateToPose Goal を送信する。
+  // 前提: パスエリアでの作業完了（統一化した send_nav_goal で送信。将来通過点追加も可能）
+  // 状態変更: start_pose_ への NavigateThroughPoses Goal を送信する。
   // 出力: Nav2 到着完了 (Succeeded) で GO_TO_KICK_START へ戻りループする。
 
-  if (!nav_to_pose_goal_handle_ && !nav_to_pose_completed_) {
-    RCLCPP_INFO(get_logger(), "State: RETURN_TO_START. Sending NavigateToPose goal to Start Pose.");
-    send_nav_to_pose_goal(start_pose_);
+  if (!nav_goal_handle_ && !nav_completed_) {
+    RCLCPP_INFO(get_logger(), "State: RETURN_TO_START. Sending Nav goal to Start Pose.");
+    send_nav_goal({start_pose_});
     return;
   }
 
-  if (nav_to_pose_completed_) {
+  if (nav_completed_) {
     RCLCPP_INFO(get_logger(), "Returned to Start Pose. Mission loop complete. Restarting at GO_TO_KICK_START.");
     current_state_ = State::GO_TO_KICK_START;
-    nav_to_pose_completed_ = false;
-    nav_to_pose_goal_handle_ = nullptr;
-    nav_through_poses_completed_ = false;
-    nav_through_poses_goal_handle_ = nullptr;
+    nav_completed_ = false;
+    nav_goal_handle_ = nullptr;
   }
 }
 
-// Action送信ヘルパー関数群
+// Action送信ヘルパー関数群 (NavigateThroughPoses 1本に統一)
 
-void AutoGame1Node::send_nav_through_poses_goal(
+void AutoGame1Node::send_nav_goal(
   const std::vector<geometry_msgs::msg::PoseStamped> & poses)
 {
-  if (!nav_through_poses_client_->wait_for_action_server(std::chrono::seconds(2))) {
-    RCLCPP_ERROR(get_logger(), "NavigateThroughPoses action server not available.");
+  if (!nav_client_->wait_for_action_server(std::chrono::seconds(2))) {
+    RCLCPP_ERROR(get_logger(), "Nav action server not available.");
     return;
   }
 
@@ -415,58 +409,24 @@ void AutoGame1Node::send_nav_through_poses_goal(
   auto send_goal_options = rclcpp_action::Client<NavigateThroughPoses>::SendGoalOptions();
   send_goal_options.result_callback = [this](const GoalHandleNavigateThroughPoses::WrappedResult & result) {
     if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
-      RCLCPP_INFO(get_logger(), "NavigateThroughPoses succeeded.");
-      nav_through_poses_completed_ = true;
+      RCLCPP_INFO(get_logger(), "Nav goal succeeded.");
+      nav_completed_ = true;
     } else {
-      RCLCPP_WARN(get_logger(), "NavigateThroughPoses failed or was canceled.");
-      nav_through_poses_failed_ = true;
+      RCLCPP_WARN(get_logger(), "Nav goal failed or was canceled.");
+      nav_failed_ = true;
     }
   };
 
-  nav_through_poses_completed_ = false;
-  nav_through_poses_failed_ = false;
-  nav_through_poses_client_->async_send_goal(goal, send_goal_options);
+  nav_completed_ = false;
+  nav_failed_ = false;
+  nav_client_->async_send_goal(goal, send_goal_options);
 }
 
-void AutoGame1Node::cancel_nav_through_poses_goal()
+void AutoGame1Node::cancel_nav_goal()
 {
-  if (nav_through_poses_client_) {
-    nav_through_poses_client_->async_cancel_all_goals();
-    nav_through_poses_goal_handle_ = nullptr;
-  }
-}
-
-void AutoGame1Node::send_nav_to_pose_goal(const geometry_msgs::msg::PoseStamped & pose)
-{
-  if (!nav_to_pose_client_->wait_for_action_server(std::chrono::seconds(2))) {
-    RCLCPP_ERROR(get_logger(), "NavigateToPose action server not available.");
-    return;
-  }
-
-  NavigateToPose::Goal goal;
-  goal.pose = pose;
-
-  auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions();
-  send_goal_options.result_callback = [this](const GoalHandleNavigateToPose::WrappedResult & result) {
-    if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
-      RCLCPP_INFO(get_logger(), "NavigateToPose succeeded.");
-      nav_to_pose_completed_ = true;
-    } else {
-      RCLCPP_WARN(get_logger(), "NavigateToPose failed or was canceled.");
-      nav_to_pose_failed_ = true;
-    }
-  };
-
-  nav_to_pose_completed_ = false;
-  nav_to_pose_failed_ = false;
-  nav_to_pose_client_->async_send_goal(goal, send_goal_options);
-}
-
-void AutoGame1Node::cancel_nav_to_pose_goal()
-{
-  if (nav_to_pose_client_) {
-    nav_to_pose_client_->async_cancel_all_goals();
-    nav_to_pose_goal_handle_ = nullptr;
+  if (nav_client_) {
+    nav_client_->async_cancel_all_goals();
+    nav_goal_handle_ = nullptr;
   }
 }
 
@@ -592,6 +552,13 @@ void AutoGame1Node::publish_obstacle_polygons()
 
     obstacle_polygon_publishers_[i]->publish(poly_msg);
   }
+}
+
+void AutoGame1Node::reset_all_nav_goals()
+{
+  cancel_nav_goal();
+  nav_completed_ = false;
+  nav_goal_handle_ = nullptr;
 }
 
 }  // namespace auto_game1

@@ -20,8 +20,8 @@
 | `PREPARE_KICK` | キック開始点到達後、独自Twist制御で定速直進。**Kick Action** を送信。 | Kick Action の完了 (`Succeeded`) |
 | `GO_TO_GATE_FAR_SIDE` | **Nav2 Action** (`NavigateThroughPoses`) で残りの通過点（`kick_end`等）およびゲート向こう側へ向かう。 | Nav2 到着完了 (`Succeeded`) |
 | `FOLLOW_BALL` | ボール追従（拡張用プレースホルダー）。 | 即時移行 |
-| `CARRY_BALL_TO_PASS_AREA` | **Nav2 Action** (`NavigateToPose`) でパスエリアへ移動。 | Nav2 到着完了 (`Succeeded`) |
-| `RETURN_TO_START` | **Nav2 Action** (`NavigateToPose`) でスタート位置に戻りループ。 | Nav2 到着完了 (`Succeeded`) $\rightarrow$ `GO_TO_KICK_START` |
+| `CARRY_BALL_TO_PASS_AREA` | **Nav2 Action** (`NavigateThroughPoses`) でパスエリアへ移動。 | Nav2 到着完了 (`Succeeded`) |
+| `RETURN_TO_START` | **Nav2 Action** (`NavigateThroughPoses`) でスタート位置に戻りループ。 | Nav2 到着完了 (`Succeeded`) $\rightarrow$ `GO_TO_KICK_START` |
 
 ※ジョイスティック (`/joy`) から `return_to_start_button` が押された場合は、いつでも強制的に `RETURN_TO_START` に遷移します。
 
@@ -62,8 +62,7 @@ const RectObstacle RECTANGLE_OBSTACLES[3] = {
 * `/obstacle_polygon_3` (`geometry_msgs/msg/PolygonStamped`): 長方形障害物 3
 
 ### Action Client (アクション送信)
-* `navigate_to_pose` (`nav2_msgs/action/NavigateToPose`): 単一目標地点へのナビゲーション
-* `navigate_through_poses` (`nav2_msgs/action/NavigateThroughPoses`): 複数通過点へのナビゲーション
+* `navigate_through_poses` (`nav2_msgs/action/NavigateThroughPoses`): 全移動（単一目的地および複数通過点）に共通利用する Nav2 ナビゲーションアクション
 * `kick` (`auto_game1/action/Kick`): キック機構制御
 
 ---

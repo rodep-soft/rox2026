@@ -10,7 +10,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav2_msgs/action/navigate_through_poses.hpp"
-#include "nav2_msgs/action/navigate_to_pose.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -54,8 +53,8 @@ enum class State
   PREPARE_KICK,            // 2. キック準備・一定速度走行状態 (独自Twist制御)
   GO_TO_GATE_FAR_SIDE,     // 1b. ゲート向こう側へ向かう状態 (NavigateThroughPoses)
   FOLLOW_BALL,             // 3. ボール追従状態 (拡張用プレースホルダー)
-  CARRY_BALL_TO_PASS_AREA, // 4. ボールをパスエリアに運ぶ状態 (NavigateToPose)
-  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateToPose -> GO_TO_KICK_STARTへループ)
+  CARRY_BALL_TO_PASS_AREA, // 4. ボールをパスエリアに運ぶ状態 (NavigateThroughPoses)
+  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateThroughPoses -> GO_TO_KICK_STARTへループ)
 };
 
 class AutoGame1Node : public rclcpp::Node
@@ -63,9 +62,6 @@ class AutoGame1Node : public rclcpp::Node
 public:
   using NavigateThroughPoses = nav2_msgs::action::NavigateThroughPoses;
   using GoalHandleNavigateThroughPoses = rclcpp_action::ClientGoalHandle<NavigateThroughPoses>;
-
-  using NavigateToPose = nav2_msgs::action::NavigateToPose;
-  using GoalHandleNavigateToPose = rclcpp_action::ClientGoalHandle<NavigateToPose>;
 
   using Kick = auto_game1::action::Kick;
   using GoalHandleKick = rclcpp_action::ClientGoalHandle<Kick>;
@@ -96,12 +92,11 @@ private:
   void process_carry_ball_to_pass_area();
   void process_return_to_start();
 
-  // Action送信・制御の補助関数
-  void send_nav_through_poses_goal(const std::vector<geometry_msgs::msg::PoseStamped> & poses);
-  void cancel_nav_through_poses_goal();
-  void send_nav_to_pose_goal(const geometry_msgs::msg::PoseStamped & pose);
-  void cancel_nav_to_pose_goal();
+  // Action送信・制御の補助関数（NavigateThroughPoses 1本に統一）
+  void send_nav_goal(const std::vector<geometry_msgs::msg::PoseStamped> & poses);
+  void cancel_nav_goal();
   void send_kick_goal();
+  void reset_all_nav_goals();
 
   // 5. 小さな補助関数 (値取得・変換・判定)
   bool get_robot_pose_map(geometry_msgs::msg::PoseStamped & current_pose);
@@ -120,8 +115,7 @@ private:
   // パラメータ
   std::string cmd_vel_topic_;
   std::string joy_topic_;
-  std::string nav_through_poses_action_name_;
-  std::string nav_to_pose_action_name_;
+  std::string nav_action_name_;
   std::string kick_action_name_;
   std::string global_frame_id_;
   std::string robot_base_frame_id_;
@@ -163,14 +157,10 @@ private:
   bool kick_action_active_{false};
   bool kick_action_completed_{false};
 
-  // Nav2 Action Goalハンドラ / 完了状態
-  GoalHandleNavigateThroughPoses::SharedPtr nav_through_poses_goal_handle_;
-  bool nav_through_poses_completed_{false};
-  bool nav_through_poses_failed_{false};
-
-  GoalHandleNavigateToPose::SharedPtr nav_to_pose_goal_handle_;
-  bool nav_to_pose_completed_{false};
-  bool nav_to_pose_failed_{false};
+  // Nav2 Action Goalハンドラ / 完了状態（共通化した単一のハンドラ）
+  GoalHandleNavigateThroughPoses::SharedPtr nav_goal_handle_;
+  bool nav_completed_{false};
+  bool nav_failed_{false};
 
   // PD制御用前回の誤差
   double prev_error_y_{0.0};
@@ -180,8 +170,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr obstacle_polygon_publishers_[3];
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
-  rclcpp_action::Client<NavigateThroughPoses>::SharedPtr nav_through_poses_client_;
-  rclcpp_action::Client<NavigateToPose>::SharedPtr nav_to_pose_client_;
+  rclcpp_action::Client<NavigateThroughPoses>::SharedPtr nav_client_;
   rclcpp_action::Client<Kick>::SharedPtr kick_client_;
 
   rclcpp::TimerBase::SharedPtr control_timer_;

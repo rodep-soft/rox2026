@@ -3,8 +3,7 @@ auto_game1_node:
     # トピック・アクション名設定
     cmd_vel_topic: "/mecanum/cmd_vel"
     joy_topic: "/joy"
-    nav_through_poses_action_name: "navigate_through_poses"
-    nav_to_pose_action_name: "navigate_to_pose"
+    nav_action_name: "navigate_through_poses"
     kick_action_name: "kick"
     global_frame_id: "map"
     robot_base_frame_id: "base_link"
