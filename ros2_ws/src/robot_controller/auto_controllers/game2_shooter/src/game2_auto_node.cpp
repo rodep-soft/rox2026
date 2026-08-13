@@ -34,7 +34,11 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   auto register_row = [this](const std::vector<int64_t> & tags, int row) {
     for (size_t col = 0; col < tags.size(); ++col) {
       const int id = static_cast<int>(tags[col]);
-      panel_grid_[id] = {id, row, static_cast<int>(col)};
+      PanelTagInfo info;
+      info.tag_id = id;
+      info.row = row;
+      info.col = static_cast<int>(col);
+      panel_grid_[id] = info;
     }
   };
   register_row(bottom_tags, 0);
@@ -46,10 +50,10 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game2/command_start", 10,
-    std::bind(&Game2TacticalShooterNode::start_callback, this, std::placeholders::_1));
+    std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "/imu/data", rclcpp::SensorDataQoS(),
-    std::bind(&Game2TacticalShooterNode::imu_callback, this, std::placeholders::_1));
+    std::bind(&Game2AutoNode::imu_callback, this, std::placeholders::_1));
 
   cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
