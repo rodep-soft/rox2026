@@ -108,6 +108,8 @@ void DribbleControllerNode::load_parameters()
   belt_spinup_delay_sec_ = declare_parameter<double>("belt_spinup_delay_sec", 0.5);
   const auto position_logical_id = declare_parameter<int>("position_logical_id", 5);
   const auto roller_logical_id = declare_parameter<int>("roller_logical_id", 12);
+  const auto upper_belt_logical_id = declare_parameter<int>("upper_belt_logical_id", 10);
+  const auto under_belt_logical_id = declare_parameter<int>("under_belt_logical_id", 11);
 
   if (position_logical_id < 0 || position_logical_id > 65535 || roller_logical_id < 0 ||
     roller_logical_id > 65535)
@@ -137,6 +139,8 @@ void DribbleControllerNode::load_parameters()
   }
   position_logical_id_ = static_cast<uint16_t>(position_logical_id);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
+  upper_belt_logical_id_ = static_cast<uint16_t>(upper_belt_logical_id);
+  under_belt_logical_id_ = static_cast<uint16_t>(under_belt_logical_id);
   last_position_command_rad_ = dribble_position_rad_;
 }
 
