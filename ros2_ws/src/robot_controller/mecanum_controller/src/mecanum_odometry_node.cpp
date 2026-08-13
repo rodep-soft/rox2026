@@ -12,9 +12,11 @@
 
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_state_array.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/LinearMath/Quaternion.h"
+#include "tf2_ros/transform_broadcaster.h"
 
 class MecanumOdometryNode : public rclcpp::Node
 {
@@ -23,14 +25,21 @@ public:
   : Node("mecanum_odometry_node")
   {
     configure_parameters();
+
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
     state_sub_ = create_subscription<actuator_msgs::msg::ActuatorStateArray>(
       state_topic_, 10,
       [this](const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg) {receive_state(*msg);});
+
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>(odom_topic_, 20);
+
     last_update_ = now();
     timer_ = create_wall_timer(
       std::chrono::duration<double, std::milli>(publish_period_ms_),
       [this]() {update();});
+
+    RCLCPP_INFO(get_logger(), "MecanumOdometryNode initialized with ROS 2 best practices.");
   }
 
 private:
@@ -45,30 +54,30 @@ private:
   {
     wheel_radius_m_ = declare_parameter("wheel_radius", 0.075);
     robot_length_m_ = declare_parameter("robot_length", 0.355);
-    robot_width_m_ = declare_parameter("robot_width", 0.353);
-    publish_period_ms_ = declare_parameter("publish_period_ms", 20.0);
+    robot_width_m_  = declare_parameter("robot_width", 0.353);
+    publish_period_ms_   = declare_parameter("publish_period_ms", 20.0);
     feedback_timeout_ms_ = declare_parameter("feedback_timeout_ms", 250.0);
-    scale_x_ = declare_parameter("velocity_scale_x", 1.0);
-    scale_y_ = declare_parameter("velocity_scale_y", 1.0);
+    scale_x_   = declare_parameter("velocity_scale_x", 1.0);
+    scale_y_   = declare_parameter("velocity_scale_y", 1.0);
     scale_yaw_ = declare_parameter("velocity_scale_yaw", 1.0);
     filter_alpha_ = declare_parameter("velocity_filter_alpha", 0.35);
+    publish_tf_   = declare_parameter("publish_tf", true);
+
     slip_enabled_ = declare_parameter("slip_compensation.enabled", true);
-    accel_threshold_x_ =
-      declare_parameter("slip_compensation.acceleration_threshold_x_m_s2", 1.0);
-    accel_threshold_y_ =
-      declare_parameter("slip_compensation.acceleration_threshold_y_m_s2", 0.7);
-    accel_threshold_yaw_ =
-      declare_parameter("slip_compensation.angular_acceleration_threshold_rad_s2", 2.0);
-    max_covariance_multiplier_ =
-      declare_parameter("slip_compensation.maximum_covariance_multiplier", 10.0);
-    pose_covariance_xy_ = declare_parameter("pose_covariance_xy", 0.02);
-    pose_covariance_yaw_ = declare_parameter("pose_covariance_yaw", 0.05);
-    twist_covariance_xy_ = declare_parameter("twist_covariance_xy", 0.03);
+    accel_threshold_x_ = declare_parameter("slip_compensation.acceleration_threshold_x_m_s2", 1.0);
+    accel_threshold_y_ = declare_parameter("slip_compensation.acceleration_threshold_y_m_s2", 0.7);
+    accel_threshold_yaw_ = declare_parameter("slip_compensation.angular_acceleration_threshold_rad_s2", 2.0);
+    max_covariance_multiplier_ = declare_parameter("slip_compensation.maximum_covariance_multiplier", 10.0);
+
+    pose_covariance_xy_   = declare_parameter("pose_covariance_xy", 0.02);
+    pose_covariance_yaw_  = declare_parameter("pose_covariance_yaw", 0.05);
+    twist_covariance_xy_  = declare_parameter("twist_covariance_xy", 0.03);
     twist_covariance_yaw_ = declare_parameter("twist_covariance_yaw", 0.06);
-    state_topic_ = declare_parameter<std::string>("state_array_topic", "/edulite/state_array");
-    odom_topic_ = declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
-    odom_frame_ = declare_parameter<std::string>("odom_frame", "odom");
-    base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
+
+    state_topic_ = declare_parameter<std::string>("state_array_topic", "/hardware/actuator_state_array");
+    odom_topic_  = declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
+    odom_frame_  = declare_parameter<std::string>("odom_frame", "odom");
+    base_frame_  = declare_parameter<std::string>("base_frame", "base_link");
 
     const auto ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
     if (ids.size() != wheel_ids_.size()) {
@@ -209,14 +218,16 @@ private:
     const rclcpp::Time & stamp, const mecanum_odometry::BodyVelocity & velocity,
     const double covariance_scale)
   {
+    tf2::Quaternion orientation;
+    orientation.setRPY(0.0, 0.0, yaw_rad_);
+
+    // 1. Odometry Topic Publish
     nav_msgs::msg::Odometry message;
     message.header.stamp = stamp;
     message.header.frame_id = odom_frame_;
     message.child_frame_id = base_frame_;
     message.pose.pose.position.x = position_x_m_;
     message.pose.pose.position.y = position_y_m_;
-    tf2::Quaternion orientation;
-    orientation.setRPY(0.0, 0.0, yaw_rad_);
     message.pose.pose.orientation.x = orientation.x();
     message.pose.pose.orientation.y = orientation.y();
     message.pose.pose.orientation.z = orientation.z();
@@ -224,17 +235,32 @@ private:
     message.twist.twist.linear.x = velocity.x_m_s;
     message.twist.twist.linear.y = velocity.y_m_s;
     message.twist.twist.angular.z = velocity.yaw_rad_s;
-    message.pose.covariance[0] = message.pose.covariance[7] = pose_covariance_xy_ *
-      covariance_scale;
+    message.pose.covariance[0] = message.pose.covariance[7] = pose_covariance_xy_ * covariance_scale;
     message.pose.covariance[35] = pose_covariance_yaw_ * covariance_scale;
-    message.twist.covariance[0] = message.twist.covariance[7] = twist_covariance_xy_ *
-      covariance_scale;
+    message.twist.covariance[0] = message.twist.covariance[7] = twist_covariance_xy_ * covariance_scale;
     message.twist.covariance[35] = twist_covariance_yaw_ * covariance_scale;
     odom_pub_->publish(message);
+
+    // 2. ROS 2 Best Practice: Transform Broadcaster (odom -> base_link)
+    if (publish_tf_) {
+      geometry_msgs::msg::TransformStamped t;
+      t.header.stamp = stamp;
+      t.header.frame_id = odom_frame_;
+      t.child_frame_id = base_frame_;
+      t.transform.translation.x = position_x_m_;
+      t.transform.translation.y = position_y_m_;
+      t.transform.translation.z = 0.0;
+      t.transform.rotation.x = orientation.x();
+      t.transform.rotation.y = orientation.y();
+      t.transform.rotation.z = orientation.z();
+      t.transform.rotation.w = orientation.w();
+      tf_broadcaster_->sendTransform(t);
+    }
   }
 
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::array<uint16_t, mecanum_odometry::WHEEL_COUNT> wheel_ids_{};
   std::array<double, mecanum_odometry::WHEEL_COUNT> wheel_velocity_{};
@@ -248,6 +274,7 @@ private:
   double wheel_radius_m_, robot_length_m_, robot_width_m_;
   double publish_period_ms_, feedback_timeout_ms_;
   double scale_x_, scale_y_, scale_yaw_, filter_alpha_;
+  bool publish_tf_;
   bool slip_enabled_;
   double accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_;
   double max_covariance_multiplier_;
