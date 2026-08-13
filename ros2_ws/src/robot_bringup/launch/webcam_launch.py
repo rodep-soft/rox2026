@@ -37,7 +37,8 @@ def launch_setup(context, *args, **kwargs):
         parameters=[
             {
                 "video_device": video_device,
-                "image_size": [image_width, image_height],
+                "image_width": image_width,
+                "image_height": image_height,
                 "camera_frame_id": camera_frame_id,
                 "pixel_format": pixel_format,
                 "output_encoding": "bgr8",
@@ -58,14 +59,16 @@ def launch_setup(context, *args, **kwargs):
         )
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
-            launch_arguments={
-                "node_name": "apriltag_webcam_node",
-                "image_topic": "/webcam/image_raw",
-                "camera_info_topic": "/webcam/camera_info",
-                "tag_family": tag_family,
-                "tag_size": tag_size,
-                "pkg_name": "apriltag_ros",
-            }.items(),
+            launch_arguments=list(
+                {
+                    "node_name": "apriltag_webcam_node",
+                    "image_topic": "/webcam/image_raw",
+                    "camera_info_topic": "/webcam/camera_info",
+                    "tag_family": tag_family,
+                    "tag_size": tag_size,
+                    "pkg_name": "apriltag_ros",
+                }.items()
+            ),
         )
 
         launch_nodes.append(apriltag_launch)
