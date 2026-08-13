@@ -31,8 +31,11 @@ RUN apt-get update && apt-get install -y \
     can-utils \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
+    ros-humble-ament-uncrustify \
+    uncrustify \
     evtest \
     libboost-all-dev \
+    && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
     #lsof is used to check which process is using the port
