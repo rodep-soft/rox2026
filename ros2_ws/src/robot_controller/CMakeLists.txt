@@ -81,6 +81,7 @@ add_controller(
   auto_controllers/game1_shooter
   game1_auto_node.cpp
   geometry_msgs
+  nav_msgs
   rclcpp
   sensor_msgs
   std_msgs
