@@ -4,8 +4,8 @@ SHELL ["/bin/bash", "-c"]
 
 ARG TARGETARCH
 
-# apt update & install
-RUN apt-get update && apt-get install -y \
+# apt update & install (軽量・スリム化)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     nano \
     vim \
@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     tree \
     tmux \
     gdb \
-    neovim \
     htop \
     lsof \
     build-essential \
@@ -34,24 +33,22 @@ RUN apt-get update && apt-get install -y \
     ros-humble-ament-uncrustify \
     uncrustify \
     evtest \
-    libboost-all-dev \
+    libboost-dev \
     && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
-    #lsof is used to check which process is using the port
 RUN if [ "${TARGETARCH}" = "arm64" ]; then \
-      apt-get update && apt-get install -y \
+      apt-get update && apt-get install -y --no-install-recommends \
       python3-gpiozero \
       libgpiod-dev ; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-      apt-get update && apt-get install -y \
+      apt-get update && apt-get install -y --no-install-recommends \
       ros-humble-rqt \
       ros-humble-rqt-graph \
       ros-humble-rviz2 \
-      ros-humble-foxglove-bridge \
-      ccache; \
+      ros-humble-foxglove-bridge; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init || true
