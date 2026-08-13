@@ -13,7 +13,6 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   tag_prefix_        = declare_parameter<std::string>("tag_prefix", "tag16h5:");
   kp_yaw_            = declare_parameter<double>("kp_yaw", 0.5);
   kd_yaw_            = declare_parameter<double>("kd_yaw", 0.05);
-  kp_y_              = declare_parameter<double>("kp_y", 0.0);
   kp_dist_           = declare_parameter<double>("kp_dist", 0.8);
   max_angular_z_     = declare_parameter<double>("max_angular_z", 0.35);
   target_distance_   = declare_parameter<double>("target_distance", 1.5);
@@ -56,10 +55,9 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/enabled", 10);
-  arm_position_pub_  = create_publisher<std_msgs::msg::UInt8>("/dribble/position_mode", 10);
+  arm_position_pub_  = create_publisher<robot_msgs::msg::ArmPosition>("/dribble/position_mode", 10);
   completed_pub_     = create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
-  // game2_shooter -> led_controller: シーケンス状態
-  state_pub_ = create_publisher<std_msgs::msg::UInt8>(
+  state_pub_         = create_publisher<robot_msgs::msg::Game2State>(
     "/game2/state", rclcpp::QoS(1).reliable().transient_local());
 
   // 制御ループ 20 Hz
@@ -74,12 +72,12 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
 {
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
-    state_ = State::SEARCHING;
+    state_ = robot_msgs::msg::Game2State::SEARCHING;
     active_row_ = 0;
     RCLCPP_INFO(get_logger(), "Game 2 START.");
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
-    state_ = State::STANDBY;
+    state_ = robot_msgs::msg::Game2State::STANDBY;
     RCLCPP_INFO(get_logger(), "Game 2 STOP.");
   }
 }
@@ -197,39 +195,35 @@ void Game2TacticalShooterNode::select_target_and_aim()
 
 void Game2TacticalShooterNode::control_loop()
 {
-  // 状態をpublish
-  std_msgs::msg::UInt8 state_msg;
-  state_msg.data = static_cast<uint8_t>(state_);
+  robot_msgs::msg::Game2State state_msg;
+  state_msg.state = state_;
   state_pub_->publish(state_msg);
 
-  // STANDBY 中は全停止
-  if (!is_enabled_ || state_ == State::STANDBY) {
+  if (!is_enabled_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
     publish_all(
-      geometry_msgs::msg::Twist{}, /*belt_rpm=*/0.0f,
-      /*shoot=*/false, /*dribble=*/false, /*arm=*/0, /*completed=*/false);
+      geometry_msgs::msg::Twist{}, 0.0f,
+      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
   update_panel_states();
   select_target_and_aim();
 
-  // 全9枚クリア
   if (active_row_ > 2) {
-    state_ = State::COMPLETED;
+    state_ = robot_msgs::msg::Game2State::COMPLETED;
     RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000, "Game 2: all panels cleared.");
     publish_all(
-      geometry_msgs::msg::Twist{}, /*belt_rpm=*/0.0f,
-      /*shoot=*/false, /*dribble=*/false, /*arm=*/0, /*completed=*/true);
+      geometry_msgs::msg::Twist{}, 0.0f,
+      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
     return;
   }
 
-  // ターゲット未検出 → ゆっくり旋回しながら探索
   if (!target_valid_) {
-    state_ = State::SEARCHING;
+    state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
     cmd.angular.z = 0.2;
     publish_all(cmd, static_cast<float>(target_rpm_),
-      /*shoot=*/false, /*dribble=*/true, /*arm=*/0, /*completed=*/false);
+      false, true, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
@@ -237,16 +231,15 @@ void Game2TacticalShooterNode::control_loop()
   const double y_err    = target_y_;
   geometry_msgs::msg::Twist cmd;
   bool shoot_trigger = false;
-  uint8_t arm_mode = 0;  // 0=DRIBBLE, 1=OPEN, 2=FEED
+  uint8_t arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
 
   switch (state_) {
-    case State::SEARCHING:
-    case State::ALIGNING: {
-      state_ = State::ALIGNING;
+    case robot_msgs::msg::Game2State::SEARCHING:
+    case robot_msgs::msg::Game2State::ALIGNING: {
+      state_ = robot_msgs::msg::Game2State::ALIGNING;
       cmd.linear.x = kp_dist_ * dist_err;
       cmd.linear.y = 0.0;
 
-      // P(カメラ誤差) + D(ジャイロ) による旋回制御
       double wz = -kp_yaw_ * y_err;
       if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
         wz -= kd_yaw_ * current_gyro_z_;
@@ -255,41 +248,38 @@ void Game2TacticalShooterNode::control_loop()
 
       if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
         RCLCPP_INFO(get_logger(), "Game2: aligned. Moving arm to OPEN.");
-        state_ = State::PREPARING_SHOOT;
+        state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
         shoot_start_time_ = now();
       }
-      arm_mode = 0;
+      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
       break;
     }
 
-    case State::PREPARING_SHOOT: {
-      // アームをOPENに開いてボールの拘束を解放
-      arm_mode = 1;
+    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
+      arm_mode = robot_msgs::msg::ArmPosition::OPEN;
       if ((now() - shoot_start_time_).seconds() > 0.3) {
         RCLCPP_INFO(get_logger(), "Game2: arm open. Moving to FEED.");
-        state_ = State::SHOOTING;
+        state_ = robot_msgs::msg::Game2State::SHOOTING;
         shoot_start_time_ = now();
       }
       break;
     }
 
-    case State::SHOOTING: {
-      // FEEDに倒し込んでベルトへ押し込み
-      arm_mode = 2;
+    case robot_msgs::msg::Game2State::SHOOTING: {
+      arm_mode = robot_msgs::msg::ArmPosition::FEED;
       shoot_trigger = true;
       if ((now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
         RCLCPP_INFO(get_logger(), "Game2: shot complete. Returning arm to DRIBBLE.");
-        state_ = State::WAITING_RESULT;
+        state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
         shoot_start_time_ = now();
       }
       break;
     }
 
-    case State::WAITING_RESULT: {
-      // 次のボールを受け取る位置にアームを戻す
-      arm_mode = 0;
+    case robot_msgs::msg::Game2State::WAITING_RESULT: {
+      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
       if ((now() - shoot_start_time_).seconds() > 1.2) {
-        state_ = State::ALIGNING;
+        state_ = robot_msgs::msg::Game2State::ALIGNING;
       }
       break;
     }
@@ -299,7 +289,7 @@ void Game2TacticalShooterNode::control_loop()
   }
 
   publish_all(cmd, static_cast<float>(target_rpm_),
-    shoot_trigger, /*dribble=*/true, arm_mode, /*completed=*/false);
+    shoot_trigger, true, arm_mode, false);
 }
 
 void Game2TacticalShooterNode::publish_all(
@@ -324,8 +314,8 @@ void Game2TacticalShooterNode::publish_all(
   dribble_msg.data = dribble_enabled;
   dribble_enabled_pub_->publish(dribble_msg);
 
-  std_msgs::msg::UInt8 arm_msg;
-  arm_msg.data = arm_mode;
+  robot_msgs::msg::ArmPosition arm_msg;
+  arm_msg.position = arm_mode;
   arm_position_pub_->publish(arm_msg);
 
   std_msgs::msg::Bool completed_msg;

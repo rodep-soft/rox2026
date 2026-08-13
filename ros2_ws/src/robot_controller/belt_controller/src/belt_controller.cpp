@@ -1,6 +1,7 @@
 #include "belt_controller/belt_controller.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <stdexcept>
 #include <string>
@@ -17,32 +18,14 @@ BeltControllerNode::BeltControllerNode()
   upperbelt_rpms_[2] = declare_parameter<int>("upperbelt_level_3_rpm", 4000);
   upperbelt_rpms_[3] = declare_parameter<int>("upperbelt_level_4_rpm", 4500);
 
-  const auto emergency_stop_period_ms =
-    declare_parameter<int>("emergency_stop_period_ms", 50);
+  const auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 50);
   const auto qos_depth = declare_parameter<int>("qos_depth", 1);
-  const auto underbelt_logical_id =
-    declare_parameter<int>("underbelt_logical_id", 11);
-  const auto upperbelt_logical_id =
-    declare_parameter<int>("upperbelt_logical_id", 10);
-  const auto target_array_topic =
-    declare_parameter<std::string>("target_array_topic", "/vesc/target_array");
+  const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
+  const auto upperbelt_logical_id = declare_parameter<int>("upperbelt_logical_id", 10);
+  const auto target_array_topic   = declare_parameter<std::string>("target_array_topic", "/vesc/target_array");
 
-  for (std::size_t level = 0; level < num_levels; ++level) {
-    if (underbelt_rpms_[level] < 0 || upperbelt_rpms_[level] < 0) {
-      throw std::runtime_error("belt RPM parameters must be nonnegative");
-    }
-  }
-  if (emergency_stop_period_ms <= 0 || qos_depth <= 0) {
-    throw std::runtime_error("emergency stop period and QoS depth must be positive");
-  }
-  if (underbelt_logical_id < 0 || underbelt_logical_id > 65535 ||
-    upperbelt_logical_id < 0 || upperbelt_logical_id > 65535 ||
-    underbelt_logical_id == upperbelt_logical_id)
-  {
-    throw std::runtime_error("belt logical IDs must be unique values in [0, 65535]");
-  }
-  if (target_array_topic.empty()) {
-    throw std::runtime_error("target_array_topic must not be empty");
+  if (emergency_stop_period_ms <= 0 || qos_depth <= 0 || target_array_topic.empty()) {
+    throw std::runtime_error("Invalid belt parameters");
   }
 
   underbelt_logical_id_ = static_cast<uint16_t>(underbelt_logical_id);
@@ -51,24 +34,28 @@ BeltControllerNode::BeltControllerNode()
   const auto command_qos = rclcpp::QoS(qos_depth);
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
-  // joy_controller -> belt_controller: 0=STOP, 1..4=速度段階。
-  belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+  belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
     "/belt/mode", command_qos,
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
-  // game2_shooter -> belt_controller: 上下ベルトへ同じRPMを直接指定する。
   belt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
     "/belt/target_rpm", command_qos,
     std::bind(&BeltControllerNode::belt_target_rpm_callback, this, std::placeholders::_1));
 
-  // joy_controller -> belt_controller: 非常停止状態をラッチしてゼロ出力を継続する。
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/emergency_stop", emergency_stop_qos,
     std::bind(&BeltControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
-  // belt_controller -> vesc_driver: 上下ベルトの目標RPM。
+  vesc_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorStateArray>(
+    "/vesc/state_array", command_qos,
+    std::bind(&BeltControllerNode::vesc_state_callback, this, std::placeholders::_1));
+
   target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
     target_array_topic, command_qos);
+
+  // 定量評価用ベルトステータストピック (/belt/status)
+  status_pub_ = create_publisher<robot_msgs::msg::BeltStatus>(
+    "/belt/status", command_qos);
 
   emergency_stop_timer_ = create_wall_timer(
     std::chrono::milliseconds(emergency_stop_period_ms),
@@ -76,22 +63,18 @@ BeltControllerNode::BeltControllerNode()
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(&BeltControllerNode::parameter_callback, this, std::placeholders::_1));
+
+  RCLCPP_INFO(get_logger(), "BeltControllerNode initialized. Monitoring topic: /belt/status");
 }
 
-// /belt/modeを受信したら直接RPM指定を解除し、選択段階を即時送信する。
-// 範囲外の値は安全のためSTOPとして扱う。非常停止中はゼロを送信する。
-void BeltControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
+void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
 {
   use_direct_target_rpm_ = false;
-  belt_mode_ = msg->data <= static_cast<uint8_t>(BeltMode::LEVEL_4) ?
-    static_cast<BeltMode>(msg->data) : BeltMode::STOP;
+  belt_mode_ = msg->mode <= robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
   publish_command();
 }
 
-// /belt/target_rpmを受信したら上下共通の直接RPMを即時送信する。
-// 0以下なら直接指定を解除して、現在の段階設定へ戻す。
-void BeltControllerNode::belt_target_rpm_callback(
-  const std_msgs::msg::Float32::SharedPtr msg)
+void BeltControllerNode::belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
   if (msg->data > 0.0f) {
     use_direct_target_rpm_ = true;
@@ -103,16 +86,33 @@ void BeltControllerNode::belt_target_rpm_callback(
   publish_command();
 }
 
-// /emergency_stopを受信したら状態を更新し、ゼロまたは現在指令を即時送信する。
-// 非常停止中はtimer callbackもゼロを継続送信する。
-void BeltControllerNode::emergency_stop_callback(
-  const std_msgs::msg::Bool::SharedPtr msg)
+void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   emergency_stop_active_ = msg->data;
   publish_command();
 }
 
-// 非常停止中だけ /vesc/target_array へゼロを定期送信する。
+void BeltControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg)
+{
+  for (const auto & state : msg->actuators) {
+    if (state.logical_id == underbelt_logical_id_) {
+      underbelt_measured_rpm_ = state.velocity;
+    } else if (state.logical_id == upperbelt_logical_id_) {
+      upperbelt_measured_rpm_ = state.velocity;
+    }
+  }
+
+  // 実測値受信時に /belt/status をリアルタイム配信（定量評価用）
+  robot_msgs::msg::BeltStatus status;
+  status.header.stamp = now();
+  status.underbelt_target_rpm = last_underbelt_target_rpm_;
+  status.underbelt_measured_rpm = underbelt_measured_rpm_;
+  status.upperbelt_target_rpm = last_upperbelt_target_rpm_;
+  status.upperbelt_measured_rpm = upperbelt_measured_rpm_;
+  status.rpm_difference = std::abs(underbelt_measured_rpm_ - upperbelt_measured_rpm_);
+  status_pub_->publish(status);
+}
+
 void BeltControllerNode::emergency_stop_timer_callback()
 {
   if (emergency_stop_active_) {
@@ -174,12 +174,15 @@ void BeltControllerNode::publish_command()
     }
   }
 
+  last_underbelt_target_rpm_ = static_cast<float>(underbelt_rpm);
+  last_upperbelt_target_rpm_ = static_cast<float>(upperbelt_rpm);
+
   actuator_msgs::msg::ActuatorTargetArray command;
   command.header.stamp = now();
   command.actuators.resize(2);
   command.actuators[0].logical_id = underbelt_logical_id_;
-  command.actuators[0].target = static_cast<float>(underbelt_rpm);
+  command.actuators[0].target = last_underbelt_target_rpm_;
   command.actuators[1].logical_id = upperbelt_logical_id_;
-  command.actuators[1].target = static_cast<float>(upperbelt_rpm);
+  command.actuators[1].target = last_upperbelt_target_rpm_;
   target_array_pub_->publish(command);
 }

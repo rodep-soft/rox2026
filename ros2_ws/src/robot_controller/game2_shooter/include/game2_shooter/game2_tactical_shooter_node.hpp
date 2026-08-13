@@ -12,11 +12,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
-#include "std_msgs/msg/u_int8.hpp"
-#include "tf2/exceptions.h"
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_listener.h"
+#include "robot_msgs/msg/arm_position.hpp"
+#include "robot_msgs/msg/game2_state.hpp"
 
 namespace robot_controller
 {
@@ -31,17 +28,6 @@ struct PanelTagInfo
   double y{0.0};
   double z{0.0};
   rclcpp::Time last_seen;
-};
-
-enum class State
-{
-  STANDBY,
-  SEARCHING,
-  ALIGNING,
-  PREPARING_SHOOT,
-  SHOOTING,
-  WAITING_RESULT,
-  COMPLETED
 };
 
 class Game2TacticalShooterNode : public rclcpp::Node
@@ -75,8 +61,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr state_pub_;
+  rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
+  rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
@@ -85,7 +71,6 @@ private:
   std::string tag_prefix_;
   double kp_yaw_;
   double kd_yaw_;
-  double kp_y_;
   double kp_dist_;
   double max_angular_z_;
   double target_distance_;
@@ -97,7 +82,7 @@ private:
   double shoot_hold_duration_;
 
   // State Variables
-  State state_{State::STANDBY};
+  uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
   bool is_enabled_{false};
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top

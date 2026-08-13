@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(robot_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -53,7 +54,8 @@ add_controller(
   actuator_msgs
   rclcpp
   rcl_interfaces
-  std_msgs)
+  std_msgs
+  robot_msgs)
 add_controller(
   dribble_controller_node
   dribble_controller
@@ -61,7 +63,8 @@ add_controller(
   actuator_msgs
   rclcpp
   rcl_interfaces
-  std_msgs)
+  std_msgs
+  robot_msgs)
 add_controller(
   game2_tactical_shooter_node
   game2_shooter
@@ -70,9 +73,10 @@ add_controller(
   rclcpp
   sensor_msgs
   std_msgs
+  robot_msgs
   tf2
   tf2_ros)
-add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs)
+add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs robot_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
 target_include_directories(

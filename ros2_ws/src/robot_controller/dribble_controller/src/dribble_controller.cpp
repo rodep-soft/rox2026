@@ -35,27 +35,19 @@ DribbleControllerNode::DribbleControllerNode()
     position_target_topic, command_qos);
   roller_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     roller_target_topic, command_qos);
-  // dribble_controller -> led_controller: shot cycle state.
-  shot_cycle_state_pub_ = create_publisher<std_msgs::msg::UInt8>(
+  shot_cycle_state_pub_ = create_publisher<robot_msgs::msg::ShotCycleState>(
     "/shot_cycle/state", rclcpp::QoS(1).reliable().transient_local());
 
-  // dribble_controller -> joy_controller (belt_mode override during shot cycle).
-  belt_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
+  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
     "/belt/mode", command_qos);
 
-  // dribble_controller <- belt_controller: belt の現在 mode を把握する。
-  belt_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+  belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
     "/belt/mode", command_qos,
-    std::bind(
-      &DribbleControllerNode::belt_mode_callback, this,
-      std::placeholders::_1));
+    std::bind(&DribbleControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
-
-  position_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+  position_mode_sub_ = create_subscription<robot_msgs::msg::ArmPosition>(
     "/dribble/position_mode", command_qos,
-    std::bind(
-      &DribbleControllerNode::position_mode_callback, this,
-      std::placeholders::_1));
+    std::bind(&DribbleControllerNode::position_mode_callback, this, std::placeholders::_1));
 
   dribble_enabled_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/enabled", command_qos,
@@ -136,19 +128,16 @@ void DribbleControllerNode::load_parameters()
   last_position_command_rad_ = dribble_position_rad_;
 }
 
-void DribbleControllerNode::position_mode_callback(
-  const std_msgs::msg::UInt8::SharedPtr msg)
+void DribbleControllerNode::position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  if (msg->data > static_cast<uint8_t>(PositionMode::FEED)) {
-    return;
-  }
-  const auto new_mode = static_cast<PositionMode>(msg->data);
-  if (new_mode != position_mode_ || shot_cycle_active_) {
-    shot_cycle_active_ = false; // 手動割り込みで自動サイクルを解除
+  if (msg->position > robot_msgs::msg::ArmPosition::FEED) return;
+
+  if (msg->position != position_mode_ || shot_cycle_active_) {
+    shot_cycle_active_ = false;
     manual_transition_active_ = true;
     manual_transition_start_time_ = now();
     manual_transition_start_position_rad_ = last_position_command_rad_;
-    position_mode_ = new_mode;
+    position_mode_ = msg->position;
   }
 }
 
@@ -157,43 +146,36 @@ void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::
   dribble_enabled_ = msg->data;
 }
 
-void DribbleControllerNode::belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg)
+void DribbleControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
 {
-  // 自分がpublishした値も含め、/belt/mode の最新値を記録する。
-  current_belt_mode_ = msg->data;
+  current_belt_mode_ = msg->mode;
 }
 
 void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (!msg->data || emergency_stop_active_) {
-    return;
-  }
-  RCLCPP_INFO(
-    get_logger(),
-    "Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE");
+  if (!msg->data || emergency_stop_active_) return;
+
+  RCLCPP_INFO(get_logger(), "Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE");
   manual_transition_active_ = false;
   shot_cycle_active_ = true;
   shot_cycle_start_time_ = now();
   shot_cycle_start_position_rad_ = last_position_command_rad_;
 
-  if (current_belt_mode_ == 0) {
-    // belt が STOP のとき: 自動で belt を ON にして spin-up 待ちフェーズへ
+  if (current_belt_mode_ == robot_msgs::msg::BeltMode::STOP) {
     belt_auto_started_ = true;
-    std_msgs::msg::UInt8 belt_msg;
-    belt_msg.data = shot_cycle_belt_spinup_level_;
+    robot_msgs::msg::BeltMode belt_msg;
+    belt_msg.mode = shot_cycle_belt_spinup_level_;
     belt_mode_pub_->publish(belt_msg);
     RCLCPP_INFO(
       get_logger(),
       "Belt was STOP: auto-starting belt LEVEL_%u, waiting %.2f s for spin-up",
       shot_cycle_belt_spinup_level_, belt_spinup_delay_sec_);
-    shot_cycle_phase_ = ShotCyclePhase::BELT_SPINUP;
-    // position は DRIBBLE のまま保持（アームは動かさない）
-    position_mode_ = PositionMode::DRIBBLE;
+    shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::BELT_SPINUP;
+    position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
   } else {
-    // belt が既に回っている: すぐに OPENING 開始
     belt_auto_started_ = false;
-    shot_cycle_phase_ = ShotCyclePhase::OPENING;
-    position_mode_ = PositionMode::OPEN;
+    shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::OPENING;
+    position_mode_ = robot_msgs::msg::ArmPosition::OPEN;
   }
 }
 
@@ -367,18 +349,18 @@ void DribbleControllerNode::control_timer_callback()
         shot_cycle_start_position_rad_ = phase_target_rad;
         shot_cycle_start_time_ = now();
 
-        if (shot_cycle_phase_ == ShotCyclePhase::OPENING) {
-          shot_cycle_phase_ = ShotCyclePhase::FEEDING;
+        if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::OPENING) {
+          shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
           RCLCPP_INFO(get_logger(), "Shot Cycle: OPEN -> FEED");
-        } else if (shot_cycle_phase_ == ShotCyclePhase::FEEDING) {
-          shot_cycle_phase_ = ShotCyclePhase::RETURNING;
+        } else if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
+          shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
           RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> DRIBBLE");
         } else {
           shot_cycle_active_ = false;
           if (belt_auto_started_) {
             belt_auto_started_ = false;
-            std_msgs::msg::UInt8 belt_msg;
-            belt_msg.data = 0; // STOP
+            robot_msgs::msg::BeltMode belt_msg;
+            belt_msg.mode = robot_msgs::msg::BeltMode::STOP;
             belt_mode_pub_->publish(belt_msg);
             RCLCPP_INFO(get_logger(), "Shot Cycle Completed: Belt auto-stopped");
           }
@@ -405,13 +387,13 @@ int DribbleControllerNode::roller_target_rpm() const
   }
 
   switch (shot_cycle_phase_) {
-    case ShotCyclePhase::BELT_SPINUP:
-      return dribble_on_rpm_; // dribble roller は通常 ON のまま
-    case ShotCyclePhase::OPENING:
+    case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
+      return dribble_on_rpm_;
+    case robot_msgs::msg::ShotCycleState::OPENING:
       return shot_cycle_opening_rpm_;
-    case ShotCyclePhase::FEEDING:
+    case robot_msgs::msg::ShotCycleState::FEEDING:
       return shot_cycle_feeding_rpm_;
-    case ShotCyclePhase::RETURNING:
+    case robot_msgs::msg::ShotCycleState::RETURNING:
       return shot_cycle_returning_rpm_;
   }
   return dribble_on_rpm_;
@@ -419,28 +401,21 @@ int DribbleControllerNode::roller_target_rpm() const
 
 void DribbleControllerNode::publish_shot_cycle_state()
 {
-  std_msgs::msg::UInt8 state;
-  state.data = shot_cycle_active_ ?
-    static_cast<uint8_t>(shot_cycle_phase_) + 1U :
-    0U;
+  robot_msgs::msg::ShotCycleState state;
+  state.state = shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
   shot_cycle_state_pub_->publish(state);
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// ヘルパー
-// ────────────────────────────────────────────────────────────────────────────
 
 double DribbleControllerNode::target_position_rad() const
 {
   switch (position_mode_) {
-    case PositionMode::DRIBBLE:
-      return dribble_position_rad_;
-    case PositionMode::OPEN:
+    case robot_msgs::msg::ArmPosition::OPEN:
       return open_position_rad_;
-    case PositionMode::FEED:
+    case robot_msgs::msg::ArmPosition::FEED:
       return feed_position_rad_;
+    default:
+      return dribble_position_rad_;
   }
-  return dribble_position_rad_;
 }
 
 double DribbleControllerNode::interpolated_position_rad(

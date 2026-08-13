@@ -74,7 +74,7 @@ JoyControllerNode::JoyControllerNode()
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
 
-  belt_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
+  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
     "/belt/mode", command_qos);
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
@@ -83,7 +83,7 @@ JoyControllerNode::JoyControllerNode()
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/shot_cycle/request", command_qos);
 
-  arm_position_mode_pub_ = create_publisher<std_msgs::msg::UInt8>(
+  arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
     "/dribble/position_mode", command_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
@@ -218,7 +218,7 @@ void JoyControllerNode::loop_callback()
   // 2. DPAD 上/下でベルトレベル昇降 (R2が押されていない時のみ)
   if (!is_r2_active) {
     if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
-      belt_rpm_mode_ = increment_mode(belt_rpm_mode_, static_cast<uint8_t>(BeltRpmMode::LEVEL_4));
+      belt_rpm_mode_ = increment_mode(belt_rpm_mode_, robot_msgs::msg::BeltMode::LEVEL_4);
       RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
       publish_belt_mode(belt_rpm_mode_);
     } else if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, false)) {
@@ -288,13 +288,13 @@ void JoyControllerNode::loop_callback()
 
   // 9. DPAD 左右でアームポジション切替 (OPEN / FEED)
   if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
-    std_msgs::msg::UInt8 mode_msg;
-    mode_msg.data = static_cast<uint8_t>(ArmPositionMode::OPEN);
+    robot_msgs::msg::ArmPosition mode_msg;
+    mode_msg.position = robot_msgs::msg::ArmPosition::OPEN;
     arm_position_mode_pub_->publish(mode_msg);
     RCLCPP_INFO(get_logger(), "Arm position set to: OPEN");
   } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
-    std_msgs::msg::UInt8 mode_msg;
-    mode_msg.data = static_cast<uint8_t>(ArmPositionMode::FEED);
+    robot_msgs::msg::ArmPosition mode_msg;
+    mode_msg.position = robot_msgs::msg::ArmPosition::FEED;
     arm_position_mode_pub_->publish(mode_msg);
     RCLCPP_INFO(get_logger(), "Arm position set to: FEED");
   }
@@ -354,8 +354,8 @@ void JoyControllerNode::publish_emergency_stop(bool active)
 
 void JoyControllerNode::publish_belt_mode(uint8_t mode)
 {
-  std_msgs::msg::UInt8 msg;
-  msg.data = mode;
+  robot_msgs::msg::BeltMode msg;
+  msg.mode = mode;
   belt_mode_pub_->publish(msg);
 }
 
@@ -386,7 +386,7 @@ void JoyControllerNode::publish_stop_commands()
   spring_fire_msg.data = false;
   spring_fire_pub_->publish(spring_fire_msg);
 
-  belt_rpm_mode_ = static_cast<uint8_t>(BeltRpmMode::STOP);
+  belt_rpm_mode_ = robot_msgs::msg::BeltMode::STOP;
   publish_belt_mode(belt_rpm_mode_);
 
   dribble_enabled_ = false;
