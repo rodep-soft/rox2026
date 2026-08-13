@@ -367,9 +367,18 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 void DribbleControllerNode::control_timer_callback()
 {
   publish_shot_cycle_state();
+  const int target_rpm = roller_target_rpm();
+  // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
+  constexpr int max_rpm_step = 150;
+  if (current_filtered_roller_rpm_ < target_rpm) {
+    current_filtered_roller_rpm_ = std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+  } else if (current_filtered_roller_rpm_ > target_rpm) {
+    current_filtered_roller_rpm_ = std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+  }
+
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
-  roller_command.target = static_cast<float>(roller_target_rpm());
+  roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
 
   if (emergency_stop_active_) {

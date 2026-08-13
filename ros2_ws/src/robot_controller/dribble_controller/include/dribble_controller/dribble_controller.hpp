@@ -87,6 +87,7 @@ private:
   float under_belt_min_shot_rpm_{99999.0f};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
+  int current_filtered_roller_rpm_{0};
   bool belt_auto_started_{false};
   bool has_ball_{false};
   int ball_detected_counter_{0};
