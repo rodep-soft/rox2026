@@ -36,7 +36,7 @@ def generate_launch_description():
             ),
             include(
                 "hardware.launch.py",
-                {"can_interface": LaunchConfiguration("can_interface")}.items(),
+                list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
             include("input/joy_controller.launch.py"),
             IncludeLaunchDescription(
