@@ -278,9 +278,9 @@ void DribbleControllerNode::control_timer_callback()
   if (manual_transition_active_ && !shot_cycle_active_) {
     const double mode_target_rad = target_position_rad();
     double max_vel_rad_s = returning_max_velocity_rad_s_;
-    if (position_mode_ == PositionMode::OPEN) {
+    if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
       max_vel_rad_s = opening_max_velocity_rad_s_;
-    } else if (position_mode_ == PositionMode::FEED) {
+    } else if (position_mode_ == robot_msgs::msg::ArmPosition::FEED) {
       max_vel_rad_s = feeding_max_velocity_rad_s_;
     }
 
@@ -298,13 +298,13 @@ void DribbleControllerNode::control_timer_callback()
   }
 
   if (shot_cycle_active_) {
-    if (shot_cycle_phase_ == ShotCyclePhase::BELT_SPINUP) {
+    if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::BELT_SPINUP) {
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       if (elapsed_sec >= belt_spinup_delay_sec_) {
-        shot_cycle_phase_ = ShotCyclePhase::OPENING;
+        shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::OPENING;
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
-        position_mode_ = PositionMode::OPEN;
+        position_mode_ = robot_msgs::msg::ArmPosition::OPEN;
         RCLCPP_INFO(get_logger(), "Shot Cycle: BELT_SPINUP -> OPEN");
       }
     } else {
@@ -313,20 +313,20 @@ void DribbleControllerNode::control_timer_callback()
       double hold_duration_sec = 0.0;
 
       switch (shot_cycle_phase_) {
-        case ShotCyclePhase::OPENING:
-          position_mode_ = PositionMode::OPEN;
+        case robot_msgs::msg::ShotCycleState::OPENING:
+          position_mode_ = robot_msgs::msg::ArmPosition::OPEN;
           phase_target_rad = open_position_rad_;
           phase_max_vel_rad_s = opening_max_velocity_rad_s_;
           hold_duration_sec = open_duration_sec_;
           break;
-        case ShotCyclePhase::FEEDING:
-          position_mode_ = PositionMode::FEED;
+        case robot_msgs::msg::ShotCycleState::FEEDING:
+          position_mode_ = robot_msgs::msg::ArmPosition::FEED;
           phase_target_rad = feed_position_rad_;
           phase_max_vel_rad_s = feeding_max_velocity_rad_s_;
           hold_duration_sec = feed_duration_sec_;
           break;
-        case ShotCyclePhase::RETURNING:
-          position_mode_ = PositionMode::DRIBBLE;
+        case robot_msgs::msg::ShotCycleState::RETURNING:
+          position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
           break;
         default:
           break;
