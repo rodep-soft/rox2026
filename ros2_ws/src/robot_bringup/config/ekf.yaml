@@ -31,3 +31,14 @@ ekf_filter_node:
     imu0_relative: true
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
+
+    # 3. AprilTag ビジョン位置補正 (/apriltag/pose)
+    # カメラ認識時に絶対位置(x, y, yaw)を一瞬で補正してオドメトリドリフトを解消
+    pose0: /apriltag/pose
+    pose0_config: [true,  true,  false,
+                   false, false, true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_queue_size: 5
