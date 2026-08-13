@@ -68,10 +68,10 @@ JoyControllerNode::JoyControllerNode()
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos);
 
-  spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/spring/actuator_ready", command_qos,
+  limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
+    "/hardware/limit_switches", command_qos,
     std::bind(
-      &JoyControllerNode::spring_actuator_ready_callback, this,
+      &JoyControllerNode::limit_switch_callback, this,
       std::placeholders::_1));
 
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
@@ -370,10 +370,12 @@ void JoyControllerNode::loop_callback()
   last_joy_msg_ = joy_msg_;
 }
 
-void JoyControllerNode::spring_actuator_ready_callback(
-  const std_msgs::msg::Bool::SharedPtr msg)
+
+void JoyControllerNode::limit_switch_callback(
+  const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  spring_actuator_ready_ = msg->data;
+  spring_actuator_ready_ =
+    ((msg->data >> kLimitSwitchBitOffset) & 0x01U) != 0U;
 }
 
 void JoyControllerNode::joy_timeout_timer_callback()

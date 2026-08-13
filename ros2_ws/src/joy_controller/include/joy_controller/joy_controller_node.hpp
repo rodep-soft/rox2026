@@ -85,6 +85,7 @@ private:
   std::chrono::steady_clock::time_point last_velocity_update_time_{};
   bool velocity_limiter_initialized_{false};
 
+  static constexpr int kLimitSwitchBitOffset = 0;
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   int shot_cycle_opening_rpm_{1500};
