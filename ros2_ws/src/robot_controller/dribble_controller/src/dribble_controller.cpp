@@ -229,7 +229,8 @@ void DribbleControllerNode::actuator_state_callback(
   }
 }
 
-void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::vesc_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == roller_logical_id_) {
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
