@@ -317,6 +317,11 @@ void DribbleControllerNode::control_timer_callback()
   }
 
   if (shot_cycle_active_) {
+    if (belt_auto_started_) {
+      robot_msgs::msg::BeltMode belt_msg;
+      belt_msg.mode = shot_cycle_belt_spinup_level_;
+      belt_mode_pub_->publish(belt_msg);
+    }
     if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::BELT_SPINUP) {
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       if (elapsed_sec >= belt_spinup_delay_sec_) {
