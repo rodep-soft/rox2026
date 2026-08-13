@@ -425,7 +425,7 @@ int DribbleControllerNode::roller_target_rpm() const
     case robot_msgs::msg::ShotCycleState::OPENING:
       return shot_cycle_opening_rpm_;
     case robot_msgs::msg::ShotCycleState::FEEDING: {
-        // OPENING 時の回転数から FEEDING 目標回転数 (0 RPM) へアーム動作に合わせて滑らかに減速
+        // アームが真下(OPEN)に到達し、FEEDING 押し込みを開始した瞬間から 0 RPM への滑らかな減速を開始する
         const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
         const double move_duration_sec = transition_duration_sec(
           shot_cycle_start_position_rad_, feed_position_rad_, feeding_max_velocity_rad_s_);
