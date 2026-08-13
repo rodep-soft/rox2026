@@ -63,8 +63,8 @@ private:
   double belt_spinup_delay_sec_{0.5};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
-  uint16_t upper_belt_logical_id_{51};
-  uint16_t under_belt_logical_id_{52};
+  uint16_t upper_belt_logical_id_{10};
+  uint16_t under_belt_logical_id_{11};
 
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
