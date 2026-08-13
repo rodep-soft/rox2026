@@ -4,8 +4,8 @@ SHELL ["/bin/bash", "-c"]
 
 ARG TARGETARCH
 
-# apt update & install
-RUN apt-get update && apt-get install -y \
+# 1. 重いシステム共通パッケージの事前インストール（最下層キャッシュ）
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     nano \
     vim \
@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     tree \
     tmux \
     gdb \
-    neovim \
     htop \
     lsof \
     build-essential \
@@ -29,26 +28,28 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     usbutils \
     can-utils \
+    ros-humble-can-msgs \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
+    ros-humble-ament-uncrustify \
+    uncrustify \
     evtest \
-    libboost-all-dev \
+    libboost-dev \
+    && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
-    #lsof is used to check which process is using the port
 RUN if [ "${TARGETARCH}" = "arm64" ]; then \
-      apt-get update && apt-get install -y \
+      apt-get update && apt-get install -y --no-install-recommends \
       python3-gpiozero \
       libgpiod-dev ; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-      apt-get update && apt-get install -y \
+      apt-get update && apt-get install -y --no-install-recommends \
       ros-humble-rqt \
       ros-humble-rqt-graph \
       ros-humble-rviz2 \
-      ros-humble-foxglove-bridge \
-      ccache; \
+      ros-humble-foxglove-bridge; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init || true
@@ -56,17 +57,20 @@ RUN rosdep update
 
 WORKDIR /root/ros2_ws
 
-COPY ./ros2_ws/src ./src
-
-# rosdep install
+# 2. package.xml のみを先行コピーして rosdep install を完全永続キャッシュ化
+# (ソースコード .cpp / .hpp が変更されても rosdep install は無駄に走らない！)
+COPY ./ros2_ws/src/**/package.xml ./src_manifests/
 RUN apt-get update && \
     source /opt/ros/humble/setup.bash && \
     rosdep install \
-      --from-paths src \
+      --from-paths src_manifests \
       --ignore-src \
       -r \
       -y && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* ./src_manifests
+
+# 3. 最後に全ソースコードをコピー
+COPY ./ros2_ws/src ./src
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc

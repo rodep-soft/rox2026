@@ -293,10 +293,19 @@ void Node::state_timer_callback()
     message.actuators.push_back(make_state_message(motor));
     if (motor.state() != MotorState::READY) {
       const auto diagnostic = motor.initialization_diagnostic();
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 2000,
-        "%s initialization incomplete: %s",
-        motor.name().c_str(), diagnostic.c_str());
+      if (motor.initialization_retry_count() > 0) {
+        // リトライが発生している場合のみ WARN
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000,
+          "%s initialization incomplete: %s",
+          motor.name().c_str(), diagnostic.c_str());
+      } else {
+        // 初回試行中（retry=0）は正常な過渡状態 → DEBUG
+        RCLCPP_DEBUG_THROTTLE(
+          get_logger(), *get_clock(), 2000,
+          "%s initializing: %s",
+          motor.name().c_str(), diagnostic.c_str());
+      }
     }
   }
   state_array_publisher_->publish(message);

@@ -1,7 +1,7 @@
 /mecanum_controller_node:
   ros__parameters:
     cmd_vel_topic: "/mecanum/cmd_vel_heading"
-    emergency_stop_topic: "/emergency_stop"
+    emergency_stop_topic: "/system/emergency_stop"
     target_array_topic: "/edulite/target_array"
     
     # 車輪の倫理IDの配列 [FRONT_L，FRONT_R，REAR_L，REAR_R]
