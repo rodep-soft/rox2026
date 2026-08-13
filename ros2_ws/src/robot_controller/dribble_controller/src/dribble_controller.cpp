@@ -239,12 +239,23 @@ void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::Actuat
       roller_logical_id_, msg->current_a, current_arm_position_rad_,
       has_ball_ ? "YES 🏀" : "NO ⚪️");
 
-    // 電流値によるボール保持判定 (ヒステリシス閾値: ON >= 3.5A, OFF <= 2.0A)
+    // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
     if (msg->current_a >= ball_detection_threshold_a_) {
-      has_ball_ = true;
+      ball_detected_counter_++;
+      ball_lost_counter_ = 0;
+      if (ball_detected_counter_ >= ball_detection_debounce_count_) {
+        has_ball_ = true;
+      }
     } else if (msg->current_a <= 2.0) {
-      has_ball_ = false;
+      ball_lost_counter_++;
+      ball_detected_counter_ = 0;
+      if (ball_lost_counter_ >= ball_detection_debounce_count_) {
+        has_ball_ = false;
+      }
+    } else {
+      ball_detected_counter_ = 0;
+      ball_lost_counter_ = 0;
     }
 
     if (previous_has_ball != has_ball_) {
