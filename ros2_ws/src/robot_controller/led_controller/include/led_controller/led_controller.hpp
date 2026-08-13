@@ -5,8 +5,10 @@
 #include <cstdint>
 
 #include "rclcpp/rclcpp.hpp"
+#include "robot_msgs/msg/belt_mode.hpp"
+#include "robot_msgs/msg/game2_state.hpp"
+#include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/u_int8.hpp"
 #include "std_msgs/msg/u_int16.hpp"
 
 class LedControllerNode : public rclcpp::Node
@@ -30,11 +32,11 @@ private:
   };
 
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void belt_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void drive_reversed_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void shot_cycle_state_callback(const std_msgs::msg::UInt8::SharedPtr msg);
-  void game2_state_callback(const std_msgs::msg::UInt8::SharedPtr msg);
+  void shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg);
+  void game2_state_callback(const robot_msgs::msg::Game2State::SharedPtr msg);
   void spring_fire_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void publish_timer_callback();
 
@@ -53,11 +55,11 @@ private:
   std::chrono::milliseconds firing_display_duration_{500};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr belt_mode_sub_;
+  rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr drive_reversed_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr shot_cycle_state_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr game2_state_sub_;
+  rclcpp::Subscription<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_sub_;
+  rclcpp::Subscription<robot_msgs::msg::Game2State>::SharedPtr game2_state_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_fire_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr led_command_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;

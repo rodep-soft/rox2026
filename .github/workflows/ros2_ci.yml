@@ -1,6 +1,5 @@
 name: ros2 build
-# This workflow builds ROS 2 packages using Docker Compose.
-# It is triggered on push and pull request events. The workflow ensures that only one instance runs for a given branch or pull request, canceling any in-progress runs if a new one is triggered.
+# This workflow builds ROS 2 packages using Docker Buildx with GHA Layer Caching.
 on:
   push:
   pull_request:
@@ -8,34 +7,46 @@ on:
 concurrency:
   group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
-  
+
 permissions:
-    contents: write
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
+      # ── ⚡ Docker Buildx & GHA キャッシュのセットアップ ──
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image with GHA Cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: rox2026-ros2_rox2026:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── ⚡ C++ Build Cache (ccache) の永続化 ──
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
       - name: Start container
         run: |
-          docker compose up -d --build
-
-      - name: Install CI tools
-        if: github.event_name == 'pull_request'
-        run: |
-          docker compose exec -T ros2_rox2026 \
-          bash -ec "
-          apt update && \
-          apt install -y uncrustify \
-          ros-humble-ament-uncrustify && \
-          pip3 install black && \
-          pip3 install cmake-format"
+          docker compose up -d
 
       - name: Format C++
         if: github.event_name == 'pull_request'
@@ -57,7 +68,7 @@ jobs:
               --replace \
               --no-backup \
               {} +"
-                
+
       - name: Format Python
         if: github.event_name == 'pull_request'
         run: |
@@ -74,23 +85,16 @@ jobs:
             -exec cmake-format --config-files .cmake-format.yml \
             --in-place {} +"
 
-      - name: Run build
+      # ── ⚡ ccache を活用した爆速 colcon build ──
+      - name: Run build (Accelerated with ccache)
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec " 
-          source /opt/ros/humble/setup.bash && \
-          cd /root/ros2_ws && \
-          colcon build --symlink-install"
-
-      # - name: Run test & test results
-      #   run: |
-      #     docker compose exec -T ros2_rox2026 \
-      #     bash -ec " 
-      #     source /opt/ros/humble/setup.bash && \
-      #     cd /root/ros2_ws && \
-      #     source install/setup.bash && \
-      #     colcon test && \
-      #     colcon test-result --verbose"
+            export CC='/usr/lib/ccache/gcc' && \
+            export CXX='/usr/lib/ccache/g++' && \
+            source /opt/ros/humble/setup.bash && \
+            cd /root/ros2_ws && \
+            colcon build --symlink-install --parallel-workers \$(nproc)"
 
       - name: Commit formatted code
         if: github.event_name == 'pull_request'
@@ -103,12 +107,8 @@ jobs:
           if ! git diff --cached --quiet
           then
             git commit -m 'style: auto format'
-
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
-            
           fi
-      #BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-      #git push --force-with-lease origin HEAD:"refs/heads/$BRANCH"
 
       - name: Stop container
         if: always()

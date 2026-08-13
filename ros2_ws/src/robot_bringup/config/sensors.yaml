@@ -9,6 +9,7 @@ mecanum_odometry_node:
     odometry_topic: /wheel/odometry
     odom_frame: odom
     base_frame: base_link
+    publish_tf: false
     publish_period_ms: 20.0
     feedback_timeout_ms: 250.0
 
@@ -45,7 +46,7 @@ mecanum_odometry_node:
 tag_localization_node:
   ros__parameters:
     detection_topic: /detection
-    output_topic: /tag/pose
+    output_topic: /apriltag/pose
     map_frame: map
     base_frame: base_link
     camera_frame: camera_link

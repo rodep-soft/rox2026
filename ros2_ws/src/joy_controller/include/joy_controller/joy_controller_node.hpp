@@ -12,7 +12,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/u_int8.hpp"
+#include "robot_msgs/msg/arm_position.hpp"
+#include "robot_msgs/msg/belt_mode.hpp"
 
 class JoyControllerNode : public rclcpp::Node
 {
@@ -20,22 +21,6 @@ public:
   JoyControllerNode();
 
 private:
-  enum class BeltRpmMode : uint8_t
-  {
-    STOP = 0,
-    LEVEL_1 = 1,
-    LEVEL_2 = 2,
-    LEVEL_3 = 3,
-    LEVEL_4 = 4,
-  };
-
-  enum class ArmPositionMode : uint8_t
-  {
-    DRIBBLE = 0,
-    OPEN = 1,
-    FEED = 2,
-  };
-
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
   void loop_callback();
   void joy_timeout_timer_callback();
@@ -43,10 +28,10 @@ private:
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
-  void publish_emergency_stop();
-  void publish_belt_mode();
-  void publish_dribble_enabled();
-  void publish_drive_reversed();
+  void publish_emergency_stop(bool active);
+  void publish_belt_mode(uint8_t mode);
+  void publish_dribble_enabled(bool enabled);
+  void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
   void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
   void update_acceleration_limits();
@@ -98,7 +83,7 @@ private:
   bool velocity_limiter_initialized_{false};
 
   bool is_emergency_stop_{true};
-  uint8_t belt_rpm_mode_{static_cast<uint8_t>(BeltRpmMode::STOP)};
+  uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   bool dribble_enabled_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
@@ -113,10 +98,10 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_pub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr belt_mode_pub_;
+  rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr arm_position_mode_pub_;
+  rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;

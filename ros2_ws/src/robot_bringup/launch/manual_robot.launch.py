@@ -39,6 +39,11 @@ def generate_launch_description():
                 {"can_interface": LaunchConfiguration("can_interface")}.items(),
             ),
             include("input/joy_controller.launch.py"),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(launch_dir, "foxglove_bridge.launch.py")
+                ),
+            ),
             *[include(launch_file) for launch_file in controller_launch_files],
         ]
     )

@@ -33,8 +33,12 @@ public:
   : Node("stm32_driver_node", options),
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now())
   {
-    const auto led_cmd_topic = declare_parameter<std::string>("led_cmd_topic", "/led/cmd");
-    const auto limit_sw_topic = declare_parameter<std::string>("limit_sw_topic", "/limit_switchs");
+    const auto limit_switches_topic = declare_parameter<std::string>(
+      "limit_switches_topic",
+      "/hardware/limit_switches");
+    const auto led_command_topic = declare_parameter<std::string>(
+      "led_command_topic",
+      "/hardware/led_cmd");
     const auto imu_topic = declare_parameter<std::string>("imu_topic", "/imu/data");
     imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "imu_link");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
@@ -63,10 +67,10 @@ public:
       can_sub_options);
 
     led_cmd_sub_ = create_subscription<std_msgs::msg::UInt16>(
-      led_cmd_topic,
+      led_command_topic,
       10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
-    limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_sw_topic, 10);
+    limit_sw_pub_ = create_publisher<std_msgs::msg::UInt8>(limit_switches_topic, 10);
     imu_pub_ = create_publisher<sensor_msgs::msg::Imu>(imu_topic, rclcpp::SensorDataQoS());
 
     alive_timer_ = create_wall_timer(

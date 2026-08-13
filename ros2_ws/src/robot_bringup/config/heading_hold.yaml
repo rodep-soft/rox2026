@@ -15,6 +15,6 @@
     imu_timeout_ms: 250     # IMUのタイムアウト判断時間
     command_qos_depth: 10
 
-    raw_cmd_vel_topic: /mecanum/cmd_vel
+    raw_cmd_vel_topic: /drive/cmd_vel
     imu_topic: /imu/data
     corrected_cmd_vel_topic: /mecanum/cmd_vel_heading

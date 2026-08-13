@@ -1,4 +1,4 @@
-.PHONY: build build-test build-package test reconfigure-ninja launch
+.PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
 BUILD_JOBS ?= 3
 PARALLEL_WORKERS ?= 2
@@ -47,3 +47,12 @@ reconfigure-ninja:
 
 launch:
 	ros2 launch robot_bringup manual_robot.launch.py
+
+sync:
+	vcs import --input src/rox2026.repos src
+
+vcs-status:
+	vcs status src
+
+clean:
+	rm -rf build install log

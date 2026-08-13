@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(robot_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -53,7 +54,8 @@ add_controller(
   actuator_msgs
   rclcpp
   rcl_interfaces
-  std_msgs)
+  std_msgs
+  robot_msgs)
 add_controller(
   dribble_controller_node
   dribble_controller
@@ -61,25 +63,37 @@ add_controller(
   actuator_msgs
   rclcpp
   rcl_interfaces
-  std_msgs)
+  std_msgs
+  robot_msgs)
 add_controller(
-  game2_tactical_shooter_node
-  game2_shooter
-  game2_tactical_shooter_node.cpp
+  game2_auto_node
+  auto_controllers/game2_shooter
+  game2_auto_node.cpp
   geometry_msgs
   rclcpp
   sensor_msgs
   std_msgs
+  robot_msgs
   tf2
   tf2_ros)
-add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs)
+add_controller(
+  game1_auto_node
+  auto_controllers/game1_shooter
+  game1_auto_node.cpp
+  geometry_msgs
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
+  robot_msgs)
+add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs robot_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
 target_include_directories(
   mecanum_odometry_node
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_odometry_node actuator_msgs nav_msgs rclcpp tf2)
+  mecanum_odometry_node actuator_msgs nav_msgs rclcpp tf2 tf2_ros)
 
 add_executable(heading_hold_node heading_hold/src/heading_hold_node.cpp)
 ament_target_dependencies(
@@ -96,10 +110,16 @@ list(APPEND controller_nodes mecanum_odometry_node heading_hold_node)
 
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
-set(controller_include_directories mecanum_controller spring_controller led_controller belt_controller
-                                   dribble_controller game2_shooter)
+set(controller_include_directories
+    mecanum_controller
+    spring_controller
+    led_controller
+    belt_controller
+    dribble_controller
+    auto_controllers/game1_shooter
+    auto_controllers/game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
-  install(DIRECTORY ${directory}/include/ DESTINATION include)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include/ DESTINATION include)
 endforeach()
 
 if(BUILD_TESTING)
