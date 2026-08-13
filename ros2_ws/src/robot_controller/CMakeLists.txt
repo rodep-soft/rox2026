@@ -92,7 +92,7 @@ target_include_directories(
   mecanum_odometry_node
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_odometry_node actuator_msgs nav_msgs rclcpp tf2)
+  mecanum_odometry_node actuator_msgs nav_msgs rclcpp tf2 tf2_ros)
 
 add_executable(heading_hold_node heading_hold/src/heading_hold_node.cpp)
 ament_target_dependencies(
