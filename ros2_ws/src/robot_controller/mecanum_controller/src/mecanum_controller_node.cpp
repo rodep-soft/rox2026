@@ -177,7 +177,6 @@ void MecanumControllerNode::publish_wheel_commands()
     max_abs_wheel_vel_rad_s = std::max(max_abs_wheel_vel_rad_s, std::abs(wheel_vel_rad_s));
   }
 
-  // 上限超過時は全輪を同率で縮小する
   const double wheel_vel_scale = max_abs_wheel_vel_rad_s > max_wheel_vel_rad_s_ ?
     max_wheel_vel_rad_s_ / max_abs_wheel_vel_rad_s : 1.0;
 

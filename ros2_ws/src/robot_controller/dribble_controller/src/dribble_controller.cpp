@@ -398,21 +398,16 @@ void DribbleControllerNode::control_timer_callback()
   }
 
   if (shot_cycle_active_) {
-    // ── BELT_SPINUP フェーズ ───────────────────────────────────────────────
     if (shot_cycle_phase_ == ShotCyclePhase::BELT_SPINUP) {
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       if (elapsed_sec >= belt_spinup_delay_sec_) {
-        // spin-up 完了 → OPENING へ移行
         shot_cycle_phase_ = ShotCyclePhase::OPENING;
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
         position_mode_ = PositionMode::OPEN;
         RCLCPP_INFO(get_logger(), "Shot Cycle: BELT_SPINUP -> OPEN");
       }
-      // BELT_SPINUP 中はアームを動かさない: position_command_rad はそのまま
-    }
-
-    if (shot_cycle_phase_ != ShotCyclePhase::BELT_SPINUP) {
+    } else {
       double phase_target_rad = dribble_position_rad_;
       double phase_max_vel_rad_s = returning_max_velocity_rad_s_;
       double hold_duration_sec = 0.0;
@@ -433,15 +428,15 @@ void DribbleControllerNode::control_timer_callback()
         case ShotCyclePhase::RETURNING:
           position_mode_ = PositionMode::DRIBBLE;
           break;
+        default:
+          break;
       }
 
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       const double move_duration_sec = transition_duration_sec(
-        shot_cycle_start_position_rad_, phase_target_rad,
-        phase_max_vel_rad_s);
+        shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s);
       position_command_rad = interpolated_position_rad(
-        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec,
-        phase_max_vel_rad_s);
+        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s);
 
       if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
@@ -456,7 +451,6 @@ void DribbleControllerNode::control_timer_callback()
           RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> DRIBBLE");
         } else {
           shot_cycle_active_ = false;
-          // 自動でbeltをONした場合は完了後にSTOPへ戻す
           if (belt_auto_started_) {
             belt_auto_started_ = false;
             std_msgs::msg::UInt8 belt_msg;
@@ -464,13 +458,11 @@ void DribbleControllerNode::control_timer_callback()
             belt_mode_pub_->publish(belt_msg);
             RCLCPP_INFO(get_logger(), "Shot Cycle Completed: Belt auto-stopped");
           }
-          RCLCPP_INFO(
-            get_logger(),
-            "Shot Cycle Completed: Returned to DRIBBLE");
+          RCLCPP_INFO(get_logger(), "Shot Cycle Completed: Returned to DRIBBLE");
         }
       }
-    }  // if (!= BELT_SPINUP)
-  }  // if (shot_cycle_active_)
+    }
+  }
 
   actuator_msgs::msg::ActuatorTarget position_command;
   position_command.logical_id = position_logical_id_;
