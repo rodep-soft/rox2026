@@ -365,7 +365,6 @@ void JoyControllerNode::state_publish_timer_callback()
   publish_emergency_stop(is_emergency_stop_);
   publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
-  publish_opening_rpm(shot_cycle_opening_rpm_);
   publish_drive_reversed(is_drive_reversed_);
 }
 

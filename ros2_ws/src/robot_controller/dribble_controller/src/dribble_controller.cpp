@@ -210,8 +210,10 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
 void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg)
 {
   if (msg->data >= 0 && msg->data <= 5600) {
-    shot_cycle_opening_rpm_ = msg->data;
-    RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM", shot_cycle_opening_rpm_);
+    if (shot_cycle_opening_rpm_ != msg->data) {
+      shot_cycle_opening_rpm_ = msg->data;
+      RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM", shot_cycle_opening_rpm_);
+    }
   }
 }
 
