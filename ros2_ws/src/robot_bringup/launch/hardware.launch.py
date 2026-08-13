@@ -32,7 +32,7 @@ def generate_launch_description():
             ),
             include(
                 "hardware/ros2_socketcan.launch.py",
-                {"can_interface": LaunchConfiguration("can_interface")}.items(),
+                list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
             # STM32 publishes the complete sensor_msgs/Imu message on /imu/data.
             include("hardware/stm32.launch.py"),

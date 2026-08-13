@@ -41,6 +41,8 @@ private:
   bool emergency_stop_active_{true};
   bool fire_request_active_{false};
   bool limit_switch_active_{false};
+  bool actuator_ready_{false};
+  bool position_reference_set_{false};
   bool zero_service_pending_{false};
 
   int limit_switch_bit_offset_{0};
@@ -57,6 +59,7 @@ private:
 
   rclcpp::Time homing_start_time_;
 
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;

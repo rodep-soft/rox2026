@@ -55,9 +55,16 @@ SpringEduliteController::SpringEduliteController()
     std::bind(&SpringEduliteController::actuator_state_callback, this, std::placeholders::_1));
 
   position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
-    target_topic,
-    command_qos);
-  set_position_client_ = create_client<actuator_msgs::srv::SetPosition>(set_position_service);
+    target_topic, command_qos);
+
+  // 装填されているかどうかのみを見るtopic
+  actuator_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/spring/actuator_ready", command_qos);
+
+  // spring_controller -> hardware_driver: 原点検出後の現在位置を0
+  // radに設定する。
+  set_position_client_ =
+    create_client<actuator_msgs::srv::SetPosition>(set_position_service);
 
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -101,22 +108,21 @@ void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::
 void SpringEduliteController::actuator_state_callback(
   const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
-  if (msg->logical_id != logical_id_) {return;}
+  if (msg->logical_id != logical_id_) {
+    return;
+  }
 
-  const bool is_actuator_ready = (msg->state == actuator_msgs::msg::ActuatorState::STATE_READY);
+  const bool actuator_state_is_ready =
+    msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
+  std_msgs::msg::Bool ready_msg;
+  ready_msg.data = actuator_state_is_ready;
+  actuator_ready_pub_->publish(ready_msg);
 
-  // 切断またはエラー時の自動ホーミング復帰
-  if (!is_actuator_ready) {
-    if (state_ == State::UNINITIALIZED) {
-      // 初回起動：アクチュエータ待ちのためHOMINGを開始する
-      start_homing();
-    } else if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
-      // HOMING進行中はリセットしない（homing_start_time_を保持してタイムアウトを有効にする）
-      // アクチュエータの初期化が完了するまで待つ
-    } else {
-      // READY/WAITING_REARM_STOP/ERRORからの切断 → HOMINGへ戻す
-      RCLCPP_WARN(get_logger(), "Actuator lost connection. Resetting to HOMING.");
-      start_homing();
+  if (!actuator_state_is_ready) {
+    if (actuator_ready_ || position_reference_set_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Spring EduLite disconnected. Clearing target and homing state.");
     }
     return;
   }

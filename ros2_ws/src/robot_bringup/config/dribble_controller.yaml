@@ -20,6 +20,7 @@
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1320
+    spring_fire_dribble_rpm: 600    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
     shot_cycle_opening_rpm: 1500    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
     shot_cycle_feeding_rpm: 0       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE

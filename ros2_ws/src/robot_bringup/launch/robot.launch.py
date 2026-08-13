@@ -23,30 +23,36 @@ def generate_launch_description():
     # hardware (ドライバ類・VESC・CAN・BNO055 IMU等)
     hardware_launch = include(
         "hardware.launch.py",
-        launch_arguments={
-            "enable_imu": LaunchConfiguration("enable_imu"),
-        }.items(),
+        launch_arguments=list(
+            {
+                "enable_imu": LaunchConfiguration("enable_imu"),
+            }.items()
+        ),
     )
 
     # 230AI ステレオビジョン機能（hobot_stereonet, AprilTag & YOLO）
     vision_launch = include(
         "vision_launch.py",
         condition=IfCondition(LaunchConfiguration("enable_vision")),
-        launch_arguments={
-            "stereonet_version": LaunchConfiguration("stereonet_version"),
-            "enable_apriltag": LaunchConfiguration("enable_apriltag"),
-            "enable_yolo": LaunchConfiguration("enable_yolo"),
-        }.items(),
+        launch_arguments=list(
+            {
+                "stereonet_version": LaunchConfiguration("stereonet_version"),
+                "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+                "enable_yolo": LaunchConfiguration("enable_yolo"),
+            }.items()
+        ),
     )
 
     # USB Webカメラ (V4L2)
     webcam_launch = include(
         "webcam_launch.py",
         condition=IfCondition(LaunchConfiguration("enable_webcam")),
-        launch_arguments={
-            "video_device": LaunchConfiguration("video_device"),
-            "enable_apriltag": LaunchConfiguration("enable_apriltag"),
-        }.items(),
+        launch_arguments=list(
+            {
+                "video_device": LaunchConfiguration("video_device"),
+                "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+            }.items()
+        ),
     )
 
     # Game1 自動シーケンスノード
@@ -65,10 +71,12 @@ def generate_launch_description():
     bno055_launch = include(
         "bno055.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_bno055")),
-        launch_arguments={
-            "imu_i2c_bus": LaunchConfiguration("imu_i2c_bus"),
-            "imu_i2c_address": LaunchConfiguration("imu_i2c_address"),
-        }.items(),
+        launch_arguments=list(
+            {
+                "imu_i2c_bus": LaunchConfiguration("imu_i2c_bus"),
+                "imu_i2c_address": LaunchConfiguration("imu_i2c_address"),
+            }.items()
+        ),
     )
 
     # 拡張カルマンフィルタ (EKF) ノード
@@ -130,7 +138,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "enable_bno055",
-                default_value="true",
+                default_value="false",
                 description="Enable BNO055 IMU driver node (libbno055-linux)",
             ),
             DeclareLaunchArgument(

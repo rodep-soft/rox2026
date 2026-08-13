@@ -68,6 +68,12 @@ JoyControllerNode::JoyControllerNode()
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos);
 
+  spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/spring/actuator_ready", command_qos,
+    std::bind(
+      &JoyControllerNode::spring_actuator_ready_callback, this,
+      std::placeholders::_1));
+
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/drive/cmd_vel", command_qos);
 
@@ -79,6 +85,9 @@ JoyControllerNode::JoyControllerNode()
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/command_enabled", command_qos);
+
+  spring_decel_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/dribble/spring_decel", command_qos);
 
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", command_qos);
@@ -296,20 +305,50 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. スプリング発射要求 (L2 + R2 同時押し瞬間)
+
+  // 8. L2とR2を同時に押した瞬間にスプリング発射シーケンスを開始
   const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
     last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
   const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
     last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-  const bool spring_fire_triggered = is_l2_active && is_r2_active &&
+  const bool spring_fire_input_triggered = is_l2_active && is_r2_active &&
     !(was_l2_active && was_r2_active);
+  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
 
-  if (spring_fire_triggered) {
-    RCLCPP_INFO(get_logger(), "Spring firing triggered!");
+  bool should_publish_spring_fire = false;
+
+  if (spring_fire_input_triggered && !spring_fire_pending_) {
+    // 1) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
+    publish_spring_decel(true);
+    RCLCPP_INFO(get_logger(), "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
+
+    // 2) 減速完了待機モードにセット
+    spring_fire_pending_ = true;
+    spring_fire_pending_start_time_ = std::chrono::steady_clock::now();
   }
+
+  // ドリブルの滑らか減速時間 (150ms) が経過したら実際にキッカーばねを解放 (FIRE!)
+  if (spring_fire_pending_) {
+    const auto now_tp = std::chrono::steady_clock::now();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - spring_fire_pending_start_time_).count();
+    if (elapsed_ms >= spring_fire_decel_delay_ms_) {
+      should_publish_spring_fire = true;
+      spring_fire_pending_ = false;
+      RCLCPP_INFO(get_logger(), "Dribble decel complete -> Spring FIRE released!");
+    }
+  }
+
   std_msgs::msg::Bool spring_fire_msg;
-  spring_fire_msg.data = spring_fire_triggered;
+  spring_fire_msg.data = should_publish_spring_fire;
   spring_fire_pub_->publish(spring_fire_msg);
+
+  // ばねの再充填・準備完了(is_ready_rising)で減速モードを解除
+  if (is_ready_rising || should_publish_spring_fire) {
+    publish_spring_decel(false);
+  }
+
+  was_spring_ready_ = spring_actuator_ready_;
 
   // 9. DPAD 左右で自動シュート OPEN 動作時のドリブル回転数を変更 (+200 / -200 RPM)
   if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
@@ -340,6 +379,12 @@ void JoyControllerNode::loop_callback()
   }
 
   last_joy_msg_ = joy_msg_;
+}
+
+void JoyControllerNode::spring_actuator_ready_callback(
+  const std_msgs::msg::Bool::SharedPtr msg)
+{
+  spring_actuator_ready_ = msg->data;
 }
 
 void JoyControllerNode::joy_timeout_timer_callback()
@@ -387,6 +432,13 @@ void JoyControllerNode::publish_dribble_enabled(bool enabled)
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);
+}
+
+void JoyControllerNode::publish_spring_decel(bool active)
+{
+  std_msgs::msg::Bool msg;
+  msg.data = active;
+  spring_decel_pub_->publish(msg);
 }
 
 void JoyControllerNode::publish_opening_rpm(int rpm)

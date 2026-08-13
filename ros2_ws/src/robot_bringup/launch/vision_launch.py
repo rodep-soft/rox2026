@@ -60,18 +60,20 @@ def launch_setup(context, *args, **kwargs):
 
     stereonet_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(stereonet_launch_file),
-        launch_arguments={
-            "use_mipi_cam": use_mipi_cam,
-            "mipi_rotation": mipi_rotation,
-            "mipi_cal_rotation": "0.0",
-            "mipi_channel": mipi_channel,
-            "mipi_channel2": mipi_channel2,
-            "publish_visual_enabled": publish_visual_enabled,
-            "publish_pcd_enabled": publish_pcd_enabled,
-            "stereo_image_topic": stereo_image_topic,
-            "camera_info_topic": camera_info_topic,
-            "left_camera_info_topic": left_camera_info_topic,
-        }.items(),
+        launch_arguments=list(
+            {
+                "use_mipi_cam": use_mipi_cam,
+                "mipi_rotation": mipi_rotation,
+                "mipi_cal_rotation": "0.0",
+                "mipi_channel": mipi_channel,
+                "mipi_channel2": mipi_channel2,
+                "publish_visual_enabled": publish_visual_enabled,
+                "publish_pcd_enabled": publish_pcd_enabled,
+                "stereo_image_topic": stereo_image_topic,
+                "camera_info_topic": camera_info_topic,
+                "left_camera_info_topic": left_camera_info_topic,
+            }.items()
+        ),
     )
 
     launch_nodes = [stereonet_launch]
@@ -102,13 +104,15 @@ def launch_setup(context, *args, **kwargs):
         )
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
-            launch_arguments={
-                "node_name": "apriltag_csi_node",
-                "image_topic": "/StereoNetNode/rectify_left_image",
-                "camera_info_topic": "/StereoNetNode/camera_info",
-                "tag_family": tag_family,
-                "tag_size": tag_size,
-            }.items(),
+            launch_arguments=list(
+                {
+                    "node_name": "apriltag_csi_node",
+                    "image_topic": "/StereoNetNode/rectify_left_image",
+                    "camera_info_topic": "/StereoNetNode/camera_info",
+                    "tag_family": tag_family,
+                    "tag_size": tag_size,
+                }.items()
+            ),
         )
         launch_nodes.append(apriltag_launch)
 
@@ -116,10 +120,12 @@ def launch_setup(context, *args, **kwargs):
         yolo_launch_file = os.path.join(bringup_share, "launch", "yolo_launch.py")
         yolo_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(yolo_launch_file),
-            launch_arguments={
-                "image_topic": "/StereoNetNode/rectify_left_image",
-                "model_name": model_name,
-            }.items(),
+            launch_arguments=list(
+                {
+                    "image_topic": "/StereoNetNode/rectify_left_image",
+                    "model_name": model_name,
+                }.items()
+            ),
         )
         launch_nodes.append(yolo_launch)
 

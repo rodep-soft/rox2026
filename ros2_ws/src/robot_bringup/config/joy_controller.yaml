@@ -2,10 +2,8 @@
   ros__parameters:
     # 機構指令を保持する件数
     command_qos_depth: 1
-    # [ms] Joy入力断と判定してSTOPへ移るまでの時間
-    joy_timeout_ms: 200
-    # [ms] 状態指令を再送する周期
-    state_publish_period_ms: 20
+    # [ms] Joy入力断と判定してSTOPへ移るまでの時間 (200ms -> 1000msに緩和)
+    joy_timeout_ms: 1000
 
     # タッチパッドをHomeとして扱う (非常停止切替)
     home_button: 13

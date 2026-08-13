@@ -56,6 +56,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_enabled", command_qos,
     std::bind(&DribbleControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
+  spring_decel_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/spring_decel", command_qos,
+    std::bind(&DribbleControllerNode::spring_decel_callback, this, std::placeholders::_1));
+
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", command_qos,
     std::bind(&DribbleControllerNode::shot_cycle_callback, this, std::placeholders::_1));
@@ -161,6 +165,11 @@ void DribbleControllerNode::position_mode_callback(
 void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   dribble_enabled_ = msg->data;
+}
+
+void DribbleControllerNode::spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  spring_decel_active_ = msg->data;
 }
 
 void DribbleControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
@@ -271,10 +280,10 @@ void DribbleControllerNode::vesc_state_callback(
     if (previous_has_ball != has_ball_) {
       if (has_ball_) {
         RCLCPP_INFO(
-          get_logger(), ">>> BALL DETECTED 🏀 (Current: %.2f A) <<<", msg->current_a);
+          get_logger(), ">>> BALL DETECTED (Current: %.2f A) <<<", msg->current_a);
       } else {
         RCLCPP_INFO(
-          get_logger(), "--- BALL LOST ⚪️ (Current: %.2f A) ---", msg->current_a);
+          get_logger(), "--- BALL LOST (Current: %.2f A) ---", msg->current_a);
       }
     }
 
@@ -367,9 +376,18 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 void DribbleControllerNode::control_timer_callback()
 {
   publish_shot_cycle_state();
+  const int target_rpm = roller_target_rpm();
+  // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
+  constexpr int max_rpm_step = 150;
+  if (current_filtered_roller_rpm_ < target_rpm) {
+    current_filtered_roller_rpm_ = std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+  } else if (current_filtered_roller_rpm_ > target_rpm) {
+    current_filtered_roller_rpm_ = std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+  }
+
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
-  roller_command.target = static_cast<float>(roller_target_rpm());
+  roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
 
   if (emergency_stop_active_) {
@@ -500,7 +518,15 @@ void DribbleControllerNode::control_timer_callback()
 
 int DribbleControllerNode::roller_target_rpm() const
 {
-  if (!dribble_enabled_ || emergency_stop_active_) {
+  if (emergency_stop_active_) {
+    return 0;
+  }
+  if (spring_decel_active_) {
+    // ばね発射シーケンス中のみ：300 RPM へ滑らか減速してボール案内
+    return spring_fire_dribble_rpm_;
+  }
+  if (!dribble_enabled_) {
+    // 通常 OFF 時（何もしていない時）：当然 0 RPM（完全停止）
     return 0;
   }
   if (!shot_cycle_active_) {

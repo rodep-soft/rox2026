@@ -17,12 +17,14 @@ def generate_launch_description():
                 "socket_can_bridge.launch.xml",
             )
         ),
-        launch_arguments={
-            "interface": LaunchConfiguration("can_interface"),
-            "enable_can_fd": "false",
-            "from_can_bus_topic": "/socketcan_bridge/rx",
-            "to_can_bus_topic": "/socketcan_bridge/tx",
-        }.items(),
+        launch_arguments=list(
+            {
+                "interface": LaunchConfiguration("can_interface"),
+                "enable_can_fd": "false",
+                "from_can_bus_topic": "/socketcan_bridge/rx",
+                "to_can_bus_topic": "/socketcan_bridge/tx",
+            }.items()
+        ),
     )
 
     vesc_parameter_file = os.path.join(

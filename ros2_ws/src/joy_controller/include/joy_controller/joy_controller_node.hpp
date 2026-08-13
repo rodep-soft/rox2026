@@ -28,10 +28,12 @@ private:
   void state_publish_timer_callback();
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
-
+  void spring_actuator_ready_callback(
+    const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_dribble_enabled(bool enabled);
+  void publish_spring_decel(bool active);
   void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
@@ -88,10 +90,16 @@ private:
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   int shot_cycle_opening_rpm_{1500};
   bool dribble_enabled_{false};
+  bool dribble_enabled_before_spring_{false};
+  bool spring_fire_pending_{false};
+  int spring_fire_decel_delay_ms_{150};
+  std::chrono::steady_clock::time_point spring_fire_pending_start_time_{};
+  bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
+  bool spring_actuator_ready_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
 
   std::optional<sensor_msgs::msg::Joy> last_joy_msg_{};
@@ -103,10 +111,13 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_decel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_actuator_ready_sub_;
+
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
