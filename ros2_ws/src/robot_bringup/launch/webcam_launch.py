@@ -30,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
     tag_size = LaunchConfiguration("tag_size").perform(context)
 
     webcam_node = Node(
-        package=pkg_name,
+        package="v4l2_camera",
         executable="v4l2_camera_node",
         name="v4l2_webcam_node",
         output="screen",
@@ -64,6 +64,7 @@ def launch_setup(context, *args, **kwargs):
                 "camera_info_topic": "/webcam/camera_info",
                 "tag_family": tag_family,
                 "tag_size": tag_size,
+                "pkg_name": "apriltag_ros",
             }.items(),
         )
 
