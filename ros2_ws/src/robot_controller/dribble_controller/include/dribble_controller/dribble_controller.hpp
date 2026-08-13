@@ -54,6 +54,7 @@ private:
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
   double opening_accel_factor_{1.8};
+  double ball_detection_threshold_a_{3.5};
   int dribble_on_rpm_{800};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
@@ -81,6 +82,7 @@ private:
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool belt_auto_started_{false};
+  bool has_ball_{false};
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr position_mode_sub_;
@@ -95,6 +97,7 @@ private:
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ball_detected_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };

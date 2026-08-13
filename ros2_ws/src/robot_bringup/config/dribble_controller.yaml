@@ -24,6 +24,9 @@
     shot_cycle_feeding_rpm: 0       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
+    # [A] 電流値によるボール検知しきい値
+    ball_detection_threshold_a: 3.5 # 3.5A 以上でボール保持(BALL DETECTED)と判定
+    
     # [ms] 指令再送周期
     command_period_ms: 10
     

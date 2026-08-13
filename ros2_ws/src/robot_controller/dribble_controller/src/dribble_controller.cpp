@@ -38,6 +38,9 @@ DribbleControllerNode::DribbleControllerNode()
   shot_cycle_state_pub_ = create_publisher<robot_msgs::msg::ShotCycleState>(
     "/dribble/shot_cycle_state", rclcpp::QoS(1).reliable().transient_local());
 
+  ball_detected_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/dribble/ball_detected", command_qos);
+
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
     "/belt/command_mode", command_qos);
 
@@ -95,6 +98,7 @@ void DribbleControllerNode::load_parameters()
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
+  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 3.5);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
   shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
@@ -231,8 +235,27 @@ void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::Actuat
     // 1秒 (1000ms) おきにドリブルローラーの実測電流値 (current_a) をデバッグ出力
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 1000,
-      "[DEBUG Roller Current] Logical ID: %d | Current: %.2f A | Arm Pos: %.2f rad",
-      roller_logical_id_, msg->current_a, current_arm_position_rad_);
+      "[DEBUG Roller Current] Logical ID: %d | Current: %.2f A | Arm Pos: %.2f rad | Ball: %s",
+      roller_logical_id_, msg->current_a, current_arm_position_rad_,
+      has_ball_ ? "YES 🏀" : "NO ⚪️");
+
+    // 電流値によるボール保持判定 (ヒステリシス閾値: ON >= 3.5A, OFF <= 2.0A)
+    const bool previous_has_ball = has_ball_;
+    if (msg->current_a >= ball_detection_threshold_a_) {
+      has_ball_ = true;
+    } else if (msg->current_a <= 2.0) {
+      has_ball_ = false;
+    }
+
+    if (previous_has_ball != has_ball_) {
+      RCLCPP_INFO(
+        get_logger(), "Ball Status Changed: %s (Current: %.2f A)",
+        has_ball_ ? "BALL DETECTED 🏀" : "NO BALL ⚪️", msg->current_a);
+    }
+
+    std_msgs::msg::Bool ball_msg;
+    ball_msg.data = has_ball_;
+    ball_detected_pub_->publish(ball_msg);
   }
 }
 
