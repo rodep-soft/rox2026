@@ -225,7 +225,8 @@ void DribbleControllerNode::actuator_state_callback(
   }
 }
 
-void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::vesc_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == roller_logical_id_) {
     // 1秒 (1000ms) おきにドリブルローラーの実測電流値 (current_a) をデバッグ出力
