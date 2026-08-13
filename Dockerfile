@@ -4,7 +4,7 @@ SHELL ["/bin/bash", "-c"]
 
 ARG TARGETARCH
 
-# apt update & install (軽量・スリム化)
+# 1. 重いシステム共通パッケージの事前インストール（最下層キャッシュ）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     nano \
@@ -56,17 +56,20 @@ RUN rosdep update
 
 WORKDIR /root/ros2_ws
 
-COPY ./ros2_ws/src ./src
-
-# rosdep install
+# 2. package.xml のみを先行コピーして rosdep install を完全永続キャッシュ化
+# (ソースコード .cpp / .hpp が変更されても rosdep install は無駄に走らない！)
+COPY ./ros2_ws/src/**/package.xml ./src_manifests/
 RUN apt-get update && \
     source /opt/ros/humble/setup.bash && \
     rosdep install \
-      --from-paths src \
+      --from-paths src_manifests \
       --ignore-src \
       -r \
       -y && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* ./src_manifests
+
+# 3. 最後に全ソースコードをコピー
+COPY ./ros2_ws/src ./src
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
