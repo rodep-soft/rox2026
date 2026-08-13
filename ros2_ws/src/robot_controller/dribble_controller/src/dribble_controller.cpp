@@ -229,9 +229,20 @@ void DribbleControllerNode::actuator_state_callback(
   }
 }
 
-void DribbleControllerNode::vesc_state_callback(
-  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
+  if (msg->logical_id == upper_belt_logical_id_) {
+    upper_belt_measured_rpm_ = msg->velocity;
+    if (shot_cycle_active_ && shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
+      upper_belt_min_shot_rpm_ = std::min(upper_belt_min_shot_rpm_, std::abs(msg->velocity));
+    }
+  } else if (msg->logical_id == under_belt_logical_id_) {
+    under_belt_measured_rpm_ = msg->velocity;
+    if (shot_cycle_active_ && shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
+      under_belt_min_shot_rpm_ = std::min(under_belt_min_shot_rpm_, std::abs(msg->velocity));
+    }
+  }
+
   if (msg->logical_id == roller_logical_id_) {
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
@@ -404,7 +415,12 @@ void DribbleControllerNode::control_timer_callback()
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
         position_mode_ = robot_msgs::msg::ArmPosition::OPEN;
-        RCLCPP_INFO(get_logger(), "Shot Cycle: BELT_SPINUP -> OPEN");
+        upper_belt_min_shot_rpm_ = 99999.0f;
+        under_belt_min_shot_rpm_ = 99999.0f;
+        RCLCPP_INFO(
+          get_logger(),
+          "Shot Cycle: BELT_SPINUP -> OPEN | Spinup Check (%.1fs) -> Upper Belt: %.1f RPM, Under Belt: %.1f RPM",
+          belt_spinup_delay_sec_, upper_belt_measured_rpm_, under_belt_measured_rpm_);
       }
     } else {
       double phase_target_rad = dribble_position_rad_;
@@ -450,7 +466,11 @@ void DribbleControllerNode::control_timer_callback()
           RCLCPP_INFO(get_logger(), "Shot Cycle: OPEN -> FEED");
         } else if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
-          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> DRIBBLE");
+          RCLCPP_INFO(
+            get_logger(),
+            "Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: %.1f RPM, Under: %.1f RPM",
+            upper_belt_min_shot_rpm_ == 99999.0f ? 0.0f : upper_belt_min_shot_rpm_,
+            under_belt_min_shot_rpm_ == 99999.0f ? 0.0f : under_belt_min_shot_rpm_);
         } else {
           shot_cycle_active_ = false;
           if (belt_auto_started_) {
