@@ -179,6 +179,7 @@ private:
     }
     latest_command_ = message;
     last_command_time_ = now();
+    cmd_vel_timeout_logged_ = false;
   }
 
   void receive_imu(const sensor_msgs::msg::Imu & message)
@@ -227,8 +228,10 @@ private:
     {
       corrected_command_pub_->publish(geometry_msgs::msg::Twist());
       reset_heading_hold();
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 2000, "cmd_vel timed out; publishing zero velocity");
+      if (!cmd_vel_timeout_logged_) {
+        RCLCPP_INFO(get_logger(), "cmd_vel idle / timed out; publishing zero velocity");
+        cmd_vel_timeout_logged_ = true;
+      }
       return;
     }
 
@@ -293,6 +296,7 @@ private:
   double target_yaw_rad_{0.0};
   double integral_error_rad_s_{0.0};
   bool target_yaw_initialized_{false};
+  bool cmd_vel_timeout_logged_{false};
 
   double kp_{4.0};
   double ki_{0.0};
