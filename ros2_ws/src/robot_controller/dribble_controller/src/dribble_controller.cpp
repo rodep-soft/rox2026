@@ -236,14 +236,22 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       }
       trajectory_changed = true;
 
-      if (name == "dribble_position_rad") {dribble_position_rad_ = val;
-      } else if (name == "open_position_rad") {open_position_rad_ = val;
-      } else if (name == "feed_position_rad") {feed_position_rad_ = val;
-      } else if (name == "open_duration_sec") {open_duration_sec_ = val;
-      } else if (name == "feed_duration_sec") {feed_duration_sec_ = val;
-      } else if (name == "opening_max_velocity_rad_s") {opening_max_velocity_rad_s_ = val;
-      } else if (name == "feeding_max_velocity_rad_s") {feeding_max_velocity_rad_s_ = val;
-      } else if (name == "returning_max_velocity_rad_s") {returning_max_velocity_rad_s_ = val;
+      if (name == "dribble_position_rad") {
+        dribble_position_rad_ = val;
+      } else if (name == "open_position_rad") {
+        open_position_rad_ = val;
+      } else if (name == "feed_position_rad") {
+        feed_position_rad_ = val;
+      } else if (name == "open_duration_sec") {
+        open_duration_sec_ = val;
+      } else if (name == "feed_duration_sec") {
+        feed_duration_sec_ = val;
+      } else if (name == "opening_max_velocity_rad_s") {
+        opening_max_velocity_rad_s_ = val;
+      } else if (name == "feeding_max_velocity_rad_s") {
+        feeding_max_velocity_rad_s_ = val;
+      } else if (name == "returning_max_velocity_rad_s") {
+        returning_max_velocity_rad_s_ = val;
       } else if (name == "belt_spinup_delay_sec") {belt_spinup_delay_sec_ = val;}
     }
   }

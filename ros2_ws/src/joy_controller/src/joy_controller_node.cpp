@@ -171,14 +171,22 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       }
       if (name == "linear_x_limit") {max_vel_x_m_s_ = val;} else if (name == "linear_y_limit") {
         max_vel_y_m_s_ = val;
-      } else if (name == "angular_z_limit") {max_vel_z_rad_s_ = val;
-      } else if (name == "linear_x_acceleration_limit") {acceleration_x_m_s2_ = val;
-      } else if (name == "linear_y_acceleration_limit") {acceleration_y_m_s2_ = val;
-      } else if (name == "angular_z_acceleration_limit") {acceleration_yaw_rad_s2_ = val;
-      } else if (name == "linear_x_deceleration_limit") {deceleration_x_m_s2_ = val;
-      } else if (name == "linear_y_deceleration_limit") {deceleration_y_m_s2_ = val;
-      } else if (name == "angular_z_deceleration_limit") {deceleration_yaw_rad_s2_ = val;
-      } else if (name == "axis_deadzone") {axis_deadzone_ = val;
+      } else if (name == "angular_z_limit") {
+        max_vel_z_rad_s_ = val;
+      } else if (name == "linear_x_acceleration_limit") {
+        acceleration_x_m_s2_ = val;
+      } else if (name == "linear_y_acceleration_limit") {
+        acceleration_y_m_s2_ = val;
+      } else if (name == "angular_z_acceleration_limit") {
+        acceleration_yaw_rad_s2_ = val;
+      } else if (name == "linear_x_deceleration_limit") {
+        deceleration_x_m_s2_ = val;
+      } else if (name == "linear_y_deceleration_limit") {
+        deceleration_y_m_s2_ = val;
+      } else if (name == "angular_z_deceleration_limit") {
+        deceleration_yaw_rad_s2_ = val;
+      } else if (name == "axis_deadzone") {
+        axis_deadzone_ = val;
       } else if (name == "axis_on_threshold") {axis_on_threshold_ = val;}
     }
   }
