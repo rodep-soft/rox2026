@@ -92,6 +92,9 @@ JoyControllerNode::JoyControllerNode()
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
     "/dribble/command_position", command_qos);
 
+  opening_rpm_pub_ = create_publisher<std_msgs::msg::Int32>(
+    "/dribble/command_opening_rpm", command_qos);
+
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/command_start", command_qos);
 
@@ -300,52 +303,51 @@ void JoyControllerNode::loop_callback()
   }
 
 
-    // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
-    const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
-      last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
-    const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
-      last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-    const bool spring_fire_triggered = is_l2_active && is_r2_active &&
-      !(was_l2_active && was_r2_active);
-    const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
-    if (spring_fire_triggered) {
+  // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
+  const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
+  const bool spring_fire_triggered = is_l2_active && is_r2_active &&
+    !(was_l2_active && was_r2_active);
+  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
+  if (spring_fire_triggered) {
 
 
-      if (spring_actuator_ready_) {
-        dribble_enabled_before_spring_ = dribble_enabled_;
-      }
-
-      if (dribble_enabled_before_spring_) {
-        dribble_enabled_ = false;
-        publish_dribble_enabled(dribble_enabled_);
-      }
-      RCLCPP_INFO(get_logger(), "Spring firing triggered!");
+    if (spring_actuator_ready_) {
+      dribble_enabled_before_spring_ = dribble_enabled_;
     }
 
-    std_msgs::msg::Bool spring_fire_msg;
-    spring_fire_msg.data = spring_fire_triggered;
-    spring_fire_pub_->publish(spring_fire_msg);
-
-    if (is_ready_rising) {
-      if (dribble_enabled_before_spring_) {
-        dribble_enabled_ = true;
-        publish_dribble_enabled(dribble_enabled_);
-      }
+    if (dribble_enabled_before_spring_) {
+      dribble_enabled_ = false;
+      publish_dribble_enabled(dribble_enabled_);
     }
+    RCLCPP_INFO(get_logger(), "Spring firing triggered!");
+  }
 
-    was_spring_ready_ = spring_actuator_ready_;
+  std_msgs::msg::Bool spring_fire_msg;
+  spring_fire_msg.data = spring_fire_triggered;
+  spring_fire_pub_->publish(spring_fire_msg);
+
+  if (is_ready_rising) {
+    if (dribble_enabled_before_spring_) {
+      dribble_enabled_ = true;
+      publish_dribble_enabled(dribble_enabled_);
+    }
+  }
+
+  was_spring_ready_ = spring_actuator_ready_;
 
   // 9. DPAD 左右でアームポジション切替 (OPEN / FEED)
+
   if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
-    robot_msgs::msg::ArmPosition mode_msg;
-    mode_msg.position = robot_msgs::msg::ArmPosition::OPEN;
-    arm_position_mode_pub_->publish(mode_msg);
-    RCLCPP_INFO(get_logger(), "Arm position set to: OPEN");
+    shot_cycle_opening_rpm_ = std::min(2500, shot_cycle_opening_rpm_ + 200);
+    publish_opening_rpm(shot_cycle_opening_rpm_);
+    RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
   } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
-    robot_msgs::msg::ArmPosition mode_msg;
-    mode_msg.position = robot_msgs::msg::ArmPosition::FEED;
-    arm_position_mode_pub_->publish(mode_msg);
-    RCLCPP_INFO(get_logger(), "Arm position set to: FEED");
+    shot_cycle_opening_rpm_ = std::max(0, shot_cycle_opening_rpm_ - 200);
+    publish_opening_rpm(shot_cycle_opening_rpm_);
+    RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
   }
 
   // 10. アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
@@ -397,6 +399,7 @@ void JoyControllerNode::state_publish_timer_callback()
   publish_emergency_stop(is_emergency_stop_);
   publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
+  publish_opening_rpm(shot_cycle_opening_rpm_);
   publish_drive_reversed(is_drive_reversed_);
 }
 
@@ -419,6 +422,13 @@ void JoyControllerNode::publish_dribble_enabled(bool enabled)
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);
+}
+
+void JoyControllerNode::publish_opening_rpm(int rpm)
+{
+  std_msgs::msg::Int32 msg;
+  msg.data = rpm;
+  opening_rpm_pub_->publish(msg);
 }
 
 void JoyControllerNode::publish_drive_reversed(bool reversed)

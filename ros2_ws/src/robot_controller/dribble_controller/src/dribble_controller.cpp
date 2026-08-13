@@ -61,6 +61,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/system/emergency_stop", emergency_stop_qos,
     std::bind(&DribbleControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
+  opening_rpm_sub_ = create_subscription<std_msgs::msg::Int32>(
+    "/dribble/command_opening_rpm", command_qos,
+    std::bind(&DribbleControllerNode::opening_rpm_callback, this, std::placeholders::_1));
+
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),
     std::bind(&DribbleControllerNode::control_timer_callback, this));
@@ -81,6 +85,7 @@ void DribbleControllerNode::load_parameters()
   opening_max_velocity_rad_s_ = declare_parameter<double>("opening_max_velocity_rad_s", 4.0);
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
+  opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
   shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
@@ -191,6 +196,14 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
   }
   emergency_stop_active_ = msg->data;
   control_timer_callback();
+}
+
+void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg)
+{
+  if (msg->data >= 0 && msg->data <= 5600) {
+    shot_cycle_opening_rpm_ = msg->data;
+    RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM", shot_cycle_opening_rpm_);
+  }
 }
 
 rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callback(
@@ -357,10 +370,13 @@ void DribbleControllerNode::control_timer_callback()
       }
 
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
+      const double accel_factor = (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::OPENING) ?
+        opening_accel_factor_ : 1.0;
       const double move_duration_sec = transition_duration_sec(
-        shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s);
+        shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s, accel_factor);
       position_command_rad = interpolated_position_rad(
-        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s);
+        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s,
+        accel_factor);
 
       if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
@@ -409,8 +425,17 @@ int DribbleControllerNode::roller_target_rpm() const
       return dribble_on_rpm_;
     case robot_msgs::msg::ShotCycleState::OPENING:
       return shot_cycle_opening_rpm_;
-    case robot_msgs::msg::ShotCycleState::FEEDING:
-      return shot_cycle_feeding_rpm_;
+    case robot_msgs::msg::ShotCycleState::FEEDING: {
+        // OPENING 時の回転数から FEEDING 目標回転数 (0 RPM) へアーム動作に合わせて滑らかに減速
+        const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
+        const double move_duration_sec = transition_duration_sec(
+          shot_cycle_start_position_rad_, feed_position_rad_, feeding_max_velocity_rad_s_);
+        const double progress = move_duration_sec > 0.0 ?
+          std::clamp(elapsed_sec / move_duration_sec, 0.0, 1.0) : 1.0;
+        return static_cast<int>(
+          shot_cycle_opening_rpm_ +
+          (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
+      }
     case robot_msgs::msg::ShotCycleState::RETURNING:
       return shot_cycle_returning_rpm_;
   }
@@ -438,26 +463,26 @@ double DribbleControllerNode::target_position_rad() const
 
 double DribbleControllerNode::interpolated_position_rad(
   double start_rad, double target_rad, double elapsed_sec,
-  double max_vel_rad_s) const
+  double max_vel_rad_s, double accel_factor) const
 {
   const double duration_sec =
-    transition_duration_sec(start_rad, target_rad, max_vel_rad_s);
+    transition_duration_sec(start_rad, target_rad, max_vel_rad_s, accel_factor);
   if (duration_sec <= 0.0) {
     return target_rad;
   }
   const double progress =
     std::clamp(elapsed_sec / duration_sec, 0.0, 1.0);
-  // Quintic smootherstep: velocity and acceleration are both zero at each
-  // endpoint, avoiding a mechanical shock when the shot phase changes.
+  // Septic (7th-order) smootherstep: Extremely smooth acceleration start ("gradual acceleration")
+  // while preserving the specified peak velocity limit.
   const double smooth_progress =
-    progress * progress * progress *
-    (progress * (6.0 * progress - 15.0) + 10.0);
+    progress * progress * progress * progress *
+    (35.0 + progress * (-84.0 + progress * (70.0 - 20.0 * progress)));
   return start_rad + (target_rad - start_rad) * smooth_progress;
 }
 
 double DribbleControllerNode::transition_duration_sec(
-  double start_rad, double target_rad, double max_vel_rad_s) const
+  double start_rad, double target_rad, double max_vel_rad_s, double accel_factor) const
 {
-  // Quintic smootherstep's peak derivative is 1.875.
-  return 1.875 * std::abs(target_rad - start_rad) / max_vel_rad_s;
+  // Septic smootherstep's peak derivative is 2.1875.
+  return (2.1875 * accel_factor) * std::abs(target_rad - start_rad) / max_vel_rad_s;
 }
