@@ -140,6 +140,14 @@ geometry_msgs::msg::Twist Game1AutoNode::compute_pure_pursuit(const Waypoint & t
   return cmd;
 }
 
+bool Game1AutoNode::is_aligned_to_target(const Waypoint & target)
+{
+  const double dist_err = std::hypot(target.x - current_x_, target.y - current_y_);
+  const double yaw_err = std::abs(std::remainder(target.yaw - current_yaw_, 2.0 * M_PI));
+
+  return (dist_err <= pos_tolerance_) && (yaw_err <= yaw_tolerance_);
+}
+
 void Game1AutoNode::control_loop()
 {
   if (!is_enabled_ || state_ == Game1State::STANDBY) {
@@ -152,12 +160,15 @@ void Game1AutoNode::control_loop()
   uint8_t arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
   bool spring_fire = false;
 
+  const double elapsed = (now() - state_start_time_).seconds();
+
   switch (state_) {
     case Game1State::NAV_TO_GATE: {
       // 1. ゲート射出位置へ移動
       cmd = compute_pure_pursuit(wp_gate_);
-      if ((now() - state_start_time_).seconds() > 3.0) {
-        RCLCPP_INFO(get_logger(), "Arrived at Gate shooting position. Firing 1st Spring!");
+      // 位置差分 pos_tolerance 以下 ＆ 角度差分 yaw_tolerance (ゲート方向向いた) 以下で射出許可 (タイムアウト5秒)
+      if (is_aligned_to_target(wp_gate_) || elapsed > 5.0) {
+        RCLCPP_INFO(get_logger(), "Aligned at Gate shooting position (yaw aligned!). Firing 1st Spring!");
         state_ = Game1State::FIRE_GATE_SPRING;
         state_start_time_ = now();
       }
@@ -211,13 +222,13 @@ void Game1AutoNode::control_loop()
     }
 
     case Game1State::NAV_TO_PASS_AREA: {
-      // 4. ボール保持のままパスエリア射出位置へ移動
+      // 5. ボール保持のままパスエリア射出位置へ移動
       cmd = compute_pure_pursuit(wp_pass_area_);
       dribble_enabled = true;
       arm_pos = robot_msgs::msg::ArmPosition::OPEN; // 射出前にアームを開く
 
-      if ((now() - state_start_time_).seconds() > 3.0) {
-        RCLCPP_INFO(get_logger(), "Arrived at Pass Area. Firing 2nd Spring!");
+      if (is_aligned_to_target(wp_pass_area_) || elapsed > 5.0) {
+        RCLCPP_INFO(get_logger(), "Arrived & Yaw-Aligned at Pass Area. Firing 2nd Spring!");
         state_ = Game1State::FIRE_PASS_SPRING;
         state_start_time_ = now();
       }

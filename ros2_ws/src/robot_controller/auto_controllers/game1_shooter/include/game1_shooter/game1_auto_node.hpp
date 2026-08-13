@@ -60,6 +60,7 @@ private:
 
   // Pure Pursuit 車体制御計算
   geometry_msgs::msg::Twist compute_pure_pursuit(const Waypoint & target);
+  bool is_aligned_to_target(const Waypoint & target);
 
   // Subscriptions & Publishers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
