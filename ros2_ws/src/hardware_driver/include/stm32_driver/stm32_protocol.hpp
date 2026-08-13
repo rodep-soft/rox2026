@@ -18,8 +18,16 @@ constexpr uint32_t LED_CMD = 0x201;
 constexpr uint32_t LIMIT_SWITCH_STATE = 0x310;
 // クォータニオン（X, Y, Z, W）
 constexpr uint32_t QUATERNION = 0x320;
+// 角速度（X, Y, Z）
+constexpr uint32_t ANGULAR_VELOCITY = 0x321;
+// 並進加速度（X, Y, Z）
+constexpr uint32_t LINEAR_ACCELERATION = 0x322;
 
 constexpr double QUATERNION_SCALE_INV = 1.0 / 16384.0;
+// BNO055の角速度生値は1/16 deg/s
+constexpr double ANGULAR_VELOCITY_SCALE_INV = 3.14159265358979323846 / (180.0 * 16.0);
+// BNO055の加速度生値は1/100 m/s^2
+constexpr double LINEAR_ACCELERATION_SCALE_INV = 1.0 / 100.0;
 
 /// @brief 生存報告用CANフレームを生成する
 /// @return 送信用CANフレーム
@@ -45,6 +53,18 @@ bool is_standard_data_frame(const can_msgs::msg::Frame & frame);
 /// @return true: IDとDLCが正しい、false: それ以外
 bool decode_quaternion(
   const can_msgs::msg::Frame & frame, int16_t & x, int16_t & y, int16_t & z, int16_t & w);
+
+/// @brief 1フレームの3軸角速度をデコードする
+/// @pre is_standard_data_frame(frame)がtrueであること
+/// @return true: IDとDLCが正しい、false: それ以外
+bool decode_angular_velocity(
+  const can_msgs::msg::Frame & frame, int16_t & x, int16_t & y, int16_t & z);
+
+/// @brief 1フレームの3軸並進加速度をデコードする
+/// @pre is_standard_data_frame(frame)がtrueであること
+/// @return true: IDとDLCが正しい、false: それ以外
+bool decode_linear_acceleration(
+  const can_msgs::msg::Frame & frame, int16_t & x, int16_t & y, int16_t & z);
 
 /// @brief リミットスイッチの状態をデコードする
 /// @pre is_standard_data_frame(frame)がtrueであること

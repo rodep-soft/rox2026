@@ -34,17 +34,9 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface",
             ),
-            DeclareLaunchArgument(
-                "enable_imu",
-                default_value="true",
-                description="Enable BNO055 IMU & Heading PID Controller",
-            ),
             include(
                 "hardware.launch.py",
-                {
-                    "can_interface": LaunchConfiguration("can_interface"),
-                    "enable_imu": LaunchConfiguration("enable_imu"),
-                }.items(),
+                {"can_interface": LaunchConfiguration("can_interface")}.items(),
             ),
             include("input/joy_controller.launch.py"),
             *[include(launch_file) for launch_file in controller_launch_files],

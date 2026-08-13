@@ -17,14 +17,14 @@
       - dribble
 
     front_left:
-      logical_id: 0
-      can_id: 32
-      control_mode: velocity
-      current_limit: 11.0
-      acceleration: 150.0
-      speed_limit: 50.0
-      current_feedback_enabled: false
-      command_period_ms: 10
+      logical_id: 0          # 倫理ID(足回り左前のモータ)
+      can_id: 32             # CAN ID(足回り左前のモータ)         
+      control_mode: velocity # 制御モード(velocity:速度制御, pp:位置制御, csp:位置制御+速度制限)
+      current_limit: 11.0    # [ A ] 電流制限値
+      acceleration: 150.0    # [ rad/s^2 ] 加速度制限値
+      speed_limit: 50.0      # [ rad/s ] 速度制限値
+      current_feedback_enabled: false # 電流値のフィードバックを有効にするかどうか(別フレームから取得のため必要の場合のみ)
+      command_period_ms: 10  # 目標値の配信周期
 
     front_right:
       logical_id: 1
@@ -60,14 +60,11 @@
       logical_id: 4
       can_id: 40
       control_mode: pp
-
-      position_reference_mode: service
-      # Resume the stored multi-turn PP coordinate before enabling the motor.
-      resume_position_on_startup: true
-      # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
-      allow_unreferenced_position_commands: true
-      minimum_position_rad: -1000000.0
-      maximum_position_rad: 0.0
+      position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
+      resume_position_on_startup: true # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
+      allow_unreferenced_position_commands: true #
+      minimum_position_rad: -1000000.0 # 
+      maximum_position_rad: 0.0        #
 
       current_limit: 11.0
       acceleration: 150.0

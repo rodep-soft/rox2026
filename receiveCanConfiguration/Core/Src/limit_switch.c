@@ -1,7 +1,7 @@
 #include "limit_switch.h"
+#include "main.h"
 
 static uint32_t next_switch_time_ms;
-
 
 static uint8_t read_switch_bits(void)
 {
@@ -14,6 +14,16 @@ static uint8_t read_switch_bits(void)
     if (HAL_GPIO_ReadPin(LIMIT_SW2_GPIO_Port, LIMIT_SW2_Pin) == GPIO_PIN_RESET) {
         bits |= (1U << 1);
     }
+#ifdef LIMIT_SW3_Pin
+    if (HAL_GPIO_ReadPin(LIMIT_SW3_GPIO_Port, LIMIT_SW3_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 2);
+    }
+#endif
+#ifdef LIMIT_SW4_Pin
+    if (HAL_GPIO_ReadPin(LIMIT_SW4_GPIO_Port, LIMIT_SW4_Pin) == GPIO_PIN_RESET) {
+        bits |= (1U << 3);
+    }
+#endif
     return bits;
 }
 

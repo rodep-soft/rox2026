@@ -16,6 +16,12 @@ JoyControllerNode::JoyControllerNode()
   max_vel_x_m_s_ = declare_parameter<double>("linear_x_limit", 2.0);
   max_vel_y_m_s_ = declare_parameter<double>("linear_y_limit", 2.0);
   max_vel_z_rad_s_ = declare_parameter<double>("angular_z_limit", 2.0);
+  acceleration_x_m_s2_ = declare_parameter<double>("linear_x_acceleration_limit", 2.0);
+  acceleration_y_m_s2_ = declare_parameter<double>("linear_y_acceleration_limit", 2.0);
+  acceleration_yaw_rad_s2_ = declare_parameter<double>("angular_z_acceleration_limit", 4.0);
+  deceleration_x_m_s2_ = declare_parameter<double>("linear_x_deceleration_limit", 3.0);
+  deceleration_y_m_s2_ = declare_parameter<double>("linear_y_deceleration_limit", 3.0);
+  deceleration_yaw_rad_s2_ = declare_parameter<double>("angular_z_deceleration_limit", 6.0);
   axis_deadzone_ = declare_parameter<double>("axis_deadzone", 0.05);
   axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.7);
 
@@ -40,10 +46,17 @@ JoyControllerNode::JoyControllerNode()
   }
   if (!std::isfinite(max_vel_x_m_s_) || max_vel_x_m_s_ < 0.0 ||
     !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
-    !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0)
+    !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0 ||
+    !std::isfinite(acceleration_x_m_s2_) || acceleration_x_m_s2_ <= 0.0 ||
+    !std::isfinite(acceleration_y_m_s2_) || acceleration_y_m_s2_ <= 0.0 ||
+    !std::isfinite(acceleration_yaw_rad_s2_) || acceleration_yaw_rad_s2_ <= 0.0 ||
+    !std::isfinite(deceleration_x_m_s2_) || deceleration_x_m_s2_ <= 0.0 ||
+    !std::isfinite(deceleration_y_m_s2_) || deceleration_y_m_s2_ <= 0.0 ||
+    !std::isfinite(deceleration_yaw_rad_s2_) || deceleration_yaw_rad_s2_ <= 0.0)
   {
-    throw std::runtime_error("velocity limits must be finite and nonnegative");
+    throw std::runtime_error("velocity limits must be nonnegative and rate limits positive");
   }
+  update_acceleration_limits();
 
   // joy_node -> joy_controller: 最新性を優先する操作入力。
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
@@ -112,6 +125,12 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
   double max_vel_x_m_s = max_vel_x_m_s_;
   double max_vel_y_m_s = max_vel_y_m_s_;
   double max_vel_z_rad_s = max_vel_z_rad_s_;
+  double acceleration_x_m_s2 = acceleration_x_m_s2_;
+  double acceleration_y_m_s2 = acceleration_y_m_s2_;
+  double acceleration_yaw_rad_s2 = acceleration_yaw_rad_s2_;
+  double deceleration_x_m_s2 = deceleration_x_m_s2_;
+  double deceleration_y_m_s2 = deceleration_y_m_s2_;
+  double deceleration_yaw_rad_s2 = deceleration_yaw_rad_s2_;
   double axis_deadzone = axis_deadzone_;
   double axis_on_threshold = axis_on_threshold_;
   int ps_button = ps_button_;
@@ -151,6 +170,18 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       max_vel_y_m_s = parameter.as_double();
     } else if (name == "angular_z_limit") {
       max_vel_z_rad_s = parameter.as_double();
+    } else if (name == "linear_x_acceleration_limit") {
+      acceleration_x_m_s2 = parameter.as_double();
+    } else if (name == "linear_y_acceleration_limit") {
+      acceleration_y_m_s2 = parameter.as_double();
+    } else if (name == "angular_z_acceleration_limit") {
+      acceleration_yaw_rad_s2 = parameter.as_double();
+    } else if (name == "linear_x_deceleration_limit") {
+      deceleration_x_m_s2 = parameter.as_double();
+    } else if (name == "linear_y_deceleration_limit") {
+      deceleration_y_m_s2 = parameter.as_double();
+    } else if (name == "angular_z_deceleration_limit") {
+      deceleration_yaw_rad_s2 = parameter.as_double();
     } else if (name == "axis_deadzone") {
       axis_deadzone = parameter.as_double();
     } else if (name == "axis_on_threshold") {
@@ -193,6 +224,12 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     std::isfinite(max_vel_x_m_s) && max_vel_x_m_s >= 0.0 &&
     std::isfinite(max_vel_y_m_s) && max_vel_y_m_s >= 0.0 &&
     std::isfinite(max_vel_z_rad_s) && max_vel_z_rad_s >= 0.0 &&
+    std::isfinite(acceleration_x_m_s2) && acceleration_x_m_s2 > 0.0 &&
+    std::isfinite(acceleration_y_m_s2) && acceleration_y_m_s2 > 0.0 &&
+    std::isfinite(acceleration_yaw_rad_s2) && acceleration_yaw_rad_s2 > 0.0 &&
+    std::isfinite(deceleration_x_m_s2) && deceleration_x_m_s2 > 0.0 &&
+    std::isfinite(deceleration_y_m_s2) && deceleration_y_m_s2 > 0.0 &&
+    std::isfinite(deceleration_yaw_rad_s2) && deceleration_yaw_rad_s2 > 0.0 &&
     std::isfinite(axis_deadzone) && axis_deadzone >= 0.0 &&
     axis_deadzone<1.0 && std::isfinite(axis_on_threshold) &&
       axis_on_threshold>0.0 && axis_on_threshold <= 1.0 &&
@@ -211,6 +248,13 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
   max_vel_x_m_s_ = max_vel_x_m_s;
   max_vel_y_m_s_ = max_vel_y_m_s;
   max_vel_z_rad_s_ = max_vel_z_rad_s;
+  acceleration_x_m_s2_ = acceleration_x_m_s2;
+  acceleration_y_m_s2_ = acceleration_y_m_s2;
+  acceleration_yaw_rad_s2_ = acceleration_yaw_rad_s2;
+  deceleration_x_m_s2_ = deceleration_x_m_s2;
+  deceleration_y_m_s2_ = deceleration_y_m_s2;
+  deceleration_yaw_rad_s2_ = deceleration_yaw_rad_s2;
+  update_acceleration_limits();
   axis_deadzone_ = axis_deadzone;
   axis_on_threshold_ = axis_on_threshold;
   ps_button_ = ps_button;
@@ -386,11 +430,10 @@ void JoyControllerNode::loop_callback()
         raw_vy = -raw_vy;
       }
 
-      cmd_vel_.linear.x = apply_axis_deadzone(raw_vx) * max_vel_x_m_s_;
-      cmd_vel_.linear.y = apply_axis_deadzone(raw_vy) * max_vel_y_m_s_;
-      cmd_vel_.angular.z = apply_axis_deadzone(raw_wz) * max_vel_z_rad_s_;
-
-      mecanum_cmd_vel_pub_->publish(cmd_vel_);
+      publish_limited_velocity(
+        apply_axis_deadzone(raw_vx) * max_vel_x_m_s_,
+        apply_axis_deadzone(raw_vy) * max_vel_y_m_s_,
+        apply_axis_deadzone(raw_wz) * max_vel_z_rad_s_);
     }
 
   }
@@ -460,6 +503,10 @@ void JoyControllerNode::publish_drive_reversed()
 
 void JoyControllerNode::publish_stop_commands()
 {
+  velocity_limiter_x_.reset();
+  velocity_limiter_y_.reset();
+  velocity_limiter_yaw_.reset();
+  velocity_limiter_initialized_ = false;
   cmd_vel_ = geometry_msgs::msg::Twist{};
   mecanum_cmd_vel_pub_->publish(cmd_vel_);
 
@@ -472,6 +519,32 @@ void JoyControllerNode::publish_stop_commands()
 
   dribble_enabled_ = false;
   publish_dribble_enabled();
+}
+
+void JoyControllerNode::publish_limited_velocity(
+  const double target_x_m_s, const double target_y_m_s, const double target_yaw_rad_s)
+{
+  const auto current_time = std::chrono::steady_clock::now();
+  double dt_sec = 0.01;
+  if (velocity_limiter_initialized_) {
+    dt_sec = std::chrono::duration<double>(current_time - last_velocity_update_time_).count();
+    dt_sec = std::clamp(dt_sec, 0.001, 0.1);
+  } else {
+    velocity_limiter_initialized_ = true;
+  }
+  last_velocity_update_time_ = current_time;
+
+  cmd_vel_.linear.x = velocity_limiter_x_.update(target_x_m_s, dt_sec);
+  cmd_vel_.linear.y = velocity_limiter_y_.update(target_y_m_s, dt_sec);
+  cmd_vel_.angular.z = velocity_limiter_yaw_.update(target_yaw_rad_s, dt_sec);
+  mecanum_cmd_vel_pub_->publish(cmd_vel_);
+}
+
+void JoyControllerNode::update_acceleration_limits()
+{
+  velocity_limiter_x_.set_limits(acceleration_x_m_s2_, deceleration_x_m_s2_);
+  velocity_limiter_y_.set_limits(acceleration_y_m_s2_, deceleration_y_m_s2_);
+  velocity_limiter_yaw_.set_limits(acceleration_yaw_rad_s2_, deceleration_yaw_rad_s2_);
 }
 
 bool JoyControllerNode::is_button_down(const sensor_msgs::msg::Joy & msg, int index) const
