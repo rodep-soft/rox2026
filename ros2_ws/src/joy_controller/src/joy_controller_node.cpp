@@ -299,13 +299,6 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. スプリング発射要求 (L2 + R2 同時押し瞬間)
-  const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
-    last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
-  const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
-    last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-  const bool spring_fire_triggered = is_l2_active && is_r2_active &&
-    !(was_l2_active && was_r2_active);
 
     // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
     const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
