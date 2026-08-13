@@ -56,6 +56,7 @@ private:
 
   rclcpp::Time homing_started_at_;
 
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
