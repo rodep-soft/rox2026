@@ -96,10 +96,17 @@ void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::
 
   // 切断またはエラー時の自動ホーミング復帰
   if (!is_actuator_ready) {
-    if (state_ != State::UNINITIALIZED && state_ != State::HOMING) {
+    if (state_ == State::UNINITIALIZED) {
+      // 初回起動：アクチュエータ待ちのためHOMINGを開始する
+      start_homing();
+    } else if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
+      // HOMING進行中はリセットしない（homing_start_time_を保持してタイムアウトを有効にする）
+      // アクチュエータの初期化が完了するまで待つ
+    } else {
+      // READY/WAITING_REARM_STOP/ERRORからの切断 → HOMINGへ戻す
       RCLCPP_WARN(get_logger(), "Actuator lost connection. Resetting to HOMING.");
+      start_homing();
     }
-    start_homing();
     return;
   }
 
