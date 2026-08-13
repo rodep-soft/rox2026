@@ -97,9 +97,19 @@ private:
   bool target_valid_{false};
   rclcpp::Time shoot_start_time_;
 
-  // IMU Feedback State
+  // IMU Feedback State (Full Telemetry)
   bool imu_received_{false};
-  double current_gyro_z_{0.0}; // rad/s
+  double roll_{0.0};
+  double pitch_{0.0};
+  double raw_yaw_{0.0};
+  double yaw_offset_{0.0};
+  double yaw_{0.0};
+  double gyro_x_{0.0};
+  double gyro_y_{0.0};
+  double gyro_z_{0.0};
+  double accel_x_{0.0};
+  double accel_y_{0.0};
+  double accel_z_{0.0};
   rclcpp::Time last_imu_time_;
 };
 

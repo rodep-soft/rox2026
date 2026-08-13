@@ -44,7 +44,10 @@ void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr m
     is_enabled_ = true;
     state_ = Game1State::NAV_TO_GATE;
     state_start_time_ = now();
-    RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence STARTED.");
+    // スタート時のIMU生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
+    yaw_offset_ = raw_yaw_;
+    current_yaw_ = 0.0;
+    RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence STARTED. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -62,7 +65,8 @@ void Game1AutoShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr m
   const double qw = msg->orientation.w;
   const double siny_cosp = 2.0 * (qw * qz + qx * qy);
   const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
-  current_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+  raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+  current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
 geometry_msgs::msg::Twist Game1AutoShooterNode::compute_pure_pursuit(const Waypoint & target)

@@ -87,6 +87,8 @@ private:
 
   // IMU Feedback
   bool imu_received_{false};
+  double raw_yaw_{0.0};
+  double yaw_offset_{0.0};
   double current_yaw_{0.0};
 };
 

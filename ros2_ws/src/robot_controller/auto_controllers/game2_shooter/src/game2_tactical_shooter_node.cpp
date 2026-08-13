@@ -74,7 +74,9 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
     is_enabled_ = true;
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     active_row_ = 0;
-    RCLCPP_INFO(get_logger(), "Game 2 START.");
+    yaw_offset_ = raw_yaw_;
+    yaw_ = 0.0;
+    RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = robot_msgs::msg::Game2State::STANDBY;
@@ -84,9 +86,43 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
 
 void Game2TacticalShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
-  imu_received_   = true;
-  last_imu_time_  = now();
-  current_gyro_z_ = msg->angular_velocity.z;
+  imu_received_  = true;
+  last_imu_time_ = now();
+
+  // 1. 角速度 (rad/s)
+  gyro_x_ = msg->angular_velocity.x;
+  gyro_y_ = msg->angular_velocity.y;
+  gyro_z_ = msg->angular_velocity.z;
+
+  // 2. 加速度 (m/s^2) - 射出反動の衝撃検知用
+  accel_x_ = msg->linear_acceleration.x;
+  accel_y_ = msg->linear_acceleration.y;
+  accel_z_ = msg->linear_acceleration.z;
+
+  // 3. 姿勢 クォータニオン -> オイラー角 (Roll, Pitch, Yaw) 変換
+  const double qx = msg->orientation.x;
+  const double qy = msg->orientation.y;
+  const double qz = msg->orientation.z;
+  const double qw = msg->orientation.w;
+
+  // Roll (x-axis rotation)
+  const double sinr_cosp = 2.0 * (qw * qx + qy * qz);
+  const double cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy);
+  roll_ = std::atan2(sinr_cosp, cosr_cosp);
+
+  // Pitch (y-axis rotation)
+  const double sinp = 2.0 * (qw * qy - qz * qx);
+  if (std::abs(sinp) >= 1.0) {
+    pitch_ = std::copysign(M_PI / 2.0, sinp);
+  } else {
+    pitch_ = std::asin(sinp);
+  }
+
+  // Yaw (z-axis rotation)
+  const double siny_cosp = 2.0 * (qw * qz + qx * qy);
+  const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+  raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+  yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
 void Game2TacticalShooterNode::update_panel_states()
@@ -242,7 +278,7 @@ void Game2TacticalShooterNode::control_loop()
 
       double wz = -kp_yaw_ * y_err;
       if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
-        wz -= kd_yaw_ * current_gyro_z_;
+        wz -= kd_yaw_ * gyro_z_;
       }
       cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
