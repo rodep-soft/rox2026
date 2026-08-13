@@ -1,6 +1,5 @@
 name: ros2 build
-# This workflow builds ROS 2 packages using Docker Compose.
-# It is triggered on push and pull request events. The workflow ensures that only one instance runs for a given branch or pull request, canceling any in-progress runs if a new one is triggered.
+# This workflow builds ROS 2 packages using Docker Compose with BuildKit GHA Cache.
 on:
   push:
   pull_request:
@@ -22,10 +21,9 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
-      # ── ⚡ Docker レイヤーキャッシュ (Start container の爆速化) ──
-      - name: Cache Docker layers
-        uses: satackey/action-docker-layer-caching@v0.0.11
-        continue-on-error: true
+      # ── ⚡ Docker Buildx & GHA キャッシュのセットアップ ──
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       # ── ⚡ C++ Build Cache (ccache) の永続化 ──
       - name: Cache ccache
@@ -36,8 +34,11 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-
 
-      - name: Start container
+      - name: Start container (Build with BuildKit GHA Cache)
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
+          docker compose build --build-arg BUILDKIT_INLINE_CACHE=1
           docker compose up -d
 
       - name: Install CI tools & Setup ccache
