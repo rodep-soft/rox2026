@@ -4,6 +4,7 @@
     # [rad] 各アーム目標位置
     dribble_position_rad: 0.27    # DRIBBLE姿勢
     open_position_rad: -0.98      # OPEN姿勢
+    bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.7        # FEED姿勢(発射機構に押し込む姿勢)
     
     # [s] 自動シュートサイクルのタイミング

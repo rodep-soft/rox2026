@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -27,6 +28,7 @@ private:
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
+  void actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
@@ -35,13 +37,15 @@ private:
 
   double target_position_rad() const;
   double interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s, double accel_factor = 1.0) const;
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s,
+    double accel_factor = 1.0) const;
   double transition_duration_sec(
     double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
   double open_position_rad_{-1.0};
+  double bottom_position_rad_{0.0};
   double feed_position_rad_{1.3};
   double open_duration_sec_{0.3};
   double feed_duration_sec_{0.6};
@@ -72,6 +76,7 @@ private:
   rclcpp::Time shot_cycle_start_time_;
   double shot_cycle_start_position_rad_{0.35};
   double last_position_command_rad_{0.35};
+  double current_arm_position_rad_{0.35};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool belt_auto_started_{false};
@@ -83,6 +88,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr actuator_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;

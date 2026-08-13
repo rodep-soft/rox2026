@@ -65,6 +65,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_opening_rpm", command_qos,
     std::bind(&DribbleControllerNode::opening_rpm_callback, this, std::placeholders::_1));
 
+  actuator_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(
+    "/edulite/state", command_qos,
+    std::bind(&DribbleControllerNode::actuator_state_callback, this, std::placeholders::_1));
+
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),
     std::bind(&DribbleControllerNode::control_timer_callback, this));
@@ -79,6 +83,7 @@ void DribbleControllerNode::load_parameters()
 {
   dribble_position_rad_ = declare_parameter<double>("dribble_position_rad", 0.35);
   open_position_rad_ = declare_parameter<double>("open_position_rad", -1.0);
+  bottom_position_rad_ = declare_parameter<double>("bottom_position_rad", 0.0);
   feed_position_rad_ = declare_parameter<double>("feed_position_rad", 1.3);
   open_duration_sec_ = declare_parameter<double>("open_duration_sec", 0.3);
   feed_duration_sec_ = declare_parameter<double>("feed_duration_sec", 0.6);
@@ -203,6 +208,14 @@ void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::Sha
   if (msg->data >= 0 && msg->data <= 5600) {
     shot_cycle_opening_rpm_ = msg->data;
     RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM", shot_cycle_opening_rpm_);
+  }
+}
+
+void DribbleControllerNode::actuator_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+{
+  if (msg->logical_id == position_logical_id_) {
+    current_arm_position_rad_ = msg->position;
   }
 }
 
@@ -375,7 +388,8 @@ void DribbleControllerNode::control_timer_callback()
       const double move_duration_sec = transition_duration_sec(
         shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s, accel_factor);
       position_command_rad = interpolated_position_rad(
-        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s, accel_factor);
+        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s,
+        accel_factor);
 
       if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
@@ -425,12 +439,17 @@ int DribbleControllerNode::roller_target_rpm() const
     case robot_msgs::msg::ShotCycleState::OPENING:
       return shot_cycle_opening_rpm_;
     case robot_msgs::msg::ShotCycleState::FEEDING: {
-        // OPENING 時の回転数から FEEDING 目標回転数 (0 RPM) へアーム動作に合わせて滑らかに減速
-        const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
-        const double move_duration_sec = transition_duration_sec(
-          shot_cycle_start_position_rad_, feed_position_rad_, feeding_max_velocity_rad_s_);
-        const double progress = move_duration_sec > 0.0 ?
-          std::clamp(elapsed_sec / move_duration_sec, 0.0, 1.0) : 1.0;
+        // FEEDING 移動中、アーム角度が真下 (bottom_position_rad_) を通過するまでは回転数を 100% 維持
+        // 真下を通過して逆側 (FEED) へ向かう間に 0 RPM へ滑らかに減速
+        const double arm_pos = current_arm_position_rad_;
+        if (arm_pos < bottom_position_rad_) {
+          // まだ真下に到達していない（OPEN 姿勢から真下へ移動中）
+          return shot_cycle_opening_rpm_;
+        }
+        // 真下を通過して逆側の FEED へ進行中 -> 0 RPM へ減速
+        const double total_range = std::max(0.001, feed_position_rad_ - bottom_position_rad_);
+        const double progress =
+          std::clamp((arm_pos - bottom_position_rad_) / total_range, 0.0, 1.0);
         return static_cast<int>(
           shot_cycle_opening_rpm_ +
           (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
