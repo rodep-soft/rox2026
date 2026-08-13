@@ -69,10 +69,10 @@ JoyControllerNode::JoyControllerNode()
     "/emergency_stop", emergency_stop_qos);
 
   spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
-  "/spring/actuator_ready", command_qos,
-  std::bind(
-    &JoyControllerNode::spring_actuator_ready_callback, this,
-    std::placeholders::_1));
+    "/spring/actuator_ready", command_qos,
+    std::bind(
+      &JoyControllerNode::spring_actuator_ready_callback, this,
+      std::placeholders::_1));
 
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/mecanum/cmd_vel", command_qos);
@@ -393,17 +393,17 @@ void JoyControllerNode::loop_callback()
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
     }
 
-      std_msgs::msg::Bool spring_fire_msg;
-      spring_fire_msg.data = spring_fire_triggered;
-      spring_fire_pub_->publish(spring_fire_msg);
-    
+    std_msgs::msg::Bool spring_fire_msg;
+    spring_fire_msg.data = spring_fire_triggered;
+    spring_fire_pub_->publish(spring_fire_msg);
+
     if (is_ready_rising) {
       if (dribble_enabled_before_spring_) {
         dribble_enabled_ = true;
         publish_dribble_enabled();
       }
     }
-    
+
     was_spring_ready_ = spring_actuator_ready_;
 
     // 9. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
