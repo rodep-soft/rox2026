@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     bringup_dir = get_package_share_directory("robot_bringup")
-    config_path = os.path.join(bringup_dir, "config", "game1_shooter.yaml")
+    config_path = os.path.join(bringup_dir, "config", "game1.yaml")
 
     node = Node(
         package="robot_controller",

@@ -51,13 +51,13 @@ def generate_launch_description():
 
     # Game1 自動シーケンスノード
     game1_shooter_launch = include(
-        "game1_shooter.launch.py",
+        "game1.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game1")),
     )
 
     # Game2 パネル戦術自動射出ノード
     game2_shooter_launch = include(
-        "game2_shooter.launch.py",
+        "game2.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
