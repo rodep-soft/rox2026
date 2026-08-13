@@ -49,6 +49,9 @@ ros2_ws/.vscode/
 # 修正店を書いたファイル(jodanが使ってます)
 fix.md
 
+# External vcs repositories (Do not commit to git)
+ros2_ws/src/libbno055-linux/
+
 
 # kamei氏のdirを入れないものとする
 kamei/
