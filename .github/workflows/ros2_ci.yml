@@ -22,6 +22,11 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
+      # ── ⚡ Docker レイヤーキャッシュ (Start container の爆速化) ──
+      - name: Cache Docker layers
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
       # ── ⚡ C++ Build Cache (ccache) の永続化 ──
       - name: Cache ccache
         uses: actions/cache@v4
