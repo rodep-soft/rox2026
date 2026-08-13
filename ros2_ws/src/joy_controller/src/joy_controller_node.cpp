@@ -327,7 +327,7 @@ void JoyControllerNode::loop_callback()
     const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
       last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
     const bool spring_fire_triggered = is_l2_active && is_r2_active &&
-      !(was_l2_active && was_r2_active);    
+      !(was_l2_active && was_r2_active);
     const bool was_dribble_enabled = dribble_enabled_;
     if (spring_fire_triggered) {
 
@@ -338,17 +338,16 @@ void JoyControllerNode::loop_callback()
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
     }
 
-      std_msgs::msg::Bool spring_fire_msg;
-      spring_fire_msg.data = spring_fire_triggered;
-      spring_fire_pub_->publish(spring_fire_msg);
-    
+    std_msgs::msg::Bool spring_fire_msg;
+    spring_fire_msg.data = spring_fire_triggered;
+    spring_fire_pub_->publish(spring_fire_msg);
+
     if (spring_fire_triggered) {
       if (was_dribble_enabled) {
         dribble_enabled_ = true;
         publish_dribble_enabled();
       }
     }
-
 
 
     // 9. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
