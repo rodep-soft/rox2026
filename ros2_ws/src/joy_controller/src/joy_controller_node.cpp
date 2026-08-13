@@ -68,6 +68,12 @@ JoyControllerNode::JoyControllerNode()
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/emergency_stop", emergency_stop_qos);
 
+  spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
+  "/spring/actuator_ready", command_qos,
+  std::bind(
+    &JoyControllerNode::spring_actuator_ready_callback, this,
+    std::placeholders::_1));
+
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/mecanum/cmd_vel", command_qos);
 
@@ -372,27 +378,33 @@ void JoyControllerNode::loop_callback()
       last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
     const bool spring_fire_triggered = is_l2_active && is_r2_active &&
       !(was_l2_active && was_r2_active);
-    const bool was_dribble_enabled = dribble_enabled_;
+    const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
     if (spring_fire_triggered) {
 
-      if (was_dribble_enabled) {
+
+      if (spring_actuator_ready_) {
+        dribble_enabled_before_spring_ = dribble_enabled_;
+      }
+
+      if (dribble_enabled_before_spring_) {
         dribble_enabled_ = false;
         publish_dribble_enabled();
       }
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
     }
 
-    std_msgs::msg::Bool spring_fire_msg;
-    spring_fire_msg.data = spring_fire_triggered;
-    spring_fire_pub_->publish(spring_fire_msg);
-
-    if (spring_fire_triggered) {
-      if (was_dribble_enabled) {
+      std_msgs::msg::Bool spring_fire_msg;
+      spring_fire_msg.data = spring_fire_triggered;
+      spring_fire_pub_->publish(spring_fire_msg);
+    
+    if (is_ready_rising) {
+      if (dribble_enabled_before_spring_) {
         dribble_enabled_ = true;
         publish_dribble_enabled();
       }
     }
-
+    
+    was_spring_ready_ = spring_actuator_ready_;
 
     // 9. DPAD 左右でアームポジション切替 (DRIBBLE / OPEN / FEED)
     if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
@@ -427,6 +439,12 @@ void JoyControllerNode::loop_callback()
   }
 
   last_joy_msg_ = joy_msg_;
+}
+
+void JoyControllerNode::spring_actuator_ready_callback(
+  const std_msgs::msg::Bool::SharedPtr msg)
+{
+  spring_actuator_ready_ = msg->data;
 }
 
 void JoyControllerNode::joy_timeout_timer_callback()
