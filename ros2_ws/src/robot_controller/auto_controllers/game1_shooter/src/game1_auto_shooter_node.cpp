@@ -24,6 +24,10 @@ Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game1AutoShooterNode::imu_callback, this, std::placeholders::_1));
 
+  ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/detection", 10,
+    std::bind(&Game1AutoShooterNode::ball_detection_callback, this, std::placeholders::_1));
+
   cmd_vel_pub_         = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
   arm_position_pub_    = create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
@@ -36,6 +40,14 @@ Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
     std::bind(&Game1AutoShooterNode::control_loop, this));
 
   RCLCPP_INFO(get_logger(), "Game1AutoShooterNode initialized.");
+}
+
+void Game1AutoShooterNode::ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+  ball_detected_ = true;
+  last_ball_detection_time_ = now();
+  detected_ball_x_ = msg->pose.position.x;
+  detected_ball_y_ = msg->pose.position.y;
 }
 
 void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -109,18 +121,39 @@ void Game1AutoShooterNode::control_loop()
       // 2. ゲートへスプリング発射 (1発目)
       spring_fire = true;
       if ((now() - state_start_time_).seconds() > 1.0) {
-        RCLCPP_INFO(get_logger(), "Gate Shot Complete. Navigating around gate with DRIBBLE ON (backspin).");
-        state_ = Game1State::NAV_TO_BALL_DRIBBLE_ON;
+        RCLCPP_INFO(get_logger(), "Gate Shot Complete. Navigating AROUND gate (free area).");
+        state_ = Game1State::NAV_AROUND_GATE;
         state_start_time_ = now();
       }
       break;
     }
 
-    case Game1State::NAV_TO_BALL_DRIBBLE_ON: {
-      // 3. ドリブルON（バックスピン）でゲート向こうのボールに接近してキャッチ
-      cmd = compute_pure_pursuit(wp_ball_);
+    case Game1State::NAV_AROUND_GATE: {
+      // 3. ロボットはゲートの横を通って向こう側へ回り込む
+      cmd = compute_pure_pursuit(wp_around_gate_);
+      if ((now() - state_start_time_).seconds() > 3.0) {
+        RCLCPP_INFO(get_logger(), "Around gate complete. Searching and catching ball dynamically with DRIBBLE ON (backspin).");
+        state_ = Game1State::SEARCH_AND_CATCH_BALL;
+        state_start_time_ = now();
+      }
+      break;
+    }
+
+    case Game1State::SEARCH_AND_CATCH_BALL: {
+      // 4. カメラ(YOLO)で転がったボールの位置を認識して動的追従キャッチ＋ドリブルON
       dribble_enabled = true; // バックスピンでボールをしっかり吸い寄せる
       arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
+
+      const bool is_recent_detection = ball_detected_ && (now() - last_ball_detection_time_).seconds() < 1.0;
+      if (is_recent_detection) {
+        // カメラでボールを発見：リアルタイム相対座標に向かって追従
+        cmd.linear.x = std::clamp(kp_linear_ * detected_ball_x_, -max_linear_vel_, max_linear_vel_);
+        cmd.linear.y = std::clamp(kp_linear_ * detected_ball_y_, -max_linear_vel_, max_linear_vel_);
+        cmd.angular.z = std::clamp(-kp_angular_ * detected_ball_y_, -max_angular_vel_, max_angular_vel_);
+      } else {
+        // ボール未検出：予想ターゲット位置へ向かって走行
+        cmd = compute_pure_pursuit(wp_ball_);
+      }
 
       if ((now() - state_start_time_).seconds() > 4.0) {
         RCLCPP_INFO(get_logger(), "Ball caught! Navigating to Pass Area.");
