@@ -38,6 +38,7 @@ private:
   void publish_stop_commands();
   void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
   void update_acceleration_limits();
+  void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
 
   bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
   bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
@@ -112,7 +113,7 @@ private:
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_actuator_ready_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;

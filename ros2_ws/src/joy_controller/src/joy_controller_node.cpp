@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <stdexcept>
+#include <std_msgs/msg/u_int8.hpp>
 
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller_node")
