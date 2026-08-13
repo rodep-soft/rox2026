@@ -119,7 +119,7 @@ set(controller_include_directories
     auto_controllers/game1_shooter
     auto_controllers/game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
-  install(DIRECTORY ${directory}/include/ DESTINATION include)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include/ DESTINATION include)
 endforeach()
 
 if(BUILD_TESTING)
