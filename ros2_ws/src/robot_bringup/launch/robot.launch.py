@@ -166,7 +166,9 @@ def generate_launch_description():
             game2_shooter_launch,
             ekf_launch,
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(os.path.join(launch_dir, "foxglove_bridge.launch.py")),
+                PythonLaunchDescriptionSource(
+                    os.path.join(launch_dir, "foxglove_bridge.launch.py")
+                ),
                 condition=IfCondition(LaunchConfiguration("enable_foxglove")),
             ),
             *[include(launch_file) for launch_file in launch_files],

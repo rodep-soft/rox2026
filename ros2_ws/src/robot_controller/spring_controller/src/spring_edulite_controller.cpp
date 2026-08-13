@@ -11,20 +11,26 @@ SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
-  fire_increment_rad_     = declare_parameter<double>("fire_increment_rad", -6.283185307);
-  homing_velocity_rad_s_  = declare_parameter<double>("homing_velocity_rad_s", 0.5);
-  homing_timeout_sec_     = declare_parameter<double>("homing_timeout_sec", 30.0);
-  zeroing_velocity_threshold_rad_s_ = declare_parameter<double>("zeroing_velocity_threshold_rad_s", 0.05);
+  fire_increment_rad_ = declare_parameter<double>("fire_increment_rad", -6.283185307);
+  homing_velocity_rad_s_ = declare_parameter<double>("homing_velocity_rad_s", 0.5);
+  homing_timeout_sec_ = declare_parameter<double>("homing_timeout_sec", 30.0);
+  zeroing_velocity_threshold_rad_s_ = declare_parameter<double>(
+    "zeroing_velocity_threshold_rad_s",
+    0.05);
   required_stopped_count_ = declare_parameter<int>("zeroing_required_stable_feedback_count", 3);
-  command_period_ms_      = declare_parameter<int>("command_period_ms", 10);
+  command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
 
-  const auto qos_depth    = declare_parameter<int>("qos_depth", 1);
-  const auto logical_id   = declare_parameter<int>("logical_id", 4);
+  const auto qos_depth = declare_parameter<int>("qos_depth", 1);
+  const auto logical_id = declare_parameter<int>("logical_id", 4);
   const auto target_topic = declare_parameter<std::string>("target_topic", "/edulite/target");
-  const auto state_topic  = declare_parameter<std::string>("state_topic", "/edulite/state");
-  const auto set_position_service = declare_parameter<std::string>("set_position_service", "/edulite/set_position");
+  const auto state_topic = declare_parameter<std::string>("state_topic", "/edulite/state");
+  const auto set_position_service = declare_parameter<std::string>(
+    "set_position_service",
+    "/edulite/set_position");
 
-  if (logical_id < 0 || logical_id > 65535 || target_topic.empty() || state_topic.empty() || set_position_service.empty()) {
+  if (logical_id < 0 || logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
+    set_position_service.empty())
+  {
     throw std::runtime_error("Invalid parameter configurations");
   }
 
@@ -48,8 +54,10 @@ SpringEduliteController::SpringEduliteController()
     state_topic, command_qos,
     std::bind(&SpringEduliteController::actuator_state_callback, this, std::placeholders::_1));
 
-  position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(target_topic, command_qos);
-  set_position_client_  = create_client<actuator_msgs::srv::SetPosition>(set_position_service);
+  position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
+    target_topic,
+    command_qos);
+  set_position_client_ = create_client<actuator_msgs::srv::SetPosition>(set_position_service);
 
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms_),
@@ -63,10 +71,12 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
   const bool rising_edge = msg->data && !fire_request_active_;
   fire_request_active_ = msg->data;
 
-  if (!rising_edge) return;
+  if (!rising_edge) {return;}
 
   if (emergency_stop_active_ || state_ != State::READY) {
-    RCLCPP_WARN(get_logger(), "Fire request rejected: emergency stop active or state is not READY.");
+    RCLCPP_WARN(
+      get_logger(),
+      "Fire request rejected: emergency stop active or state is not READY.");
     return;
   }
 
@@ -88,9 +98,10 @@ void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::
   limit_switch_active_ = ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
 }
 
-void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void SpringEduliteController::actuator_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
-  if (msg->logical_id != logical_id_) return;
+  if (msg->logical_id != logical_id_) {return;}
 
   const bool is_actuator_ready = (msg->state == actuator_msgs::msg::ActuatorState::STATE_READY);
 
@@ -119,7 +130,8 @@ void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::
   }
 
   // リミットスイッチ検知後の静止検出（HOMING中または発射完了後）
-  const bool is_waiting_for_stop = (state_ == State::WAITING_FOR_STOP || state_ == State::WAITING_REARM_STOP);
+  const bool is_waiting_for_stop =
+    (state_ == State::WAITING_FOR_STOP || state_ == State::WAITING_REARM_STOP);
   if (is_waiting_for_stop && limit_switch_active_ && !zero_service_pending_) {
     if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
       ++stopped_count_;
@@ -135,7 +147,7 @@ void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::
 
 void SpringEduliteController::control_timer_callback()
 {
-  if (state_ == State::UNINITIALIZED || zero_service_pending_) return;
+  if (state_ == State::UNINITIALIZED || zero_service_pending_) {return;}
 
   // ホーミングタイムアウト判定
   if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
@@ -173,7 +185,7 @@ void SpringEduliteController::start_homing()
 
 void SpringEduliteController::request_zero_reference()
 {
-  if (zero_service_pending_ || !set_position_client_->service_is_ready()) return;
+  if (zero_service_pending_ || !set_position_client_->service_is_ready()) {return;}
 
   zero_service_pending_ = true;
   auto request = std::make_shared<actuator_msgs::srv::SetPosition::Request>();

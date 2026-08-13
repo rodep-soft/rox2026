@@ -9,43 +9,43 @@ namespace robot_controller
 Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
 : Node("game2_auto_node", options)
 {
-  base_frame_        = declare_parameter<std::string>("base_frame", "base_link");
-  tag_prefix_        = declare_parameter<std::string>("tag_prefix", "tag16h5:");
-  kp_yaw_            = declare_parameter<double>("kp_yaw", 0.5);
-  kd_yaw_            = declare_parameter<double>("kd_yaw", 0.05);
-  kp_dist_           = declare_parameter<double>("kp_dist", 0.8);
-  max_angular_z_     = declare_parameter<double>("max_angular_z", 0.35);
-  target_distance_   = declare_parameter<double>("target_distance", 1.5);
-  yaw_tolerance_     = declare_parameter<double>("yaw_tolerance", 0.04);
-  dist_tolerance_    = declare_parameter<double>("dist_tolerance", 0.03);
-  rpm_bottom_        = declare_parameter<double>("rpm_bottom", 3000.0);
-  rpm_middle_        = declare_parameter<double>("rpm_middle", 4500.0);
-  rpm_top_           = declare_parameter<double>("rpm_top", 6000.0);
+  base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
+  tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
+  kp_yaw_ = declare_parameter<double>("kp_yaw", 0.5);
+  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.05);
+  kp_dist_ = declare_parameter<double>("kp_dist", 0.8);
+  max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
+  target_distance_ = declare_parameter<double>("target_distance", 1.5);
+  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.04);
+  dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.03);
+  rpm_bottom_ = declare_parameter<double>("rpm_bottom", 3000.0);
+  rpm_middle_ = declare_parameter<double>("rpm_middle", 4500.0);
+  rpm_top_ = declare_parameter<double>("rpm_top", 6000.0);
   shoot_hold_duration_ = declare_parameter<double>("shoot_hold_duration", 0.8);
 
   // シュートパネルのTag IDを段ごとに登録 (row: 0=下段, 1=中段, 2=上段)
   const std::vector<int64_t> default_bottom = {20, 21, 22};
   const std::vector<int64_t> default_middle = {17, 18, 19};
-  const std::vector<int64_t> default_top    = {14, 15, 16};
+  const std::vector<int64_t> default_top = {14, 15, 16};
   const auto bottom_tags = declare_parameter<std::vector<int64_t>>("bottom_tags", default_bottom);
   const auto middle_tags = declare_parameter<std::vector<int64_t>>("middle_tags", default_middle);
-  const auto top_tags    = declare_parameter<std::vector<int64_t>>("top_tags", default_top);
+  const auto top_tags = declare_parameter<std::vector<int64_t>>("top_tags", default_top);
 
   auto register_row = [this](const std::vector<int64_t> & tags, int row) {
-    for (size_t col = 0; col < tags.size(); ++col) {
-      const int id = static_cast<int>(tags[col]);
-      PanelTagInfo info;
-      info.tag_id = id;
-      info.row = row;
-      info.col = static_cast<int>(col);
-      panel_grid_[id] = info;
-    }
-  };
+      for (size_t col = 0; col < tags.size(); ++col) {
+        const int id = static_cast<int>(tags[col]);
+        PanelTagInfo info;
+        info.tag_id = id;
+        info.row = row;
+        info.col = static_cast<int>(col);
+        panel_grid_[id] = info;
+      }
+    };
   register_row(bottom_tags, 0);
   register_row(middle_tags, 1);
   register_row(top_tags, 2);
 
-  tf_buffer_   = std::make_shared<tf2_ros::Buffer>(get_clock());
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
@@ -55,13 +55,14 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game2AutoNode::imu_callback, this, std::placeholders::_1));
 
-  cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
-  belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
+  cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
+  belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
-  arm_position_pub_  = create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
-  completed_pub_     = create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
-  state_pub_         = create_publisher<robot_msgs::msg::Game2State>(
+  arm_position_pub_ =
+    create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
+  completed_pub_ = create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
+  state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
     "/game2/state", rclcpp::QoS(1).reliable().transient_local());
 
   // 制御ループ 20 Hz
@@ -90,7 +91,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 
 void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
-  imu_received_  = true;
+  imu_received_ = true;
   last_imu_time_ = now();
 
   // 1. 角速度 (rad/s)
@@ -216,13 +217,14 @@ void Game2AutoNode::control_loop()
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
     cmd.angular.z = 0.2;
-    publish_all(cmd, static_cast<float>(target_rpm_),
+    publish_all(
+      cmd, static_cast<float>(target_rpm_),
       false, true, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
   const double dist_err = target_x_ - target_distance_;
-  const double y_err    = target_y_;
+  const double y_err = target_y_;
   geometry_msgs::msg::Twist cmd;
   bool shoot_trigger = false;
   uint8_t arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
@@ -230,59 +232,60 @@ void Game2AutoNode::control_loop()
   switch (state_) {
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
-      state_ = robot_msgs::msg::Game2State::ALIGNING;
-      cmd.linear.x = kp_dist_ * dist_err;
-      cmd.linear.y = 0.0;
+        state_ = robot_msgs::msg::Game2State::ALIGNING;
+        cmd.linear.x = kp_dist_ * dist_err;
+        cmd.linear.y = 0.0;
 
-      double wz = -kp_yaw_ * y_err;
-      if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
-        wz -= kd_yaw_ * gyro_z_;
-      }
-      cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
+        double wz = -kp_yaw_ * y_err;
+        if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
+          wz -= kd_yaw_ * gyro_z_;
+        }
+        cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-      if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-        RCLCPP_INFO(get_logger(), "Game2: aligned. Moving arm to OPEN.");
-        state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-        shoot_start_time_ = now();
+        if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
+          RCLCPP_INFO(get_logger(), "Game2: aligned. Moving arm to OPEN.");
+          state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
+          shoot_start_time_ = now();
+        }
+        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+        break;
       }
-      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-      break;
-    }
 
     case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-      arm_mode = robot_msgs::msg::ArmPosition::OPEN;
-      if ((now() - shoot_start_time_).seconds() > 0.3) {
-        RCLCPP_INFO(get_logger(), "Game2: arm open. Moving to FEED.");
-        state_ = robot_msgs::msg::Game2State::SHOOTING;
-        shoot_start_time_ = now();
+        arm_mode = robot_msgs::msg::ArmPosition::OPEN;
+        if ((now() - shoot_start_time_).seconds() > 0.3) {
+          RCLCPP_INFO(get_logger(), "Game2: arm open. Moving to FEED.");
+          state_ = robot_msgs::msg::Game2State::SHOOTING;
+          shoot_start_time_ = now();
+        }
+        break;
       }
-      break;
-    }
 
     case robot_msgs::msg::Game2State::SHOOTING: {
-      arm_mode = robot_msgs::msg::ArmPosition::FEED;
-      shoot_trigger = true;
-      if ((now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-        RCLCPP_INFO(get_logger(), "Game2: shot complete. Returning arm to DRIBBLE.");
-        state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
-        shoot_start_time_ = now();
+        arm_mode = robot_msgs::msg::ArmPosition::FEED;
+        shoot_trigger = true;
+        if ((now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
+          RCLCPP_INFO(get_logger(), "Game2: shot complete. Returning arm to DRIBBLE.");
+          state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
+          shoot_start_time_ = now();
+        }
+        break;
       }
-      break;
-    }
 
     case robot_msgs::msg::Game2State::WAITING_RESULT: {
-      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-      if ((now() - shoot_start_time_).seconds() > 1.2) {
-        state_ = robot_msgs::msg::Game2State::ALIGNING;
+        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+        if ((now() - shoot_start_time_).seconds() > 1.2) {
+          state_ = robot_msgs::msg::Game2State::ALIGNING;
+        }
+        break;
       }
-      break;
-    }
 
     default:
       break;
   }
 
-  publish_all(cmd, static_cast<float>(target_rpm_),
+  publish_all(
+    cmd, static_cast<float>(target_rpm_),
     shoot_trigger, true, arm_mode, false);
 }
 

@@ -54,30 +54,34 @@ private:
   {
     wheel_radius_m_ = declare_parameter("wheel_radius", 0.075);
     robot_length_m_ = declare_parameter("robot_length", 0.355);
-    robot_width_m_  = declare_parameter("robot_width", 0.353);
-    publish_period_ms_   = declare_parameter("publish_period_ms", 20.0);
+    robot_width_m_ = declare_parameter("robot_width", 0.353);
+    publish_period_ms_ = declare_parameter("publish_period_ms", 20.0);
     feedback_timeout_ms_ = declare_parameter("feedback_timeout_ms", 250.0);
-    scale_x_   = declare_parameter("velocity_scale_x", 1.0);
-    scale_y_   = declare_parameter("velocity_scale_y", 1.0);
+    scale_x_ = declare_parameter("velocity_scale_x", 1.0);
+    scale_y_ = declare_parameter("velocity_scale_y", 1.0);
     scale_yaw_ = declare_parameter("velocity_scale_yaw", 1.0);
     filter_alpha_ = declare_parameter("velocity_filter_alpha", 0.35);
-    publish_tf_   = declare_parameter("publish_tf", true);
+    publish_tf_ = declare_parameter("publish_tf", true);
 
     slip_enabled_ = declare_parameter("slip_compensation.enabled", true);
     accel_threshold_x_ = declare_parameter("slip_compensation.acceleration_threshold_x_m_s2", 1.0);
     accel_threshold_y_ = declare_parameter("slip_compensation.acceleration_threshold_y_m_s2", 0.7);
-    accel_threshold_yaw_ = declare_parameter("slip_compensation.angular_acceleration_threshold_rad_s2", 2.0);
-    max_covariance_multiplier_ = declare_parameter("slip_compensation.maximum_covariance_multiplier", 10.0);
+    accel_threshold_yaw_ = declare_parameter(
+      "slip_compensation.angular_acceleration_threshold_rad_s2", 2.0);
+    max_covariance_multiplier_ = declare_parameter(
+      "slip_compensation.maximum_covariance_multiplier", 10.0);
 
-    pose_covariance_xy_   = declare_parameter("pose_covariance_xy", 0.02);
-    pose_covariance_yaw_  = declare_parameter("pose_covariance_yaw", 0.05);
-    twist_covariance_xy_  = declare_parameter("twist_covariance_xy", 0.03);
+    pose_covariance_xy_ = declare_parameter("pose_covariance_xy", 0.02);
+    pose_covariance_yaw_ = declare_parameter("pose_covariance_yaw", 0.05);
+    twist_covariance_xy_ = declare_parameter("twist_covariance_xy", 0.03);
     twist_covariance_yaw_ = declare_parameter("twist_covariance_yaw", 0.06);
 
-    state_topic_ = declare_parameter<std::string>("state_array_topic", "/hardware/actuator_state_array");
-    odom_topic_  = declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
-    odom_frame_  = declare_parameter<std::string>("odom_frame", "odom");
-    base_frame_  = declare_parameter<std::string>("base_frame", "base_link");
+    state_topic_ = declare_parameter<std::string>(
+      "state_array_topic",
+      "/hardware/actuator_state_array");
+    odom_topic_ = declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
+    odom_frame_ = declare_parameter<std::string>("odom_frame", "odom");
+    base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
 
     const auto ids = declare_parameter<std::vector<int64_t>>("wheel_logical_ids", {0, 1, 2, 3});
     if (ids.size() != wheel_ids_.size()) {
@@ -235,9 +239,11 @@ private:
     message.twist.twist.linear.x = velocity.x_m_s;
     message.twist.twist.linear.y = velocity.y_m_s;
     message.twist.twist.angular.z = velocity.yaw_rad_s;
-    message.pose.covariance[0] = message.pose.covariance[7] = pose_covariance_xy_ * covariance_scale;
+    message.pose.covariance[0] = message.pose.covariance[7] = pose_covariance_xy_ *
+      covariance_scale;
     message.pose.covariance[35] = pose_covariance_yaw_ * covariance_scale;
-    message.twist.covariance[0] = message.twist.covariance[7] = twist_covariance_xy_ * covariance_scale;
+    message.twist.covariance[0] = message.twist.covariance[7] = twist_covariance_xy_ *
+      covariance_scale;
     message.twist.covariance[35] = twist_covariance_yaw_ * covariance_scale;
     odom_pub_->publish(message);
 

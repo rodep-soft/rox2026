@@ -40,7 +40,9 @@ def generate_launch_description():
             ),
             include("input/joy_controller.launch.py"),
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(os.path.join(launch_dir, "foxglove_bridge.launch.py")),
+                PythonLaunchDescriptionSource(
+                    os.path.join(launch_dir, "foxglove_bridge.launch.py")
+                ),
             ),
             *[include(launch_file) for launch_file in controller_launch_files],
         ]
