@@ -15,6 +15,7 @@
 #include "std_msgs/msg/int32.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
 #include "robot_msgs/msg/belt_mode.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 class JoyControllerNode : public rclcpp::Node
 {
@@ -28,8 +29,6 @@ private:
   void state_publish_timer_callback();
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
-  void spring_actuator_ready_callback(
-    const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_dribble_enabled(bool enabled);
