@@ -1,4 +1,4 @@
-#include "game1_/game1_auto_node.hpp"
+#include "game1_shooter/game1_auto_node.hpp"
 
 #include <algorithm>
 #include <cmath>
