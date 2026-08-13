@@ -20,6 +20,7 @@ private:
   {
     HOMING,
     WAITING_FOR_STOP,
+    WAITING_REARM,
     READY,
     ERROR,
   };

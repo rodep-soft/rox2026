@@ -110,7 +110,7 @@ SpringEduliteController::SpringEduliteController()
 }
 
 // /spring/fire_requestの立ち上がりを受信したとき、READYかつ非常停止解除中なら
-// /edulite/targetへ次の累積目標角度を送信する。それ以外では目標を変更しない。
+// 発射ターゲットを指令し、リミットスイッチによる再ゼロリセット待ち状態へ移行する。
 void SpringEduliteController::fire_request_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
@@ -129,14 +129,17 @@ void SpringEduliteController::fire_request_callback(
     return;
   }
 
+  // 1発分 (-2π rad) 回転を指令
   target_position_rad_ += fire_increment_rad_;
+  control_state_ = ControlState::WAITING_REARM;
+  stopped_feedback_count_ = 0;
   publish_target();
   RCLCPP_INFO(
-    get_logger(), "Spring target advanced by %.6f rad to %.6f rad.",
-    fire_increment_rad_, target_position_rad_);
+    get_logger(), "Spring firing: target set to %.6f rad. Waiting for limit re-arm.",
+    target_position_rad_);
 }
 
-// /emergency_stopの状態を保存する。目標角度は変更せず、停止中は原点復帰と発射を止める。
+// /emergency_stopの状態を保存する。
 void SpringEduliteController::emergency_stop_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
@@ -151,8 +154,7 @@ void SpringEduliteController::limit_switch_callback(
     ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
 }
 
-// /edulite/stateから対象motorだけを処理する。接続または原点を失った場合は
-// HOMINGへ戻し、WAITING_FOR_STOP中に停止を確認できた場合は原点設定serviceを要求する。
+// /edulite/stateから対象motorだけを処理する。
 void SpringEduliteController::actuator_state_callback(
   const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
@@ -190,14 +192,15 @@ void SpringEduliteController::actuator_state_callback(
     if (position_reference_set_) {
       reset_for_homing();
       RCLCPP_WARN(
-        get_logger(), "Spring position reference was lost. Target "
-        "reset and homing restarted.");
+        get_logger(), "Spring position reference lost. Restarting homing.");
     }
     position_reference_set_ = false;
 
-    if (control_state_ == ControlState::WAITING_FOR_STOP &&
-      !zero_reference_request_pending_)
-    {
+    const bool waiting_for_stop =
+      (control_state_ == ControlState::WAITING_FOR_STOP ||
+       control_state_ == ControlState::WAITING_REARM) && limit_switch_active_;
+
+    if (waiting_for_stop && !zero_reference_request_pending_) {
       if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
         ++stopped_feedback_count_;
       } else {
@@ -218,13 +221,10 @@ void SpringEduliteController::actuator_state_callback(
     target_position_rad_ = 0.0;
     publish_target();
     RCLCPP_INFO(
-      get_logger(), "Spring homing completed after feedback "
-      "confirmation. Target reset to 0 rad.");
+      get_logger(), "Spring position re-zeroed to 0 rad at limit switch.");
   }
 }
 
-// 接続完了後、HOMINGでは一定速度で目標を動かす。リミット検出後はWAITING_FOR_STOPで
-// 停止を待ち、READYとERRORでは現在目標を保持して /edulite/targetへ送信する。
 void SpringEduliteController::control_timer_callback()
 {
   if (!actuator_ready_ || zero_reference_request_pending_) {
@@ -240,8 +240,7 @@ void SpringEduliteController::control_timer_callback()
     control_state_ = ControlState::ERROR;
     RCLCPP_ERROR(
       get_logger(),
-      "Spring homing timed out. Target is held at %.6f rad.",
-      target_position_rad_);
+      "Spring homing timed out.");
     return;
   }
 
@@ -251,7 +250,7 @@ void SpringEduliteController::control_timer_callback()
       stopped_feedback_count_ = 0;
       RCLCPP_INFO(
         get_logger(),
-        "Spring limit detected. Holding target until motion settles.");
+        "Spring limit detected. Waiting for motion to settle.");
     } else if (!emergency_stop_active_) {
       const double period_sec =
         static_cast<double>(command_period_ms_) / 1000.0;

@@ -43,10 +43,10 @@ private:
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
-  void publish_emergency_stop();
-  void publish_belt_mode();
-  void publish_dribble_enabled();
-  void publish_drive_reversed();
+  void publish_emergency_stop(bool active);
+  void publish_belt_mode(uint8_t mode);
+  void publish_dribble_enabled(bool enabled);
+  void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
   void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
   void update_acceleration_limits();
