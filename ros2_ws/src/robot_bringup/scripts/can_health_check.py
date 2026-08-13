@@ -21,28 +21,37 @@ NODE_MAP = {
     0x321: "Under Belt Motor (VESC)",
 }
 
+
 def print_header(title):
     print(f"\n========================================================")
     print(f"  {title}")
     print(f"========================================================")
 
+
 def check_can_interface():
     print_header("1. Linux SocketCAN (can0) ステータス診断")
     try:
-        res = subprocess.run(["ip", "-details", "link", "show", "can0"], capture_output=True, text=True)
+        res = subprocess.run(
+            ["ip", "-details", "link", "show", "can0"], capture_output=True, text=True
+        )
         output = res.stdout
         if "state UP" in output:
             print("  [can0 状態] : \033[92mUP (正常稼働中)\033[0m")
         elif "BUS-OFF" in output:
-            print("  [can0 状態] : \033[91mBUS-OFF (通信遮断中！restartが必要です)\033[0m")
+            print(
+                "  [can0 状態] : \033[91mBUS-OFF (通信遮断中！restartが必要です)\033[0m"
+            )
         else:
-            print(f"  [can0 状態] : \033[93m{output.splitlines()[0] if output else 'DOWN'}\033[0m")
-        
+            print(
+                f"  [can0 状態] : \033[93m{output.splitlines()[0] if output else 'DOWN'}\033[0m"
+            )
+
         for line in output.splitlines():
             if "qlen" in line:
                 print(f"  [送信キュー] : {line.strip()}")
     except Exception as e:
         print(f"  \033[91m[エラー] ip コマンドの実行に失敗: {e}\033[0m")
+
 
 def send_pings():
     """静観ノードに対して探査フレーム（Ping）を送る"""
@@ -56,18 +65,24 @@ def send_pings():
         except Exception:
             pass
 
+
 def check_can_nodes():
     print_header("2. CAN バス上ノードのアクティブ探査テスト (Ping探査中...)")
     detected_ids = set()
-    
+
     # Ping送信スレッド開始
     ping_thread = threading.Thread(target=send_pings)
     ping_thread.daemon = True
-    
+
     try:
-        proc = subprocess.Popen(["candump", "can0"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proc = subprocess.Popen(
+            ["candump", "can0"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         ping_thread.start()
-        
+
         start_time = time.time()
         while time.time() - start_time < 2.5:
             line = proc.stdout.readline()
@@ -84,7 +99,9 @@ def check_can_nodes():
         proc.terminate()
         proc.wait(timeout=1.0)
     except FileNotFoundError:
-        print("  \033[91m[エラー] candump コマンドが見つかりません。sudo apt install can-utils を実行してください。\033[0m")
+        print(
+            "  \033[91m[エラー] candump コマンドが見つかりません。sudo apt install can-utils を実行してください。\033[0m"
+        )
         return
     except Exception as e:
         pass
@@ -94,22 +111,30 @@ def check_can_nodes():
         if can_id in detected_ids:
             print(f"  [0x{can_id:03X}] {name:<30} : \033[92m● ONLINE (応答あり)\033[0m")
         else:
-            print(f"  [0x{can_id:03X}] {name:<30} : \033[91m✕ NO RESPONSE (応答なし/電源切れ/断線?)\033[0m")
+            print(
+                f"  [0x{can_id:03X}] {name:<30} : \033[91m✕ NO RESPONSE (応答なし/電源切れ/断線?)\033[0m"
+            )
 
     extra_ids = [hex(i) for i in detected_ids if i not in NODE_MAP]
     if extra_ids:
         print(f"\n  [その他の検出ID] : {', '.join(extra_ids)}")
 
+
 def check_joystick():
     print_header("3. コントローラー (Joystick) 認識診断")
     try:
-        res = subprocess.run(["ls", "-l", "/dev/input/js0"], capture_output=True, text=True)
+        res = subprocess.run(
+            ["ls", "-l", "/dev/input/js0"], capture_output=True, text=True
+        )
         if res.returncode == 0:
             print("  [ジョイパッド] : \033[92m/dev/input/js0 検出 (認識OK)\033[0m")
         else:
-            print("  [ジョイパッド] : \033[91m/dev/input/js0 が見つかりません (コントローラー未接続)\033[0m")
+            print(
+                "  [ジョイパッド] : \033[91m/dev/input/js0 が見つかりません (コントローラー未接続)\033[0m"
+            )
     except Exception as e:
         print(f"  [エラー] : {e}")
+
 
 if __name__ == "__main__":
     print("\n🤖 ROX2026 ロボットアクティブ診断ツール 🤖")
