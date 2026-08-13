@@ -300,40 +300,40 @@ void JoyControllerNode::loop_callback()
   }
 
 
-    // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
-    const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
-      last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
-    const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
-      last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-    const bool spring_fire_triggered = is_l2_active && is_r2_active &&
-      !(was_l2_active && was_r2_active);
-    const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
-    if (spring_fire_triggered) {
+  // 8. L2とR2を同時に押した瞬間にスプリングを1回発射
+  const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
+  const bool spring_fire_triggered = is_l2_active && is_r2_active &&
+    !(was_l2_active && was_r2_active);
+  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
+  if (spring_fire_triggered) {
 
 
-      if (spring_actuator_ready_) {
-        dribble_enabled_before_spring_ = dribble_enabled_;
-      }
-
-      if (dribble_enabled_before_spring_) {
-        dribble_enabled_ = false;
-        publish_dribble_enabled(dribble_enabled_);
-      }
-      RCLCPP_INFO(get_logger(), "Spring firing triggered!");
+    if (spring_actuator_ready_) {
+      dribble_enabled_before_spring_ = dribble_enabled_;
     }
 
-    std_msgs::msg::Bool spring_fire_msg;
-    spring_fire_msg.data = spring_fire_triggered;
-    spring_fire_pub_->publish(spring_fire_msg);
-
-    if (is_ready_rising) {
-      if (dribble_enabled_before_spring_) {
-        dribble_enabled_ = true;
-        publish_dribble_enabled(dribble_enabled_);
-      }
+    if (dribble_enabled_before_spring_) {
+      dribble_enabled_ = false;
+      publish_dribble_enabled(dribble_enabled_);
     }
+    RCLCPP_INFO(get_logger(), "Spring firing triggered!");
+  }
 
-    was_spring_ready_ = spring_actuator_ready_;
+  std_msgs::msg::Bool spring_fire_msg;
+  spring_fire_msg.data = spring_fire_triggered;
+  spring_fire_pub_->publish(spring_fire_msg);
+
+  if (is_ready_rising) {
+    if (dribble_enabled_before_spring_) {
+      dribble_enabled_ = true;
+      publish_dribble_enabled(dribble_enabled_);
+    }
+  }
+
+  was_spring_ready_ = spring_actuator_ready_;
 
   // 9. DPAD 左右でアームポジション切替 (OPEN / FEED)
   if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
