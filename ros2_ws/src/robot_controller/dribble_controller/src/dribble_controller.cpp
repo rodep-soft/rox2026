@@ -232,13 +232,6 @@ void DribbleControllerNode::actuator_state_callback(
 void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == roller_logical_id_) {
-    // 1秒 (1000ms) おきにドリブルローラーの実測電流値 (current_a) をデバッグ出力
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 1000,
-      "[DEBUG Roller Current] Logical ID: %d | Current: %.2f A | Arm Pos: %.2f rad | Ball: %s",
-      roller_logical_id_, msg->current_a, current_arm_position_rad_,
-      has_ball_ ? "YES 🏀" : "NO ⚪️");
-
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
     if (msg->current_a >= ball_detection_threshold_a_) {
@@ -259,9 +252,13 @@ void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::Actuat
     }
 
     if (previous_has_ball != has_ball_) {
-      RCLCPP_INFO(
-        get_logger(), "Ball Status Changed: %s (Current: %.2f A)",
-        has_ball_ ? "BALL DETECTED 🏀" : "NO BALL ⚪️", msg->current_a);
+      if (has_ball_) {
+        RCLCPP_INFO(
+          get_logger(), ">>> BALL DETECTED 🏀 (Current: %.2f A) <<<", msg->current_a);
+      } else {
+        RCLCPP_INFO(
+          get_logger(), "--- BALL LOST ⚪️ (Current: %.2f A) ---", msg->current_a);
+      }
     }
 
     std_msgs::msg::Bool ball_msg;
