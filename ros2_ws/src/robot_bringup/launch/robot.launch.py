@@ -106,10 +106,18 @@ def generate_launch_description():
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
             ),
+            DeclareLaunchArgument(
+                "enable_foxglove",
+                default_value="true",
+                description="Enable Foxglove WebSocket Bridge (port 8765)",
+            ),
             hardware_launch,
             vision_launch,
             webcam_launch,
-            game2_shooter_launch,
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(os.path.join(launch_dir, "foxglove_bridge.launch.py")),
+                condition=IfCondition(LaunchConfiguration("enable_foxglove")),
+            ),
             *[include(launch_file) for launch_file in launch_files],
         ]
     )
