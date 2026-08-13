@@ -37,7 +37,8 @@ private:
 
   double target_position_rad() const;
   double interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s, double accel_factor = 1.0) const;
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s,
+    double accel_factor = 1.0) const;
   double transition_duration_sec(
     double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 

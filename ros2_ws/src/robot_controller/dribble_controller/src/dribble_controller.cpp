@@ -387,7 +387,8 @@ void DribbleControllerNode::control_timer_callback()
       const double move_duration_sec = transition_duration_sec(
         shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s, accel_factor);
       position_command_rad = interpolated_position_rad(
-        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s, accel_factor);
+        shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec, phase_max_vel_rad_s,
+        accel_factor);
 
       if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
