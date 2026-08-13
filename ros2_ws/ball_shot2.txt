@@ -1,0 +1,195 @@
+[INFO] [launch]: All log files can be found below /home/sunrise/.ros/log/2026-08-13-22-49-57-702372-rdk-rox-85597
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [socket_can_receiver_node_exe-1]: process started with pid [85606]
+[INFO] [socket_can_sender_node_exe-2]: process started with pid [85608]
+[INFO] [stm32_node-3]: process started with pid [85610]
+[INFO] [edulite05_node-4]: process started with pid [85612]
+[INFO] [vesc_node-5]: process started with pid [85614]
+[INFO] [joy_node-6]: process started with pid [85616]
+[INFO] [joy_controller_node-7]: process started with pid [85618]
+[INFO] [foxglove_bridge-8]: process started with pid [85620]
+[INFO] [belt_controller_node-9]: process started with pid [85622]
+[INFO] [dribble_controller_node-10]: process started with pid [85626]
+[INFO] [spring_controller_node-11]: process started with pid [85645]
+[INFO] [led_controller_node-12]: process started with pid [85652]
+[INFO] [heading_hold_node-13]: process started with pid [85680]
+[INFO] [mecanum_controller_node-14]: process started with pid [85692]
+[INFO] [mecanum_odometry_node-15]: process started with pid [85694]
+[stm32_node-3] [INFO] [1786632598.466092431] [stm32_driver_node]: stm32_driver_node started
+[socket_can_receiver_node_exe-1] [INFO] [1786632598.482021695] [socket_can_receiver]: interface: can0
+[socket_can_receiver_node_exe-1] [INFO] [1786632598.483134365] [socket_can_receiver]: use bus time: 0
+[socket_can_receiver_node_exe-1] [INFO] [1786632598.483250991] [socket_can_receiver]: can fd enabled: false
+[socket_can_receiver_node_exe-1] [INFO] [1786632598.483298074] [socket_can_receiver]: interval(s): 0.005000
+[socket_can_receiver_node_exe-1] [INFO] [1786632598.504382147] [socket_can_receiver]: applied filters: 0:0
+[edulite05_node-4] [INFO] [1786632598.631221296] [edulite05_driver]: front_left: logical=0 CAN=0x20 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786632598.633181095] [edulite05_driver]: front_right: logical=1 CAN=0x21 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786632598.636057688] [edulite05_driver]: rear_left: logical=2 CAN=0x22 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786632598.649603693] [edulite05_driver]: rear_right: logical=3 CAN=0x23 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786632598.651816868] [edulite05_driver]: spring: logical=4 CAN=0x28 control_mode=pp position_reference=service
+[edulite05_node-4] [INFO] [1786632598.653679124] [edulite05_driver]: dribble: logical=5 CAN=0x38 control_mode=csp position_reference=yaml_offset
+[socket_can_sender_node_exe-2] [INFO] [1786632598.709847402] [socket_can_sender]: interface: can0
+[socket_can_sender_node_exe-2] [INFO] [1786632598.710959740] [socket_can_sender]: can fd enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1786632598.711091198] [socket_can_sender]: frame loopback enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1786632598.711136657] [socket_can_sender]: timeout(s): 0.050000
+[spring_controller_node-11] [INFO] [1786632598.887216977] [spring_controller_node]: SpringEduliteController initialized. Waiting for actuator state.
+[belt_controller_node-9] [INFO] [1786632598.946864142] [belt_controller_node]: BeltControllerNode initialized. Monitoring topic: /belt/status
+[heading_hold_node-13] [INFO] [1786632598.982691642] [heading_hold_node]: Heading hold: input=/drive/cmd_vel output=/mecanum/cmd_vel_heading imu=/imu/data
+[mecanum_odometry_node-15] [INFO] [1786632598.988509787] [mecanum_odometry_node]: MecanumOdometryNode initialized with ROS 2 best practices.
+[heading_hold_node-13] [WARN] [1786632598.993463471] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[mecanum_odometry_node-15] [WARN] [1786632599.009522360] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[foxglove_bridge-8] [INFO] [1786632599.093409818] [foxglove_bridge]: Starting foxglove_bridge (humble, 3.4.3@)
+[foxglove_bridge-8] [2026-08-13T14:49:59Z INFO  foxglove::websocket::server] Started server on 0.0.0.0:8765
+[foxglove_bridge-8] [INFO] [1786632599.102533349] [foxglove_bridge]: Server listening on port 8765
+[foxglove_bridge-8] [INFO] [1786632599.119121990] [foxglove_bridge]: Advertising new channel 2 for topic "/rosout"
+[foxglove_bridge-8] [INFO] [1786632599.121728291] [foxglove_bridge]: Advertising new channel 3 for topic "/parameter_events"
+[foxglove_bridge-8] [INFO] [1786632599.272468314] [foxglove_bridge]: Advertising new channel 4 for topic "/system/emergency_stop"
+[foxglove_bridge-8] [INFO] [1786632599.272643482] [foxglove_bridge]: Advertising new channel 5 for topic "/spring/fire_request"
+[foxglove_bridge-8] [INFO] [1786632599.276076619] [foxglove_bridge]: Advertising new channel 6 for topic "/socket_can_sender/transition_event"
+[foxglove_bridge-8] [INFO] [1786632599.276236536] [foxglove_bridge]: Advertising new channel 7 for topic "/socket_can_receiver/transition_event"
+[foxglove_bridge-8] [INFO] [1786632599.278008459] [foxglove_bridge]: Advertising new channel 8 for topic "/joy"
+[foxglove_bridge-8] [INFO] [1786632599.278973587] [foxglove_bridge]: Advertising new channel 9 for topic "/hardware/limit_switches"
+[foxglove_bridge-8] [INFO] [1786632599.279760965] [foxglove_bridge]: Advertising new channel 10 for topic "/socketcan_bridge/rx"
+[foxglove_bridge-8] [INFO] [1786632599.279905257] [foxglove_bridge]: Advertising new channel 11 for topic "/game2/command_start"
+[foxglove_bridge-8] [INFO] [1786632599.281228928] [foxglove_bridge]: Advertising new channel 12 for topic "/edulite/target_array"
+[foxglove_bridge-8] [INFO] [1786632599.282288390] [foxglove_bridge]: Advertising new channel 13 for topic "/joy/set_feedback"
+[foxglove_bridge-8] [INFO] [1786632599.283135893] [foxglove_bridge]: Advertising new channel 14 for topic "/edulite/target"
+[foxglove_bridge-8] [INFO] [1786632599.283312769] [foxglove_bridge]: Advertising new channel 15 for topic "/drive/reversed"
+[foxglove_bridge-8] [INFO] [1786632599.285010775] [foxglove_bridge]: Advertising new channel 16 for topic "/drive/cmd_vel"
+[foxglove_bridge-8] [INFO] [1786632599.285187234] [foxglove_bridge]: Advertising new channel 17 for topic "/dribble/shot_cycle_request"
+[foxglove_bridge-8] [INFO] [1786632599.286049153] [foxglove_bridge]: Advertising new channel 18 for topic "/dribble/command_opening_rpm"
+[foxglove_bridge-8] [INFO] [1786632599.286865989] [foxglove_bridge]: Advertising new channel 19 for topic "/dribble/command_position"
+[foxglove_bridge-8] [INFO] [1786632599.287036448] [foxglove_bridge]: Advertising new channel 20 for topic "/dribble/command_enabled"
+[foxglove_bridge-8] [INFO] [1786632599.287700492] [foxglove_bridge]: Advertising new channel 21 for topic "/belt/command_mode"
+[dribble_controller_node-10] [WARN] [1786632599.316799593] [dribble_controller_node]: Emergency stop activated in dribble controller
+[joy_node-6] [INFO] [1786632599.731041240] [joy_node]: No haptic (rumble) available, skipping initialization
+[joy_node-6] [INFO] [1786632599.731469991] [joy_node]: Opened joystick: DualSense Wireless Controller.  deadzone: 0.050000
+[spring_controller_node-11] [WARN] [1786632599.915865798] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [INFO] [1786632599.937376040] [spring_controller_node]: Limit switch activated. Waiting for motion to settle.
+[spring_controller_node-11] [INFO] [1786632600.030972740] [spring_controller_node]: Spring position successfully zeroed to 0.0 rad.
+[foxglove_bridge-8] [INFO] [1786632600.423893229] [foxglove_bridge]: Advertising new channel 22 for topic "/vesc/target"
+[foxglove_bridge-8] [INFO] [1786632600.425598318] [foxglove_bridge]: Advertising new channel 23 for topic "/vesc/state"
+[foxglove_bridge-8] [INFO] [1786632600.425827652] [foxglove_bridge]: Advertising new channel 24 for topic "/socketcan_bridge/tx"
+[foxglove_bridge-8] [INFO] [1786632600.431454880] [foxglove_bridge]: Advertising new channel 25 for topic "/wheel/odometry"
+[foxglove_bridge-8] [INFO] [1786632600.434076598] [foxglove_bridge]: Advertising new channel 26 for topic "/tf"
+[foxglove_bridge-8] [INFO] [1786632600.435055101] [foxglove_bridge]: Advertising new channel 27 for topic "/hardware/led_cmd"
+[foxglove_bridge-8] [INFO] [1786632600.435824312] [foxglove_bridge]: Advertising new channel 28 for topic "/game2/state"
+[foxglove_bridge-8] [INFO] [1786632600.437194859] [foxglove_bridge]: Advertising new channel 29 for topic "/vesc/state_array"
+[foxglove_bridge-8] [INFO] [1786632600.438346154] [foxglove_bridge]: Advertising new channel 30 for topic "/imu/data"
+[foxglove_bridge-8] [INFO] [1786632600.438559280] [foxglove_bridge]: Advertising new channel 31 for topic "/edulite/state_array"
+[foxglove_bridge-8] [INFO] [1786632600.438707239] [foxglove_bridge]: Advertising new channel 32 for topic "/edulite/state"
+[foxglove_bridge-8] [INFO] [1786632600.438829614] [foxglove_bridge]: Advertising new channel 33 for topic "/mecanum/cmd_vel_heading"
+[foxglove_bridge-8] [INFO] [1786632600.439815701] [foxglove_bridge]: Advertising new channel 34 for topic "/dribble/shot_cycle_state"
+[foxglove_bridge-8] [INFO] [1786632600.440099494] [foxglove_bridge]: Advertising new channel 35 for topic "/vesc/target_array"
+[foxglove_bridge-8] [INFO] [1786632600.440240744] [foxglove_bridge]: Advertising new channel 36 for topic "/dribble/ball_detected"
+[foxglove_bridge-8] [INFO] [1786632600.441111997] [foxglove_bridge]: Advertising new channel 37 for topic "/belt/status"
+[foxglove_bridge-8] [INFO] [1786632600.442131626] [foxglove_bridge]: Advertising new channel 38 for topic "/belt/command_rpm"
+[heading_hold_node-13] [WARN] [1786632601.002949615] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632603.002977809] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632605.012969580] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632607.022980976] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632609.023003837] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632611.023073907] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632613.032986344] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632615.032992288] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632617.043001934] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632619.043028920] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632621.053022399] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632623.063043128] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632625.063051822] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632627.073055260] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632629.083060947] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[joy_controller_node-7] [INFO] [1786632629.178661029] [joy_controller]: Emergency stop released. System is ACTIVE.
+[dribble_controller_node-10] [INFO] [1786632629.178853821] [dribble_controller_node]: Emergency stop released in dribble controller
+[joy_controller_node-7] [INFO] [1786632630.348263757] [joy_controller]: Belt level changed to: 1
+[joy_controller_node-7] [INFO] [1786632630.859775866] [joy_controller]: Belt level changed to: 0
+[joy_controller_node-7] [INFO] [1786632632.488161520] [joy_controller]: Belt level changed to: 1
+[joy_controller_node-7] [INFO] [1786632635.648273409] [joy_controller]: Dribble toggled: ON
+[dribble_controller_node-10] [INFO] [1786632638.381776775] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.10 A) <<<
+[joy_controller_node-7] [INFO] [1786632639.688235186] [joy_controller]: Belt level changed to: 2
+[joy_controller_node-7] [INFO] [1786632640.958648555] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786632640.960098477] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786632641.700041004] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786632641.806451832] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786632642.409516426] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 18.70 A) <<<
+[dribble_controller_node-10] [INFO] [1786632642.576303839] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 3499.1 RPM, Under: 3485.6 RPM
+[dribble_controller_node-10] [INFO] [1786632643.056346047] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [WARN] [1786632643.379502794] [dribble_controller_node]: Emergency stop activated in dribble controller
+[dribble_controller_node-10] [INFO] [1786632643.820130532] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[heading_hold_node-13] [WARN] [1786632643.883142709] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[joy_controller_node-7] [INFO] [1786632645.798632610] [joy_controller]: Emergency stop released. System is ACTIVE.
+[dribble_controller_node-10] [INFO] [1786632645.799600780] [dribble_controller_node]: Emergency stop released in dribble controller
+[joy_controller_node-7] [INFO] [1786632646.908299463] [joy_controller]: Dribble toggled: ON
+[joy_controller_node-7] [INFO] [1786632648.248267198] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786632648.248793075] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786632648.249188243] [dribble_controller_node]: Belt was STOP: auto-starting belt LEVEL_1, waiting 1.00 s for spin-up
+[dribble_controller_node-10] [INFO] [1786632649.256433907] [dribble_controller_node]: Shot Cycle: BELT_SPINUP -> OPEN | Spinup Check (1.0s) -> Upper Belt: 391.7 RPM, Under Belt: 563.0 RPM
+[dribble_controller_node-10] [INFO] [1786632649.996391685] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786632650.866414080] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 770.9 RPM, Under: 801.1 RPM
+[dribble_controller_node-10] [INFO] [1786632651.339628682] [dribble_controller_node]: Shot Cycle Completed: Belt auto-stopped
+[dribble_controller_node-10] [INFO] [1786632651.339782766] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786632652.168332142] [joy_controller]: Belt level changed to: 0
+[joy_controller_node-7] [INFO] [1786632653.328258670] [joy_controller]: Belt level changed to: 1
+[dribble_controller_node-10] [INFO] [1786632655.902024439] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 6.90 A) <<<
+[joy_controller_node-7] [INFO] [1786632656.598792608] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786632656.600638448] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786632657.339989098] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786632657.512647281] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786632658.117262464] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 20.10 A) <<<
+[dribble_controller_node-10] [INFO] [1786632658.216293933] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 770.9 RPM, Under: 801.1 RPM
+[dribble_controller_node-10] [INFO] [1786632658.696273849] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786632659.325282866] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.30 A) ---
+[joy_controller_node-7] [INFO] [1786632661.340125987] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786632661.340242321] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.00 A) <<<
+[dribble_controller_node-10] [INFO] [1786632661.340559988] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786632662.079982139] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786632662.956615391] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 770.9 RPM, Under: 801.1 RPM
+[dribble_controller_node-10] [INFO] [1786632663.352469057] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786632663.436306515] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [WARN] [1786632683.248971386] [dribble_controller_node]: Emergency stop activated in dribble controller
+[heading_hold_node-13] [WARN] [1786632683.753243595] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632685.753244622] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632687.753265899] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786632689.763262836] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[mecanum_odometry_node-15] [WARN] [1786632689.908961259] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[edulite05_node-4] [WARN] [1786632690.151564018] [edulite05_driver]: front_left initialization incomplete: step=write register=0x7005 retry=1
+[heading_hold_node-13] [WARN] [1786632691.763279322] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[mecanum_odometry_node-15] [WARN] [1786632691.908980578] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[edulite05_node-4] [WARN] [1786632692.201527635] [edulite05_driver]: front_left initialization incomplete: step=wait_for_read register=0x7005 retry=7
+[heading_hold_node-13] [WARN] [1786632693.763375849] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[mecanum_odometry_node-15] [WARN] [1786632693.928969591] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[edulite05_node-4] [WARN] [1786632694.201529120] [edulite05_driver]: dribble initialization incomplete: step=wait_for_read register=0x7005 retry=2
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[mecanum_odometry_node-15] [INFO] [1786632694.801026827] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[spring_controller_node-11] [INFO] [1786632694.801098327] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[stm32_node-3] [INFO] [1786632694.801145160] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[heading_hold_node-13] [INFO] [1786632694.801237202] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1786632694.801253869] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[led_controller_node-12] [INFO] [1786632694.801079577] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[dribble_controller_node-10] [INFO] [1786632694.802193331] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[belt_controller_node-9] [INFO] [1786632694.802241122] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[joy_node-6] [INFO] [1786632694.802288039] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[socket_can_sender_node_exe-2] [INFO] [1786632694.803776044] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[joy_controller_node-7] [INFO] [1786632694.803795461] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[socket_can_receiver_node_exe-1] [INFO] [1786632694.804444505] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[mecanum_controller_node-14] [INFO] [1786632694.804830340] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1786632694.805725218] [foxglove_bridge]: Shutting down foxglove_bridge
+[foxglove_bridge-8] [2026-08-13T14:51:34Z INFO  foxglove::websocket::server] Shutting down
+[foxglove_bridge-8] [2026-08-13T14:51:34Z INFO  foxglove::websocket::server] Shutdown complete
+[foxglove_bridge-8] [INFO] [1786632694.809864232] [foxglove_bridge]: Shutdown complete
+[edulite05_node-4] [INFO] [1786632694.807110681] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[vesc_node-5] [INFO] [1786632694.813126744] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [mecanum_controller_node-14]: process has finished cleanly [pid 85692]
+[INFO] [dribble_controller_node-10]: process has finished cleanly [pid 85626]
+[INFO] [heading_hold_node-13]: process has finished cleanly [pid 85680]
+[INFO] [mecanum_odometry_node-15]: process has finished cleanly [pid 85694]
+[INFO] [stm32_node-3]: process has finished cleanly [pid 85610]
+[INFO] [socket_can_receiver_node_exe-1]: process has finished cleanly [pid 85606]
+[INFO] [belt_controller_node-9]: process has finished cleanly [pid 85622]
+[INFO] [spring_controller_node-11]: process has finished cleanly [pid 85645]
+[INFO] [edulite05_node-4]: process has finished cleanly [pid 85612]
+[INFO] [vesc_node-5]: process has finished cleanly [pid 85614]
+[INFO] [joy_controller_node-7]: process has finished cleanly [pid 85618]
+[INFO] [led_controller_node-12]: process has finished cleanly [pid 85652]
+[INFO] [socket_can_sender_node_exe-2]: process has finished cleanly [pid 85608]
+[INFO] [joy_node-6]: process has finished cleanly [pid 85616]
+[INFO] [foxglove_bridge-8]: process has finished cleanly [pid 85620]

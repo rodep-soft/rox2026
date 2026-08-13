@@ -22,6 +22,10 @@ public:
 private:
   void load_parameters();
 
+  
+  void dribble_command_rpm_callback(
+    const std_msgs::msg::Int32::SharedPtr msg);
+  void dribble_command_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
   void position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -109,6 +113,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ball_detected_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr dribble_command_rpm_sub_;
 };
 
 #endif // DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_

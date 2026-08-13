@@ -1,0 +1,321 @@
+[INFO] [launch]: All log files can be found below /home/sunrise/.ros/log/2026-08-13-23-07-47-856715-rdk-rox-88511
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [socket_can_receiver_node_exe-1]: process started with pid [88512]
+[INFO] [socket_can_sender_node_exe-2]: process started with pid [88514]
+[INFO] [stm32_node-3]: process started with pid [88516]
+[INFO] [edulite05_node-4]: process started with pid [88518]
+[INFO] [vesc_node-5]: process started with pid [88520]
+[INFO] [joy_node-6]: process started with pid [88522]
+[INFO] [joy_controller_node-7]: process started with pid [88524]
+[INFO] [foxglove_bridge-8]: process started with pid [88526]
+[INFO] [belt_controller_node-9]: process started with pid [88528]
+[INFO] [dribble_controller_node-10]: process started with pid [88544]
+[INFO] [spring_controller_node-11]: process started with pid [88563]
+[INFO] [led_controller_node-12]: process started with pid [88583]
+[INFO] [heading_hold_node-13]: process started with pid [88593]
+[INFO] [mecanum_controller_node-14]: process started with pid [88599]
+[INFO] [mecanum_odometry_node-15]: process started with pid [88610]
+[edulite05_node-4] [INFO] [1786633668.663840497] [edulite05_driver]: front_left: logical=0 CAN=0x20 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786633668.700839754] [edulite05_driver]: front_right: logical=1 CAN=0x21 control_mode=velocity position_reference=service
+[socket_can_receiver_node_exe-1] [INFO] [1786633668.707944071] [socket_can_receiver]: interface: can0
+[socket_can_receiver_node_exe-1] [INFO] [1786633668.708356739] [socket_can_receiver]: use bus time: 0
+[socket_can_receiver_node_exe-1] [INFO] [1786633668.708435864] [socket_can_receiver]: can fd enabled: false
+[socket_can_receiver_node_exe-1] [INFO] [1786633668.708476406] [socket_can_receiver]: interval(s): 0.005000
+[stm32_node-3] [INFO] [1786633668.708344822] [stm32_driver_node]: stm32_driver_node started
+[edulite05_node-4] [INFO] [1786633668.728567061] [edulite05_driver]: rear_left: logical=2 CAN=0x22 control_mode=velocity position_reference=service
+[socket_can_receiver_node_exe-1] [INFO] [1786633668.730926652] [socket_can_receiver]: applied filters: 0:0
+[edulite05_node-4] [INFO] [1786633668.735832670] [edulite05_driver]: rear_right: logical=3 CAN=0x23 control_mode=velocity position_reference=service
+[edulite05_node-4] [INFO] [1786633668.767794450] [edulite05_driver]: spring: logical=4 CAN=0x28 control_mode=pp position_reference=service
+[edulite05_node-4] [INFO] [1786633668.774259556] [edulite05_driver]: dribble: logical=5 CAN=0x38 control_mode=csp position_reference=yaml_offset
+[socket_can_sender_node_exe-2] [INFO] [1786633668.860627113] [socket_can_sender]: interface: can0
+[socket_can_sender_node_exe-2] [INFO] [1786633668.861109490] [socket_can_sender]: can fd enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1786633668.861200865] [socket_can_sender]: frame loopback enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1786633668.861244449] [socket_can_sender]: timeout(s): 0.050000
+[belt_controller_node-9] [INFO] [1786633669.025948200] [belt_controller_node]: BeltControllerNode initialized. Monitoring topic: /belt/status
+[edulite05_node-4] [WARN] [1786633669.080178351] [edulite05_driver]: rear_left initialization incomplete: step=write register=0x7005 retry=1
+[heading_hold_node-13] [INFO] [1786633669.165006778] [heading_hold_node]: Heading hold: input=/drive/cmd_vel output=/mecanum/cmd_vel_heading imu=/imu/data
+[heading_hold_node-13] [WARN] [1786633669.175168772] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[spring_controller_node-11] [INFO] [1786633669.220514892] [spring_controller_node]: SpringEduliteController initialized. Waiting for actuator state.
+[mecanum_odometry_node-15] [INFO] [1786633669.327122437] [mecanum_odometry_node]: MecanumOdometryNode initialized with ROS 2 best practices.
+[mecanum_odometry_node-15] [WARN] [1786633669.347295384] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[dribble_controller_node-10] [WARN] [1786633669.396457517] [dribble_controller_node]: Emergency stop activated in dribble controller
+[foxglove_bridge-8] [INFO] [1786633669.539525483] [foxglove_bridge]: Starting foxglove_bridge (humble, 3.4.3@)
+[foxglove_bridge-8] [2026-08-13T15:07:49Z INFO  foxglove::websocket::server] Started server on 0.0.0.0:8765
+[foxglove_bridge-8] [INFO] [1786633669.546967468] [foxglove_bridge]: Server listening on port 8765
+[foxglove_bridge-8] [INFO] [1786633669.552950614] [foxglove_bridge]: Advertising new channel 2 for topic "/rosout"
+[foxglove_bridge-8] [INFO] [1786633669.556002875] [foxglove_bridge]: Advertising new channel 3 for topic "/parameter_events"
+[foxglove_bridge-8] [INFO] [1786633669.651978966] [foxglove_bridge]: Advertising new channel 4 for topic "/vesc/target_array"
+[foxglove_bridge-8] [INFO] [1786633669.659674743] [foxglove_bridge]: Advertising new channel 5 for topic "/tf"
+[foxglove_bridge-8] [INFO] [1786633669.666781977] [foxglove_bridge]: Advertising new channel 6 for topic "/wheel/odometry"
+[foxglove_bridge-8] [INFO] [1786633669.669898696] [foxglove_bridge]: Advertising new channel 7 for topic "/joy/set_feedback"
+[foxglove_bridge-8] [INFO] [1786633669.670843283] [foxglove_bridge]: Advertising new channel 8 for topic "/joy"
+[foxglove_bridge-8] [INFO] [1786633669.671816411] [foxglove_bridge]: Advertising new channel 9 for topic "/belt/status"
+[joy_node-6] [INFO] [1786633669.828965303] [joy_node]: No haptic (rumble) available, skipping initialization
+[joy_node-6] [INFO] [1786633669.829542055] [joy_node]: Opened joystick: DualSense Wireless Controller.  deadzone: 0.050000
+[spring_controller_node-11] [WARN] [1786633669.960533229] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [INFO] [1786633669.970785015] [spring_controller_node]: Limit switch activated. Waiting for motion to settle.
+[spring_controller_node-11] [INFO] [1786633670.108120503] [spring_controller_node]: Spring position successfully zeroed to 0.0 rad.
+[foxglove_bridge-8] [INFO] [1786633670.900205817] [foxglove_bridge]: Advertising new channel 10 for topic "/vesc/target"
+[foxglove_bridge-8] [INFO] [1786633670.901002694] [foxglove_bridge]: Advertising new channel 11 for topic "/vesc/state"
+[foxglove_bridge-8] [INFO] [1786633670.901707572] [foxglove_bridge]: Advertising new channel 12 for topic "/socketcan_bridge/tx"
+[foxglove_bridge-8] [INFO] [1786633670.901831656] [foxglove_bridge]: Advertising new channel 13 for topic "/socketcan_bridge/rx"
+[foxglove_bridge-8] [INFO] [1786633670.902686575] [foxglove_bridge]: Advertising new channel 14 for topic "/hardware/limit_switches"
+[foxglove_bridge-8] [INFO] [1786633670.903562329] [foxglove_bridge]: Advertising new channel 15 for topic "/hardware/led_cmd"
+[foxglove_bridge-8] [INFO] [1786633670.904387331] [foxglove_bridge]: Advertising new channel 16 for topic "/game2/state"
+[foxglove_bridge-8] [INFO] [1786633670.905400085] [foxglove_bridge]: Advertising new channel 17 for topic "/game2/command_start"
+[foxglove_bridge-8] [INFO] [1786633670.906075629] [foxglove_bridge]: Advertising new channel 18 for topic "/system/emergency_stop"
+[foxglove_bridge-8] [INFO] [1786633670.906191963] [foxglove_bridge]: Advertising new channel 19 for topic "/edulite/target"
+[foxglove_bridge-8] [INFO] [1786633670.907819760] [foxglove_bridge]: Advertising new channel 20 for topic "/vesc/state_array"
+[foxglove_bridge-8] [INFO] [1786633670.909564225] [foxglove_bridge]: Advertising new channel 21 for topic "/imu/data"
+[foxglove_bridge-8] [INFO] [1786633670.909764642] [foxglove_bridge]: Advertising new channel 22 for topic "/edulite/state_array"
+[foxglove_bridge-8] [INFO] [1786633670.909857143] [foxglove_bridge]: Advertising new channel 23 for topic "/edulite/state"
+[foxglove_bridge-8] [INFO] [1786633670.911116564] [foxglove_bridge]: Advertising new channel 24 for topic "/mecanum/cmd_vel_heading"
+[foxglove_bridge-8] [INFO] [1786633670.912085567] [foxglove_bridge]: Advertising new channel 25 for topic "/dribble/shot_cycle_state"
+[foxglove_bridge-8] [INFO] [1786633670.915563454] [foxglove_bridge]: Advertising new channel 26 for topic "/socket_can_receiver/transition_event"
+[foxglove_bridge-8] [INFO] [1786633670.915770080] [foxglove_bridge]: Advertising new channel 27 for topic "/dribble/shot_cycle_request"
+[foxglove_bridge-8] [INFO] [1786633670.916112581] [foxglove_bridge]: Advertising new channel 28 for topic "/edulite/target_array"
+[foxglove_bridge-8] [INFO] [1786633670.917011626] [foxglove_bridge]: Advertising new channel 29 for topic "/dribble/command_position"
+[foxglove_bridge-8] [INFO] [1786633670.917182794] [foxglove_bridge]: Advertising new channel 30 for topic "/drive/cmd_vel"
+[foxglove_bridge-8] [INFO] [1786633670.918181839] [foxglove_bridge]: Advertising new channel 31 for topic "/dribble/command_opening_rpm"
+[foxglove_bridge-8] [INFO] [1786633670.918377464] [foxglove_bridge]: Advertising new channel 32 for topic "/drive/reversed"
+[foxglove_bridge-8] [INFO] [1786633670.918458548] [foxglove_bridge]: Advertising new channel 33 for topic "/dribble/command_enabled"
+[foxglove_bridge-8] [INFO] [1786633670.918536007] [foxglove_bridge]: Advertising new channel 34 for topic "/dribble/ball_detected"
+[foxglove_bridge-8] [INFO] [1786633670.918606049] [foxglove_bridge]: Advertising new channel 35 for topic "/spring/fire_request"
+[foxglove_bridge-8] [INFO] [1786633670.918686632] [foxglove_bridge]: Advertising new channel 36 for topic "/socket_can_sender/transition_event"
+[foxglove_bridge-8] [INFO] [1786633670.919680511] [foxglove_bridge]: Advertising new channel 37 for topic "/belt/command_rpm"
+[foxglove_bridge-8] [INFO] [1786633670.920420805] [foxglove_bridge]: Advertising new channel 38 for topic "/belt/command_mode"
+[heading_hold_node-13] [WARN] [1786633671.175282794] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[joy_controller_node-7] [INFO] [1786633672.590657113] [joy_controller]: Emergency stop released. System is ACTIVE.
+[dribble_controller_node-10] [INFO] [1786633672.591655117] [dribble_controller_node]: Emergency stop released in dribble controller
+[joy_controller_node-7] [INFO] [1786633674.771060817] [joy_controller]: Belt level changed to: 1
+[joy_controller_node-7] [INFO] [1786633675.460300598] [joy_controller]: Belt level changed to: 0
+[joy_controller_node-7] [INFO] [1786633676.160241918] [joy_controller]: Belt level changed to: 1
+[joy_controller_node-7] [INFO] [1786633677.900260724] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633677.900972101] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633678.545419140] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633679.415374856] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2991.6 RPM, Under: 2990.0 RPM
+[dribble_controller_node-10] [INFO] [1786633679.891992965] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786633680.111185827] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633680.112791166] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633680.751495685] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633681.625433123] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2991.6 RPM, Under: 2990.0 RPM
+[dribble_controller_node-10] [INFO] [1786633682.105412286] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786633682.210600785] [joy_controller]: Dribble toggled: ON
+[dribble_controller_node-10] [INFO] [1786633684.316203430] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 6.40 A) <<<
+[joy_controller_node-7] [INFO] [1786633684.640315248] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633684.640711750] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633685.285394290] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633685.523683386] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633686.155343130] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 2448.0 RPM
+[dribble_controller_node-10] [INFO] [1786633686.630971986] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633688.141795894] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 7.60 A) <<<
+[joy_controller_node-7] [INFO] [1786633688.530653692] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633688.531473486] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633689.171178800] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633690.045384155] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633690.525364319] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633691.163506377] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.20 A) ---
+[joy_controller_node-7] [INFO] [1786633692.660309193] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633692.660947029] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633692.773356428] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.90 A) <<<
+[dribble_controller_node-10] [INFO] [1786633693.306166654] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633693.579259249] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633694.175881035] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633694.651605641] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633698.815412181] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 9.20 A) <<<
+[joy_controller_node-7] [INFO] [1786633699.320343266] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633699.320937559] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633699.965492099] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633700.225859857] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633700.835412855] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633701.311714630] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633703.850435356] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 11.30 A) <<<
+[joy_controller_node-7] [INFO] [1786633704.060342518] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633704.060897395] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633704.706016561] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633705.575388774] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633706.051600674] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633706.268211735] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633709.086705037] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 12.00 A) <<<
+[joy_controller_node-7] [INFO] [1786633709.550726476] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633709.551407895] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633710.191561877] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633710.496127501] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633711.065459106] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633711.545679062] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633713.517745607] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 11.90 A) <<<
+[joy_controller_node-7] [INFO] [1786633713.870883612] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633713.871725448] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633714.512493557] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633714.726132941] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633715.386178118] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633715.865745988] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633718.754456539] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 5.20 A) <<<
+[joy_controller_node-7] [INFO] [1786633719.190747964] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633719.192031093] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633719.832411284] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633720.163291793] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633720.705868762] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633721.185541298] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633725.398811512] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.20 A) <<<
+[joy_controller_node-7] [INFO] [1786633726.070736398] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633726.072551071] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633726.711835925] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633727.011205821] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633727.585602736] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633728.065569232] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633730.635137400] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 10.90 A) <<<
+[joy_controller_node-7] [INFO] [1786633730.890882100] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633730.891627519] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633731.531648542] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633732.246565789] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633732.405683021] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633732.885591642] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633735.872869542] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 9.00 A) <<<
+[joy_controller_node-7] [INFO] [1786633737.731054558] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633737.731488684] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633738.372084043] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633738.690650466] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633739.245543353] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 11.4 RPM
+[dribble_controller_node-10] [INFO] [1786633739.725685641] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633741.308860847] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.90 A) <<<
+[joy_controller_node-7] [INFO] [1786633742.380547194] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633742.380945571] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633743.025598110] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633743.322084996] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633743.895598533] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633744.371256889] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633747.350104009] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 12.20 A) <<<
+[joy_controller_node-7] [INFO] [1786633748.031035010] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633748.033431560] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633748.672183245] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633748.960527811] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633749.545955931] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633750.025585551] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633752.386781728] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 9.60 A) <<<
+[joy_controller_node-7] [INFO] [1786633753.010852735] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633753.012001573] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633753.651574719] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633753.997393405] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[joy_controller_node-7] [INFO] [1786633754.290890864] [joy_controller]: Belt level changed to: 2
+[dribble_controller_node-10] [INFO] [1786633754.525634573] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633755.005597819] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786633755.150842543] [joy_controller]: Belt level changed to: 3
+[dribble_controller_node-10] [INFO] [1786633758.829789232] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 10.30 A) <<<
+[joy_controller_node-7] [INFO] [1786633759.160599490] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633759.161459868] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633759.805703155] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633760.675605369] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633761.151996144] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633761.447770611] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.20 A) ---
+[dribble_controller_node-10] [INFO] [1786633765.073966654] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 10.30 A) <<<
+[joy_controller_node-7] [INFO] [1786633765.440600081] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633765.441010874] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633766.086486791] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633766.955626461] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633767.431483234] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633768.093791794] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.10 A) ---
+[dribble_controller_node-10] [INFO] [1786633769.704770472] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.30 A) <<<
+[joy_controller_node-7] [INFO] [1786633770.290902804] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633770.292267058] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633770.931385161] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633771.719056208] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633771.805551890] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633772.285715095] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633774.135308287] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 9.00 A) <<<
+[joy_controller_node-7] [INFO] [1786633774.860649238] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633774.861236990] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633775.505705653] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633776.375612325] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633776.846297163] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633777.559429945] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.10 A) ---
+[dribble_controller_node-10] [INFO] [1786633778.566219562] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 10.10 A) <<<
+[joy_controller_node-7] [INFO] [1786633779.400650191] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633779.401028568] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633780.045680398] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633780.579064667] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: -0.80 A) ---
+[dribble_controller_node-10] [INFO] [1786633780.915690446] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633781.391615886] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633784.002529031] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 15.90 A) <<<
+[dribble_controller_node-10] [INFO] [1786633786.620207492] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633789.439949420] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 10.70 A) <<<
+[joy_controller_node-7] [INFO] [1786633789.991240877] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633789.993231093] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633790.632272237] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633791.050788223] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633791.505811505] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633791.985815668] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786633792.251821154] [joy_controller]: Belt level changed to: 4
+[dribble_controller_node-10] [INFO] [1786633797.697434655] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 12.30 A) <<<
+[joy_controller_node-7] [INFO] [1786633798.331035612] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633798.332082741] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633798.904471315] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: -0.10 A) ---
+[dribble_controller_node-10] [INFO] [1786633798.971769429] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633799.845731949] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633800.325760819] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633805.752331210] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 15.10 A) <<<
+[joy_controller_node-7] [INFO] [1786633807.840713833] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633807.841123460] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633808.485821498] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633808.772512141] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 1.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633809.355796379] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633809.831866694] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633812.197646426] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 5.50 A) <<<
+[joy_controller_node-7] [INFO] [1786633813.120740412] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633813.121204372] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633813.765984577] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633814.210006154] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: 0.00 A) ---
+[dribble_controller_node-10] [INFO] [1786633814.635829249] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[joy_controller_node-7] [INFO] [1786633814.780742138] [joy_controller]: Belt level changed to: 3
+[joy_controller_node-7] [INFO] [1786633815.051130640] [joy_controller]: Belt level changed to: 2
+[dribble_controller_node-10] [INFO] [1786633815.111784647] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[joy_controller_node-7] [INFO] [1786633815.880726043] [joy_controller]: Belt level changed to: 1
+[dribble_controller_node-10] [INFO] [1786633820.453411360] [dribble_controller_node]: >>> BALL DETECTED 🏀 (Current: 8.70 A) <<<
+[joy_controller_node-7] [INFO] [1786633820.571127861] [joy_controller]: Shot cycle requested!
+[dribble_controller_node-10] [INFO] [1786633820.572504741] [dribble_controller_node]: Starting Auto Shot Cycle: OPEN -> FEED -> DRIBBLE
+[dribble_controller_node-10] [INFO] [1786633821.212239762] [dribble_controller_node]: Shot Cycle: OPEN -> FEED
+[dribble_controller_node-10] [INFO] [1786633821.661876775] [dribble_controller_node]: --- BALL LOST ⚪️ (Current: -0.40 A) ---
+[dribble_controller_node-10] [INFO] [1786633822.085903572] [dribble_controller_node]: Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: 2653.3 RPM, Under: 1.6 RPM
+[dribble_controller_node-10] [INFO] [1786633822.566016568] [dribble_controller_node]: Shot Cycle Completed: Returned to DRIBBLE
+[dribble_controller_node-10] [WARN] [1786633822.941224775] [dribble_controller_node]: Emergency stop activated in dribble controller
+[heading_hold_node-13] [WARN] [1786633823.445814775] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786633825.455812536] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786633827.455839427] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786633829.465839146] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786633831.475776823] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[heading_hold_node-13] [WARN] [1786633833.485869417] [heading_hold_node]: cmd_vel timed out; publishing zero velocity
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[socket_can_receiver_node_exe-1] [INFO] [1786633833.893267488] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[mecanum_odometry_node-15] [INFO] [1786633833.893254321] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[mecanum_controller_node-14] [INFO] [1786633833.893293488] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[joy_node-6] [INFO] [1786633833.893455405] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[edulite05_node-4] [INFO] [1786633833.893608323] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[belt_controller_node-9] [INFO] [1786633833.893655323] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[stm32_node-3] [INFO] [1786633833.893656823] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[dribble_controller_node-10] [INFO] [1786633833.894192658] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1786633833.894225825] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1786633833.898785341] [foxglove_bridge]: Shutting down foxglove_bridge
+[foxglove_bridge-8] [2026-08-13T15:10:33Z INFO  foxglove::websocket::server] Shutting down
+[foxglove_bridge-8] [2026-08-13T15:10:33Z INFO  foxglove::websocket::server] Shutdown complete
+[foxglove_bridge-8] [INFO] [1786633833.900049220] [foxglove_bridge]: Shutdown complete
+[vesc_node-5] [INFO] [1786633833.893453697] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[socket_can_sender_node_exe-2] [INFO] [1786633833.894513159] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[led_controller_node-12] [INFO] [1786633833.895076328] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[heading_hold_node-13] [INFO] [1786633833.895613288] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[joy_controller_node-7] [INFO] [1786633833.899213509] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[spring_controller_node-11] [INFO] [1786633833.903394482] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [mecanum_controller_node-14]: process has finished cleanly [pid 88599]
+[INFO] [edulite05_node-4]: process has finished cleanly [pid 88518]
+[INFO] [mecanum_odometry_node-15]: process has finished cleanly [pid 88610]
+[INFO] [dribble_controller_node-10]: process has finished cleanly [pid 88544]
+[INFO] [led_controller_node-12]: process has finished cleanly [pid 88583]
+[INFO] [vesc_node-5]: process has finished cleanly [pid 88520]
+[INFO] [belt_controller_node-9]: process has finished cleanly [pid 88528]
+[INFO] [heading_hold_node-13]: process has finished cleanly [pid 88593]
+[INFO] [spring_controller_node-11]: process has finished cleanly [pid 88563]
+[INFO] [socket_can_receiver_node_exe-1]: process has finished cleanly [pid 88512]
+[INFO] [stm32_node-3]: process has finished cleanly [pid 88516]
+[INFO] [joy_controller_node-7]: process has finished cleanly [pid 88524]
+[INFO] [socket_can_sender_node_exe-2]: process has finished cleanly [pid 88514]
+[INFO] [joy_node-6]: process has finished cleanly [pid 88522]
+[INFO] [foxglove_bridge-8]: process has finished cleanly [pid 88526]
