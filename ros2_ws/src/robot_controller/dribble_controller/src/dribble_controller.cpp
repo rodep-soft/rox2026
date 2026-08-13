@@ -509,8 +509,12 @@ void DribbleControllerNode::control_timer_callback()
 
 int DribbleControllerNode::roller_target_rpm() const
 {
-  if (!dribble_enabled_ || emergency_stop_active_) {
+  if (emergency_stop_active_) {
     return 0;
+  }
+  if (!dribble_enabled_) {
+    // ばね発射時など減速時：完全に0に落とすと摩擦抵抗で飛ばなくなるため、最適な案内回転数(300 RPM)まで滑らか減速
+    return spring_fire_dribble_rpm_;
   }
   if (!shot_cycle_active_) {
     return dribble_on_rpm_;
