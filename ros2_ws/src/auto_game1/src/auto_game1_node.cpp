@@ -27,6 +27,13 @@ AutoGame1Node::AutoGame1Node(const rclcpp::NodeOptions & options)
   cmd_vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>(
     cmd_vel_topic_, rclcpp::QoS(10));
 
+  // 障害物長方形 (PolygonStamped) の Publisher 3つを作成
+  for (size_t i = 0; i < 3; ++i) {
+    const std::string topic_name = "/obstacle_polygon_" + std::to_string(i + 1);
+    obstacle_polygon_publishers_[i] = create_publisher<geometry_msgs::msg::PolygonStamped>(
+      topic_name, rclcpp::QoS(10));
+  }
+
   // /joy:
   // ジョイスティックからの操作入力を受信する。
   // 送信元: joy_node (joystick_driver)
@@ -185,6 +192,7 @@ void AutoGame1Node::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 // 役割: 現在のステートに応じた処理・遷移判定を実行し、必要に応じて cmd_vel を publish する。
 void AutoGame1Node::control_timer_callback()
 {
+  publish_obstacle_polygons();
   process_state_machine();
 }
 
@@ -553,6 +561,35 @@ bool AutoGame1Node::button_pressed(const sensor_msgs::msg::Joy & msg, int index)
     return false;
   }
   return msg.buttons[static_cast<std::size_t>(index)] != 0;
+}
+
+/*
+ * 役割: 定数 RECTANGLE_OBSTACLES[3] に定義された3つの長方形座標から PolygonStamped を生成し、
+ *       それぞれ /obstacle_polygon_1, /obstacle_polygon_2, /obstacle_polygon_3 トピックへ publish する。
+ */
+void AutoGame1Node::publish_obstacle_polygons()
+{
+  for (size_t i = 0; i < 3; ++i) {
+    if (!obstacle_polygon_publishers_[i]) {
+      continue;
+    }
+
+    geometry_msgs::msg::PolygonStamped poly_msg;
+    poly_msg.header.stamp = now();
+    poly_msg.header.frame_id = global_frame_id_;
+
+    const auto & rect = RECTANGLE_OBSTACLES[i];
+
+    geometry_msgs::msg::Point32 p1, p2, p3, p4;
+    p1.x = rect.p1.x; p1.y = rect.p1.y; p1.z = 0.0f;
+    p2.x = rect.p2.x; p2.y = rect.p2.y; p2.z = 0.0f;
+    p3.x = rect.p3.x; p3.y = rect.p3.y; p3.z = 0.0f;
+    p4.x = rect.p4.x; p4.y = rect.p4.y; p4.z = 0.0f;
+
+    poly_msg.polygon.points = {p1, p2, p3, p4};
+
+    obstacle_polygon_publishers_[i]->publish(poly_msg);
+  }
 }
 
 }  // namespace auto_game1

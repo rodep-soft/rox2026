@@ -1,0 +1,50 @@
+auto_game1_node:
+  ros__parameters:
+    # トピック・アクション名設定
+    cmd_vel_topic: "/mecanum/cmd_vel"
+    joy_topic: "/joy"
+    nav_through_poses_action_name: "navigate_through_poses"
+    nav_to_pose_action_name: "navigate_to_pose"
+    kick_action_name: "kick"
+    global_frame_id: "map"
+    robot_base_frame_id: "base_link"
+
+    # ボタンアサイン (joy_controller/README.md 参照)
+    auto_stop_toggle_button: 0 # Cross / A
+    return_to_start_button: 1   # Circle / B
+
+    # 制御周期および判定閾値
+    control_period_sec: 0.05
+    waypoint1_reach_threshold: 0.2
+
+    # PREPARE_KICK用制御パラメータ
+    kick_target_velocity_x: 0.5
+    kick_target_y: 0.0
+    kick_target_yaw: 0.0
+    kp_y: 1.0
+    kd_y: 0.1
+    kp_yaw: 1.0
+    kd_yaw: 0.1
+
+    # 通過点・目標点の座標設定 (単位: メートル)
+    waypoint1:
+      x: 1.0
+      y: 0.0
+    waypoint2:
+      x: 2.0
+      y: 0.5
+    waypoint3:
+      x: 3.0
+      y: 0.0
+
+    gate_far_side:
+      x: 3.5
+      y: 0.0
+
+    pass_area:
+      x: 2.0
+      y: -1.5
+
+    start_pose:
+      x: 0.0
+      y: 0.0

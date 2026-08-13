@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "geometry_msgs/msg/polygon_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav2_msgs/action/navigate_through_poses.hpp"
@@ -20,6 +21,31 @@
 
 namespace auto_game1
 {
+
+struct Point2D
+{
+  float x;
+  float y;
+};
+
+struct RectObstacle
+{
+  Point2D p1;
+  Point2D p2;
+  Point2D p3;
+  Point2D p4;
+};
+
+// ナビゲーション回避用の障害物となる3つの長方形の定数座標定義
+// （後から数値書き換え可能な定数定義。C++ルールに従いkプレフィックスは使用しない）
+const RectObstacle RECTANGLE_OBSTACLES[3] = {
+  // 長方形 1 (4頂点: p1, p2, p3, p4)
+  { {0.5f, 0.5f}, {1.5f, 0.5f}, {1.5f, 1.5f}, {0.5f, 1.5f} },
+  // 長方形 2
+  { {2.0f, 1.0f}, {3.0f, 1.0f}, {3.0f, 2.0f}, {2.0f, 2.0f} },
+  // 長方形 3
+  { {1.0f, -1.5f}, {2.0f, -1.5f}, {2.0f, -0.5f}, {1.0f, -0.5f} }
+};
 
 enum class State
 {
@@ -85,6 +111,7 @@ private:
   geometry_msgs::msg::Twist transform_map_velocity_to_base(
     double v_x_map, double v_y_map, double omega_z, double robot_yaw);
   bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
+  void publish_obstacle_polygons();
 
   // ボタン割り当て定数（C++ルール: kプレフィックスなし）
   static constexpr int default_auto_stop_toggle_button = 8;  // Create ボタン
@@ -151,6 +178,7 @@ private:
 
   // ROS 2 通信・TF インターフェース
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr obstacle_polygon_publishers_[3];
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
   rclcpp_action::Client<NavigateThroughPoses>::SharedPtr nav_through_poses_client_;
   rclcpp_action::Client<NavigateToPose>::SharedPtr nav_to_pose_client_;
