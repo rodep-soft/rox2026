@@ -10,6 +10,8 @@
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller_node")
 {
+  dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
+
   command_qos_depth_ = declare_parameter<int>("command_qos_depth", 1);
   joy_timeout_ms_ = declare_parameter<int>("joy_timeout_ms", 200);
   state_publish_period_ms_ = declare_parameter<int>("state_publish_period_ms", 20);
@@ -102,6 +104,9 @@ JoyControllerNode::JoyControllerNode()
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
 
+  dribble_command_rpm_pub_ = create_publisher<std_msgs::msg::Int32>(
+    "/dribble/command_rpm", command_qos);
+
   publish_stop_commands();
 
   joy_timeout_timer_ = create_wall_timer(
@@ -153,6 +158,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       }
       if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "ps_button") {
         ps_button_ = val;
+      } else if (name == "dribble_on_rpm") {
+        dribble_on_rpm_ = val;
       } else if (name == "home_button") {home_button_ = val;} else if (name == "circle_button") {
         circle_button_ = val;
       } else if (name == "dribble_enable_button") {
@@ -320,8 +327,7 @@ void JoyControllerNode::loop_callback()
     }
 
     if (dribble_enabled_before_spring_) {
-      dribble_enabled_ = false;
-      publish_dribble_enabled(dribble_enabled_);
+      publish_dribble_command_rpm(300);
     }
     RCLCPP_INFO(get_logger(), "Spring firing triggered!");
   }
@@ -420,8 +426,19 @@ void JoyControllerNode::publish_belt_mode(uint8_t mode)
   belt_mode_pub_->publish(msg);
 }
 
+void JoyControllerNode::publish_dribble_command_rpm(int rpm)
+{
+  std_msgs::msg::Int32 msg;
+  msg.data = rpm;
+  dribble_command_rpm_pub_->publish(msg);
+}
+
 void JoyControllerNode::publish_dribble_enabled(bool enabled)
 {
+  std_msgs::msg::Int32 rpm_msg;
+  rpm_msg.data = enabled ? dribble_on_rpm_ : 0;
+  dribble_command_rpm_pub_->publish(rpm_msg);
+
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);

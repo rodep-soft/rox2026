@@ -65,6 +65,13 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_opening_rpm", command_qos,
     std::bind(&DribbleControllerNode::opening_rpm_callback, this, std::placeholders::_1));
 
+  dribble_command_rpm_sub_ = create_subscription<std_msgs::msg::Int32>(
+  "/dribble/command_rpm", command_qos,
+  std::bind(
+    &DribbleControllerNode::dribble_command_rpm_callback,
+    this,
+    std::placeholders::_1));
+
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),
     std::bind(&DribbleControllerNode::control_timer_callback, this));
@@ -280,6 +287,21 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     }
   }
   return result;
+}
+
+
+void DribbleControllerNode::dribble_command_rpm_callback(
+  const std_msgs::msg::Int32::SharedPtr msg)
+{
+  if (dribble_on_rpm_ == msg->data) {
+    return;
+  }
+
+  if (msg->data < 0 || msg->data > 5600) {
+    return;
+  }
+
+  dribble_on_rpm_ = msg->data;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

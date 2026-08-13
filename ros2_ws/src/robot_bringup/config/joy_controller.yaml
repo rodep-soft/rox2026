@@ -1,5 +1,7 @@
 /joy_controller:
   ros__parameters:
+    # ドリブルON時の回転数
+    dribble_on_rpm: 800
     # 機構指令を保持する件数
     command_qos_depth: 1
     # [ms] Joy入力断と判定してSTOPへ移るまでの時間

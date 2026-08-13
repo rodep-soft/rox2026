@@ -78,12 +78,15 @@ private:
   int dpad_horizontal_axis_{6};
   int dpad_vertical_axis_{7};
 
+  int dribble_on_rpm_{800};
+
   geometry_msgs::msg::Twist cmd_vel_;
   joy_controller::SlewRateLimiter velocity_limiter_x_{2.0, 3.0};
   joy_controller::SlewRateLimiter velocity_limiter_y_{2.0, 3.0};
   joy_controller::SlewRateLimiter velocity_limiter_yaw_{4.0, 6.0};
   std::chrono::steady_clock::time_point last_velocity_update_time_{};
   bool velocity_limiter_initialized_{false};
+  void publish_dribble_command_rpm(int rpm);
 
   static constexpr int kLimitSwitchBitOffset = 0;
   bool is_emergency_stop_{true};
@@ -112,6 +115,7 @@ private:
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr dribble_command_rpm_pub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
