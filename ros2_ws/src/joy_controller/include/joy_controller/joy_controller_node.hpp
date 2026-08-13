@@ -33,6 +33,7 @@ private:
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_dribble_enabled(bool enabled);
+  void publish_spring_decel(bool active);
   void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
@@ -110,6 +111,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_decel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;

@@ -56,6 +56,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_enabled", command_qos,
     std::bind(&DribbleControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
+  spring_decel_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/spring_decel", command_qos,
+    std::bind(&DribbleControllerNode::spring_decel_callback, this, std::placeholders::_1));
+
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", command_qos,
     std::bind(&DribbleControllerNode::shot_cycle_callback, this, std::placeholders::_1));
@@ -161,6 +165,11 @@ void DribbleControllerNode::position_mode_callback(
 void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   dribble_enabled_ = msg->data;
+}
+
+void DribbleControllerNode::spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  spring_decel_active_ = msg->data;
 }
 
 void DribbleControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
@@ -512,9 +521,13 @@ int DribbleControllerNode::roller_target_rpm() const
   if (emergency_stop_active_) {
     return 0;
   }
-  if (!dribble_enabled_) {
-    // ばね発射時など減速時：完全に0に落とすと摩擦抵抗で飛ばなくなるため、最適な案内回転数(300 RPM)まで滑らか減速
+  if (spring_decel_active_) {
+    // ばね発射シーケンス中のみ：300 RPM へ滑らか減速してボール案内
     return spring_fire_dribble_rpm_;
+  }
+  if (!dribble_enabled_) {
+    // 通常 OFF 時（何もしていない時）：当然 0 RPM（完全停止）
+    return 0;
   }
   if (!shot_cycle_active_) {
     return dribble_on_rpm_;

@@ -86,6 +86,9 @@ JoyControllerNode::JoyControllerNode()
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/command_enabled", command_qos);
 
+  spring_decel_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/dribble/spring_decel", command_qos);
+
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", command_qos);
 
@@ -315,16 +318,9 @@ void JoyControllerNode::loop_callback()
   bool should_publish_spring_fire = false;
 
   if (spring_fire_input_triggered && !spring_fire_pending_) {
-    if (spring_actuator_ready_) {
-      dribble_enabled_before_spring_ = dribble_enabled_;
-    }
-
-    // 1) ドリブル減速コマンドを送信
-    if (dribble_enabled_) {
-      dribble_enabled_ = false;
-      publish_dribble_enabled(false);
-      RCLCPP_INFO(get_logger(), "Spring fire sequence started: smoothly decelerating dribble roller to 0 RPM...");
-    }
+    // 1) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
+    publish_spring_decel(true);
+    RCLCPP_INFO(get_logger(), "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
 
     // 2) 減速完了待機モードにセット
     spring_fire_pending_ = true;
@@ -347,13 +343,9 @@ void JoyControllerNode::loop_callback()
   spring_fire_msg.data = should_publish_spring_fire;
   spring_fire_pub_->publish(spring_fire_msg);
 
-  // ばねの再充填・準備完了(is_ready_rising)でドリブルを元の状態に自動復帰
-  if (is_ready_rising) {
-    if (dribble_enabled_before_spring_) {
-      dribble_enabled_ = true;
-      publish_dribble_enabled(dribble_enabled_);
-      RCLCPP_INFO(get_logger(), "Spring reloaded -> Dribble automatically restored to ON.");
-    }
+  // ばねの再充填・準備完了(is_ready_rising)で減速モードを解除
+  if (is_ready_rising || should_publish_spring_fire) {
+    publish_spring_decel(false);
   }
 
   was_spring_ready_ = spring_actuator_ready_;
@@ -440,6 +432,13 @@ void JoyControllerNode::publish_dribble_enabled(bool enabled)
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);
+}
+
+void JoyControllerNode::publish_spring_decel(bool active)
+{
+  std_msgs::msg::Bool msg;
+  msg.data = active;
+  spring_decel_pub_->publish(msg);
 }
 
 void JoyControllerNode::publish_opening_rpm(int rpm)

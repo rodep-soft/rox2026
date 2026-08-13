@@ -24,6 +24,7 @@ private:
 
   void position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -70,6 +71,7 @@ private:
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_{false};
+  bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
 
   bool manual_transition_active_{false};
@@ -98,6 +100,7 @@ private:
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_decel_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
