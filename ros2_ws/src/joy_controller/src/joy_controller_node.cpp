@@ -340,7 +340,7 @@ void JoyControllerNode::loop_callback()
 
   // 9. DPAD 左右でアームポジション切替 (OPEN / FEED)
 
-if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
+  if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
     shot_cycle_opening_rpm_ = std::min(2500, shot_cycle_opening_rpm_ + 200);
     publish_opening_rpm(shot_cycle_opening_rpm_);
     RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
