@@ -57,10 +57,6 @@ SpringEduliteController::SpringEduliteController()
   position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     target_topic, command_qos);
 
-  // 装填されているかどうかのみを見るtopic
-  actuator_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/spring/actuator_ready", command_qos);
-
   // spring_controller -> hardware_driver: 原点検出後の現在位置を0
   // radに設定する。
   set_position_client_ =
@@ -116,10 +112,6 @@ void SpringEduliteController::actuator_state_callback(
     msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
 
   actuator_ready_ = actuator_state_is_ready;
-
-  std_msgs::msg::Bool ready_msg;
-  ready_msg.data = actuator_state_is_ready;
-  actuator_ready_pub_->publish(ready_msg);
 
   if (!actuator_state_is_ready) {
     if (actuator_ready_ || position_reference_set_) {
