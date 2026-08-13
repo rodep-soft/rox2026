@@ -41,6 +41,8 @@ private:
   bool emergency_stop_active_{true};
   bool fire_request_active_{false};
   bool limit_switch_active_{false};
+  bool actuator_ready_{false};
+  bool position_reference_set_{false};
   bool zero_service_pending_{false};
 
   int limit_switch_bit_offset_{0};

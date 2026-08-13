@@ -58,8 +58,6 @@ private:
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_{false};
-  bool actuator_ready_{false};
-  bool position_reference_set_{false}; 
   bool emergency_stop_active_{false};
 
   bool manual_transition_active_{false};
