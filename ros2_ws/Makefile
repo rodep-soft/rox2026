@@ -12,7 +12,8 @@ CMAKE_ARGS = \
 COLCON_ARGS = \
 	--executor $(EXECUTOR) \
 	--parallel-workers $(PARALLEL_WORKERS) \
-	--symlink-install
+	--symlink-install \
+	--event-handlers console_direct+
 
 build:
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
