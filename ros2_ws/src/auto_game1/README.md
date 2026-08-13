@@ -16,12 +16,12 @@
 | ステート名 | 概要・動作 | 次のステートへの遷移条件 |
 | :--- | :--- | :--- |
 | `AUTO_STOP` | 自動停止状態（全出力停止、Nav2キャンセル）。 | Joy入力 (`auto_stop_toggle_button`) の立ち上がりで再開 |
-| `GO_TO_WAYPOINT1` | **Nav2 Action** (`NavigateThroughPoses`) を使用して通過点1へ向かう。 | 通過点1との距離 $\le$ `waypoint1_reach_threshold` [m] |
-| `PREPARE_KICK` | 通過点1到達後、独自Twist制御で定速直進。**Kick Action** を送信。 | Kick Action の完了 (`Succeeded`) |
-| `GO_TO_GATE_FAR_SIDE` | **Nav2 Action** (`NavigateThroughPoses`) で残りの通過点およびゲート向こう側へ向かう。 | Nav2 到着完了 (`Succeeded`) |
+| `GO_TO_KICK_START` | **Nav2 Action** (`NavigateThroughPoses`) でキック開始点・終了点へ向かう（開始点手前での減速防止のため`kick_end`も同時に指定）。 | キック開始点との距離 $\le$ `kick_start_reach_threshold` [m] |
+| `PREPARE_KICK` | キック開始点到達後、独自Twist制御で定速直進。**Kick Action** を送信。 | Kick Action の完了 (`Succeeded`) |
+| `GO_TO_GATE_FAR_SIDE` | **Nav2 Action** (`NavigateThroughPoses`) で残りの通過点（`kick_end`等）およびゲート向こう側へ向かう。 | Nav2 到着完了 (`Succeeded`) |
 | `FOLLOW_BALL` | ボール追従（拡張用プレースホルダー）。 | 即時移行 |
 | `CARRY_BALL_TO_PASS_AREA` | **Nav2 Action** (`NavigateToPose`) でパスエリアへ移動。 | Nav2 到着完了 (`Succeeded`) |
-| `RETURN_TO_START` | **Nav2 Action** (`NavigateToPose`) でスタート位置に戻りループ。 | Nav2 到着完了 (`Succeeded`) $\rightarrow$ `GO_TO_WAYPOINT1` |
+| `RETURN_TO_START` | **Nav2 Action** (`NavigateToPose`) でスタート位置に戻りループ。 | Nav2 到着完了 (`Succeeded`) $\rightarrow$ `GO_TO_KICK_START` |
 
 ※ジョイスティック (`/joy`) から `return_to_start_button` が押された場合は、いつでも強制的に `RETURN_TO_START` に遷移します。
 

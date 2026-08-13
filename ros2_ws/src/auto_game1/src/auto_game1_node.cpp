@@ -80,7 +80,7 @@ void AutoGame1Node::declare_parameters()
 
   // 制御周期・判定パラメータ
   declare_parameter<double>("control_period_sec", 0.05);
-  declare_parameter<double>("waypoint1_reach_threshold", 0.2);
+  declare_parameter<double>("kick_start_reach_threshold", 0.2);
 
   // PREPARE_KICK用制御パラメータ
   declare_parameter<double>("kick_target_velocity_x", 0.5);
@@ -92,10 +92,10 @@ void AutoGame1Node::declare_parameters()
   declare_parameter<double>("kd_yaw", 0.1);
 
   // 通過点・目標点の座標パラメータ（デフォルト値例）
-  declare_parameter<double>("waypoint1.x", 1.0);
-  declare_parameter<double>("waypoint1.y", 0.0);
-  declare_parameter<double>("waypoint2.x", 2.0);
-  declare_parameter<double>("waypoint2.y", 0.5);
+  declare_parameter<double>("kick_start.x", 1.0);
+  declare_parameter<double>("kick_start.y", 0.0);
+  declare_parameter<double>("kick_end.x", 2.0);
+  declare_parameter<double>("kick_end.y", 0.5);
   declare_parameter<double>("waypoint3.x", 3.0);
   declare_parameter<double>("waypoint3.y", 0.0);
 
@@ -121,7 +121,7 @@ void AutoGame1Node::get_parameters()
   get_parameter("return_to_start_button", return_to_start_button_);
 
   get_parameter("control_period_sec", control_period_sec_);
-  get_parameter("waypoint1_reach_threshold", waypoint1_reach_threshold_);
+  get_parameter("kick_start_reach_threshold", kick_start_reach_threshold_);
 
   get_parameter("kick_target_velocity_x", kick_target_velocity_x_);
   get_parameter("kick_target_y", kick_target_y_);
@@ -144,8 +144,8 @@ void AutoGame1Node::get_parameters()
     pose.pose.orientation.w = 1.0;
   };
 
-  get_pose_param("waypoint1", waypoint1_pose_);
-  get_pose_param("waypoint2", waypoint2_pose_);
+  get_pose_param("kick_start", kick_start_pose_);
+  get_pose_param("kick_end", kick_end_pose_);
   get_pose_param("waypoint3", waypoint3_pose_);
   get_pose_param("gate_far_side", gate_far_side_pose_);
   get_pose_param("pass_area", pass_area_pose_);
@@ -166,8 +166,8 @@ void AutoGame1Node::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   // 自動停止切替ボタンの立ち上がり判定
   if (auto_stop_toggle_button_on_ && !pre_auto_stop_toggle_button_on_) {
     if (current_state_ == State::AUTO_STOP) {
-      RCLCPP_INFO(get_logger(), "Joy input: Resuming auto drive. Switching to GO_TO_WAYPOINT1.");
-      current_state_ = State::GO_TO_WAYPOINT1;
+      RCLCPP_INFO(get_logger(), "Joy input: Resuming auto drive. Switching to GO_TO_KICK_START.");
+      current_state_ = State::GO_TO_KICK_START;
     } else {
       RCLCPP_INFO(get_logger(), "Joy input: Auto stop requested.");
       previous_state_ = current_state_;
@@ -203,8 +203,8 @@ void AutoGame1Node::process_state_machine()
     case State::AUTO_STOP:
       process_auto_stop();
       break;
-    case State::GO_TO_WAYPOINT1:
-      process_go_to_waypoint1();
+    case State::GO_TO_KICK_START:
+      process_go_to_kick_start();
       break;
     case State::PREPARE_KICK:
       process_prepare_kick();
@@ -231,29 +231,31 @@ void AutoGame1Node::process_auto_stop()
   cmd_vel_publisher_->publish(stop_cmd);
 }
 
-void AutoGame1Node::process_go_to_waypoint1()
+void AutoGame1Node::process_go_to_kick_start()
 {
-  // 1a. 通過点1へ向かう状態
-  // 入力: waypoint1_pose_
-  // 前提: State::GO_TO_WAYPOINT1 に遷移した直後であること
-  // 状態変更: Nav2 Goal未送信の場合は通過点1への NavigateThroughPoses を送信する。
-  // 出力: 距離 < waypoint1_reach_threshold_ に達したら Nav2をキャンセルし PREPARE_KICK へ移行する。
+  // 1a. キック開始点へ向かう状態
+  // 入力: kick_start_pose_, kick_end_pose_
+  // 前提: State::GO_TO_KICK_START に遷移した直後であること
+  // 状態変更: Nav2 Goal未送信の場合はキック開始点・終了点への NavigateThroughPoses を送信する（開始点直前での減速を防止するため先のkick_endも同時に含める）。
+  // 出力: 距離 < kick_start_reach_threshold_ に達したら Nav2をキャンセルし PREPARE_KICK へ移行する。
 
   if (!nav_through_poses_goal_handle_ && !nav_through_poses_completed_) {
-    RCLCPP_INFO(get_logger(), "State: GO_TO_WAYPOINT1. Sending goal to Waypoint 1.");
-    std::vector<geometry_msgs::msg::PoseStamped> poses = {waypoint1_pose_};
+    RCLCPP_INFO(
+      get_logger(),
+      "State: GO_TO_KICK_START. Sending goals to Kick Start and Kick End (preventing deceleration).");
+    std::vector<geometry_msgs::msg::PoseStamped> poses = {kick_start_pose_, kick_end_pose_};
     send_nav_through_poses_goal(poses);
     return;
   }
 
   geometry_msgs::msg::PoseStamped current_pose;
   if (get_robot_pose_map(current_pose)) {
-    double dist = compute_distance_2d(current_pose.pose.position, waypoint1_pose_.pose.position);
-    if (dist <= waypoint1_reach_threshold_) {
+    double dist = compute_distance_2d(current_pose.pose.position, kick_start_pose_.pose.position);
+    if (dist <= kick_start_reach_threshold_) {
       RCLCPP_INFO(
         get_logger(),
-        "Reached Waypoint 1 threshold (dist: %.3f m <= %.3f m). Transitioning to PREPARE_KICK.",
-        dist, waypoint1_reach_threshold_);
+        "Reached Kick Start threshold (dist: %.3f m <= %.3f m). Transitioning to PREPARE_KICK.",
+        dist, kick_start_reach_threshold_);
       cancel_nav_through_poses_goal();
       current_state_ = State::PREPARE_KICK;
       kick_action_active_ = false;
@@ -320,7 +322,7 @@ void AutoGame1Node::process_prepare_kick()
 void AutoGame1Node::process_go_to_gate_far_side()
 {
   // 1b. ゲート向こう側へ向かう状態
-  // 入力: waypoint2_pose_, waypoint3_pose_, gate_far_side_pose_
+  // 入力: kick_end_pose_, waypoint3_pose_, gate_far_side_pose_
   // 前提: キックが完了し、残り通過点を安全に通過して目標点へ向かう状態
   // 状態変更: Nav2 Goal未送信の場合は残り通過点を NavigateThroughPoses で送信する。
   // 出力: Nav2 到着完了 (Succeeded) で FOLLOW_BALL へ遷移する。
@@ -328,7 +330,7 @@ void AutoGame1Node::process_go_to_gate_far_side()
   if (!nav_through_poses_goal_handle_ && !nav_through_poses_completed_) {
     RCLCPP_INFO(get_logger(), "State: GO_TO_GATE_FAR_SIDE. Sending goals for remaining waypoints and far side.");
     std::vector<geometry_msgs::msg::PoseStamped> poses = {
-      waypoint2_pose_, waypoint3_pose_, gate_far_side_pose_};
+      kick_end_pose_, waypoint3_pose_, gate_far_side_pose_};
     send_nav_through_poses_goal(poses);
     return;
   }
@@ -379,7 +381,7 @@ void AutoGame1Node::process_return_to_start()
   // 入力: start_pose_
   // 前提: パスエリアでの作業完了
   // 状態変更: start_pose_ への NavigateToPose Goal を送信する。
-  // 出力: Nav2 到着完了 (Succeeded) で GO_TO_WAYPOINT1 へ戻りループする。
+  // 出力: Nav2 到着完了 (Succeeded) で GO_TO_KICK_START へ戻りループする。
 
   if (!nav_to_pose_goal_handle_ && !nav_to_pose_completed_) {
     RCLCPP_INFO(get_logger(), "State: RETURN_TO_START. Sending NavigateToPose goal to Start Pose.");
@@ -388,8 +390,8 @@ void AutoGame1Node::process_return_to_start()
   }
 
   if (nav_to_pose_completed_) {
-    RCLCPP_INFO(get_logger(), "Returned to Start Pose. Mission loop complete. Restarting at GO_TO_WAYPOINT1.");
-    current_state_ = State::GO_TO_WAYPOINT1;
+    RCLCPP_INFO(get_logger(), "Returned to Start Pose. Mission loop complete. Restarting at GO_TO_KICK_START.");
+    current_state_ = State::GO_TO_KICK_START;
     nav_to_pose_completed_ = false;
     nav_to_pose_goal_handle_ = nullptr;
     nav_through_poses_completed_ = false;

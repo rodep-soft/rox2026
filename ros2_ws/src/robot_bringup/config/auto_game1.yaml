@@ -15,7 +15,7 @@ auto_game1_node:
 
     # 制御周期および判定閾値
     control_period_sec: 0.05
-    waypoint1_reach_threshold: 0.2
+    kick_start_reach_threshold: 0.2
 
     # PREPARE_KICK用制御パラメータ
     kick_target_velocity_x: 0.5
@@ -27,10 +27,10 @@ auto_game1_node:
     kd_yaw: 0.1
 
     # 通過点・目標点の座標設定 (単位: メートル)
-    waypoint1:
+    kick_start:
       x: 1.0
       y: 0.0
-    waypoint2:
+    kick_end:
       x: 2.0
       y: 0.5
     waypoint3:

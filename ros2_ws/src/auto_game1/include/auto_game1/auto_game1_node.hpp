@@ -50,12 +50,12 @@ const RectObstacle RECTANGLE_OBSTACLES[3] = {
 enum class State
 {
   AUTO_STOP,               // 自動停止状態（Joyボタン等で一時停止 / 再開）
-  GO_TO_WAYPOINT1,         // 1a. 通過点1へ向かう状態 (NavigateThroughPoses)
+  GO_TO_KICK_START,        // 1a. キック開始点へ向かう状態 (NavigateThroughPoses)
   PREPARE_KICK,            // 2. キック準備・一定速度走行状態 (独自Twist制御)
   GO_TO_GATE_FAR_SIDE,     // 1b. ゲート向こう側へ向かう状態 (NavigateThroughPoses)
   FOLLOW_BALL,             // 3. ボール追従状態 (拡張用プレースホルダー)
   CARRY_BALL_TO_PASS_AREA, // 4. ボールをパスエリアに運ぶ状態 (NavigateToPose)
-  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateToPose -> GO_TO_WAYPOINT1へループ)
+  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateToPose -> GO_TO_KICK_STARTへループ)
 };
 
 class AutoGame1Node : public rclcpp::Node
@@ -89,7 +89,7 @@ private:
   // 4. 主処理 (State Machine)
   void process_state_machine();
   void process_auto_stop();
-  void process_go_to_waypoint1();
+  void process_go_to_kick_start();
   void process_prepare_kick();
   void process_go_to_gate_far_side();
   void process_follow_ball();
@@ -129,8 +129,8 @@ private:
   int auto_stop_toggle_button_{default_auto_stop_toggle_button};
   int return_to_start_button_{default_return_to_start_button};
 
-  double control_period_sec_{0.05};       // 20Hz 制御周期
-  double waypoint1_reach_threshold_{0.2}; // 通過点1到達判定の距離閾値 [m]
+  double control_period_sec_{0.05};        // 20Hz 制御周期
+  double kick_start_reach_threshold_{0.2}; // キック開始点到達判定の距離閾値 [m]
 
   // PREPARE_KICK 状態用制御パラメータ
   double kick_target_velocity_x_{0.5}; // Map座標系での目標x速度 [m/s]
@@ -142,8 +142,8 @@ private:
   double kd_yaw_{0.1};                 // yaw角Dゲイン
 
   // 目標座標（Waypoints & Goals）
-  geometry_msgs::msg::PoseStamped waypoint1_pose_;
-  geometry_msgs::msg::PoseStamped waypoint2_pose_;
+  geometry_msgs::msg::PoseStamped kick_start_pose_;
+  geometry_msgs::msg::PoseStamped kick_end_pose_;
   geometry_msgs::msg::PoseStamped waypoint3_pose_;
   geometry_msgs::msg::PoseStamped gate_far_side_pose_;
   geometry_msgs::msg::PoseStamped pass_area_pose_;
