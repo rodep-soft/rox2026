@@ -61,6 +61,12 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
+    # 拡張カルマンフィルタ (EKF) ノード
+    ekf_launch = include(
+        "ekf.launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_ekf")),
+    )
+
     # 分割された5つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
@@ -113,6 +119,11 @@ def generate_launch_description():
                 description="Enable Game2 tactical panel shooter node",
             ),
             DeclareLaunchArgument(
+                "enable_ekf",
+                default_value="true",
+                description="Enable Extended Kalman Filter (robot_localization EKF)",
+            ),
+            DeclareLaunchArgument(
                 "stereonet_version",
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
@@ -127,6 +138,7 @@ def generate_launch_description():
             webcam_launch,
             game1_shooter_launch,
             game2_shooter_launch,
+            ekf_launch,
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(os.path.join(launch_dir, "foxglove_bridge.launch.py")),
                 condition=IfCondition(LaunchConfiguration("enable_foxglove")),
