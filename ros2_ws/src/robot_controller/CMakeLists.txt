@@ -111,7 +111,7 @@ list(APPEND controller_nodes mecanum_odometry_node heading_hold_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories mecanum_controller spring_controller led_controller belt_controller
-                                   dribble_controller game2_shooter)
+                                   dribble_controller game1_shooter game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
   install(DIRECTORY ${directory}/include/ DESTINATION include)
 endforeach()
