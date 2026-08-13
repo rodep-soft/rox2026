@@ -317,7 +317,7 @@ void JoyControllerNode::loop_callback()
 
       if (dribble_enabled_before_spring_) {
         dribble_enabled_ = false;
-        publish_dribble_enabled();
+        publish_dribble_enabled(dribble_enabled_);
       }
       RCLCPP_INFO(get_logger(), "Spring firing triggered!");
     }
@@ -329,7 +329,7 @@ void JoyControllerNode::loop_callback()
     if (is_ready_rising) {
       if (dribble_enabled_before_spring_) {
         dribble_enabled_ = true;
-        publish_dribble_enabled();
+        publish_dribble_enabled(dribble_enabled_);
       }
     }
 
