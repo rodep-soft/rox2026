@@ -24,6 +24,10 @@ Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game1AutoShooterNode::imu_callback, this, std::placeholders::_1));
 
+  odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+    "/odometry/filtered", 10,
+    std::bind(&Game1AutoShooterNode::odom_callback, this, std::placeholders::_1));
+
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "/detection", 10,
     std::bind(&Game1AutoShooterNode::ball_detection_callback, this, std::placeholders::_1));
@@ -39,7 +43,24 @@ Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
     std::chrono::milliseconds(50),
     std::bind(&Game1AutoShooterNode::control_loop, this));
 
-  RCLCPP_INFO(get_logger(), "Game1AutoShooterNode initialized.");
+  RCLCPP_INFO(get_logger(), "Game1AutoShooterNode initialized with EKF /odometry/filtered feedback.");
+}
+
+void Game1AutoShooterNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
+{
+  odom_received_ = true;
+  current_x_ = msg->pose.pose.position.x;
+  current_y_ = msg->pose.pose.position.y;
+
+  // EKF 融合後の Orientation クォータニオンから Yaw を取得
+  const double qx = msg->pose.pose.orientation.x;
+  const double qy = msg->pose.pose.orientation.y;
+  const double qz = msg->pose.pose.orientation.z;
+  const double qw = msg->pose.pose.orientation.w;
+  const double siny_cosp = 2.0 * (qw * qz + qx * qy);
+  const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+  raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+  current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
 void Game1AutoShooterNode::ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
@@ -56,10 +77,10 @@ void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr m
     is_enabled_ = true;
     state_ = Game1State::NAV_TO_GATE;
     state_start_time_ = now();
-    // スタート時のIMU生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
+    // スタート時のIMU/EKF生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
     yaw_offset_ = raw_yaw_;
     current_yaw_ = 0.0;
-    RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence STARTED. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
+    RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence STARTED. EKF/IMU Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -70,24 +91,29 @@ void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr m
 void Game1AutoShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
-  // クォータニオンから Yaw 角 [rad] を計算
-  const double qx = msg->orientation.x;
-  const double qy = msg->orientation.y;
-  const double qz = msg->orientation.z;
-  const double qw = msg->orientation.w;
-  const double siny_cosp = 2.0 * (qw * qz + qx * qy);
-  const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
-  raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
-  current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
+  if (!odom_received_) {
+    // EKF 未受信時のみバックアップとして直読み IMU をバックアップ受信用に使用
+    const double qx = msg->orientation.x;
+    const double qy = msg->orientation.y;
+    const double qz = msg->orientation.z;
+    const double qw = msg->orientation.w;
+    const double siny_cosp = 2.0 * (qw * qz + qx * qy);
+    const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+    raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+    current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
+  }
 }
 
 geometry_msgs::msg::Twist Game1AutoShooterNode::compute_pure_pursuit(const Waypoint & target)
 {
   geometry_msgs::msg::Twist cmd;
+  // EKF 自己位置 (current_x, current_y, current_yaw) から見た目標位置への差分
+  const double dx = target.x - current_x_;
+  const double dy = target.y - current_y_;
   const double yaw_err = std::remainder(target.yaw - current_yaw_, 2.0 * M_PI);
 
-  cmd.linear.x = std::clamp(kp_linear_ * target.x, -max_linear_vel_, max_linear_vel_);
-  cmd.linear.y = std::clamp(kp_linear_ * target.y, -max_linear_vel_, max_linear_vel_);
+  cmd.linear.x = std::clamp(kp_linear_ * dx, -max_linear_vel_, max_linear_vel_);
+  cmd.linear.y = std::clamp(kp_linear_ * dy, -max_linear_vel_, max_linear_vel_);
   cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
   return cmd;

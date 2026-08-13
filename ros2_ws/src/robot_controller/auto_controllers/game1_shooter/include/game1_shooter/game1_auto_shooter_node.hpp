@@ -15,6 +15,8 @@
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
+#include "nav_msgs/msg/odometry.hpp"
+
 namespace robot_controller
 {
 
@@ -47,6 +49,7 @@ private:
   void control_loop();
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+  void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
   void publish_commands(
@@ -61,6 +64,7 @@ private:
   // Subscriptions & Publishers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr ball_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
@@ -95,6 +99,11 @@ private:
   double detected_ball_x_{0.0};
   double detected_ball_y_{0.0};
   rclcpp::Time last_ball_detection_time_;
+
+  // EKF Filtered Odometry Feedback (/odometry/filtered)
+  bool odom_received_{false};
+  double current_x_{0.0};
+  double current_y_{0.0};
 
   // IMU Feedback
   bool imu_received_{false};
