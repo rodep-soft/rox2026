@@ -7,9 +7,14 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
-            "imu_uart_port",
-            default_value="/dev/ttyUSB0",
-            description="UART device path for BNO055 IMU (e.g. /dev/ttyUSB0 or /dev/ttyAMA0)",
+            "imu_i2c_bus",
+            default_value="/dev/i2c-1",
+            description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-1)",
+        ),
+        DeclareLaunchArgument(
+            "imu_i2c_address",
+            default_value="0x28",
+            description="I2C address for BNO055 IMU (0x28 or 0x29)",
         ),
         DeclareLaunchArgument(
             "imu_frame_id",
@@ -22,9 +27,9 @@ def generate_launch_description():
             name="bno055_imu_node",
             output="screen",
             parameters=[{
-                "connection_type": "uart",
-                "uart_port": LaunchConfiguration("imu_uart_port"),
-                "uart_baudrate": 115200,
+                "connection_type": "i2c",
+                "i2c_bus": LaunchConfiguration("imu_i2c_bus"),
+                "i2c_address": LaunchConfiguration("imu_i2c_address"),
                 "frame_id": LaunchConfiguration("imu_frame_id"),
                 "data_deny_list": [],
             }],

@@ -66,7 +66,8 @@ def generate_launch_description():
         "bno055.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_bno055")),
         launch_arguments={
-            "imu_uart_port": LaunchConfiguration("imu_uart_port"),
+            "imu_i2c_bus": LaunchConfiguration("imu_i2c_bus"),
+            "imu_i2c_address": LaunchConfiguration("imu_i2c_address"),
         }.items(),
     )
 
@@ -133,9 +134,14 @@ def generate_launch_description():
                 description="Enable BNO055 IMU driver node (libbno055-linux)",
             ),
             DeclareLaunchArgument(
-                "imu_uart_port",
-                default_value="/dev/ttyUSB0",
-                description="UART device path for BNO055 IMU",
+                "imu_i2c_bus",
+                default_value="/dev/i2c-1",
+                description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-1)",
+            ),
+            DeclareLaunchArgument(
+                "imu_i2c_address",
+                default_value="0x28",
+                description="I2C address for BNO055 IMU (0x28 or 0x29)",
             ),
             DeclareLaunchArgument(
                 "enable_ekf",
