@@ -456,17 +456,17 @@ double DribbleControllerNode::interpolated_position_rad(
   }
   const double progress =
     std::clamp(elapsed_sec / duration_sec, 0.0, 1.0);
-  // Quintic smootherstep: velocity and acceleration are both zero at each
-  // endpoint, avoiding a mechanical shock when the shot phase changes.
+  // Septic (7th-order) smootherstep: Extremely smooth acceleration start ("gradual acceleration")
+  // while preserving the specified peak velocity limit.
   const double smooth_progress =
-    progress * progress * progress *
-    (progress * (6.0 * progress - 15.0) + 10.0);
+    progress * progress * progress * progress *
+    (35.0 + progress * (-84.0 + progress * (70.0 - 20.0 * progress)));
   return start_rad + (target_rad - start_rad) * smooth_progress;
 }
 
 double DribbleControllerNode::transition_duration_sec(
   double start_rad, double target_rad, double max_vel_rad_s) const
 {
-  // Quintic smootherstep's peak derivative is 1.875.
-  return 1.875 * std::abs(target_rad - start_rad) / max_vel_rad_s;
+  // Septic smootherstep's peak derivative is 2.1875.
+  return 2.1875 * std::abs(target_rad - start_rad) / max_vel_rad_s;
 }
