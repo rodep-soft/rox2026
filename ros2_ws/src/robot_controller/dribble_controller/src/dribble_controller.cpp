@@ -69,6 +69,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/edulite/state", command_qos,
     std::bind(&DribbleControllerNode::actuator_state_callback, this, std::placeholders::_1));
 
+  vesc_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(
+    "/vesc/state", command_qos,
+    std::bind(&DribbleControllerNode::vesc_state_callback, this, std::placeholders::_1));
+
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),
     std::bind(&DribbleControllerNode::control_timer_callback, this));
@@ -216,6 +220,17 @@ void DribbleControllerNode::actuator_state_callback(
 {
   if (msg->logical_id == position_logical_id_) {
     current_arm_position_rad_ = msg->position;
+  }
+}
+
+void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+{
+  if (msg->logical_id == roller_logical_id_) {
+    // 1秒 (1000ms) おきにドリブルローラーの実測電流値 (current_a) をデバッグ出力
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "[DEBUG Roller Current] Logical ID: %d | Current: %.2f A | Arm Pos: %.2f rad",
+      roller_logical_id_, msg->current_a, current_arm_position_rad_);
   }
 }
 
