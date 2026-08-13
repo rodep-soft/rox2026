@@ -63,6 +63,8 @@ private:
   double belt_spinup_delay_sec_{0.5};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
+  uint16_t upper_belt_logical_id_{51};
+  uint16_t under_belt_logical_id_{52};
 
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
@@ -79,6 +81,10 @@ private:
   double shot_cycle_start_position_rad_{0.35};
   double last_position_command_rad_{0.35};
   double current_arm_position_rad_{0.35};
+  float upper_belt_measured_rpm_{0.0f};
+  float under_belt_measured_rpm_{0.0f};
+  float upper_belt_min_shot_rpm_{99999.0f};
+  float under_belt_min_shot_rpm_{99999.0f};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool belt_auto_started_{false};
