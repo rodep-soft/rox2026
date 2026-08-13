@@ -11,6 +11,7 @@
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/int32.hpp"
 
 class DribbleControllerNode : public rclcpp::Node
 {
@@ -25,6 +26,7 @@ private:
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
@@ -33,9 +35,9 @@ private:
 
   double target_position_rad() const;
   double interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s, double accel_factor = 1.0) const;
   double transition_duration_sec(
-    double start_rad, double target_rad, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
@@ -46,6 +48,7 @@ private:
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
+  double opening_accel_factor_{1.8};
   int dribble_on_rpm_{800};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
@@ -79,6 +82,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;

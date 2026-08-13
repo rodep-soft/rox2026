@@ -13,14 +13,15 @@
     
     # [rad/s] 区間ごとの最大角速度
     opening_max_velocity_rad_s: 6.0   # DRIBBLE -> OPEN (最大速度6.0 rad/s)
+    opening_accel_factor: 1.4         # OPEN 動作で最高速度に達するまでの遅さ倍率 (大きいほどTop speedまでゆったり加速)
     feeding_max_velocity_rad_s: 10.0  # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 1320
-    shot_cycle_opening_rpm: 1500    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
+    dribble_on_rpm: 1200
+    shot_cycle_opening_rpm: 1248    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
     shot_cycle_feeding_rpm: 0       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
-    shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
+    shot_cycle_returning_rpm: 998  # FEED -> DRIBBLE
     
     # [ms] 指令再送周期
     command_period_ms: 10
