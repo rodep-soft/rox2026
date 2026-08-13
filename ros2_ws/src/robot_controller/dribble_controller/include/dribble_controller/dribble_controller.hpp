@@ -57,7 +57,7 @@ private:
   double opening_accel_factor_{1.8};
   double ball_detection_threshold_a_{3.5};
   int dribble_on_rpm_{800};
-  int spring_fire_dribble_rpm_{300};
+  int spring_fire_dribble_rpm_{600};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
