@@ -5,7 +5,7 @@ mecanum_odometry_node:
     robot_length: 0.355
     robot_width: 0.353
     wheel_logical_ids: [0, 1, 2, 3]  # FL, FR, RL, RR
-    state_array_topic: /edulite/state_array
+    state_array_topic: /hardware/actuator_state_array
     odometry_topic: /wheel/odometry
     odom_frame: odom
     base_frame: base_link
@@ -45,7 +45,7 @@ mecanum_odometry_node:
 tag_localization_node:
   ros__parameters:
     detection_topic: /detection
-    output_topic: /tag/pose
+    output_topic: /apriltag/pose
     map_frame: map
     base_frame: base_link
     camera_frame: camera_link
