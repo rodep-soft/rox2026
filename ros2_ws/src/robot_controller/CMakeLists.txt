@@ -76,6 +76,15 @@ add_controller(
   robot_msgs
   tf2
   tf2_ros)
+add_controller(
+  game1_auto_shooter_node
+  game1_shooter
+  game1_auto_shooter_node.cpp
+  geometry_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
+  robot_msgs)
 add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs robot_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
