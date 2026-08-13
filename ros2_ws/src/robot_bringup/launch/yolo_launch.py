@@ -27,11 +27,13 @@ def launch_setup(context, *args, **kwargs):
             )
             yolo_node = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(dnn_launch_file),
-                launch_arguments={
-                    "dnn_sample_config_file": f"{model_name}config.json",
-                    "image_topic": image_topic,
-                    "score_threshold": str(score_threshold),
-                }.items(),
+                launch_arguments=list(
+                    {
+                        "dnn_sample_config_file": f"{model_name}config.json",
+                        "image_topic": image_topic,
+                        "score_threshold": str(score_threshold),
+                    }.items()
+                ),
             )
             return [yolo_node]
         except Exception:
@@ -49,7 +51,6 @@ def launch_setup(context, *args, **kwargs):
             {
                 "model": model_name,
                 "score_threshold": score_threshold,
-                "target_classes": ["sports ball", "ball"],
             }
         ],
         remappings=[
