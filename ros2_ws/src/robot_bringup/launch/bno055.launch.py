@@ -33,7 +33,6 @@ def generate_launch_description():
                         "i2c_bus": LaunchConfiguration("imu_i2c_bus"),
                         "i2c_address": LaunchConfiguration("imu_i2c_address"),
                         "frame_id": LaunchConfiguration("imu_frame_id"),
-                        "data_deny_list": [],
                     }
                 ],
                 remappings=[
