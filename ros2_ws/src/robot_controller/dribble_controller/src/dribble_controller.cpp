@@ -280,10 +280,10 @@ void DribbleControllerNode::vesc_state_callback(
     if (previous_has_ball != has_ball_) {
       if (has_ball_) {
         RCLCPP_INFO(
-          get_logger(), ">>> BALL DETECTED 🏀 (Current: %.2f A) <<<", msg->current_a);
+          get_logger(), ">>> BALL DETECTED (Current: %.2f A) <<<", msg->current_a);
       } else {
         RCLCPP_INFO(
-          get_logger(), "--- BALL LOST ⚪️ (Current: %.2f A) ---", msg->current_a);
+          get_logger(), "--- BALL LOST (Current: %.2f A) ---", msg->current_a);
       }
     }
 

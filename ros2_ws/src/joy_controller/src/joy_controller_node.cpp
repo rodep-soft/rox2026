@@ -335,7 +335,7 @@ void JoyControllerNode::loop_callback()
     if (elapsed_ms >= spring_fire_decel_delay_ms_) {
       should_publish_spring_fire = true;
       spring_fire_pending_ = false;
-      RCLCPP_INFO(get_logger(), "Dribble decel complete -> Spring FIRE released! 🚀");
+      RCLCPP_INFO(get_logger(), "Dribble decel complete -> Spring FIRE released!");
     }
   }
 
