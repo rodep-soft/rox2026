@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -11,6 +12,7 @@
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/int32.hpp"
 
 class DribbleControllerNode : public rclcpp::Node
 {
@@ -25,6 +27,9 @@ private:
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
+  void actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+  void vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
@@ -33,19 +38,23 @@ private:
 
   double target_position_rad() const;
   double interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s,
+    double accel_factor = 1.0) const;
   double transition_duration_sec(
-    double start_rad, double target_rad, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
   double open_position_rad_{-1.0};
+  double bottom_position_rad_{0.0};
   double feed_position_rad_{1.3};
   double open_duration_sec_{0.3};
   double feed_duration_sec_{0.6};
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
+  double opening_accel_factor_{1.8};
+  double ball_detection_threshold_a_{3.5};
   int dribble_on_rpm_{800};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
@@ -54,6 +63,8 @@ private:
   double belt_spinup_delay_sec_{0.5};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
+  uint16_t upper_belt_logical_id_{10};
+  uint16_t under_belt_logical_id_{11};
 
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
@@ -69,9 +80,18 @@ private:
   rclcpp::Time shot_cycle_start_time_;
   double shot_cycle_start_position_rad_{0.35};
   double last_position_command_rad_{0.35};
+  double current_arm_position_rad_{0.35};
+  float upper_belt_measured_rpm_{0.0f};
+  float under_belt_measured_rpm_{0.0f};
+  float upper_belt_min_shot_rpm_{99999.0f};
+  float under_belt_min_shot_rpm_{99999.0f};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool belt_auto_started_{false};
+  bool has_ball_{false};
+  int ball_detected_counter_{0};
+  int ball_lost_counter_{0};
+  int ball_detection_debounce_count_{3};  // 連続3回(約600ms)の判定で確実化
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr position_mode_sub_;
@@ -79,10 +99,14 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr actuator_state_sub_;
+  rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr vesc_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ball_detected_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
