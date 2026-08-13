@@ -229,7 +229,8 @@ void DribbleControllerNode::actuator_state_callback(
   }
 }
 
-void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::vesc_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == upper_belt_logical_id_) {
     upper_belt_measured_rpm_ = msg->velocity;
