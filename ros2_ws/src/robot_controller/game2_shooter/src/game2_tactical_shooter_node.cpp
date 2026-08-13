@@ -45,17 +45,17 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/game2/start", 10,
+    "/game2/command_start", 10,
     std::bind(&Game2TacticalShooterNode::start_callback, this, std::placeholders::_1));
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game2TacticalShooterNode::imu_callback, this, std::placeholders::_1));
 
-  cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel", 10);
-  belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/target_rpm", 10);
+  cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/chassis/cmd_vel", 10);
+  belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
-  dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/enabled", 10);
-  arm_position_pub_  = create_publisher<robot_msgs::msg::ArmPosition>("/dribble/position_mode", 10);
+  dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
+  arm_position_pub_  = create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
   completed_pub_     = create_publisher<std_msgs::msg::Bool>("/game2/completed", 10);
   state_pub_         = create_publisher<robot_msgs::msg::Game2State>(
     "/game2/state", rclcpp::QoS(1).reliable().transient_local());

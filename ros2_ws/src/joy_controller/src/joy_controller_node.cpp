@@ -66,31 +66,31 @@ JoyControllerNode::JoyControllerNode()
   const auto command_qos = rclcpp::QoS(command_qos_depth_);
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/emergency_stop", emergency_stop_qos);
+    "/system/emergency_stop", emergency_stop_qos);
 
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
-    "/mecanum/cmd_vel", command_qos);
+    "/chassis/cmd_vel", command_qos);
 
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-    "/belt/mode", command_qos);
+    "/belt/command_mode", command_qos);
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/dribble/enabled", command_qos);
+    "/dribble/command_enabled", command_qos);
 
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/shot_cycle/request", command_qos);
+    "/dribble/shot_cycle_request", command_qos);
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
-    "/dribble/position_mode", command_qos);
+    "/dribble/command_position", command_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/game2/start", command_qos);
-  // joy_controller -> led_controller: drive direction selected with the PS button.
+    "/game2/command_start", command_qos);
+
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
+    "/chassis/drive_reversed", rclcpp::QoS(1).reliable().transient_local());
 
   publish_stop_commands();
 

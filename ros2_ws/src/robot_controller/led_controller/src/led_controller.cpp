@@ -25,23 +25,23 @@ LedControllerNode::LedControllerNode()
   const auto command_qos = rclcpp::QoS(10);
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", state_qos,
+    "/system/emergency_stop", state_qos,
     std::bind(&LedControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
   belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
-    "/belt/mode", command_qos,
+    "/belt/command_mode", command_qos,
     std::bind(&LedControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
   dribble_enabled_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/dribble/enabled", command_qos,
+    "/dribble/command_enabled", command_qos,
     std::bind(&LedControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
   drive_reversed_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/drive/reversed", state_qos,
+    "/chassis/drive_reversed", state_qos,
     std::bind(&LedControllerNode::drive_reversed_callback, this, std::placeholders::_1));
 
   shot_cycle_state_sub_ = create_subscription<robot_msgs::msg::ShotCycleState>(
-    "/shot_cycle/state", state_qos,
+    "/dribble/shot_cycle_state", state_qos,
     std::bind(&LedControllerNode::shot_cycle_state_callback, this, std::placeholders::_1));
 
   game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
@@ -52,7 +52,7 @@ LedControllerNode::LedControllerNode()
     "/spring/fire_request", command_qos,
     std::bind(&LedControllerNode::spring_fire_callback, this, std::placeholders::_1));
 
-  led_command_pub_ = create_publisher<std_msgs::msg::UInt16>("/led/cmd", command_qos);
+  led_command_pub_ = create_publisher<std_msgs::msg::UInt16>("/hardware/led_cmd", command_qos);
   publish_timer_ = create_wall_timer(
     std::chrono::milliseconds(publish_period_ms),
     std::bind(&LedControllerNode::publish_timer_callback, this));

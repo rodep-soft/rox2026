@@ -37,11 +37,11 @@ SpringEduliteController::SpringEduliteController()
     std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", emergency_stop_qos,
+    "/system/emergency_stop", emergency_stop_qos,
     std::bind(&SpringEduliteController::emergency_stop_callback, this, std::placeholders::_1));
 
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
-    "/limit_switchs", command_qos,
+    "/hardware/limit_switches", command_qos,
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
 
   actuator_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(

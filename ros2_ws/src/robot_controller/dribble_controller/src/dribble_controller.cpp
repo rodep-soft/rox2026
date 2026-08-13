@@ -36,36 +36,30 @@ DribbleControllerNode::DribbleControllerNode()
   roller_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     roller_target_topic, command_qos);
   shot_cycle_state_pub_ = create_publisher<robot_msgs::msg::ShotCycleState>(
-    "/shot_cycle/state", rclcpp::QoS(1).reliable().transient_local());
+    "/dribble/shot_cycle_state", rclcpp::QoS(1).reliable().transient_local());
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-    "/belt/mode", command_qos);
+    "/belt/command_mode", command_qos);
 
   belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
-    "/belt/mode", command_qos,
+    "/belt/command_mode", command_qos,
     std::bind(&DribbleControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
   position_mode_sub_ = create_subscription<robot_msgs::msg::ArmPosition>(
-    "/dribble/position_mode", command_qos,
+    "/dribble/command_position", command_qos,
     std::bind(&DribbleControllerNode::position_mode_callback, this, std::placeholders::_1));
 
   dribble_enabled_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/dribble/enabled", command_qos,
-    std::bind(
-      &DribbleControllerNode::dribble_enabled_callback, this,
-      std::placeholders::_1));
+    "/dribble/command_enabled", command_qos,
+    std::bind(&DribbleControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/shot_cycle/request", command_qos,
-    std::bind(
-      &DribbleControllerNode::shot_cycle_callback, this,
-      std::placeholders::_1));
+    "/dribble/shot_cycle_request", command_qos,
+    std::bind(&DribbleControllerNode::shot_cycle_callback, this, std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", emergency_stop_qos,
-    std::bind(
-      &DribbleControllerNode::emergency_stop_callback, this,
-      std::placeholders::_1));
+    "/system/emergency_stop", emergency_stop_qos,
+    std::bind(&DribbleControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
   control_timer_ = create_wall_timer(
     std::chrono::milliseconds(command_period_ms),

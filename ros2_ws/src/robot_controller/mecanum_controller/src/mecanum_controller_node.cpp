@@ -13,10 +13,10 @@ MecanumControllerNode::MecanumControllerNode()
 {
   configure_parameters();
 
-  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel");
+  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/chassis/cmd_vel");
   const auto emergency_stop_topic = declare_parameter<std::string>(
     "emergency_stop_topic",
-    "/emergency_stop");
+    "/system/emergency_stop");
   const auto target_array_topic = declare_parameter<std::string>(
     "target_array_topic",
     "/edulite/target_array");

@@ -35,15 +35,15 @@ BeltControllerNode::BeltControllerNode()
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
   belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
-    "/belt/mode", command_qos,
+    "/belt/command_mode", command_qos,
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
   belt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
-    "/belt/target_rpm", command_qos,
+    "/belt/command_rpm", command_qos,
     std::bind(&BeltControllerNode::belt_target_rpm_callback, this, std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/emergency_stop", emergency_stop_qos,
+    "/system/emergency_stop", emergency_stop_qos,
     std::bind(&BeltControllerNode::emergency_stop_callback, this, std::placeholders::_1));
 
   vesc_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorStateArray>(
