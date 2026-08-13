@@ -19,7 +19,7 @@
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1320
     shot_cycle_opening_rpm: 500     # DRIBBLE -> OPEN
-    shot_cycle_feeding_rpm: 1500    # OPEN -> FEED
+    shot_cycle_feeding_rpm: 0       # OPEN -> FEED (ボール押し込み時は0 RPM)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
     # [ms] 指令再送周期
