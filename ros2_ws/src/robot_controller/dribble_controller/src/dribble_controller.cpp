@@ -219,133 +219,57 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
 rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callback(
   const std::vector<rclcpp::Parameter> & parameters)
 {
-  auto dribble_position_rad = dribble_position_rad_;
-  auto open_position_rad = open_position_rad_;
-  auto feed_position_rad = feed_position_rad_;
-  auto open_duration_sec = open_duration_sec_;
-  auto feed_duration_sec = feed_duration_sec_;
-  auto opening_max_vel_rad_s = opening_max_velocity_rad_s_;
-  auto feeding_max_vel_rad_s = feeding_max_velocity_rad_s_;
-  auto returning_max_vel_rad_s = returning_max_velocity_rad_s_;
-  int64_t dribble_on_rpm = dribble_on_rpm_;
-  int64_t shot_cycle_opening_rpm = shot_cycle_opening_rpm_;
-  int64_t shot_cycle_feeding_rpm = shot_cycle_feeding_rpm_;
-  int64_t shot_cycle_returning_rpm = shot_cycle_returning_rpm_;
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
   bool trajectory_changed = false;
 
-  for (const auto & parameter : parameters) {
-    const auto & name = parameter.get_name();
-    if (name == "dribble_on_rpm") {
-      dribble_on_rpm = parameter.as_int();
-      continue;
-    }
-    if (name == "shot_cycle_opening_rpm") {
-      shot_cycle_opening_rpm = parameter.as_int();
-      continue;
-    }
-    if (name == "shot_cycle_feeding_rpm") {
-      shot_cycle_feeding_rpm = parameter.as_int();
-      continue;
-    }
-    if (name == "shot_cycle_returning_rpm") {
-      shot_cycle_returning_rpm = parameter.as_int();
-      continue;
-    }
+  for (const auto & param : parameters) {
+    const auto & name = param.get_name();
 
-    bool restart_required = true;
-    bool value_unchanged = false;
-    if (name == "command_period_ms" || name == "qos_depth") {
-      value_unchanged =
-        parameter.as_int() == get_parameter(name).as_int();
-    } else if (name == "position_logical_id") {
-      value_unchanged = parameter.as_int() == position_logical_id_;
-    } else if (name == "roller_logical_id") {
-      value_unchanged = parameter.as_int() == roller_logical_id_;
-    } else if (name == "position_target_topic" ||
-      name == "roller_target_topic")
+    // 再起動が必要なパラメータ
+    if (name == "command_period_ms" || name == "qos_depth" ||
+        name == "position_logical_id" || name == "roller_logical_id" ||
+        name == "position_target_topic" || name == "roller_target_topic")
     {
-      value_unchanged =
-        parameter.as_string() == get_parameter(name).as_string();
-    } else {
-      restart_required = false;
-    }
-
-    if (restart_required) {
-      if (value_unchanged) {
-        continue;
-      }
-      rcl_interfaces::msg::SetParametersResult result;
       result.successful = false;
       result.reason = name + " requires a node restart";
       return result;
     }
 
-    trajectory_changed = true;
-    if (name == "dribble_position_rad") {
-      dribble_position_rad = parameter.as_double();
-    } else if (name == "open_position_rad") {
-      open_position_rad = parameter.as_double();
-    } else if (name == "feed_position_rad") {
-      feed_position_rad = parameter.as_double();
-    } else if (name == "open_duration_sec") {
-      open_duration_sec = parameter.as_double();
-    } else if (name == "feed_duration_sec") {
-      feed_duration_sec = parameter.as_double();
-    } else if (name == "opening_max_velocity_rad_s") {
-      opening_max_vel_rad_s = parameter.as_double();
-    } else if (name == "feeding_max_velocity_rad_s") {
-      feeding_max_vel_rad_s = parameter.as_double();
-    } else if (name == "returning_max_velocity_rad_s") {
-      returning_max_vel_rad_s = parameter.as_double();
-    } else {
-      rcl_interfaces::msg::SetParametersResult result;
-      result.successful = false;
-      result.reason = name + " is not a supported parameter";
-      return result;
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      const int val = static_cast<int>(param.as_int());
+      if (val < 0) { result.successful = false; result.reason = name + " must be non-negative"; return result; }
+      if (name == "dribble_on_rpm") dribble_on_rpm_ = val;
+      else if (name == "shot_cycle_opening_rpm") shot_cycle_opening_rpm_ = val;
+      else if (name == "shot_cycle_feeding_rpm") shot_cycle_feeding_rpm_ = val;
+      else if (name == "shot_cycle_returning_rpm") shot_cycle_returning_rpm_ = val;
+      else if (name == "shot_cycle_belt_spinup_level") shot_cycle_belt_spinup_level_ = static_cast<uint8_t>(val);
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+      const double val = param.as_double();
+      if (!std::isfinite(val)) { result.successful = false; result.reason = name + " must be finite"; return result; }
+      trajectory_changed = true;
+
+      if (name == "dribble_position_rad") dribble_position_rad_ = val;
+      else if (name == "open_position_rad") open_position_rad_ = val;
+      else if (name == "feed_position_rad") feed_position_rad_ = val;
+      else if (name == "open_duration_sec") open_duration_sec_ = val;
+      else if (name == "feed_duration_sec") feed_duration_sec_ = val;
+      else if (name == "opening_max_velocity_rad_s") opening_max_velocity_rad_s_ = val;
+      else if (name == "feeding_max_velocity_rad_s") feeding_max_velocity_rad_s_ = val;
+      else if (name == "returning_max_velocity_rad_s") returning_max_velocity_rad_s_ = val;
+      else if (name == "belt_spinup_delay_sec") belt_spinup_delay_sec_ = val;
     }
   }
 
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful =
-    std::isfinite(dribble_position_rad) && std::isfinite(open_position_rad) &&
-    std::isfinite(feed_position_rad) && std::isfinite(open_duration_sec) &&
-    std::isfinite(feed_duration_sec) && open_duration_sec >= 0.0 &&
-    feed_duration_sec >= 0.0 && std::isfinite(opening_max_vel_rad_s) &&
-    std::isfinite(feeding_max_vel_rad_s) && std::isfinite(returning_max_vel_rad_s) &&
-    opening_max_vel_rad_s > 0.0 && feeding_max_vel_rad_s > 0.0 &&
-    returning_max_vel_rad_s > 0.0 && dribble_on_rpm >= 0 &&
-    dribble_on_rpm <= std::numeric_limits<int>::max() &&
-    shot_cycle_opening_rpm >= 0 &&
-    shot_cycle_opening_rpm <= std::numeric_limits<int>::max() &&
-    shot_cycle_feeding_rpm >= 0 &&
-    shot_cycle_feeding_rpm <= std::numeric_limits<int>::max() &&
-    shot_cycle_returning_rpm >= 0 &&
-    shot_cycle_returning_rpm <= std::numeric_limits<int>::max();
-  if (!result.successful) {
-    result.reason = "positions must be finite, durations/RPM nonnegative, and velocities positive";
-    return result;
-  }
-
-  dribble_position_rad_ = dribble_position_rad;
-  open_position_rad_ = open_position_rad;
-  feed_position_rad_ = feed_position_rad;
-  open_duration_sec_ = open_duration_sec;
-  feed_duration_sec_ = feed_duration_sec;
-  opening_max_velocity_rad_s_ = opening_max_vel_rad_s;
-  feeding_max_velocity_rad_s_ = feeding_max_vel_rad_s;
-  returning_max_velocity_rad_s_ = returning_max_vel_rad_s;
-  dribble_on_rpm_ = static_cast<int>(dribble_on_rpm);
-  shot_cycle_opening_rpm_ = static_cast<int>(shot_cycle_opening_rpm);
-  shot_cycle_feeding_rpm_ = static_cast<int>(shot_cycle_feeding_rpm);
-  shot_cycle_returning_rpm_ = static_cast<int>(shot_cycle_returning_rpm);
-
-  if (trajectory_changed && manual_transition_active_) {
-    manual_transition_start_time_ = now();
-    manual_transition_start_position_rad_ = last_position_command_rad_;
-  }
-  if (trajectory_changed && shot_cycle_active_) {
-    shot_cycle_start_time_ = now();
-    shot_cycle_start_position_rad_ = last_position_command_rad_;
+  if (trajectory_changed) {
+    if (manual_transition_active_) {
+      manual_transition_start_time_ = now();
+      manual_transition_start_position_rad_ = last_position_command_rad_;
+    }
+    if (shot_cycle_active_) {
+      shot_cycle_start_time_ = now();
+      shot_cycle_start_position_rad_ = last_position_command_rad_;
+    }
   }
   return result;
 }
