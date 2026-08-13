@@ -215,7 +215,8 @@ void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::Sha
   }
 }
 
-void DribbleControllerNode::actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::actuator_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == position_logical_id_) {
     current_arm_position_rad_ = msg->position;
@@ -462,7 +463,8 @@ int DribbleControllerNode::roller_target_rpm() const
         }
         // 真下を通過して逆側の FEED へ進行中 -> 0 RPM へ減速
         const double total_range = std::max(0.001, feed_position_rad_ - bottom_position_rad_);
-        const double progress = std::clamp((arm_pos - bottom_position_rad_) / total_range, 0.0, 1.0);
+        const double progress =
+          std::clamp((arm_pos - bottom_position_rad_) / total_range, 0.0, 1.0);
         return static_cast<int>(
           shot_cycle_opening_rpm_ +
           (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
