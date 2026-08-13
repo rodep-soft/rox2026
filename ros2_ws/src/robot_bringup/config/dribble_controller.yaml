@@ -13,6 +13,7 @@
     
     # [rad/s] 区間ごとの最大角速度
     opening_max_velocity_rad_s: 6.0   # DRIBBLE -> OPEN (最大速度6.0 rad/s)
+    opening_accel_factor: 1.8         # OPEN 動作で最高速度に達するまでの遅さ倍率 (大きいほどTop speedまでゆったり加速)
     feeding_max_velocity_rad_s: 10.0  # OPEN -> FEED
     returning_max_velocity_rad_s: 2.0 # FEED -> DRIBBLE
     

@@ -35,9 +35,9 @@ private:
 
   double target_position_rad() const;
   double interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s, double accel_factor = 1.0) const;
   double transition_duration_sec(
-    double start_rad, double target_rad, double max_vel_rad_s) const;
+    double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{0.35};
@@ -48,6 +48,7 @@ private:
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
+  double opening_accel_factor_{1.8};
   int dribble_on_rpm_{800};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
