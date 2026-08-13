@@ -19,8 +19,8 @@
       command_timeout_ms: 500         # コマンドが来ているかのタイムアウト用
       feedback_timeout_ms: 500        # フィードバックが返ってきているかのタイムアウト用
       max_rpm: 5600.0                 # 最大回転数(モータ固有)
-      rpm_slew_rate: 4000.0           # 一秒間での加速量
-      startup_current_a: 5.0          # モータが停止している状態から回転させるための電流値
+      rpm_slew_rate: 10000.0          # 一秒間での加速量(回転数維持トルクレスポンス強化)
+      startup_current_a: 8.0          # トルク・押出し底力電流値
       rpm_control_threshold_rpm: 300.0 # 回転数制御を開始する閾値(この回転数以上で回転数制御を開始する)
 
     under_belt:
@@ -29,8 +29,8 @@
       command_timeout_ms: 500
       feedback_timeout_ms: 500
       max_rpm: 5600.0
-      rpm_slew_rate: 4000.0
-      startup_current_a: 5.0
+      rpm_slew_rate: 10000.0
+      startup_current_a: 8.0
       rpm_control_threshold_rpm: 300.0
 
     dribble:
