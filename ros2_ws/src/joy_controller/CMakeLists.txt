@@ -18,7 +18,13 @@ target_include_directories(
   joy_controller_node
   PRIVATE include)
 ament_target_dependencies(
-  joy_controller_node geometry_msgs rclcpp rcl_interfaces robot_msgs sensor_msgs std_msgs)
+  joy_controller_node
+  geometry_msgs
+  rclcpp
+  rcl_interfaces
+  robot_msgs
+  sensor_msgs
+  std_msgs)
 
 install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
 

@@ -22,7 +22,9 @@ BeltControllerNode::BeltControllerNode()
   const auto qos_depth = declare_parameter<int>("qos_depth", 1);
   const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
   const auto upperbelt_logical_id = declare_parameter<int>("upperbelt_logical_id", 10);
-  const auto target_array_topic   = declare_parameter<std::string>("target_array_topic", "/vesc/target_array");
+  const auto target_array_topic = declare_parameter<std::string>(
+    "target_array_topic",
+    "/vesc/target_array");
 
   if (emergency_stop_period_ms <= 0 || qos_depth <= 0 || target_array_topic.empty()) {
     throw std::runtime_error("Invalid belt parameters");
@@ -70,7 +72,8 @@ BeltControllerNode::BeltControllerNode()
 void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
 {
   use_direct_target_rpm_ = false;
-  belt_mode_ = msg->mode <= robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
+  belt_mode_ = msg->mode <=
+    robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
   publish_command();
 }
 
@@ -92,7 +95,8 @@ void BeltControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::Shar
   publish_command();
 }
 
-void BeltControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg)
+void BeltControllerNode::vesc_state_callback(
+  const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg)
 {
   for (const auto & state : msg->actuators) {
     if (state.logical_id == underbelt_logical_id_) {
@@ -130,8 +134,8 @@ rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
     const auto & name = param.get_name();
 
     if (name == "emergency_stop_period_ms" || name == "qos_depth" ||
-        name == "underbelt_logical_id" || name == "upperbelt_logical_id" ||
-        name == "target_array_topic")
+      name == "underbelt_logical_id" || name == "upperbelt_logical_id" ||
+      name == "target_array_topic")
     {
       result.successful = false;
       result.reason = name + " requires a node restart";
@@ -142,11 +146,15 @@ rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
       const auto level_str = std::to_string(level + 1);
       if (name == "underbelt_level_" + level_str + "_rpm") {
         const int val = static_cast<int>(param.as_int());
-        if (val < 0) { result.successful = false; result.reason = "RPM must be non-negative"; return result; }
+        if (val < 0) {
+          result.successful = false; result.reason = "RPM must be non-negative"; return result;
+        }
         underbelt_rpms_[level] = val;
       } else if (name == "upperbelt_level_" + level_str + "_rpm") {
         const int val = static_cast<int>(param.as_int());
-        if (val < 0) { result.successful = false; result.reason = "RPM must be non-negative"; return result; }
+        if (val < 0) {
+          result.successful = false; result.reason = "RPM must be non-negative"; return result;
+        }
         upperbelt_rpms_[level] = val;
       }
     }

@@ -123,7 +123,9 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
 
     // 再起動が必要なパラメータの変更を拒否
     if (name == "command_qos_depth" || name == "state_publish_period_ms") {
-      if (param.as_int() != (name == "command_qos_depth" ? command_qos_depth_ : state_publish_period_ms_)) {
+      if (param.as_int() !=
+        (name == "command_qos_depth" ? command_qos_depth_ : state_publish_period_ms_))
+      {
         result.successful = false;
         result.reason = name + " requires a node restart";
         return result;
@@ -139,19 +141,27 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         result.reason = name + " must be non-negative";
         return result;
       }
-      if (name == "joy_timeout_ms") joy_timeout_ms_ = val;
-      else if (name == "ps_button") ps_button_ = val;
-      else if (name == "home_button") home_button_ = val;
-      else if (name == "circle_button") circle_button_ = val;
-      else if (name == "dribble_enable_button") dribble_enable_button_ = val;
-      else if (name == "game2_start_button") game2_start_button_ = val;
-      else if (name == "left_trigger_axis") left_trigger_axis_ = val;
-      else if (name == "right_trigger_axis") right_trigger_axis_ = val;
-      else if (name == "left_stick_x_axis") left_stick_x_axis_ = val;
-      else if (name == "left_stick_y_axis") left_stick_y_axis_ = val;
-      else if (name == "right_stick_x_axis") right_stick_x_axis_ = val;
-      else if (name == "dpad_horizontal_axis") dpad_horizontal_axis_ = val;
-      else if (name == "dpad_vertical_axis") dpad_vertical_axis_ = val;
+      if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "ps_button") {
+        ps_button_ = val;
+      } else if (name == "home_button") {home_button_ = val;} else if (name == "circle_button") {
+        circle_button_ = val;
+      } else if (name == "dribble_enable_button") {
+        dribble_enable_button_ = val;
+      } else if (name == "game2_start_button") {
+        game2_start_button_ = val;
+      } else if (name == "left_trigger_axis") {
+        left_trigger_axis_ = val;
+      } else if (name == "right_trigger_axis") {
+        right_trigger_axis_ = val;
+      } else if (name == "left_stick_x_axis") {
+        left_stick_x_axis_ = val;
+      } else if (name == "left_stick_y_axis") {
+        left_stick_y_axis_ = val;
+      } else if (name == "right_stick_x_axis") {
+        right_stick_x_axis_ = val;
+      } else if (name == "dpad_horizontal_axis") {
+        dpad_horizontal_axis_ = val;
+      } else if (name == "dpad_vertical_axis") {dpad_vertical_axis_ = val;}
     } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
       const double val = param.as_double();
       if (!std::isfinite(val) || val < 0.0) {
@@ -159,17 +169,17 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         result.reason = name + " must be valid positive number";
         return result;
       }
-      if (name == "linear_x_limit") max_vel_x_m_s_ = val;
-      else if (name == "linear_y_limit") max_vel_y_m_s_ = val;
-      else if (name == "angular_z_limit") max_vel_z_rad_s_ = val;
-      else if (name == "linear_x_acceleration_limit") acceleration_x_m_s2_ = val;
-      else if (name == "linear_y_acceleration_limit") acceleration_y_m_s2_ = val;
-      else if (name == "angular_z_acceleration_limit") acceleration_yaw_rad_s2_ = val;
-      else if (name == "linear_x_deceleration_limit") deceleration_x_m_s2_ = val;
-      else if (name == "linear_y_deceleration_limit") deceleration_y_m_s2_ = val;
-      else if (name == "angular_z_deceleration_limit") deceleration_yaw_rad_s2_ = val;
-      else if (name == "axis_deadzone") axis_deadzone_ = val;
-      else if (name == "axis_on_threshold") axis_on_threshold_ = val;
+      if (name == "linear_x_limit") {max_vel_x_m_s_ = val;} else if (name == "linear_y_limit") {
+        max_vel_y_m_s_ = val;
+      } else if (name == "angular_z_limit") {max_vel_z_rad_s_ = val;
+      } else if (name == "linear_x_acceleration_limit") {acceleration_x_m_s2_ = val;
+      } else if (name == "linear_y_acceleration_limit") {acceleration_y_m_s2_ = val;
+      } else if (name == "angular_z_acceleration_limit") {acceleration_yaw_rad_s2_ = val;
+      } else if (name == "linear_x_deceleration_limit") {deceleration_x_m_s2_ = val;
+      } else if (name == "linear_y_deceleration_limit") {deceleration_y_m_s2_ = val;
+      } else if (name == "angular_z_deceleration_limit") {deceleration_yaw_rad_s2_ = val;
+      } else if (name == "axis_deadzone") {axis_deadzone_ = val;
+      } else if (name == "axis_on_threshold") {axis_on_threshold_ = val;}
     }
   }
 
@@ -239,7 +249,8 @@ void JoyControllerNode::loop_callback()
   if (is_button_just_pressed(joy_msg_, ps_button_)) {
     is_drive_reversed_ = !is_drive_reversed_;
     publish_drive_reversed(is_drive_reversed_);
-    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s", is_drive_reversed_ ? "REVERSED" : "FORWARD");
+    RCLCPP_INFO(
+      get_logger(), "Drive direction toggled: %s", is_drive_reversed_ ? "REVERSED" : "FORWARD");
   }
 
   // 5. 自動シュートサイクル要求 (L2 + ○)
@@ -275,9 +286,12 @@ void JoyControllerNode::loop_callback()
   }
 
   // 8. スプリング発射要求 (L2 + R2 同時押し瞬間)
-  const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
-  const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
-  const bool spring_fire_triggered = is_l2_active && is_r2_active && !(was_l2_active && was_r2_active);
+  const bool was_l2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), left_trigger_axis_) <= -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() && get_axis_value(
+    last_joy_msg_.value(), right_trigger_axis_) <= -axis_on_threshold_;
+  const bool spring_fire_triggered = is_l2_active && is_r2_active &&
+    !(was_l2_active && was_r2_active);
 
   if (spring_fire_triggered) {
     RCLCPP_INFO(get_logger(), "Spring firing triggered!");

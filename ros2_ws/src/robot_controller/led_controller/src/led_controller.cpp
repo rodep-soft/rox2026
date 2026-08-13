@@ -7,8 +7,8 @@ namespace
 {
 constexpr uint8_t BELT_LEVEL_MASK = 0x07;
 constexpr uint8_t DRIBBLE_ENABLED_FLAG = 1U << 3U;
-constexpr uint8_t DRIVE_REVERSED_FLAG  = 1U << 4U;
-constexpr uint8_t GAME2_ENABLED_FLAG   = 1U << 5U;
+constexpr uint8_t DRIVE_REVERSED_FLAG = 1U << 4U;
+constexpr uint8_t GAME2_ENABLED_FLAG = 1U << 5U;
 }  // namespace
 
 LedControllerNode::LedControllerNode()
@@ -66,7 +66,8 @@ void LedControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::Share
 
 void LedControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
 {
-  belt_mode_ = msg->mode <= robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
+  belt_mode_ = msg->mode <=
+    robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
 }
 
 void LedControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -79,7 +80,8 @@ void LedControllerNode::drive_reversed_callback(const std_msgs::msg::Bool::Share
   drive_reversed_ = msg->data;
 }
 
-void LedControllerNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg)
+void LedControllerNode::shot_cycle_state_callback(
+  const robot_msgs::msg::ShotCycleState::SharedPtr msg)
 {
   shot_cycle_state_ = msg->state;
 }
@@ -147,7 +149,7 @@ uint8_t LedControllerNode::make_status_flags() const
     flags |= DRIVE_REVERSED_FLAG;
   }
   if (game2_state_ != robot_msgs::msg::Game2State::STANDBY &&
-      game2_state_ != robot_msgs::msg::Game2State::COMPLETED)
+    game2_state_ != robot_msgs::msg::Game2State::COMPLETED)
   {
     flags |= GAME2_ENABLED_FLAG;
   }
