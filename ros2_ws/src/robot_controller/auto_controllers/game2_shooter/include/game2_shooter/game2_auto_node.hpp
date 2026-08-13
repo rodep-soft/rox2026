@@ -1,5 +1,5 @@
-#ifndef GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_
-#define GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_
+#ifndef GAME2_SHOOTER__GAME2_AUTO_NODE_HPP_
+#define GAME2_SHOOTER__GAME2_AUTO_NODE_HPP_
 
 #include <array>
 #include <chrono>
@@ -34,10 +34,10 @@ struct PanelTagInfo
   rclcpp::Time last_seen;
 };
 
-class Game2TacticalShooterNode : public rclcpp::Node
+class Game2AutoNode : public rclcpp::Node
 {
 public:
-  explicit Game2TacticalShooterNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit Game2AutoNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
   void update_panel_states();
@@ -115,4 +115,4 @@ private:
 
 }  // namespace robot_controller
 
-#endif  // GAME2_SHOOTER__GAME2_TACTICAL_SHOOTER_NODE_HPP_
+#endif  // GAME2_SHOOTER__GAME2_AUTO_NODE_HPP_

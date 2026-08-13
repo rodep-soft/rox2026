@@ -1,4 +1,4 @@
-#include "game2_shooter/game2_tactical_shooter_node.hpp"
+#include "game2_shooter/game2_auto_node.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,8 +6,8 @@
 namespace robot_controller
 {
 
-Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & options)
-: Node("game2_tactical_shooter_node", options)
+Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
+: Node("game2_auto_node", options)
 {
   base_frame_        = declare_parameter<std::string>("base_frame", "base_link");
   tag_prefix_        = declare_parameter<std::string>("tag_prefix", "tag16h5:");
@@ -63,12 +63,12 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
   // 制御ループ 20 Hz
   timer_ = create_wall_timer(
     std::chrono::milliseconds(50),
-    std::bind(&Game2TacticalShooterNode::control_loop, this));
+    std::bind(&Game2AutoNode::control_loop, this));
 
-  RCLCPP_INFO(get_logger(), "Game2TacticalShooterNode initialized.");
+  RCLCPP_INFO(get_logger(), "Game2AutoNode initialized.");
 }
 
-void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
@@ -84,7 +84,7 @@ void Game2TacticalShooterNode::start_callback(const std_msgs::msg::Bool::SharedP
   }
 }
 
-void Game2TacticalShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_  = true;
   last_imu_time_ = now();
@@ -125,111 +125,65 @@ void Game2TacticalShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedP
   yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
-void Game2TacticalShooterNode::update_panel_states()
+void Game2AutoNode::update_panel_states()
 {
   const auto current_time = now();
 
-  // tag_prefix_ を使った1種類のフレーム名で lookup する
-  for (auto & [tag_id, info] : panel_grid_) {
-    const std::string frame = tag_prefix_ + std::to_string(tag_id);
+  for (auto & [id, panel] : panel_grid_) {
+    const std::string frame = tag_prefix_ + std::to_string(id);
     try {
       const auto tf = tf_buffer_->lookupTransform(base_frame_, frame, tf2::TimePointZero);
-      info.detected  = true;
-      info.x         = tf.transform.translation.x;
-      info.y         = tf.transform.translation.y;
-      info.z         = tf.transform.translation.z;
-      info.last_seen = current_time;
+      panel.x = tf.transform.translation.x;
+      panel.y = tf.transform.translation.y;
+      panel.z = tf.transform.translation.z;
+      panel.detected = true;
+      panel.last_seen = current_time;
     } catch (const tf2::TransformException &) {
-      if ((current_time - info.last_seen).seconds() > 2.0) {
-        info.detected = false;
+      if ((current_time - panel.last_seen).seconds() > 1.5) {
+        panel.detected = false;
       }
     }
   }
 }
 
-void Game2TacticalShooterNode::select_target_and_aim()
+void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 下段(0) → 中段(1) → 上段(2) の順に検索
-  while (active_row_ <= 2) {
-    // 現在段のパネルをcol順に並べる
-    std::vector<PanelTagInfo *> row_panels;
-    for (auto & [tag_id, info] : panel_grid_) {
-      if (info.row == active_row_) {
-        row_panels.push_back(&info);
-      }
-    }
-    std::sort(row_panels.begin(), row_panels.end(), [](const PanelTagInfo * a,
-      const PanelTagInfo * b) {
-      return a->col < b->col;
-    });
+  for (int row = active_row_; row <= 2; ++row) {
+    int best_id = -1;
+    double min_dist_sq = 1e9;
 
-    if (row_panels.empty()) {
-      ++active_row_;
-      continue;
-    }
-
-    PanelTagInfo * left   = row_panels.size() > 0 ? row_panels[0] : nullptr;
-    PanelTagInfo * center = row_panels.size() > 1 ? row_panels[1] : nullptr;
-    PanelTagInfo * right  = row_panels.size() > 2 ? row_panels[2] : nullptr;
-
-    // 隣接2枚狙い: 左・中央 → 境界の中点
-    if (left && center && left->detected && center->detected) {
-      target_x_ = (left->x + center->x) / 2.0;
-      target_y_ = (left->y + center->y) / 2.0;
-      target_z_ = (left->z + center->z) / 2.0;
-      target_valid_ = true;
-      RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Row %d: Left & Center detected -> aiming at boundary (Tag %d & %d)",
-        active_row_, left->tag_id, center->tag_id);
-      break;
-    }
-
-    // 隣接2枚狙い: 中央・右 → 境界の中点
-    if (center && right && center->detected && right->detected) {
-      target_x_ = (center->x + right->x) / 2.0;
-      target_y_ = (center->y + right->y) / 2.0;
-      target_z_ = (center->z + right->z) / 2.0;
-      target_valid_ = true;
-      RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Row %d: Center & Right detected -> aiming at boundary (Tag %d & %d)",
-        active_row_, center->tag_id, right->tag_id);
-      break;
-    }
-
-    // 孤立1枚狙い: 残っている任意のパネルの中心
-    for (auto * panel : row_panels) {
-      if (panel && panel->detected) {
-        target_x_ = panel->x;
-        target_y_ = panel->y;
-        target_z_ = panel->z;
-        target_valid_ = true;
-        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
-          "Row %d: Single panel Tag %d -> aiming at center", active_row_, panel->tag_id);
-        break;
+    for (const auto & [id, panel] : panel_grid_) {
+      if (panel.row == row && panel.detected) {
+        const double dist_sq = panel.x * panel.x + panel.y * panel.y;
+        if (dist_sq < min_dist_sq) {
+          min_dist_sq = dist_sq;
+          best_id = id;
+        }
       }
     }
 
-    if (target_valid_) {
-      break;
+    if (best_id != -1) {
+      active_row_ = row;
+      const auto & target = panel_grid_[best_id];
+      target_x_ = target.x;
+      target_y_ = target.y;
+      target_z_ = target.z;
+      target_valid_ = true;
+
+      switch (row) {
+        case 0: target_rpm_ = rpm_bottom_; break;
+        case 1: target_rpm_ = rpm_middle_; break;
+        case 2: target_rpm_ = rpm_top_; break;
+        default: target_rpm_ = rpm_bottom_; break;
+      }
+      return;
     }
-
-    // この段のパネルが全滅 → 次の段へ
-    ++active_row_;
-  }
-
-  // 段に応じたベルト RPM を設定
-  if (active_row_ == 0) {
-    target_rpm_ = rpm_bottom_;
-  } else if (active_row_ == 1) {
-    target_rpm_ = rpm_middle_;
-  } else {
-    target_rpm_ = rpm_top_;
   }
 }
 
-void Game2TacticalShooterNode::control_loop()
+void Game2AutoNode::control_loop()
 {
   robot_msgs::msg::Game2State state_msg;
   state_msg.state = state_;
@@ -328,7 +282,7 @@ void Game2TacticalShooterNode::control_loop()
     shoot_trigger, true, arm_mode, false);
 }
 
-void Game2TacticalShooterNode::publish_all(
+void Game2AutoNode::publish_all(
   const geometry_msgs::msg::Twist & cmd_vel,
   float belt_rpm,
   bool shoot_trigger,

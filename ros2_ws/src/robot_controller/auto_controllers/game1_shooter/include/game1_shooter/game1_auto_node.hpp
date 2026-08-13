@@ -1,5 +1,5 @@
-#ifndef GAME1_SHOOTER__GAME1_AUTO_SHOOTER_NODE_HPP_
-#define GAME1_SHOOTER__GAME1_AUTO_SHOOTER_NODE_HPP_
+#ifndef GAME1_SHOOTER__GAME1_AUTO_NODE_HPP_
+#define GAME1_SHOOTER__GAME1_AUTO_NODE_HPP_
 
 #include <chrono>
 #include <memory>
@@ -40,10 +40,10 @@ enum class Game1State : uint8_t
   COMPLETED = 8,
 };
 
-class Game1AutoShooterNode : public rclcpp::Node
+class Game1AutoNode : public rclcpp::Node
 {
 public:
-  explicit Game1AutoShooterNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit Game1AutoNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
   void control_loop();
@@ -114,4 +114,4 @@ private:
 
 }  // namespace robot_controller
 
-#endif  // GAME1_SHOOTER__GAME1_AUTO_SHOOTER_NODE_HPP_
+#endif  // GAME1_SHOOTER__GAME1_AUTO_NODE_HPP_

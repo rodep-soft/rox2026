@@ -1,4 +1,4 @@
-#include "game1_shooter/game1_auto_shooter_node.hpp"
+#include "game1_shooter/game1_auto_node.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,8 +6,8 @@
 namespace robot_controller
 {
 
-Game1AutoShooterNode::Game1AutoShooterNode(const rclcpp::NodeOptions & options)
-: Node("game1_auto_shooter_node", options)
+Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
+: Node("game1_auto_node", options)
 {
   kp_linear_       = declare_parameter<double>("kp_linear", 1.0);
   kp_angular_      = declare_parameter<double>("kp_angular", 1.5);
@@ -84,7 +84,7 @@ void Game1AutoShooterNode::odom_callback(const nav_msgs::msg::Odometry::SharedPt
   current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
-void Game1AutoShooterNode::ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void Game1AutoNode::ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
   ball_detected_ = true;
   last_ball_detection_time_ = now();
@@ -92,7 +92,7 @@ void Game1AutoShooterNode::ball_detection_callback(const geometry_msgs::msg::Pos
   detected_ball_y_ = msg->pose.position.y;
 }
 
-void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
@@ -109,7 +109,7 @@ void Game1AutoShooterNode::start_callback(const std_msgs::msg::Bool::SharedPtr m
   }
 }
 
-void Game1AutoShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+void Game1AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
   if (!odom_received_) {
@@ -125,7 +125,7 @@ void Game1AutoShooterNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr m
   }
 }
 
-geometry_msgs::msg::Twist Game1AutoShooterNode::compute_pure_pursuit(const Waypoint & target)
+geometry_msgs::msg::Twist Game1AutoNode::compute_pure_pursuit(const Waypoint & target)
 {
   geometry_msgs::msg::Twist cmd;
   // EKF 自己位置 (current_x, current_y, current_yaw) から見た目標位置への差分
@@ -140,7 +140,7 @@ geometry_msgs::msg::Twist Game1AutoShooterNode::compute_pure_pursuit(const Waypo
   return cmd;
 }
 
-void Game1AutoShooterNode::control_loop()
+void Game1AutoNode::control_loop()
 {
   if (!is_enabled_ || state_ == Game1State::STANDBY) {
     publish_commands(geometry_msgs::msg::Twist{}, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
@@ -262,7 +262,7 @@ void Game1AutoShooterNode::control_loop()
   publish_commands(cmd, dribble_enabled, arm_pos, spring_fire);
 }
 
-void Game1AutoShooterNode::publish_commands(
+void Game1AutoNode::publish_commands(
   const geometry_msgs::msg::Twist & cmd_vel,
   bool dribble_enabled,
   uint8_t arm_position,

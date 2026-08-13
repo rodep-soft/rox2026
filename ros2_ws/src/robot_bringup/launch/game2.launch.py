@@ -17,8 +17,8 @@ def launch_setup(context, *args, **kwargs):
 
     game2_node = Node(
         package="robot_controller",
-        executable="game2_tactical_shooter_node",
-        name="game2_tactical_shooter_node",
+        executable="game2_auto_node",
+        name="game2_auto_node",
         output="screen",
         parameters=[
             {

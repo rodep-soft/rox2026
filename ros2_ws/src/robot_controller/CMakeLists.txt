@@ -66,9 +66,9 @@ add_controller(
   std_msgs
   robot_msgs)
 add_controller(
-  game2_tactical_shooter_node
+  game2_auto_node
   auto_controllers/game2_shooter
-  game2_tactical_shooter_node.cpp
+  game2_auto_node.cpp
   geometry_msgs
   rclcpp
   sensor_msgs
@@ -77,9 +77,9 @@ add_controller(
   tf2
   tf2_ros)
 add_controller(
-  game1_auto_shooter_node
+  game1_auto_node
   auto_controllers/game1_shooter
-  game1_auto_shooter_node.cpp
+  game1_auto_node.cpp
   geometry_msgs
   rclcpp
   sensor_msgs

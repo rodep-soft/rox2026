@@ -11,8 +11,8 @@ def generate_launch_description():
 
     node = Node(
         package="robot_controller",
-        executable="game1_auto_shooter_node",
-        name="game1_auto_shooter_node",
+        executable="game1_auto_node",
+        name="game1_auto_node",
         output="screen",
         parameters=[config_path],
     )
