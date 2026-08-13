@@ -92,7 +92,6 @@ JoyControllerNode::JoyControllerNode()
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
 
-
   publish_stop_commands();
 
   joy_timeout_timer_ = create_wall_timer(
@@ -336,7 +335,8 @@ void JoyControllerNode::loop_callback()
     // 5. L2 + ○ ボタンで自動シュートサイクル要求
     if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
       RCLCPP_INFO(get_logger(), "Shot cycle requested!");
-      std_msgs::msg::Bool req; req.data = true;
+      std_msgs::msg::Bool req;
+      req.data = true;
       shot_cycle_request_pub_->publish(req);
     }
 
@@ -461,13 +461,13 @@ void JoyControllerNode::publish_dribble_enabled()
   msg.data = dribble_enabled_;
   dribble_enabled_pub_->publish(msg);
 }
+
 void JoyControllerNode::publish_drive_reversed()
 {
   std_msgs::msg::Bool msg;
   msg.data = is_drive_reversed_;
   drive_reversed_pub_->publish(msg);
 }
-
 
 void JoyControllerNode::publish_stop_commands()
 {

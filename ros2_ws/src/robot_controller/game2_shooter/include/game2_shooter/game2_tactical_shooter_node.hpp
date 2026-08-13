@@ -55,6 +55,13 @@ private:
   void control_loop();
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+  void publish_all(
+    const geometry_msgs::msg::Twist & cmd_vel,
+    float belt_rpm,
+    bool shoot_trigger,
+    bool dribble_enabled,
+    uint8_t arm_mode,
+    bool completed);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
