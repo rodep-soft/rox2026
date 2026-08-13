@@ -13,7 +13,7 @@ MecanumControllerNode::MecanumControllerNode()
 {
   configure_parameters();
 
-  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/chassis/cmd_vel");
+  const auto cmd_vel_topic = declare_parameter<std::string>("cmd_vel_topic", "/drive/cmd_vel");
   const auto emergency_stop_topic = declare_parameter<std::string>(
     "emergency_stop_topic",
     "/system/emergency_stop");

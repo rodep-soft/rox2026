@@ -51,7 +51,7 @@ Game2TacticalShooterNode::Game2TacticalShooterNode(const rclcpp::NodeOptions & o
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game2TacticalShooterNode::imu_callback, this, std::placeholders::_1));
 
-  cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/chassis/cmd_vel", 10);
+  cmd_vel_pub_       = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   belt_rpm_pub_      = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);

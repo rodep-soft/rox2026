@@ -69,7 +69,7 @@ JoyControllerNode::JoyControllerNode()
     "/system/emergency_stop", emergency_stop_qos);
 
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
-    "/chassis/cmd_vel", command_qos);
+    "/drive/cmd_vel", command_qos);
 
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
@@ -90,7 +90,7 @@ JoyControllerNode::JoyControllerNode()
     "/game2/command_start", command_qos);
 
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/chassis/drive_reversed", rclcpp::QoS(1).reliable().transient_local());
+    "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
 
   publish_stop_commands();
 

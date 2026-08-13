@@ -37,7 +37,7 @@ LedControllerNode::LedControllerNode()
     std::bind(&LedControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
   drive_reversed_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/chassis/drive_reversed", state_qos,
+    "/drive/reversed", state_qos,
     std::bind(&LedControllerNode::drive_reversed_callback, this, std::placeholders::_1));
 
   shot_cycle_state_sub_ = create_subscription<robot_msgs::msg::ShotCycleState>(
