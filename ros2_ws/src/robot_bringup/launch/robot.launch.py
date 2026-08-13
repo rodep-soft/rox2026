@@ -61,6 +61,15 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
+    # BNO055 IMU ドライバノード (libbno055-linux)
+    bno055_launch = include(
+        "bno055.launch.py",
+        condition=IfCondition(LaunchConfiguration("enable_bno055")),
+        launch_arguments={
+            "imu_uart_port": LaunchConfiguration("imu_uart_port"),
+        }.items(),
+    )
+
     # 拡張カルマンフィルタ (EKF) ノード
     ekf_launch = include(
         "ekf.launch.py",
@@ -119,6 +128,16 @@ def generate_launch_description():
                 description="Enable Game2 tactical panel shooter node",
             ),
             DeclareLaunchArgument(
+                "enable_bno055",
+                default_value="true",
+                description="Enable BNO055 IMU driver node (libbno055-linux)",
+            ),
+            DeclareLaunchArgument(
+                "imu_uart_port",
+                default_value="/dev/ttyUSB0",
+                description="UART device path for BNO055 IMU",
+            ),
+            DeclareLaunchArgument(
                 "enable_ekf",
                 default_value="true",
                 description="Enable Extended Kalman Filter (robot_localization EKF)",
@@ -136,6 +155,7 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
+            bno055_launch,
             game1_shooter_launch,
             game2_shooter_launch,
             ekf_launch,
