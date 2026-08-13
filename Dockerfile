@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iproute2 \
     usbutils \
     can-utils \
+    ros-humble-can-msgs \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
     ros-humble-ament-uncrustify \
