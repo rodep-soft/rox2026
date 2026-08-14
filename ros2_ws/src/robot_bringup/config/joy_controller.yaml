@@ -1,5 +1,8 @@
 joy_controller:
   ros__parameters:
+    # 出力トピック名 (cmd_vel_selector_node 宛)
+    cmd_vel_topic: "/joy_controller/cmd_vel"
+
     # Joy入力を保持する件数。
     joy_qos_depth: 3
     # 機構指令を保持する件数。
@@ -10,6 +13,13 @@ joy_controller:
     state_publish_period_ms: 20
     # shot cycle完了時にDRIVEへ自動復帰するか。
     auto_drive_on_shot_cycle_complete: true
+
+cmd_vel_selector_node:
+  ros__parameters:
+    manual_cmd_vel_topic: "/joy_controller/cmd_vel"
+    auto_cmd_vel_topic: "/auto_game1/cmd_vel"
+    operation_mode_topic: "/operation_mode"
+    output_cmd_vel_topic: "/mecanum/cmd_vel"
 
     # STOP・DRIVEでSHOT_CYCLEへ移動し、SHOT_CYCLE待機中はDRIVEへ戻す。
     create_button: 8

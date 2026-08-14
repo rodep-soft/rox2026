@@ -1,16 +1,23 @@
 auto_game1_node:
   ros__parameters:
     # トピック・アクション名設定
-    cmd_vel_topic: "/mecanum/cmd_vel"
+    cmd_vel_topic: "/auto_game1/cmd_vel"
     joy_topic: "/joy"
+    operation_mode_topic: "/operation_mode"
+    dribble_enabled_topic: "/dribble/enabled"
     nav_action_name: "navigate_through_poses"
     kick_action_name: "kick"
+    dribble_action_name: "dribble"
+    pass_action_name: "pass"
     global_frame_id: "map"
     robot_base_frame_id: "base_link"
 
     # ボタンアサイン (joy_controller/README.md 参照)
-    auto_stop_toggle_button: 0 # Cross / A
-    return_to_start_button: 1   # Circle / B
+    auto_stop_toggle_button: 8 # Create (自動停止切替 / Standby遷移)
+    return_to_start_button: 9   # Options (スタート位置復帰)
+    side_toggle_button: 3       # Triangle / △ (コートサイド切替: SIDE_A/SIDE_B)
+    dribble_on_button: 2        # Circle / ○ (装填待ち時のドリブルON)
+    start_autodrive_button: 1   # Cross / × (装填完了後の自律走行発進許可)
 
     # 制御周期および判定閾値
     control_period_sec: 0.05
@@ -18,6 +25,8 @@ auto_game1_node:
 
     # PREPARE_KICK用制御パラメータ
     kick_target_velocity_x: 0.5
+    kick_target_x: 1.5          # キック射出目標ラインのX座標 [m]
+    kick_tolerance_x: 0.1       # キック射出のX座標許容誤差 [m] (±)
     kick_target_y: 0.0
     kick_target_yaw: 0.0
     kp_y: 1.0
