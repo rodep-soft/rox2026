@@ -32,7 +32,10 @@ class Nv12ToMono8Node(Node):
         )
 
         self.last_camera_info_ = None
-        self.info_sub_ = self.create_subscription(
+        self.info_sub_1_ = self.create_subscription(
+            CameraInfo, "/image_combine_raw/left/camera_info", self.camera_info_callback, 10
+        )
+        self.info_sub_2_ = self.create_subscription(
             CameraInfo, "/image_left_raw/camera_info", self.camera_info_callback, 10
         )
         self.sub_ = self.create_subscription(
@@ -47,39 +50,35 @@ class Nv12ToMono8Node(Node):
         self.last_camera_info_ = msg
 
     def image_callback(self, msg: Image):
-        # 1. mono8 変換
-        if msg.encoding.lower() in ["nv12", "yuv420"]:
-            y_size = msg.width * msg.height
-            mono_msg = Image()
-            mono_msg.header = msg.header
-            mono_msg.height = msg.height
-            mono_msg.width = msg.width
-            mono_msg.encoding = "mono8"
-            mono_msg.is_bigendian = msg.is_bigendian
-            mono_msg.step = msg.width
-            mono_msg.data = msg.data[:y_size]
-            out_img = mono_msg
-        else:
-            out_img = msg
+        # 1. mono8 変換 (NV12 またはその他のフォーマットから Y プレーン抽出)
+        y_size = min(len(msg.data), msg.width * msg.height)
+        mono_msg = Image()
+        mono_msg.header = msg.header
+        mono_msg.height = msg.height
+        mono_msg.width = msg.width
+        mono_msg.encoding = "mono8"
+        mono_msg.is_bigendian = msg.is_bigendian
+        mono_msg.step = msg.width
+        mono_msg.data = msg.data[:y_size]
 
-        # 2. 画像と CameraInfo を全く同じタイムスタンプで同時配信 (同期率 100%)
-        self.pub_.publish(out_img)
+        # 2. 画像と CameraInfo を全く同じタイムスタンプ・Frame ID で同時配信 (同期率 100%)
+        self.pub_.publish(mono_msg)
+
+        info_msg = CameraInfo()
         if self.last_camera_info_ is not None:
             info_msg = self.last_camera_info_
-            info_msg.header = msg.header
-            self.camera_info_pub_.publish(info_msg)
         else:
-            # その他の形式でも Y プレーンとして先頭サイズを安全に抽出
-            y_size = min(len(msg.data), msg.width * msg.height)
-            mono_msg = Image()
-            mono_msg.header = msg.header
-            mono_msg.height = msg.height
-            mono_msg.width = msg.width
-            mono_msg.encoding = "mono8"
-            mono_msg.is_bigendian = msg.is_bigendian
-            mono_msg.step = msg.width
-            mono_msg.data = msg.data[:y_size]
-            self.pub_.publish(mono_msg)
+            # 📷 デフォルト 1080p カメラ内部パラメータ (SC230AI MIPI: fx=800, fy=800, cx=960, cy=540)
+            info_msg.width = msg.width
+            info_msg.height = msg.height
+            info_msg.distortion_model = "plumb_bob"
+            info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
+            info_msg.k = [800.0, 0.0, 960.0, 0.0, 800.0, 540.0, 0.0, 0.0, 1.0]
+            info_msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            info_msg.p = [800.0, 0.0, 960.0, 0.0, 0.0, 800.0, 540.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+
+        info_msg.header = msg.header
+        self.camera_info_pub_.publish(info_msg)
 
 
 def main(args=None):
