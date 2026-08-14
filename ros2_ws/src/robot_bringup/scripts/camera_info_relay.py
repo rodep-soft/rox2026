@@ -29,7 +29,9 @@ class CameraInfoRelay(Node):
         output_topic = self.get_parameter("output_topic").value
 
         self.pub = self.create_publisher(CameraInfo, output_topic, 10)
-        self.sub1 = self.create_subscription(CameraInfo, input_topic, self._relay_cb, 10)
+        self.sub1 = self.create_subscription(
+            CameraInfo, input_topic, self._relay_cb, 10
+        )
         self.sub2 = self.create_subscription(
             CameraInfo, "/image_combine_raw/left/camera_info", self._relay_cb, 10
         )
