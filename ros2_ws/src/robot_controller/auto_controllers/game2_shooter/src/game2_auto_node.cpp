@@ -16,8 +16,9 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   kp_dist_ = declare_parameter<double>("kp_dist", 0.8);
   max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
   target_distance_ = declare_parameter<double>("target_distance", 4.0);
-  camera_offset_x_ = declare_parameter<double>("camera_offset_x", 0.15);
+  camera_offset_x_ = declare_parameter<double>("camera_offset_x", 0.265);
   camera_offset_y_ = declare_parameter<double>("camera_offset_y", 0.035);
+  camera_offset_z_ = declare_parameter<double>("camera_offset_z", 0.193);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.02);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.03);
   rpm_bottom_ = declare_parameter<double>("rpm_bottom", 3000.0);
@@ -172,10 +173,10 @@ void Game2AutoNode::tag_detections_callback(
       const double x_cam = estimated_dist * std::cos(tag_angle_cam);
       const double y_cam = estimated_dist * std::sin(tag_angle_cam);
 
-      // 📐 base_link (ロボット旋回中心) 基準に変換 (カメラ位置 offset_x, offset_y を加算)
+      // 📐 base_link (ロボット旋回中心) 基準に変換 (カメラ位置 offset_x, offset_y, offset_z を加算)
       it->second.x = x_cam + camera_offset_x_;
       it->second.y = y_cam + camera_offset_y_;
-      it->second.z = 0.0;
+      it->second.z = camera_offset_z_;
 
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 500,

@@ -125,7 +125,7 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_nodes.append(mono_node)
 
-        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.20m)
+        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
         from launch_ros.actions import Node
         camera_tf_node = Node(
             package="tf2_ros",
@@ -134,7 +134,7 @@ def launch_setup(context, *args, **kwargs):
             arguments=[
                 "--x", "0.265",
                 "--y", "0.035",
-                "--z", "0.20",
+                "--z", "0.193",
                 "--roll", "0.0",
                 "--pitch", "0.0",
                 "--yaw", "0.0",
