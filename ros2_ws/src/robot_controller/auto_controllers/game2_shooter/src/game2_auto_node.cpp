@@ -153,28 +153,13 @@ void Game2AutoNode::tag_detections_callback(
   const auto current_time = now();
 
   for (const auto & detection : msg->detections) {
-    if (detection.id.empty()) {
-      continue;
-    }
-    const int id = detection.id[0];
+    const int id = detection.id;
     auto it = panel_grid_.find(id);
     if (it != panel_grid_.end()) {
-      // カメラ座標系 (X: 右, Y: 下, Z: 前方奥行き) -> ロボット base_link (X: 前方, Y: 左, Z: 上)
-      // カメラ光軸 Z がロボットの前方 X、カメラ X(右) がロボットの -Y(右)
-      const double cam_x = detection.pose.pose.pose.position.x;
-      const double cam_y = detection.pose.pose.pose.position.y;
-      const double cam_z = detection.pose.pose.pose.position.z;
-
-      it->second.x = cam_z;        // ロボット前方距離
-      it->second.y = -cam_x;       // ロボット左右方向 (左が正、右が負)
-      it->second.z = -cam_y;
-      it->second.detected = true;
       it->second.last_seen = current_time;
-
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 1000,
-        "📷 [AprilTag Direct] Tag ID %d seen: Front=%.2fm, Left/Right=%.3fm",
-        id, it->second.x, it->second.y);
+        "📷 [AprilTag Seen] Target Tag ID %d detected in camera frame!", id);
     }
   }
 }
