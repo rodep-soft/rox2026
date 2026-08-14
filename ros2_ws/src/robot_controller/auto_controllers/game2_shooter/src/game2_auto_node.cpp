@@ -219,42 +219,26 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 1. テストモード時: 1つのタグをロックオンして正面に向くまで一途に追従
+  // 1. テストモード時: 直近 0.5秒以内に見えているタグを即座にターゲットに選定
   if (test_alignment_only_) {
-    // 既存のロックオン対象がまだ見えているか確認 (直近1.0秒以内)
-    if (locked_target_id_ != -1) {
-      auto it = panel_grid_.find(locked_target_id_);
-      if (it != panel_grid_.end() && it->second.detected && (now() - it->second.last_seen).seconds() < 1.0) {
-        target_x_ = it->second.x;
-        target_y_ = it->second.y;
-        target_z_ = it->second.z;
-        target_valid_ = true;
-        return;
-      } else {
-        locked_target_id_ = -1; // 見失ったらロック解除
-      }
-    }
-
-    // 新たに一番正面に近いタグを 1 つ選んでロックオン
     int best_id = -1;
-    double min_y_abs = 1e9;
+    rclcpp::Time newest_time = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
     for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected && (now() - panel.last_seen).seconds() < 0.8) {
-        if (std::abs(panel.y) < min_y_abs) {
-          min_y_abs = std::abs(panel.y);
+      if (panel.detected && (now() - panel.last_seen).seconds() < 0.5) {
+        if (panel.last_seen > newest_time) {
+          newest_time = panel.last_seen;
           best_id = id;
         }
       }
     }
 
     if (best_id != -1) {
-      locked_target_id_ = best_id;
       const auto & target = panel_grid_[best_id];
       target_x_ = target.x;
       target_y_ = target.y;
       target_z_ = target.z;
       target_valid_ = true;
-      RCLCPP_INFO(get_logger(), "🔒 [Game2 Lock-On] Locked onto Tag ID %d for alignment!", best_id);
       return;
     }
   }
@@ -363,6 +347,11 @@ void Game2AutoNode::control_loop()
           double wz = kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
+          }
+          // 静止摩擦を突破する最小角速度 (0.18 rad/s)
+          const double min_angular_z = 0.18;
+          if (std::abs(wz) < min_angular_z) {
+            wz = std::copysign(min_angular_z, wz);
           }
           cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }
