@@ -1,4 +1,4 @@
-.PHONY: dev sync build launch-robot launch-manual test-cam test-apriltag test-yolo test-imu test-ekf launch-game1 launch-game2 help
+.PHONY: dev sync build launch-robot launch-manual test-cam test-apriltag test-yolo test-imu test-ekf launch-game1 launch-game2 debug can-check help
 
 # Docker & Workspace
 dev:
@@ -11,6 +11,13 @@ sync:
 
 build:
 	cd ros2_ws && colcon build --symlink-install
+
+# ── 🛠️ トラブルシューティング＆診断一発起動 ──
+debug:
+	bash ros2_ws/src/robot_bringup/scripts/debug_robot.sh
+
+can-check:
+	python3 ros2_ws/src/robot_bringup/scripts/can_health_check.py
 
 # ── 🚀 ロボット本番起動ショートカット ──
 launch-robot:
@@ -43,6 +50,8 @@ test-ekf:
 
 help:
 	@echo "=== ROX2026 ROS2 Command Shortcuts ==="
+	@echo "  make debug          : Reset FastDDS/CAN and run full robot diagnosis"
+	@echo "  make can-check      : Run pro-level CAN bus & node health check"
 	@echo "  make build          : Build ROS2 workspace with symlink-install"
 	@echo "  make launch-robot   : Launch all main robot nodes"
 	@echo "  make launch-manual  : Launch manual control mode"
@@ -53,3 +62,4 @@ help:
 	@echo "  make test-yolo      : Test YOLO ball detection"
 	@echo "  make test-imu       : Test BNO055 IMU sensor"
 	@echo "  make test-ekf       : Test EKF sensor fusion"
+

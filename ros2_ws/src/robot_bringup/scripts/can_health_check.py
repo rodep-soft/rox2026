@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-CAN & System Health Checker for ROX2026 Robot (Active Ping Edition)
-アクティブ探査（Can Ping）付き：全CANノード（足回り・キッカー・ドリブル・VESC・STM32）の生存確認
+CAN & System Health Checker for ROX2026 Robot
+CANバス統計、データレート、ノード別フレームレート(Hz)、トポロジー状態の自動診断
 """
 
 import subprocess
 import time
 import threading
+import re
+from collections import defaultdict
 
 NODE_MAP = {
     0x020: "Front Left Wheel (EduLite)",
@@ -15,67 +17,83 @@ NODE_MAP = {
     0x023: "Rear Right Wheel (EduLite)",
     0x028: "Spring / Kicker (EduLite)",
     0x038: "Dribble Motor (EduLite)",
+    0x100: "VESC Group Broadcast / Feedback",
     0x200: "STM32 Status / RX",
     0x201: "STM32 Control / TX",
+    0x310: "Limit Switch / Sensor Event",
     0x320: "Upper Belt Motor (VESC)",
     0x321: "Under Belt Motor (VESC)",
+    0x322: "Dribble Roller Motor (VESC)",
 }
 
 
 def print_header(title):
-    print(f"\n========================================================")
-    print(f"  {title}")
-    print(f"========================================================")
+    print(f"\n--- {title} ---")
 
 
-def check_can_interface():
-    print_header("1. Linux SocketCAN (can0) ステータス診断")
+def check_can_interface_stats():
+    print_header("1. SocketCAN (can0) Status & Error Counters")
     try:
         res = subprocess.run(
-            ["ip", "-details", "link", "show", "can0"], capture_output=True, text=True
+            ["ip", "-details", "-s", "link", "show", "can0"], capture_output=True, text=True
         )
         output = res.stdout
-        if "state UP" in output:
-            print("  [can0 状態] : \033[92mUP (正常稼働中)\033[0m")
-        elif "BUS-OFF" in output:
-            print(
-                "  [can0 状態] : \033[91mBUS-OFF (通信遮断中！restartが必要です)\033[0m"
-            )
+        
+        state_match = re.search(r"state\s+([A-Z\-]+)", output)
+        bus_state = state_match.group(1) if state_match else "UNKNOWN"
+        
+        if bus_state == "UP":
+            print("  State          : \033[92mUP\033[0m")
+        elif "BUS-OFF" in bus_state or "BUS-OFF" in output:
+            print("  State          : \033[91mBUS-OFF\033[0m")
         else:
-            print(
-                f"  [can0 状態] : \033[93m{output.splitlines()[0] if output else 'DOWN'}\033[0m"
-            )
+            print(f"  State          : \033[93m{bus_state}\033[0m")
 
-        for line in output.splitlines():
-            if "qlen" in line:
-                print(f"  [送信キュー] : {line.strip()}")
+        bitrate_match = re.search(r"bitrate\s+(\d+)", output)
+        bitrate = bitrate_match.group(1) if bitrate_match else "N/A"
+        restart_match = re.search(r"restart-ms\s+(\d+)", output)
+        restart_ms = restart_match.group(1) if restart_match else "0"
+        print(f"  Bitrate        : {int(bitrate)//1000 if bitrate.isdigit() else bitrate} kbps (restart-ms: {restart_ms}ms)")
+
+        tec_rec_match = re.search(r"berr-counter\s+tec\s+(\d+)\s+rec\s+(\d+)", output)
+        if tec_rec_match:
+            tec, rec = int(tec_rec_match.group(1)), int(tec_rec_match.group(2))
+            tec_str = f"\033[91m{tec}\033[0m" if tec > 96 else f"{tec}"
+            rec_str = f"\033[91m{rec}\033[0m" if rec > 96 else f"{rec}"
+            print(f"  Error Counters : TEC={tec_str}, REC={rec_str}")
+
+        restarts_match = re.search(r"restarts\s+(\d+)", output)
+        bus_errors_match = re.search(r"bus-errors\s+(\d+)", output)
+        if restarts_match or bus_errors_match:
+            restarts = restarts_match.group(1) if restarts_match else "0"
+            bus_errs = bus_errors_match.group(1) if bus_errors_match else "0"
+            print(f"  Bus Statistics : Restarts={restarts}, BusErrors={bus_errs}")
+
     except Exception as e:
-        print(f"  \033[91m[エラー] ip コマンドの実行に失敗: {e}\033[0m")
+        print(f"  [ERROR] Failed to inspect can0 stats: {e}")
 
 
 def send_pings():
-    """静観ノードに対して探査フレーム（Ping）を送る"""
-    time.sleep(0.5)
+    time.sleep(0.3)
     for can_id in NODE_MAP.keys():
         try:
-            # モータ/STM32にリード要求Pingを送信
             cmd = f"cansend can0 {can_id:03X}#0000"
             subprocess.run(cmd, shell=True, capture_output=True)
-            time.sleep(0.05)
+            time.sleep(0.02)
         except Exception:
             pass
 
 
-def check_can_nodes():
-    print_header("2. CAN バス上ノードのアクティブ探査テスト (Ping探査中...)")
-    detected_ids = set()
+def analyze_can_bus_traffic():
+    print_header("2. CAN Node Traffic Analysis (2.0s sample)")
+    node_counts = defaultdict(int)
+    unknown_nodes = defaultdict(int)
+    total_frames = 0
 
-    # Ping送信スレッド開始
     ping_thread = threading.Thread(target=send_pings)
     ping_thread.daemon = True
 
     try:
-        # loopback (自ノード送信分) を除外するために -L または candump の出力から自送信を除外してキャプチャ
         proc = subprocess.Popen(
             ["candump", "-L", "can0"],
             stdout=subprocess.PIPE,
@@ -85,71 +103,99 @@ def check_can_nodes():
         ping_thread.start()
 
         start_time = time.time()
-        while time.time() - start_time < 2.5:
+        sample_duration = 2.0
+        
+        while time.time() - start_time < sample_duration:
             line = proc.stdout.readline()
             if not line:
                 break
-            # logformat: (timestamp) interface id#data
-            # 例: (1786700000.000) can0 020#0000
-            # 自ノードが ping 送信した ID#0000 と完全一致するデータはループバック（自分が送ったデータ）として除外
+            
             parts = line.strip().split()
             if len(parts) >= 3:
                 try:
                     can_data_str = parts[2]
-                    id_data = can_data_str.split('#')
+                    id_data = can_data_str.split("#")
                     can_id = int(id_data[0], 16)
                     data_hex = id_data[1] if len(id_data) > 1 else ""
 
-                    # 送信したPingパケット(データが"0000"のもの)は受信データから除外する
                     if data_hex == "0000" and can_id in NODE_MAP:
                         continue
 
-                    detected_ids.add(can_id)
+                    total_frames += 1
+                    if can_id in NODE_MAP:
+                        node_counts[can_id] += 1
+                    else:
+                        unknown_nodes[can_id] += 1
                 except (ValueError, IndexError):
                     pass
+
         proc.terminate()
         proc.wait(timeout=1.0)
+
     except FileNotFoundError:
-        print(
-            "  \033[91m[エラー] candump コマンドが見つかりません。sudo apt install can-utils を実行してください。\033[0m"
-        )
+        print("  [ERROR] candump command not found.")
         return
     except Exception as e:
-        pass
+        print(f"  [ERROR] Capture exception: {e}")
+        return
 
-    print("  --- CAN ノードアクティブ探査結果 ---")
+    fps = total_frames / sample_duration
+    bus_load_pct = (fps * 111.0 / 1000000.0) * 100.0
+
+    print(f"  Total Traffic  : {total_frames} frames ({fps:.1f} fps)")
+    print(f"  Est. Bus Load  : {bus_load_pct:.2f} %")
+    print("\n  Node Status:")
+
     for can_id, name in NODE_MAP.items():
-        if can_id in detected_ids:
-            print(f"  [0x{can_id:03X}] {name:<30} : \033[92m● ONLINE (応答あり)\033[0m")
+        count = node_counts[can_id]
+        node_fps = count / sample_duration
+        if count > 0:
+            status_str = f"\033[92mONLINE ({node_fps:5.1f} Hz)\033[0m"
         else:
-            print(
-                f"  [0x{can_id:03X}] {name:<30} : \033[91m✕ NO RESPONSE (応答なし/電源切れ/断線?)\033[0m"
-            )
+            status_str = f"\033[91mNO RESPONSE\033[0m"
+        
+        print(f"  [0x{can_id:03X}] {name:<32} : {status_str}")
 
-    extra_ids = [hex(i) for i in detected_ids if i not in NODE_MAP]
-    if extra_ids:
-        print(f"\n  [その他の検出ID] : {', '.join(extra_ids)}")
+    if unknown_nodes:
+        print("\n  Unmapped IDs:")
+        for u_id, count in unknown_nodes.items():
+            u_fps = count / sample_duration
+            print(f"  [0x{u_id:03X}] Unknown Node                    : {u_fps:.1f} Hz")
+
+    print_header("3. Diagnostics Insight")
+    edulite_online = sum(1 for cid in [0x020, 0x021, 0x022, 0x023, 0x028, 0x038] if node_counts[cid] > 0)
+    vesc_online = sum(1 for cid in [0x320, 0x321, 0x322] if node_counts[cid] > 0 or node_counts[0x100] > 0)
+    stm32_online = node_counts[0x200] > 0 or node_counts[0x201] > 0
+
+    if edulite_online == 0 and stm32_online and vesc_online:
+        print("  Insight: EduLite nodes (0x20~0x38) non-responsive. Check EduLite 24V/12V power or CAN cable.")
+    elif edulite_online == 0 and not stm32_online and vesc_online:
+        print("  Insight: Only VESC online. Check CAN line between VESC and STM32/EduLite, or main logic power.")
+    elif edulite_online > 0 and edulite_online < 6:
+        offline_nodes = [name for cid, name in NODE_MAP.items() if cid < 0x100 and node_counts[cid] == 0]
+        print(f"  Insight: Partial EduLite offline ({', '.join(offline_nodes)}). Check specific CAN connectors.")
+    elif edulite_online == 6 and vesc_online and stm32_online:
+        print("  Insight: All nodes operational.")
+    else:
+        print("  Insight: Partial communication active. Check termination resistors (120 Ohm) or signal noise.")
 
 
 def check_joystick():
-    print_header("3. コントローラー (Joystick) 認識診断")
+    print_header("4. Joystick Status")
     try:
-        res = subprocess.run(
-            ["ls", "-l", "/dev/input/js0"], capture_output=True, text=True
-        )
+        res = subprocess.run(["ls", "-l", "/dev/input/js0"], capture_output=True, text=True)
         if res.returncode == 0:
-            print("  [ジョイパッド] : \033[92m/dev/input/js0 検出 (認識OK)\033[0m")
+            print("  Joystick (/dev/input/js0): \033[92mCONNECTED\033[0m")
         else:
-            print(
-                "  [ジョイパッド] : \033[91m/dev/input/js0 が見つかりません (コントローラー未接続)\033[0m"
-            )
+            print("  Joystick (/dev/input/js0): \033[91mNOT CONNECTED\033[0m")
     except Exception as e:
-        print(f"  [エラー] : {e}")
+        print(f"  [ERROR] {e}")
 
 
 if __name__ == "__main__":
-    print("\n🤖 ROX2026 ロボットアクティブ診断ツール 🤖")
-    check_can_interface()
-    check_can_nodes()
+    check_can_interface_stats()
+    analyze_can_bus_traffic()
     check_joystick()
-    print("\n診断完了。\n")
+    print()
+
+
