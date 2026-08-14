@@ -345,12 +345,13 @@ void Game2AutoNode::control_loop()
         if (is_aligned) {
           cmd.angular.z = 0.0;  // 中心にピタッと一致したら完全制動
         } else {
-          double wz = -kp_yaw_ * heading_err;
+          // 📐 正しい回転方向: 左にあるタグ(heading_err > 0)へは反時計回り(+wz)で向く
+          double wz = kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
           }
-          // 静止摩擦を突破する最小角速度 (0.15 rad/s) を保証
-          const double min_angular_z = 0.15;
+          // 静止摩擦を突破する最小角速度 (0.12 rad/s) を保証
+          const double min_angular_z = 0.12;
           if (std::abs(wz) < min_angular_z) {
             wz = std::copysign(min_angular_z, wz);
           }
