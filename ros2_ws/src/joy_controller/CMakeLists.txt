@@ -19,7 +19,14 @@ target_include_directories(
 ament_target_dependencies(
   joy_controller_node rclcpp geometry_msgs sensor_msgs std_msgs)
 
-install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
+add_executable(cmd_vel_selector_node src/cmd_vel_selector_node.cpp src/main_selector.cpp)
+target_include_directories(
+  cmd_vel_selector_node
+  PRIVATE include)
+ament_target_dependencies(
+  cmd_vel_selector_node rclcpp geometry_msgs std_msgs)
+
+install(TARGETS joy_controller_node cmd_vel_selector_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/ DESTINATION include)
 
