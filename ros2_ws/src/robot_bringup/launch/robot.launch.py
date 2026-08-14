@@ -87,12 +87,13 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_ekf")),
     )
 
-    # 分割された5つの独立コントローラーノード＋入力を一括起動
+    # 分割された6つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
         "controllers/dribble_controller.launch.py",
         "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
+        "controllers/led_controller.launch.py",
         "input/joy_controller.launch.py",
     ]
 
