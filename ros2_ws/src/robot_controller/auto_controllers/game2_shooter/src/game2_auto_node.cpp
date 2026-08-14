@@ -240,10 +240,10 @@ void Game2AutoNode::control_loop()
   if (!target_valid_) {
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
-    cmd.angular.z = 0.2;  // パネル探索旋回
+    cmd.angular.z = 0.0;  // タグ未検出時は勝手に回転せず静止待機
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 1000,
-      "🔍 [Game2 Search] Searching for target AprilTags (Row: %d)... Rotating 0.2 rad/s", active_row_);
+      "🔍 [Game2 Search] Waiting for target AprilTags (Row: %d)... Standing still (0.0 rad/s)", active_row_);
     publish_all(
       cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
       false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);

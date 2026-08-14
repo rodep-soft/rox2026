@@ -108,7 +108,7 @@ def launch_setup(context, *args, **kwargs):
     bringup_share = get_package_share_directory("robot_bringup")
 
     if enable_apriltag:
-        # NV12 (1080p) -> mono8 高速グレースケール変換ノード
+        # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
         # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
         mono_script = os.path.join(bringup_share, "scripts", "nv12_to_mono8_node.py")
         mono_node = ExecuteProcess(
@@ -124,22 +124,6 @@ def launch_setup(context, *args, **kwargs):
             output="screen",
         )
         launch_nodes.append(mono_node)
-
-        # CameraInfo リレーノード (/camera/left_mono8/camera_info への同期供給)
-        relay_script = os.path.join(bringup_share, "scripts", "camera_info_relay.py")
-        camera_info_relay = ExecuteProcess(
-            cmd=[
-                "python3",
-                relay_script,
-                "--ros-args",
-                "-p",
-                "input_topic:=/image_left_raw/camera_info",
-                "-p",
-                "output_topic:=/camera/camera_info",
-            ],
-            output="screen",
-        )
-        launch_nodes.append(camera_info_relay)
 
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"

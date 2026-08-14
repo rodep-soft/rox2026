@@ -9,7 +9,7 @@ NV12 to mono8 (Grayscale) Zero-Copy Image Converter
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo, Image
 
 
 class Nv12ToMono8Node(Node):
@@ -26,23 +26,28 @@ class Nv12ToMono8Node(Node):
         self.min_interval_sec_ = 1.0 / self.target_fps_ if self.target_fps_ > 0 else 0.0
         self.last_pub_time_ = 0.0
 
-        self.pub_ = self.create_publisher(Image, output_topic, 2)
+        self.pub_ = self.create_publisher(Image, output_topic, 10)
+        self.camera_info_pub_ = self.create_publisher(
+            CameraInfo, "/camera/camera_info", 10
+        )
+
+        self.last_camera_info_ = None
+        self.info_sub_ = self.create_subscription(
+            CameraInfo, "/image_left_raw/camera_info", self.camera_info_callback, 10
+        )
         self.sub_ = self.create_subscription(
-            Image, input_topic, self.image_callback, 2
+            Image, input_topic, self.image_callback, 10
         )
 
         self.get_logger().info(
-            f"NV12 -> mono8 Converter started: {input_topic} -> {output_topic} (Rate: {self.target_fps_} fps)"
+            f"NV12 -> mono8 Converter started: {input_topic} -> {output_topic}"
         )
 
-    def image_callback(self, msg: Image):
-        # レート制御: 指定した FPS 以上の頻度ではスキップして CPU 負荷を激減させる
-        now_sec = self.get_clock().now().nanoseconds / 1e9
-        if (now_sec - self.last_pub_time_) < self.min_interval_sec_:
-            return
-        self.last_pub_time_ = now_sec
+    def camera_info_callback(self, msg: CameraInfo):
+        self.last_camera_info_ = msg
 
-        # NV12 形式の場合、先頭 width * height バイトがそのまま Y（輝度）データ
+    def image_callback(self, msg: Image):
+        # 1. mono8 変換
         if msg.encoding.lower() in ["nv12", "yuv420"]:
             y_size = msg.width * msg.height
             mono_msg = Image()
@@ -53,10 +58,16 @@ class Nv12ToMono8Node(Node):
             mono_msg.is_bigendian = msg.is_bigendian
             mono_msg.step = msg.width
             mono_msg.data = msg.data[:y_size]
-            self.pub_.publish(mono_msg)
-        elif msg.encoding.lower() in ["mono8", "bgr8", "rgb8"]:
-            # すでに標準形式の場合はそのまま転送
-            self.pub_.publish(msg)
+            out_img = mono_msg
+        else:
+            out_img = msg
+
+        # 2. 画像と CameraInfo を全く同じタイムスタンプで同時配信 (同期率 100%)
+        self.pub_.publish(out_img)
+        if self.last_camera_info_ is not None:
+            info_msg = self.last_camera_info_
+            info_msg.header = msg.header
+            self.camera_info_pub_.publish(info_msg)
         else:
             # その他の形式でも Y プレーンとして先頭サイズを安全に抽出
             y_size = min(len(msg.data), msg.width * msg.height)
