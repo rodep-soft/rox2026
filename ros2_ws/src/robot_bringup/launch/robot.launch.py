@@ -37,6 +37,8 @@ def generate_launch_description():
         launch_arguments=list(
             {
                 "stereonet_version": LaunchConfiguration("stereonet_version"),
+                "publish_visual_enabled": LaunchConfiguration("publish_visual_enabled"),
+                "publish_pcd_enabled": LaunchConfiguration("publish_pcd_enabled"),
                 "enable_apriltag": LaunchConfiguration("enable_apriltag"),
                 "enable_yolo": LaunchConfiguration("enable_yolo"),
             }.items()
@@ -160,6 +162,16 @@ def generate_launch_description():
                 "stereonet_version",
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
+            ),
+            DeclareLaunchArgument(
+                "publish_visual_enabled",
+                default_value="False",
+                description="Enable publishing visualization image for Web UI (False for lightweight)",
+            ),
+            DeclareLaunchArgument(
+                "publish_pcd_enabled",
+                default_value="False",
+                description="Enable publishing PointCloud2 (False for lightweight)",
             ),
             DeclareLaunchArgument(
                 "enable_foxglove",
