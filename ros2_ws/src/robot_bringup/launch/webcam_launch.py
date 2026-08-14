@@ -50,13 +50,13 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # 📐 base_link -> webcam_link (実測値: 前方 +0.300m, 左右 0.000m, 上方 +0.380m)
+    # 📐 base_link -> webcam_link (実測値: 後方 -0.300m, 左右 0.000m, 上方 +0.380m)
     webcam_tf_node = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="base_to_webcam_tf",
         arguments=[
-            "--x", "0.300",
+            "--x", "-0.300",
             "--y", "0.000",
             "--z", "0.380",
             "--roll", "0.0",
