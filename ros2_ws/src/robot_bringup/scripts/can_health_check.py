@@ -35,13 +35,15 @@ def check_can_interface_stats():
     print_header("1. SocketCAN (can0) Status & Error Counters")
     try:
         res = subprocess.run(
-            ["ip", "-details", "-s", "link", "show", "can0"], capture_output=True, text=True
+            ["ip", "-details", "-s", "link", "show", "can0"],
+            capture_output=True,
+            text=True,
         )
         output = res.stdout
-        
+
         state_match = re.search(r"state\s+([A-Z\-]+)", output)
         bus_state = state_match.group(1) if state_match else "UNKNOWN"
-        
+
         if bus_state == "UP":
             print("  State          : \033[92mUP\033[0m")
         elif "BUS-OFF" in bus_state or "BUS-OFF" in output:
@@ -53,7 +55,9 @@ def check_can_interface_stats():
         bitrate = bitrate_match.group(1) if bitrate_match else "N/A"
         restart_match = re.search(r"restart-ms\s+(\d+)", output)
         restart_ms = restart_match.group(1) if restart_match else "0"
-        print(f"  Bitrate        : {int(bitrate)//1000 if bitrate.isdigit() else bitrate} kbps (restart-ms: {restart_ms}ms)")
+        print(
+            f"  Bitrate        : {int(bitrate)//1000 if bitrate.isdigit() else bitrate} kbps (restart-ms: {restart_ms}ms)"
+        )
 
         tec_rec_match = re.search(r"berr-counter\s+tec\s+(\d+)\s+rec\s+(\d+)", output)
         if tec_rec_match:
@@ -104,12 +108,12 @@ def analyze_can_bus_traffic():
 
         start_time = time.time()
         sample_duration = 2.0
-        
+
         while time.time() - start_time < sample_duration:
             line = proc.stdout.readline()
             if not line:
                 break
-            
+
             parts = line.strip().split()
             if len(parts) >= 3:
                 try:
@@ -153,7 +157,7 @@ def analyze_can_bus_traffic():
             status_str = f"\033[92mONLINE ({node_fps:5.1f} Hz)\033[0m"
         else:
             status_str = f"\033[91mNO RESPONSE\033[0m"
-        
+
         print(f"  [0x{can_id:03X}] {name:<32} : {status_str}")
 
     if unknown_nodes:
@@ -163,27 +167,47 @@ def analyze_can_bus_traffic():
             print(f"  [0x{u_id:03X}] Unknown Node                    : {u_fps:.1f} Hz")
 
     print_header("3. Diagnostics Insight")
-    edulite_online = sum(1 for cid in [0x020, 0x021, 0x022, 0x023, 0x028, 0x038] if node_counts[cid] > 0)
-    vesc_online = sum(1 for cid in [0x320, 0x321, 0x322] if node_counts[cid] > 0 or node_counts[0x100] > 0)
+    edulite_online = sum(
+        1 for cid in [0x020, 0x021, 0x022, 0x023, 0x028, 0x038] if node_counts[cid] > 0
+    )
+    vesc_online = sum(
+        1
+        for cid in [0x320, 0x321, 0x322]
+        if node_counts[cid] > 0 or node_counts[0x100] > 0
+    )
     stm32_online = node_counts[0x200] > 0 or node_counts[0x201] > 0
 
     if edulite_online == 0 and stm32_online and vesc_online:
-        print("  Insight: EduLite nodes (0x20~0x38) non-responsive. Check EduLite 24V/12V power or CAN cable.")
+        print(
+            "  Insight: EduLite nodes (0x20~0x38) non-responsive. Check EduLite 24V/12V power or CAN cable."
+        )
     elif edulite_online == 0 and not stm32_online and vesc_online:
-        print("  Insight: Only VESC online. Check CAN line between VESC and STM32/EduLite, or main logic power.")
+        print(
+            "  Insight: Only VESC online. Check CAN line between VESC and STM32/EduLite, or main logic power."
+        )
     elif edulite_online > 0 and edulite_online < 6:
-        offline_nodes = [name for cid, name in NODE_MAP.items() if cid < 0x100 and node_counts[cid] == 0]
-        print(f"  Insight: Partial EduLite offline ({', '.join(offline_nodes)}). Check specific CAN connectors.")
+        offline_nodes = [
+            name
+            for cid, name in NODE_MAP.items()
+            if cid < 0x100 and node_counts[cid] == 0
+        ]
+        print(
+            f"  Insight: Partial EduLite offline ({', '.join(offline_nodes)}). Check specific CAN connectors."
+        )
     elif edulite_online == 6 and vesc_online and stm32_online:
         print("  Insight: All nodes operational.")
     else:
-        print("  Insight: Partial communication active. Check termination resistors (120 Ohm) or signal noise.")
+        print(
+            "  Insight: Partial communication active. Check termination resistors (120 Ohm) or signal noise."
+        )
 
 
 def check_joystick():
     print_header("4. Joystick Status")
     try:
-        res = subprocess.run(["ls", "-l", "/dev/input/js0"], capture_output=True, text=True)
+        res = subprocess.run(
+            ["ls", "-l", "/dev/input/js0"], capture_output=True, text=True
+        )
         if res.returncode == 0:
             print("  Joystick (/dev/input/js0): \033[92mCONNECTED\033[0m")
         else:
@@ -197,5 +221,3 @@ if __name__ == "__main__":
     analyze_can_bus_traffic()
     check_joystick()
     print()
-
-
