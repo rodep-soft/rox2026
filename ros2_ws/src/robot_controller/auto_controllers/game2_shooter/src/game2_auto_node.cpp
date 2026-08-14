@@ -38,12 +38,18 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
         info.tag_id = id;
         info.row = row;
         info.col = static_cast<int>(col);
+        info.last_seen = this->now();
         panel_grid_[id] = info;
       }
     };
   register_row(bottom_tags, 0);
   register_row(middle_tags, 1);
   register_row(top_tags, 2);
+
+  const auto init_now = this->now();
+  ball_detected_time_ = init_now;
+  shoot_start_time_ = init_now;
+  last_imu_time_ = init_now;
 
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -84,6 +90,10 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     active_row_ = 0;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
+    const auto start_time = this->now();
+    ball_detected_time_ = start_time;
+    shoot_start_time_ = start_time;
+    last_imu_time_ = start_time;
     RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
