@@ -2,9 +2,9 @@ game2_auto_node:
   ros__parameters:
     base_frame: "base_link"
     target_distance: 4.0
-    kp_yaw: 0.5
-    kd_yaw: 0.05
-    max_angular_z: 0.35
+    kp_yaw: 1.8
+    kd_yaw: 0.10
+    max_angular_z: 1.2
     yaw_tolerance: 0.04
     dist_tolerance: 0.03
 

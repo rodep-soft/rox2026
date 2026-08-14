@@ -241,6 +241,9 @@ void Game2AutoNode::control_loop()
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
     cmd.angular.z = 0.2;  // パネル探索旋回
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 1000,
+      "🔍 [Game2 Search] Searching for target AprilTags (Row: %d)... Rotating 0.2 rad/s", active_row_);
     publish_all(
       cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
       false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
@@ -270,11 +273,17 @@ void Game2AutoNode::control_loop()
         const bool is_ball_settled = ball_detected_ &&
           ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
+        // 📊 リアルタイム詳細デバッグ出力 (500ms周期)
+        RCLCPP_INFO_THROTTLE(
+          get_logger(), *get_clock(), 500,
+          "🎯 [Game2 Track] Target: x=%.2fm, y_err=%.3fm | Angular Cmd: %.3f rad/s | Aligned: %s",
+          target_x_, y_err, cmd.angular.z, is_aligned ? "YES (MATCH)" : "NO (TURNING)");
+
         if (test_alignment_only_) {
           if (is_aligned) {
             RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 2000,
-              "Game2 [TEST]: Target Aligned (y_err: %.3f m)!", y_err);
+              get_logger(), *get_clock(), 1000,
+              "✨ [Game2 TEST] Target Perfect Aligned! Holding heading.");
           }
         } else {
           if (is_aligned && is_ball_settled) {
