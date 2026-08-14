@@ -71,7 +71,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     "/dribble/ball_detected", 10,
     std::bind(&Game2AutoNode::ball_callback, this, std::placeholders::_1));
 
-  cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
+  cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel_heading", 10);
   belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
@@ -95,6 +95,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     active_row_ = 0;
+    locked_target_id_ = -1;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
     const auto start_time = this->now();
@@ -104,6 +105,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
+    locked_target_id_ = -1;
     state_ = robot_msgs::msg::Game2State::STANDBY;
     RCLCPP_INFO(get_logger(), "Game 2 STOP.");
   }
@@ -162,26 +164,23 @@ void Game2AutoNode::tag_detections_callback(
       it->second.last_seen = current_time;
       it->second.detected = true;
 
-      // 1080p 画像中心 (cx=960) からのピクセルズレ
+      // 1080p 画像中心 (cx=960) からのピクセルズレ (右が正, 左が負)
       const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
       
-      // カメラ視野角から見たタグの光軸角度 (rad) (水平FOV ≈ 105° = 1.83 rad, 焦点距離 fx ≈ 740px)
-      const double tag_angle_cam = - std::atan2(pixel_x_err, 740.0);
-      const double estimated_dist = 2.5; // [m] 推定距離
+      // カメラ視野角から見たタグの光軸角度 (rad)
+      // タグが左 (pixel_x_err < 0) -> 角度は左 (+rad, 反時計回り)
+      // タグが右 (pixel_x_err > 0) -> 角度は右 (-rad, 時計回り)
+      const double heading_err_rad = - std::atan2(pixel_x_err, 740.0);
+      const double estimated_dist = 2.5; // [m]
 
-      // カメラ座標系でのタグ位置 (前方 X_cam, 左 Y_cam)
-      const double x_cam = estimated_dist * std::cos(tag_angle_cam);
-      const double y_cam = estimated_dist * std::sin(tag_angle_cam);
-
-      // 📐 base_link (ロボット旋回中心) 基準に変換 (カメラ位置 offset_x, offset_y, offset_z を加算)
-      it->second.x = x_cam + camera_offset_x_;
-      it->second.y = y_cam + camera_offset_y_;
+      it->second.x = estimated_dist * std::cos(heading_err_rad) + camera_offset_x_;
+      it->second.y = estimated_dist * std::sin(heading_err_rad) + camera_offset_y_;
       it->second.z = camera_offset_z_;
 
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 500,
-        "📷 [AprilTag Track] Tag ID %d: PixelErr=%.1f px -> RobotBase (X=%.2fm, Y=%.3fm, HeadingErr=%.2f deg)",
-        id, pixel_x_err, it->second.x, it->second.y, std::atan2(it->second.y, it->second.x) * 180.0 / M_PI);
+        "📷 [AprilTag Track] Tag ID %d: PixelErr=%.1f px -> HeadingErr=%.2f deg",
+        id, pixel_x_err, heading_err_rad * 180.0 / M_PI);
     }
   }
 }
@@ -220,27 +219,42 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 1. テストモード時は直近 0.5秒以内に検出されたタグの中から最新のものをターゲットに選定
+  // 1. テストモード時: 1つのタグをロックオンして正面に向くまで一途に追従
   if (test_alignment_only_) {
-    int best_id = -1;
-    rclcpp::Time newest_time = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    // 既存のロックオン対象がまだ見えているか確認 (直近1.0秒以内)
+    if (locked_target_id_ != -1) {
+      auto it = panel_grid_.find(locked_target_id_);
+      if (it != panel_grid_.end() && it->second.detected && (now() - it->second.last_seen).seconds() < 1.0) {
+        target_x_ = it->second.x;
+        target_y_ = it->second.y;
+        target_z_ = it->second.z;
+        target_valid_ = true;
+        return;
+      } else {
+        locked_target_id_ = -1; // 見失ったらロック解除
+      }
+    }
 
+    // 新たに一番正面に近いタグを 1 つ選んでロックオン
+    int best_id = -1;
+    double min_y_abs = 1e9;
     for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected && (now() - panel.last_seen).seconds() < 0.5) {
-        if (panel.last_seen > newest_time) {
-          newest_time = panel.last_seen;
+      if (panel.detected && (now() - panel.last_seen).seconds() < 0.8) {
+        if (std::abs(panel.y) < min_y_abs) {
+          min_y_abs = std::abs(panel.y);
           best_id = id;
         }
       }
     }
 
     if (best_id != -1) {
+      locked_target_id_ = best_id;
       const auto & target = panel_grid_[best_id];
       target_x_ = target.x;
       target_y_ = target.y;
       target_z_ = target.z;
       target_valid_ = true;
-      active_row_ = target.row;
+      RCLCPP_INFO(get_logger(), "🔒 [Game2 Lock-On] Locked onto Tag ID %d for alignment!", best_id);
       return;
     }
   }
@@ -349,11 +363,6 @@ void Game2AutoNode::control_loop()
           double wz = kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
-          }
-          // 静止摩擦を突破する最小角速度 (0.12 rad/s) を保証
-          const double min_angular_z = 0.12;
-          if (std::abs(wz) < min_angular_z) {
-            wz = std::copysign(min_angular_z, wz);
           }
           cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }
