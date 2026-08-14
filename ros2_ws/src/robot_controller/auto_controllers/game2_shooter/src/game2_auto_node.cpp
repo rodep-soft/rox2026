@@ -246,7 +246,7 @@ void Game2AutoNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
         state_ = robot_msgs::msg::Game2State::ALIGNING;
-        cmd.linear.x = kp_dist_ * dist_err;
+        cmd.linear.x = 0.0;  // 前後移動は行わず、その場旋回で角度のみ合わせる
         cmd.linear.y = 0.0;
 
         double wz = -kp_yaw_ * y_err;
@@ -255,8 +255,7 @@ void Game2AutoNode::control_loop()
         }
         cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-        const bool is_aligned =
-          (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
+        const bool is_aligned = (std::abs(y_err) < yaw_tolerance_);
         const bool is_ball_settled = ball_detected_ &&
           ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
