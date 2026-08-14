@@ -69,6 +69,7 @@ def launch_setup(context, *args, **kwargs):
                 "mipi_channel2": mipi_channel2,
                 "publish_visual_enabled": publish_visual_enabled,
                 "publish_pcd_enabled": publish_pcd_enabled,
+                "publish_rectify_bgr": "True",
                 "stereo_image_topic": stereo_image_topic,
                 "camera_info_topic": camera_info_topic,
                 "left_camera_info_topic": left_camera_info_topic,
