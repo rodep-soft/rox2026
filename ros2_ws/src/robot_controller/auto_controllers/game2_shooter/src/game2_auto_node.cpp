@@ -345,9 +345,11 @@ void Game2AutoNode::control_loop()
 
         // 📊 リアルタイム詳細デバッグ出力 (200ms周期)
         RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 200,
+          get_logger(),
+          *get_clock(), 200,
           "🎯 [Game2 Track] Target: x=%.2fm, y=%.3fm (HeadingErr: %.2f deg) | Cmd wz: %.3f rad/s | %s",
-          target_x_, y_err, heading_err * 180.0 / M_PI, cmd.angular.z, is_aligned ? "✨ ALIGNED (MATCH)" : "🔄 TURNING");
+          target_x_, y_err, heading_err * 180.0 / M_PI, cmd.angular.z,
+          is_aligned ? "✨ ALIGNED (MATCH)" : "🔄 TURNING");
 
         if (test_alignment_only_) {
           if (is_aligned) {
