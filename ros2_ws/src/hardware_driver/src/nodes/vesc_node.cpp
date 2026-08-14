@@ -243,7 +243,7 @@ private:
 
     const bool startup_timed_out = motor.startup_current_start_time !=
       std::chrono::steady_clock::time_point{} &&
-      (now - motor.startup_current_start_time) >= std::chrono::milliseconds(500);
+    (now - motor.startup_current_start_time) >= std::chrono::milliseconds(500);
 
     if (!motor.rpm_control_active && (threshold_reached || startup_timed_out)) {
       motor.rpm_control_active = true;

@@ -166,11 +166,11 @@ void Game2AutoNode::tag_detections_callback(
 
       // 1080p 画像中心 (cx=960) からのピクセルズレ (右が正, 左が負)
       const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
-      
+
       // カメラ視野角から見たタグの光軸角度 (rad) (1080p fx ≈ 800.0 px)
       // タグが左 (pixel_x_err < 0) -> 角度は左 (+rad, 反時計回り)
       // タグが右 (pixel_x_err > 0) -> 角度は右 (-rad, 時計回り)
-      const double heading_err_rad = - std::atan2(pixel_x_err, 800.0);
+      const double heading_err_rad = -std::atan2(pixel_x_err, 800.0);
       const double estimated_dist = target_distance_; // [m] 4.0m 設定距離に連動
 
       // 📐 base_link 基準変換: カメラが左(+Y)にあるため、ロボット中心基準では -camera_offset_y_
@@ -300,8 +300,10 @@ void Game2AutoNode::control_loop()
     geometry_msgs::msg::Twist cmd;
     cmd.angular.z = 0.0;  // タグ未検出時は勝手に回転せず静止待機
     RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 1000,
-      "🔍 [Game2 Search] Waiting for target AprilTags (Row: %d)... Standing still (0.0 rad/s)", active_row_);
+      get_logger(),
+      *get_clock(), 1000,
+      "🔍 [Game2 Search] Waiting for target AprilTags (Row: %d)... Standing still (0.0 rad/s)",
+      active_row_);
     publish_all(
       cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
       false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
