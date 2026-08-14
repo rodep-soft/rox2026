@@ -1,17 +1,16 @@
 #!/bin/bash
-# ロボット一発復帰＆デバッグスクリプト
+# ROX2026 Emergency Reset & Diagnostics Script
 
-echo "========================================="
-echo " 🛠️ ROX2026 自動トラブルシューティング 🛠️"
-echo "========================================="
+echo "--- ROX2026 Reset & Diagnostics ---"
 
-echo "[1/3] FastDDS 共有メモリの残骸ロックを削除中..."
+echo "[1/3] Clearing FastDDS shared memory..."
 sudo rm -rf /dev/shm/fastrtps_*
 
-echo "[2/3] SocketCAN (can0) を再初期化中..."
+echo "[2/3] Re-initializing SocketCAN (can0)..."
 sudo ip link set can0 down 2>/dev/null
 sudo ip link set can0 txqueuelen 1000
 sudo ip link set can0 up type can bitrate 1000000 restart-ms 100
 
-echo "[3/3] 全モータ＆CANノードの生滅チェックを実行します..."
+echo "[3/3] Running CAN node diagnostics..."
 python3 $(dirname "$0")/can_health_check.py
+

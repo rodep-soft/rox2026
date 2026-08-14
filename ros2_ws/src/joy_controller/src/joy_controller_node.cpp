@@ -245,8 +245,22 @@ void JoyControllerNode::loop_callback()
   const bool is_l2_active = get_axis_value(joy_msg_, left_trigger_axis_) <= -axis_on_threshold_;
   const bool is_r2_active = get_axis_value(joy_msg_, right_trigger_axis_) <= -axis_on_threshold_;
 
-  // 2. DPAD 上/下でベルトレベル昇降 (R2が押されていない時のみ)
-  if (!is_r2_active) {
+  // 2. DPAD 入力処理
+  if (is_r2_active) {
+    // R2 + DPAD 左右で手動アーム位置変更 (左: DRIBBLE, 右: OPEN)
+    if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) { // DPAD 右 (-1.0)
+      robot_msgs::msg::ArmPosition arm_msg;
+      arm_msg.position = robot_msgs::msg::ArmPosition::OPEN;
+      arm_position_mode_pub_->publish(arm_msg);
+      RCLCPP_INFO(get_logger(), "Manual arm position -> OPEN");
+    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) { // DPAD 左 (+1.0)
+      robot_msgs::msg::ArmPosition arm_msg;
+      arm_msg.position = robot_msgs::msg::ArmPosition::DRIBBLE;
+      arm_position_mode_pub_->publish(arm_msg);
+      RCLCPP_INFO(get_logger(), "Manual arm position -> DRIBBLE");
+    }
+  } else {
+    // R2非押下時: DPAD 上/下でベルトレベル昇降
     if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
       belt_rpm_mode_ = increment_mode(belt_rpm_mode_, robot_msgs::msg::BeltMode::LEVEL_4);
       RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
@@ -320,7 +334,9 @@ void JoyControllerNode::loop_callback()
   if (spring_fire_input_triggered && !spring_fire_pending_) {
     // 1) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
     publish_spring_decel(true);
-    RCLCPP_INFO(get_logger(), "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
+    RCLCPP_INFO(
+      get_logger(),
+      "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
 
     // 2) 減速完了待機モードにセット
     spring_fire_pending_ = true;
@@ -350,15 +366,17 @@ void JoyControllerNode::loop_callback()
 
   was_spring_ready_ = spring_actuator_ready_;
 
-  // 9. DPAD 左右で自動シュート OPEN 動作時のドリブル回転数を変更 (+200 / -200 RPM)
-  if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
-    shot_cycle_opening_rpm_ = std::min(2500, shot_cycle_opening_rpm_ + 200);
-    publish_opening_rpm(shot_cycle_opening_rpm_);
-    RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
-  } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
-    shot_cycle_opening_rpm_ = std::max(0, shot_cycle_opening_rpm_ - 200);
-    publish_opening_rpm(shot_cycle_opening_rpm_);
-    RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
+  // 9. DPAD 左右で自動シュート OPEN 動作時のドリブル回転数を変更 (+200 / -200 RPM, R2非押下時)
+  if (!is_r2_active) {
+    if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
+      shot_cycle_opening_rpm_ = std::min(2500, shot_cycle_opening_rpm_ + 200);
+      publish_opening_rpm(shot_cycle_opening_rpm_);
+      RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
+    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
+      shot_cycle_opening_rpm_ = std::max(0, shot_cycle_opening_rpm_ - 200);
+      publish_opening_rpm(shot_cycle_opening_rpm_);
+      RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM", shot_cycle_opening_rpm_);
+    }
   }
 
   // 10. アナログスティック走行コマンド算出 (Game 2 非アクティブ時)

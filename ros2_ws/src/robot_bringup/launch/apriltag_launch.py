@@ -21,6 +21,7 @@ def launch_setup(context, *args, **kwargs):
         "size": tag_size,
         "max_hamming": 1,
         "publish_tf": True,
+        "pose_estimation_method": "",
     }
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
