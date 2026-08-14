@@ -43,7 +43,9 @@ def launch_setup(context, *args, **kwargs):
     camera_info_topic = "/image_combine_raw/right/camera_info"
     left_camera_info_topic = "/image_combine_raw/left/camera_info"
 
-    enable_stereonet = LaunchConfiguration("enable_stereonet").perform(context).lower() in ["true", "1"]
+    enable_stereonet = LaunchConfiguration("enable_stereonet").perform(
+        context
+    ).lower() in ["true", "1"]
 
     launch_nodes = []
 
@@ -79,6 +81,7 @@ def launch_setup(context, *args, **kwargs):
     else:
         # 🚀 超軽量 MIPI カメラ単体起動 (CPU/BPU 負荷ゼロ)
         from launch_ros.actions import Node
+
         mipi_node = Node(
             package="mipi_cam",
             executable="mipi_cam",
@@ -127,19 +130,28 @@ def launch_setup(context, *args, **kwargs):
 
         # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
         from launch_ros.actions import Node
+
         camera_tf_node = Node(
             package="tf2_ros",
             executable="static_transform_publisher",
             name="base_to_camera_tf",
             arguments=[
-                "--x", "0.265",
-                "--y", "0.035",
-                "--z", "0.193",
-                "--roll", "0.0",
-                "--pitch", "0.0",
-                "--yaw", "0.0",
-                "--frame-id", "base_link",
-                "--child-frame-id", "default_cam",
+                "--x",
+                "0.265",
+                "--y",
+                "0.035",
+                "--z",
+                "0.193",
+                "--roll",
+                "0.0",
+                "--pitch",
+                "0.0",
+                "--yaw",
+                "0.0",
+                "--frame-id",
+                "base_link",
+                "--child-frame-id",
+                "default_cam",
             ],
             output="screen",
         )
