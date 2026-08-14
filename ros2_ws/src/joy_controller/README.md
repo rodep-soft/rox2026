@@ -50,23 +50,22 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | 6 | DPAD左右（左=`1`、右=`-1`） |
 | 7 | DPAD上下（上=`1`、下=`-1`） |
 
-## 操作
+## 操作一覧
 
-| 入力 | 動作 |
+| 操作 (ボタン・コンボ) | 機能・動作 |
 |---|---|
-| Home | STOPへ移動。STOP中はDRIVEへ戻る |
-| Create | STOP・DRIVEからSHOT_CYCLEへ移動。同modeの待機中はDRIVEへ戻る |
-| Options | STOP・DRIVEからBELT_ONLYへ移動。同mode中はDRIVEへ戻る |
-| DPAD上 / 下 | belt modeをSTOPとLEVEL_1〜LEVEL_4の範囲で増減 |
-| R1 | dribble ON/OFF。DRIVE・SHOT_CYCLEだけで受理 |
-| L2 + R2 | Spring発射要求。両方が押された瞬間に1回だけtrueを送る |
-| L2 + ○ | SHOT_CYCLE中の実行要求 |
-| R2 + DPAD左 | DRIBBLE位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
-| R2 + DPAD右 | OPEN位置へ移動。DRIVE・SHOT_CYCLEだけで受理 |
-| PS | `linear.x/y`の前後左右反転 |
-
-Game2モード中にスティック入力があれば、Game2モードを解除して手動走行へ戻る。
-Joy通信が途切れた場合は、走行0、belt STOP、dribbler OFFをpublishする。
+| **PS ボタン** (または Touchpad) | **非常停止 (TOGGLE)** (ACTIVE ↔ STOP) |
+| **Options ボタン** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
+| **PS ボタン (中央)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
+| **R1** | **ドリブラー回転 ON / OFF** |
+| **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
+| **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
+| **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
+| **L2 + R2 同時押し** | **キッカー（ばね）発射** (150ms ドリブル減速後に発射) |
+| **R2 + DPAD 右** | **【手動アーム操作】 OPEN** (アームを開く) |
+| **R2 + DPAD 左** | **【手動アーム操作】 DRIBBLE** (アームをドリブル位置に戻す) |
+| **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
+| **右スティック (左右)** | 旋回動作 |
 
 ## Joy入力の処理順
 
