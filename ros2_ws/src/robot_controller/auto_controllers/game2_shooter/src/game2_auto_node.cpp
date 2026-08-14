@@ -149,18 +149,27 @@ void Game2AutoNode::update_panel_states()
   const auto current_time = now();
 
   for (auto & [id, panel] : panel_grid_) {
-    const std::string frame = tag_prefix_ + std::to_string(id);
-    try {
-      const auto tf = tf_buffer_->lookupTransform(base_frame_, frame, tf2::TimePointZero);
-      panel.x = tf.transform.translation.x;
-      panel.y = tf.transform.translation.y;
-      panel.z = tf.transform.translation.z;
-      panel.detected = true;
-      panel.last_seen = current_time;
-    } catch (const tf2::TransformException &) {
-      if ((current_time - panel.last_seen).seconds() > 1.5) {
-        panel.detected = false;
+    const std::string frame1 = tag_prefix_ + std::to_string(id);
+    const std::string frame2 = "tag_" + std::to_string(id);
+    bool found = false;
+
+    for (const auto & frame : {frame1, frame2}) {
+      try {
+        const auto tf = tf_buffer_->lookupTransform(base_frame_, frame, tf2::TimePointZero);
+        panel.x = tf.transform.translation.x;
+        panel.y = tf.transform.translation.y;
+        panel.z = tf.transform.translation.z;
+        panel.detected = true;
+        panel.last_seen = current_time;
+        found = true;
+        break;
+      } catch (const tf2::TransformException &) {
+        // 次の候補フレームを試行
       }
+    }
+
+    if (!found && (current_time - panel.last_seen).seconds() > 1.5) {
+      panel.detected = false;
     }
   }
 }
