@@ -125,6 +125,26 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_nodes.append(mono_node)
 
+        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.15m, 上 +0.20m)
+        from launch_ros.actions import Node
+        camera_tf_node = Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="base_to_camera_tf",
+            arguments=[
+                "--x", "0.15",
+                "--y", "0.0",
+                "--z", "0.20",
+                "--roll", "0.0",
+                "--pitch", "0.0",
+                "--yaw", "0.0",
+                "--frame-id", "base_link",
+                "--child-frame-id", "default_cam",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(camera_tf_node)
+
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"
         )
@@ -135,6 +155,7 @@ def launch_setup(context, *args, **kwargs):
                     "node_name": "apriltag_csi_node",
                     "image_topic": "/camera/left_mono8",
                     "camera_info_topic": "/camera/camera_info",
+                    "camera_frame_id": "default_cam",
                     "tag_family": tag_family,
                     "tag_size": tag_size,
                 }.items()
