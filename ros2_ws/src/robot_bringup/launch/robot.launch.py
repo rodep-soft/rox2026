@@ -140,7 +140,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "enable_bno055",
-                default_value="true",
+                default_value="false",
                 description="Enable BNO055 IMU driver node (libbno055-linux)",
             ),
             DeclareLaunchArgument(
