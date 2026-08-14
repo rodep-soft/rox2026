@@ -67,6 +67,11 @@ def generate_launch_description():
     game2_shooter_launch = include(
         "game2.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game2")),
+        launch_arguments=list(
+            {
+                "test_alignment_only": LaunchConfiguration("test_alignment_only"),
+            }.items()
+        ),
     )
 
     # BNO055 IMU ドライバノード (libbno055-linux)
@@ -139,8 +144,13 @@ def generate_launch_description():
                 description="Enable Game2 tactical panel shooter node",
             ),
             DeclareLaunchArgument(
-                "enable_bno055",
+                "test_alignment_only",
                 default_value="false",
+                description="Enable test mode for Game2: yaw rotation alignment only, mechanisms disabled",
+            ),
+            DeclareLaunchArgument(
+                "enable_bno055",
+                default_value="true",
                 description="Enable BNO055 IMU driver node (libbno055-linux)",
             ),
             DeclareLaunchArgument(

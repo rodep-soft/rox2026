@@ -14,6 +14,9 @@ def launch_setup(context, *args, **kwargs):
     rpm_middle = float(LaunchConfiguration("rpm_middle").perform(context))
     rpm_top = float(LaunchConfiguration("rpm_top").perform(context))
     target_distance = float(LaunchConfiguration("target_distance").perform(context))
+    test_alignment_only = (
+        LaunchConfiguration("test_alignment_only").perform(context).lower() == "true"
+    )
 
     game2_node = Node(
         package="robot_controller",
@@ -29,6 +32,7 @@ def launch_setup(context, *args, **kwargs):
                 "rpm_bottom": rpm_bottom,
                 "rpm_middle": rpm_middle,
                 "rpm_top": rpm_top,
+                "test_alignment_only": test_alignment_only,
             }
         ],
     )
@@ -73,6 +77,11 @@ def generate_launch_description():
                 "rpm_top",
                 default_value="6000.0",
                 description="Shooting belt RPM for Game2 top row panels",
+            ),
+            DeclareLaunchArgument(
+                "test_alignment_only",
+                default_value="false",
+                description="Enable test mode for Game2: yaw rotation alignment only, mechanisms disabled",
             ),
             OpaqueFunction(function=launch_setup),
         ]
