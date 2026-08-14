@@ -63,7 +63,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game1")),
     )
 
-    # Game2 パネル戦術自動射出ノード
+    # Game2 パネル戦術自動射出ノード (YAMLからパラメータ一括読み込み)
     game2_shooter_launch = include(
         "game2.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game2")),
@@ -140,7 +140,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "enable_bno055",
-                default_value="false",
+                default_value="true",
                 description="Enable BNO055 IMU driver node (libbno055-linux)",
             ),
             DeclareLaunchArgument(

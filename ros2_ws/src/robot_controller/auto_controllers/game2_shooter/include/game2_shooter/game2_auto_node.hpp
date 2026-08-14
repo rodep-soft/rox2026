@@ -87,6 +87,7 @@ private:
   double rpm_top_;
   double shoot_hold_duration_;
   double ball_settle_duration_{0.3};
+  bool test_alignment_only_{false};
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
