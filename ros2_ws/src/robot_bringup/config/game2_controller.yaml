@@ -2,10 +2,15 @@ game2_auto_node:
   ros__parameters:
     base_frame: "base_link"
     target_distance: 4.0
-    kp_yaw: 1.1
-    kd_yaw: 0.20
+    # ── 📐 カメラ物理位置 (base_link 車体中心から見たカメラ位置) ──
+    camera_offset_x: 0.15   # [m] 前方オフセット (旋回によるカメラのスイングを補正)
+    camera_offset_y: 0.035  # [m] 左カメラオフセット (ベースライン7cmの半分)
+    camera_fov_h: 1.83      # [rad] 水平画角 (約105度)
+
+    kp_yaw: 1.5
+    kd_yaw: 0.15
     max_angular_z: 0.8
-    yaw_tolerance: 0.03
+    yaw_tolerance: 0.02     # [rad] 角度誤差許容値 (約1.1度)
     dist_tolerance: 0.03
 
     # ── 🧪 テストモード切替 ──

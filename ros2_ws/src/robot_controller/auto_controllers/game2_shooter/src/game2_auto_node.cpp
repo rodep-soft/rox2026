@@ -15,8 +15,10 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   kd_yaw_ = declare_parameter<double>("kd_yaw", 0.05);
   kp_dist_ = declare_parameter<double>("kp_dist", 0.8);
   max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
-  target_distance_ = declare_parameter<double>("target_distance", 1.5);
-  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.04);
+  target_distance_ = declare_parameter<double>("target_distance", 4.0);
+  camera_offset_x_ = declare_parameter<double>("camera_offset_x", 0.15);
+  camera_offset_y_ = declare_parameter<double>("camera_offset_y", 0.035);
+  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.02);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.03);
   rpm_bottom_ = declare_parameter<double>("rpm_bottom", 3000.0);
   rpm_middle_ = declare_parameter<double>("rpm_middle", 4500.0);
@@ -159,16 +161,26 @@ void Game2AutoNode::tag_detections_callback(
       it->second.last_seen = current_time;
       it->second.detected = true;
 
-      // 画像中心 (1920x1080 -> cx=960) からの左右ズレ (左が正、右が負)
-      // 1080p 焦点距離 fx ≈ 1000px, 距離約2.0m での左右変位 (m)
+      // 1080p 画像中心 (cx=960) からのピクセルズレ
       const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
-      it->second.y = - (pixel_x_err / 960.0) * 1.5;  // 左右オフセット (m)
-      it->second.x = 2.0;  // 推定距離 2.0m
+      
+      // カメラ視野角から見たタグの光軸角度 (rad) (水平FOV ≈ 105° = 1.83 rad, 焦点距離 fx ≈ 740px)
+      const double tag_angle_cam = - std::atan2(pixel_x_err, 740.0);
+      const double estimated_dist = 2.5; // [m] 推定距離
+
+      // カメラ座標系でのタグ位置 (前方 X_cam, 左 Y_cam)
+      const double x_cam = estimated_dist * std::cos(tag_angle_cam);
+      const double y_cam = estimated_dist * std::sin(tag_angle_cam);
+
+      // 📐 base_link (ロボット旋回中心) 基準に変換 (カメラ位置 offset_x, offset_y を加算)
+      it->second.x = x_cam + camera_offset_x_;
+      it->second.y = y_cam + camera_offset_y_;
+      it->second.z = 0.0;
 
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 500,
-        "📷 [AprilTag Track] Tag ID %d seen: PixelErr=%.1f px, LateralErr=%.3f m",
-        id, pixel_x_err, it->second.y);
+        "📷 [AprilTag Track] Tag ID %d: PixelErr=%.1f px -> RobotBase (X=%.2fm, Y=%.3fm, HeadingErr=%.2f deg)",
+        id, pixel_x_err, it->second.x, it->second.y, std::atan2(it->second.y, it->second.x) * 180.0 / M_PI);
     }
   }
 }
@@ -320,13 +332,14 @@ void Game2AutoNode::control_loop()
 
   switch (state_) {
     case robot_msgs::msg::Game2State::SEARCHING:
-    case robot_msgs::msg::Game2State::ALIGNING: {
-        state_ = robot_msgs::msg::Game2State::ALIGNING;
-        const bool is_aligned = (std::abs(y_err) < yaw_tolerance_);
+        // 📐 ロボット旋回中心から見た真の目標角度誤差 (rad)
+        const double heading_err = std::atan2(y_err, target_x_);
+        const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+
         if (is_aligned) {
-          cmd.angular.z = 0.0;  // 中心にピタッと一致したら旋回トルクをゼロにしてブレーキ
+          cmd.angular.z = 0.0;  // 中心にピタッと一致したら旋回トルクをゼロにして完全制動
         } else {
-          double wz = -kp_yaw_ * y_err;
+          double wz = -kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
           }
@@ -339,8 +352,8 @@ void Game2AutoNode::control_loop()
         // 📊 リアルタイム詳細デバッグ出力 (500ms周期)
         RCLCPP_INFO_THROTTLE(
           get_logger(), *get_clock(), 500,
-          "🎯 [Game2 Track] Target: x=%.2fm, y_err=%.3fm | Angular Cmd: %.3f rad/s | Aligned: %s",
-          target_x_, y_err, cmd.angular.z, is_aligned ? "YES (MATCH)" : "NO (TURNING)");
+          "🎯 [Game2 Track] Target: x=%.2fm, y=%.3fm (AngleErr: %.2f deg) | Angular Cmd: %.3f rad/s | Aligned: %s",
+          target_x_, y_err, heading_err * 180.0 / M_PI, cmd.angular.z, is_aligned ? "YES (MATCH)" : "NO (TURNING)");
 
         if (test_alignment_only_) {
           if (is_aligned) {
