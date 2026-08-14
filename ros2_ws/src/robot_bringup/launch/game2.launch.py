@@ -1,21 +1,19 @@
 import os
-
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def launch_setup(context, *args, **kwargs):
-    base_frame = LaunchConfiguration("base_frame").perform(context)
-    kp_yaw = float(LaunchConfiguration("kp_yaw").perform(context))
-    max_angular_z = float(LaunchConfiguration("max_angular_z").perform(context))
-    rpm_bottom = float(LaunchConfiguration("rpm_bottom").perform(context))
-    rpm_middle = float(LaunchConfiguration("rpm_middle").perform(context))
-    rpm_top = float(LaunchConfiguration("rpm_top").perform(context))
-    target_distance = float(LaunchConfiguration("target_distance").perform(context))
-    test_alignment_only = (
-        LaunchConfiguration("test_alignment_only").perform(context).lower() == "true"
+def generate_launch_description():
+    pkg_bringup = get_package_share_directory("robot_bringup")
+    default_config = os.path.join(pkg_bringup, "config", "game2_controller.yaml")
+
+    config_file_arg = DeclareLaunchArgument(
+        "config_file",
+        default_value=default_config,
+        description="Path to the game2 controller config yaml file",
     )
 
     game2_node = Node(
@@ -23,66 +21,7 @@ def launch_setup(context, *args, **kwargs):
         executable="game2_auto_node",
         name="game2_auto_node",
         output="screen",
-        parameters=[
-            {
-                "base_frame": base_frame,
-                "kp_yaw": kp_yaw,
-                "max_angular_z": max_angular_z,
-                "target_distance": target_distance,
-                "rpm_bottom": rpm_bottom,
-                "rpm_middle": rpm_middle,
-                "rpm_top": rpm_top,
-                "test_alignment_only": test_alignment_only,
-            }
-        ],
+        parameters=[LaunchConfiguration("config_file")],
     )
 
-    return [game2_node]
-
-
-def generate_launch_description():
-    return LaunchDescription(
-        [
-            DeclareLaunchArgument(
-                "base_frame",
-                default_value="base_link",
-                description="Robot base frame ID",
-            ),
-            DeclareLaunchArgument(
-                "kp_yaw",
-                default_value="0.5",
-                description="Low-sensitivity yaw rotation P-gain for Game 2 targeting",
-            ),
-            DeclareLaunchArgument(
-                "max_angular_z",
-                default_value="0.35",
-                description="Maximum rotation velocity limit in rad/s",
-            ),
-            DeclareLaunchArgument(
-                "target_distance",
-                default_value="4.0",
-                description="Target shooting distance from Game2 panels in meters",
-            ),
-            DeclareLaunchArgument(
-                "rpm_bottom",
-                default_value="3000.0",
-                description="Shooting belt RPM for Game2 bottom row panels",
-            ),
-            DeclareLaunchArgument(
-                "rpm_middle",
-                default_value="4500.0",
-                description="Shooting belt RPM for Game2 middle row panels",
-            ),
-            DeclareLaunchArgument(
-                "rpm_top",
-                default_value="6000.0",
-                description="Shooting belt RPM for Game2 top row panels",
-            ),
-            DeclareLaunchArgument(
-                "test_alignment_only",
-                default_value="false",
-                description="Enable test mode for Game2: yaw rotation alignment only, mechanisms disabled",
-            ),
-            OpaqueFunction(function=launch_setup),
-        ]
-    )
+    return LaunchDescription([config_file_arg, game2_node])
