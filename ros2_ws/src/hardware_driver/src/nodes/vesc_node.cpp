@@ -254,12 +254,12 @@ private:
     const auto elapsed_seconds =
       std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
     const auto maximum_step = motor.config.rpm_slew_rate * elapsed_seconds;
-    motor.rpm_command += std::clamp(desired_rpm - motor.rpm_command, -maximum_step, maximum_step);
-    const auto erpm_command = motor.rpm_command * motor_pole_pairs;
+    // VESC は設定された極数に基づき RPM 指令をそのまま受け付ける
+    const auto rpm_command = motor.rpm_command;
     can_publisher_->publish(
       protocol::make_set_rpm_frame(
         motor.config.controller_id,
-        static_cast<int32_t>(std::lround(erpm_command))));
+        static_cast<int32_t>(std::lround(rpm_command))));
   }
 
   /// @brief CANフレーム受信時のコールバック関数(即時にモーターの状態を配信する)
@@ -274,8 +274,7 @@ private:
     if (motor == nullptr) {
       return;
     }
-    motor->measured_rpm =
-      static_cast<float>(status.erpm / (static_cast<double>(protocol::MOTOR_POLES) / 2.0));
+    motor->measured_rpm = static_cast<float>(status.erpm);
     motor->measured_current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
