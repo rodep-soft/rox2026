@@ -23,9 +23,7 @@ class Nv12ToMono8Node(Node):
         output_topic = self.get_parameter("output_topic").value
 
         self.pub_ = self.create_publisher(Image, output_topic, 5)
-        self.sub_ = self.create_subscription(
-            Image, input_topic, self.image_callback, 5
-        )
+        self.sub_ = self.create_subscription(Image, input_topic, self.image_callback, 5)
 
         self.get_logger().info(
             f"NV12 -> mono8 Converter started: {input_topic} -> {output_topic}"

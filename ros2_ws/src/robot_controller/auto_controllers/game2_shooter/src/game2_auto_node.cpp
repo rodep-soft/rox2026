@@ -255,8 +255,10 @@ void Game2AutoNode::control_loop()
         }
         cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-        const bool is_aligned = (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
-        const bool is_ball_settled = ball_detected_ && ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
+        const bool is_aligned =
+          (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
+        const bool is_ball_settled = ball_detected_ &&
+          ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
         if (is_aligned && is_ball_settled) {
           RCLCPP_INFO(get_logger(), "Game2: Aligned & Ball Settled! Moving arm to OPEN.");
