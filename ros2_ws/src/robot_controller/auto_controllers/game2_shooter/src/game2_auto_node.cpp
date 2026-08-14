@@ -38,12 +38,18 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
         info.tag_id = id;
         info.row = row;
         info.col = static_cast<int>(col);
+        info.last_seen = this->now();
         panel_grid_[id] = info;
       }
     };
   register_row(bottom_tags, 0);
   register_row(middle_tags, 1);
   register_row(top_tags, 2);
+
+  const auto init_now = this->now();
+  ball_detected_time_ = init_now;
+  shoot_start_time_ = init_now;
+  last_imu_time_ = init_now;
 
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -84,6 +90,10 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     active_row_ = 0;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
+    const auto start_time = this->now();
+    ball_detected_time_ = start_time;
+    shoot_start_time_ = start_time;
+    last_imu_time_ = start_time;
     RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
@@ -246,7 +256,7 @@ void Game2AutoNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
         state_ = robot_msgs::msg::Game2State::ALIGNING;
-        cmd.linear.x = kp_dist_ * dist_err;
+        cmd.linear.x = 0.0;  // 前後移動は行わず、その場旋回で角度のみ合わせる
         cmd.linear.y = 0.0;
 
         double wz = -kp_yaw_ * y_err;
@@ -255,8 +265,7 @@ void Game2AutoNode::control_loop()
         }
         cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-        const bool is_aligned =
-          (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
+        const bool is_aligned = (std::abs(y_err) < yaw_tolerance_);
         const bool is_ball_settled = ball_detected_ &&
           ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
