@@ -3,7 +3,7 @@ game2_auto_node:
     base_frame: "base_link"
     target_distance: 4.0
     # ── 📐 カメラ物理位置 (base_link 車体中心から見たカメラ位置) ──
-    camera_offset_x: 0.15   # [m] 前方オフセット (旋回によるカメラのスイングを補正)
+    camera_offset_x: 0.265  # [m] 前方オフセット (実測値: 265mm)
     camera_offset_y: 0.035  # [m] 左カメラオフセット (ベースライン7cmの半分)
     camera_fov_h: 1.83      # [rad] 水平画角 (約105度)
 
