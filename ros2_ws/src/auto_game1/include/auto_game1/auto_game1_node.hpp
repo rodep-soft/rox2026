@@ -13,10 +13,14 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joy.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 
+#include "auto_game1/action/dribble.hpp"
 #include "auto_game1/action/kick.hpp"
+#include "auto_game1/action/pass.hpp"
 
 namespace auto_game1
 {
@@ -46,15 +50,22 @@ const RectObstacle RECTANGLE_OBSTACLES[3] = {
   { {1.0f, -1.5f}, {2.0f, -1.5f}, {2.0f, -0.5f}, {1.0f, -0.5f} }
 };
 
+enum class Side
+{
+  SIDE_A,  // 通常モード (右側コース: X方向そのまま)
+  SIDE_B   // 左右反転モード (左側コース: X軸符号反転)
+};
+
 enum class State
 {
-  AUTO_STOP,               // 自動停止状態（Joyボタン等で一時停止 / 再開）
+  AUTO_STOP,               // 自動停止状態（全出力停止、Nav2キャンセル）
+  DRIBBLE_ON,              // 0. ドリブルON状態（安全待機。ボタンでドリブルモータ回転・発進許可）
   GO_TO_KICK_START,        // 1a. キック開始点へ向かう状態 (NavigateThroughPoses)
   PREPARE_KICK,            // 2. キック準備・一定速度走行状態 (独自Twist制御)
   GO_TO_GATE_FAR_SIDE,     // 1b. ゲート向こう側へ向かう状態 (NavigateThroughPoses)
   FOLLOW_BALL,             // 3. ボール追従状態 (拡張用プレースホルダー)
   CARRY_BALL_TO_PASS_AREA, // 4. ボールをパスエリアに運ぶ状態 (NavigateThroughPoses)
-  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateThroughPoses -> GO_TO_KICK_STARTへループ)
+  RETURN_TO_START          // 5. スタート位置に戻る状態 (NavigateThroughPoses -> DRIBBLE_ONへループ)
 };
 
 class AutoGame1Node : public rclcpp::Node
@@ -65,6 +76,12 @@ public:
 
   using Kick = auto_game1::action::Kick;
   using GoalHandleKick = rclcpp_action::ClientGoalHandle<Kick>;
+
+  using Dribble = auto_game1::action::Dribble;
+  using GoalHandleDribble = rclcpp_action::ClientGoalHandle<Dribble>;
+
+  using Pass = auto_game1::action::Pass;
+  using GoalHandlePass = rclcpp_action::ClientGoalHandle<Pass>;
 
   explicit AutoGame1Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   virtual ~AutoGame1Node() = default;
@@ -77,6 +94,8 @@ private:
   // 2. Subscription Callback
   // /joy を受信したときのコールバック
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
+  // /operation_mode を受信したときのコールバック（手動モード切替検出）
+  void operation_mode_callback(const std_msgs::msg::UInt8::SharedPtr msg);
 
   // 3. Timer Callback
   // メイン制御ループタイマー（状態遷移処理および制御コマンド出力）
@@ -85,6 +104,7 @@ private:
   // 4. 主処理 (State Machine)
   void process_state_machine();
   void process_auto_stop();
+  void process_dribble_on();
   void process_go_to_kick_start();
   void process_prepare_kick();
   void process_go_to_gate_far_side();
@@ -96,7 +116,10 @@ private:
   void send_nav_goal(const std::vector<geometry_msgs::msg::PoseStamped> & poses);
   void cancel_nav_goal();
   void send_kick_goal();
+  void send_dribble_goal(bool start);
+  void send_pass_goal();
   void reset_all_nav_goals();
+  void publish_dribble_enabled(bool enabled);
 
   // 5. 小さな補助関数 (値取得・変換・判定)
   bool get_robot_pose_map(geometry_msgs::msg::PoseStamped & current_pose);
@@ -107,27 +130,41 @@ private:
     double v_x_map, double v_y_map, double omega_z, double robot_yaw);
   bool button_pressed(const sensor_msgs::msg::Joy & msg, int index);
   void publish_obstacle_polygons();
+  double get_side_sign() const { return (current_side_ == Side::SIDE_A) ? 1.0 : -1.0; }
+  geometry_msgs::msg::PoseStamped apply_side_transform(const geometry_msgs::msg::PoseStamped & pose) const;
 
   // ボタン割り当て定数（C++ルール: kプレフィックスなし）
   static constexpr int default_auto_stop_toggle_button = 8;  // Create ボタン
   static constexpr int default_return_to_start_button = 9;   // Options ボタン
+  static constexpr int default_side_toggle_button = 3;       // △ / Y ボタン (コートサイド切替)
+  static constexpr int default_dribble_on_button = 2;        // ○ / Circle ボタン (ドリブル回転開始)
+  static constexpr int default_start_autodrive_button = 1;   // × / Cross ボタン (発進許可)
 
   // パラメータ
   std::string cmd_vel_topic_;
   std::string joy_topic_;
+  std::string operation_mode_topic_;
+  std::string dribble_enabled_topic_;
   std::string nav_action_name_;
   std::string kick_action_name_;
+  std::string dribble_action_name_;
+  std::string pass_action_name_;
   std::string global_frame_id_;
   std::string robot_base_frame_id_;
 
   int auto_stop_toggle_button_{default_auto_stop_toggle_button};
   int return_to_start_button_{default_return_to_start_button};
+  int side_toggle_button_{default_side_toggle_button};
+  int dribble_on_button_{default_dribble_on_button};
+  int start_autodrive_button_{default_start_autodrive_button};
 
   double control_period_sec_{0.05};        // 20Hz 制御周期
   double kick_start_reach_threshold_{0.2}; // キック開始点到達判定の距離閾値 [m]
 
   // PREPARE_KICK 状態用制御パラメータ
   double kick_target_velocity_x_{0.5}; // Map座標系での目標x速度 [m/s]
+  double kick_target_x_{1.5};          // Map座標系での目標キック射出x位置 [m]
+  double kick_tolerance_x_{0.1};       // キック発射判定のx座標許容誤差 [m] (±)
   double kick_target_y_{0.0};          // Map座標系での目標y位置 [m]
   double kick_target_yaw_{0.0};        // Map座標系での目標yaw角 [rad]
   double kp_y_{1.0};                   // y位置Pゲイン
@@ -146,16 +183,27 @@ private:
   // 内部状態
   State current_state_{State::AUTO_STOP};
   State previous_state_{State::AUTO_STOP};
+  Side current_side_{Side::SIDE_A};
 
   // Joy入力状態（ボタン立ち上がり検出用）
   bool auto_stop_toggle_button_on_{false};
   bool pre_auto_stop_toggle_button_on_{false};
   bool return_to_start_button_on_{false};
   bool pre_return_to_start_button_on_{false};
+  bool side_toggle_button_on_{false};
+  bool pre_side_toggle_button_on_{false};
+  bool dribble_on_button_on_{false};
+  bool pre_dribble_on_button_on_{false};
+  bool start_autodrive_button_on_{false};
+  bool pre_start_autodrive_button_on_{false};
 
-  // キックAction状態
+  // キック / ドリブル / パス Action状態
   bool kick_action_active_{false};
   bool kick_action_completed_{false};
+  bool dribble_action_active_{false};
+  bool dribble_action_completed_{false};
+  bool pass_action_active_{false};
+  bool pass_action_completed_{false};
 
   // Nav2 Action Goalハンドラ / 完了状態（共通化した単一のハンドラ）
   GoalHandleNavigateThroughPoses::SharedPtr nav_goal_handle_;
@@ -168,10 +216,14 @@ private:
 
   // ROS 2 通信・TF インターフェース
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_publisher_;
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr obstacle_polygon_publishers_[3];
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr operation_mode_subscription_;
   rclcpp_action::Client<NavigateThroughPoses>::SharedPtr nav_client_;
   rclcpp_action::Client<Kick>::SharedPtr kick_client_;
+  rclcpp_action::Client<Dribble>::SharedPtr dribble_client_;
+  rclcpp_action::Client<Pass>::SharedPtr pass_client_;
 
   rclcpp::TimerBase::SharedPtr control_timer_;
 

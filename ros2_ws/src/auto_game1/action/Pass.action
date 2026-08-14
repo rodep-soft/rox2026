@@ -1,0 +1,9 @@
+# Pass.action
+# Goal: ボールリリース要求
+bool start
+---
+# Result: 実行結果
+bool success
+string message
+---
+# Feedback

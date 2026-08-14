@@ -21,6 +21,8 @@ find_package(rosidl_default_generators REQUIRED)
 # Generate Action / Message interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/Kick.action"
+  "action/Dribble.action"
+  "action/Pass.action"
   DEPENDENCIES std_msgs
 )
 
