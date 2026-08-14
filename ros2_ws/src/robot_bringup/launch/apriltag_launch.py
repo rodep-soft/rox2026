@@ -23,7 +23,7 @@ def launch_setup(context, *args, **kwargs):
         "pose_estimation_method": "",
         "decimate": 1.0,
         "blur": 0.0,
-        "threads": 4,
+        "threads": 2,
         "debug": False,
         "refine_edges": 1,
     }

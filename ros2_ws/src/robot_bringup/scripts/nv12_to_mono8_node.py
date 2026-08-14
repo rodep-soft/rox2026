@@ -18,20 +18,30 @@ class Nv12ToMono8Node(Node):
 
         self.declare_parameter("input_topic", "/image_left_raw")
         self.declare_parameter("output_topic", "/camera/left_mono8")
+        self.declare_parameter("target_fps", 10.0)
 
         input_topic = self.get_parameter("input_topic").value
         output_topic = self.get_parameter("output_topic").value
+        self.target_fps_ = self.get_parameter("target_fps").value
+        self.min_interval_sec_ = 1.0 / self.target_fps_ if self.target_fps_ > 0 else 0.0
+        self.last_pub_time_ = 0.0
 
-        self.pub_ = self.create_publisher(Image, output_topic, 5)
+        self.pub_ = self.create_publisher(Image, output_topic, 2)
         self.sub_ = self.create_subscription(
-            Image, input_topic, self.image_callback, 5
+            Image, input_topic, self.image_callback, 2
         )
 
         self.get_logger().info(
-            f"NV12 -> mono8 Converter started: {input_topic} -> {output_topic}"
+            f"NV12 -> mono8 Converter started: {input_topic} -> {output_topic} (Rate: {self.target_fps_} fps)"
         )
 
     def image_callback(self, msg: Image):
+        # レート制御: 指定した FPS 以上の頻度ではスキップして CPU 負荷を激減させる
+        now_sec = self.get_clock().now().nanoseconds / 1e9
+        if (now_sec - self.last_pub_time_) < self.min_interval_sec_:
+            return
+        self.last_pub_time_ = now_sec
+
         # NV12 形式の場合、先頭 width * height バイトがそのまま Y（輝度）データ
         if msg.encoding.lower() in ["nv12", "yuv420"]:
             y_size = msg.width * msg.height
