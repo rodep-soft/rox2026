@@ -191,26 +191,8 @@ void Game2AutoNode::update_panel_states()
   const auto current_time = now();
 
   for (auto & [id, panel] : panel_grid_) {
-    // 1. TF が利用可能な場合は TF で精密更新
-    const std::string frame1 = tag_prefix_ + std::to_string(id);
-    const std::string frame2 = "tag_" + std::to_string(id);
-
-    for (const auto & frame : {frame1, frame2}) {
-      try {
-        const auto tf = tf_buffer_->lookupTransform(base_frame_, frame, tf2::TimePointZero);
-        panel.x = tf.transform.translation.x;
-        panel.y = tf.transform.translation.y;
-        panel.z = tf.transform.translation.z;
-        panel.detected = true;
-        panel.last_seen = current_time;
-        break;
-      } catch (const tf2::TransformException &) {
-        // TF が無ければ tag_detections_callback の direct 検出結果をそのまま使用
-      }
-    }
-
-    // 2. 1.5秒以上どちらからも見えなくなったらロスト判定
-    if ((current_time - panel.last_seen).seconds() > 1.5) {
+    // 1.0秒以上見えなくなったらロスト判定
+    if ((current_time - panel.last_seen).seconds() > 1.0) {
       panel.detected = false;
     }
   }
@@ -348,6 +330,10 @@ void Game2AutoNode::control_loop()
           double wz = kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
+          }
+          const double min_angular_z = 0.12;
+          if (std::abs(wz) < min_angular_z) {
+            wz = std::copysign(min_angular_z, wz);
           }
           cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }
