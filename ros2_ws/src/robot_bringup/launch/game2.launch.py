@@ -56,7 +56,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "target_distance",
-                default_value="1.5",
+                default_value="4.0",
                 description="Target shooting distance from Game2 panels in meters",
             ),
             DeclareLaunchArgument(
