@@ -82,9 +82,24 @@ def launch_setup(context, *args, **kwargs):
     bringup_share = get_package_share_directory("robot_bringup")
 
     if enable_apriltag:
-        # image_transport は画像トピックの親名前空間から camera_info を自動導出する
-        # /StereoNetNode/rectify_left_image → /StereoNetNode/camera_info (存在しない)
-        # 実際の配信先 /StereoNetNode/rectify_left_image/camera_info からリレーする
+        # NV12 (1080p) -> mono8 高速グレースケール変換ノード
+        # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
+        mono_script = os.path.join(bringup_share, "scripts", "nv12_to_mono8_node.py")
+        mono_node = ExecuteProcess(
+            cmd=[
+                "python3",
+                mono_script,
+                "--ros-args",
+                "-p",
+                "input_topic:=/image_left_raw",
+                "-p",
+                "output_topic:=/camera/left_mono8",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(mono_node)
+
+        # CameraInfo リレーノード (/camera/left_mono8/camera_info への同期供給)
         relay_script = os.path.join(bringup_share, "scripts", "camera_info_relay.py")
         camera_info_relay = ExecuteProcess(
             cmd=[
@@ -92,13 +107,14 @@ def launch_setup(context, *args, **kwargs):
                 relay_script,
                 "--ros-args",
                 "-p",
-                "input_topic:=/StereoNetNode/rectify_left_image/camera_info",
+                "input_topic:=/image_left_raw/camera_info",
                 "-p",
-                "output_topic:=/StereoNetNode/camera_info",
+                "output_topic:=/camera/camera_info",
             ],
             output="screen",
         )
         launch_nodes.append(camera_info_relay)
+
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"
         )
@@ -107,8 +123,8 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=list(
                 {
                     "node_name": "apriltag_csi_node",
-                    "image_topic": "/StereoNetNode/rectify_left_image",
-                    "camera_info_topic": "/StereoNetNode/camera_info",
+                    "image_topic": "/camera/left_mono8",
+                    "camera_info_topic": "/camera/camera_info",
                     "tag_family": tag_family,
                     "tag_size": tag_size,
                 }.items()
