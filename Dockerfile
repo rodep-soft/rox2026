@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-can-msgs \
     ros-humble-joy \
     ros-humble-teleop-twist-joy \
+    ros-humble-apriltag-msgs \
     ros-humble-ament-uncrustify \
     uncrustify \
     evtest \

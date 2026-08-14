@@ -202,15 +202,15 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 1. テストモード時: 直近 0.5秒以内に見えているタグを即座にターゲットに選定
+  // 1. テストモード時: 現在検出されているタグの中で、一番正面に近い（画面中心に近い）タグをダイレクト追尾
   if (test_alignment_only_) {
     int best_id = -1;
-    rclcpp::Time newest_time = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    double min_y_abs = 1e9;
 
     for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected && (now() - panel.last_seen).seconds() < 0.5) {
-        if (panel.last_seen > newest_time) {
-          newest_time = panel.last_seen;
+      if (panel.detected && (now() - panel.last_seen).seconds() < 0.3) {
+        if (std::abs(panel.y) < min_y_abs) {
+          min_y_abs = std::abs(panel.y);
           best_id = id;
         }
       }
