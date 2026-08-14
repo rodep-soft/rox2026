@@ -220,18 +220,20 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 1. テストモード時は見えている任意のタグ（ID 14〜22）を即座にターゲットに選定
+  // 1. テストモード時は直近 0.5秒以内に検出されたタグの中から最新のものをターゲットに選定
   if (test_alignment_only_) {
     int best_id = -1;
-    double min_y_err = 1e9;
+    rclcpp::Time newest_time = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
     for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected) {
-        if (std::abs(panel.y) < min_y_err) {
-          min_y_err = std::abs(panel.y);
+      if (panel.detected && (now() - panel.last_seen).seconds() < 0.5) {
+        if (panel.last_seen > newest_time) {
+          newest_time = panel.last_seen;
           best_id = id;
         }
       }
     }
+
     if (best_id != -1) {
       const auto & target = panel_grid_[best_id];
       target_x_ = target.x;
@@ -341,11 +343,16 @@ void Game2AutoNode::control_loop()
         const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
 
         if (is_aligned) {
-          cmd.angular.z = 0.0;  // 中心にピタッと一致したら旋回トルクをゼロにして完全制動
+          cmd.angular.z = 0.0;  // 中心にピタッと一致したら完全制動
         } else {
           double wz = -kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
+          }
+          // 静止摩擦を突破する最小角速度 (0.15 rad/s) を保証
+          const double min_angular_z = 0.15;
+          if (std::abs(wz) < min_angular_z) {
+            wz = std::copysign(min_angular_z, wz);
           }
           cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }

@@ -11,7 +11,7 @@ game2_auto_node:
     kp_yaw: 1.5
     kd_yaw: 0.15
     max_angular_z: 0.8
-    yaw_tolerance: 0.02     # [rad] 角度誤差許容値 (約1.1度)
+    yaw_tolerance: 0.008    # [rad] 角度誤差許容値 (約0.45度)
     dist_tolerance: 0.03
 
     # ── 🧪 テストモード切替 ──
