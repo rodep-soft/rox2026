@@ -54,6 +54,9 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game2AutoNode::imu_callback, this, std::placeholders::_1));
+  ball_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/ball_detected", 10,
+    std::bind(&Game2AutoNode::ball_callback, this, std::placeholders::_1));
 
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
@@ -188,6 +191,16 @@ void Game2AutoNode::select_target_and_aim()
   }
 }
 
+void Game2AutoNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  const bool prev = ball_detected_;
+  ball_detected_ = msg->data;
+  if (!prev && ball_detected_) {
+    ball_detected_time_ = now();
+    RCLCPP_INFO(get_logger(), "Game2: Ball detected in dribble!");
+  }
+}
+
 void Game2AutoNode::control_loop()
 {
   robot_msgs::msg::Game2State state_msg;
@@ -242,10 +255,19 @@ void Game2AutoNode::control_loop()
         }
         cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-        if (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_) {
-          RCLCPP_INFO(get_logger(), "Game2: aligned. Moving arm to OPEN.");
+        const bool is_aligned =
+          (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
+        const bool is_ball_settled = ball_detected_ &&
+          ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
+
+        if (is_aligned && is_ball_settled) {
+          RCLCPP_INFO(get_logger(), "Game2: Aligned & Ball Settled! Moving arm to OPEN.");
           state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
           shoot_start_time_ = now();
+        } else if (is_aligned && !ball_detected_) {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 2000,
+            "Game2: Aligned to Target, waiting for ball intake...");
         }
         arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
         break;
