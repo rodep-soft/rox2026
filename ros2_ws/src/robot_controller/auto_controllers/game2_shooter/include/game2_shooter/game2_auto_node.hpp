@@ -107,6 +107,7 @@ private:
   double target_z_{0.0};
   double target_rpm_{0.0};
   bool target_valid_{false};
+  int locked_target_id_{-1};
   rclcpp::Time shoot_start_time_;
 
   // IMU Feedback State (Full Telemetry)

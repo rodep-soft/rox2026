@@ -95,6 +95,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     active_row_ = 0;
+    locked_target_id_ = -1;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
     const auto start_time = this->now();
@@ -104,6 +105,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
+    locked_target_id_ = -1;
     state_ = robot_msgs::msg::Game2State::STANDBY;
     RCLCPP_INFO(get_logger(), "Game 2 STOP.");
   }
@@ -220,27 +222,42 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
-  // 1. テストモード時は直近 0.5秒以内に検出されたタグの中から最新のものをターゲットに選定
+  // 1. テストモード時: 1つのタグをロックオンして正面に向くまで一途に追従
   if (test_alignment_only_) {
-    int best_id = -1;
-    rclcpp::Time newest_time = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    // 既存のロックオン対象がまだ見えているか確認 (直近1.0秒以内)
+    if (locked_target_id_ != -1) {
+      auto it = panel_grid_.find(locked_target_id_);
+      if (it != panel_grid_.end() && it->second.detected && (now() - it->second.last_seen).seconds() < 1.0) {
+        target_x_ = it->second.x;
+        target_y_ = it->second.y;
+        target_z_ = it->second.z;
+        target_valid_ = true;
+        return;
+      } else {
+        locked_target_id_ = -1; // 見失ったらロック解除
+      }
+    }
 
+    // 新たに一番正面に近いタグを 1 つ選んでロックオン
+    int best_id = -1;
+    double min_y_abs = 1e9;
     for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected && (now() - panel.last_seen).seconds() < 0.5) {
-        if (panel.last_seen > newest_time) {
-          newest_time = panel.last_seen;
+      if (panel.detected && (now() - panel.last_seen).seconds() < 0.8) {
+        if (std::abs(panel.y) < min_y_abs) {
+          min_y_abs = std::abs(panel.y);
           best_id = id;
         }
       }
     }
 
     if (best_id != -1) {
+      locked_target_id_ = best_id;
       const auto & target = panel_grid_[best_id];
       target_x_ = target.x;
       target_y_ = target.y;
       target_z_ = target.z;
       target_valid_ = true;
-      active_row_ = target.row;
+      RCLCPP_INFO(get_logger(), "🔒 [Game2 Lock-On] Locked onto Tag ID %d for alignment!", best_id);
       return;
     }
   }
