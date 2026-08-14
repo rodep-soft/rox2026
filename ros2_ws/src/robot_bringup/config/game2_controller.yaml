@@ -8,10 +8,10 @@ game2_auto_node:
     camera_offset_z: 0.193  # [m] 上方オフセット (実測値: 193mm)
     camera_fov_h: 1.83      # [rad] 水平画角 (約105度)
 
-    kp_yaw: 0.8
-    kd_yaw: 0.10
-    max_angular_z: 0.5
-    yaw_tolerance: 0.01     # [rad] 角度誤差許容値 (約0.57度)
+    kp_yaw: 1.2
+    kd_yaw: 0.08
+    max_angular_z: 0.6
+    yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.85度)
     dist_tolerance: 0.03
 
     # ── 🧪 テストモード切替 ──
