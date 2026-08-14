@@ -167,14 +167,15 @@ void Game2AutoNode::tag_detections_callback(
       // 1080p 画像中心 (cx=960) からのピクセルズレ (右が正, 左が負)
       const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
       
-      // カメラ視野角から見たタグの光軸角度 (rad)
+      // カメラ視野角から見たタグの光軸角度 (rad) (1080p fx ≈ 800.0 px)
       // タグが左 (pixel_x_err < 0) -> 角度は左 (+rad, 反時計回り)
       // タグが右 (pixel_x_err > 0) -> 角度は右 (-rad, 時計回り)
-      const double heading_err_rad = - std::atan2(pixel_x_err, 740.0);
-      const double estimated_dist = 2.5; // [m]
+      const double heading_err_rad = - std::atan2(pixel_x_err, 800.0);
+      const double estimated_dist = target_distance_; // [m] 4.0m 設定距離に連動
 
+      // 📐 base_link 基準変換: カメラが左(+Y)にあるため、ロボット中心基準では -camera_offset_y_
       it->second.x = estimated_dist * std::cos(heading_err_rad) + camera_offset_x_;
-      it->second.y = estimated_dist * std::sin(heading_err_rad) + camera_offset_y_;
+      it->second.y = estimated_dist * std::sin(heading_err_rad) - camera_offset_y_;
       it->second.z = camera_offset_z_;
 
       RCLCPP_INFO_THROTTLE(
@@ -347,11 +348,6 @@ void Game2AutoNode::control_loop()
           double wz = kp_yaw_ * heading_err;
           if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
             wz -= kd_yaw_ * gyro_z_;
-          }
-          // 静止摩擦を突破する最小角速度 (0.18 rad/s)
-          const double min_angular_z = 0.18;
-          if (std::abs(wz) < min_angular_z) {
-            wz = std::copysign(min_angular_z, wz);
           }
           cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }
