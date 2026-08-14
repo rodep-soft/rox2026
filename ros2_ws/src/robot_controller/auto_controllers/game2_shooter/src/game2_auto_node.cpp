@@ -167,11 +167,11 @@ void Game2AutoNode::tag_detections_callback(
       // 1080p 画像中心 (cx=960) からのピクセルズレ (右が正, 左が負)
       const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
       
-      // カメラ視野角から見たタグの光軸角度 (rad)
+      // カメラ視野角から見たタグの光軸角度 (rad) (1080p fx ≈ 800.0 px)
       // タグが左 (pixel_x_err < 0) -> 角度は左 (+rad, 反時計回り)
       // タグが右 (pixel_x_err > 0) -> 角度は右 (-rad, 時計回り)
-      const double heading_err_rad = - std::atan2(pixel_x_err, 740.0);
-      const double estimated_dist = 2.5; // [m]
+      const double heading_err_rad = - std::atan2(pixel_x_err, 800.0);
+      const double estimated_dist = target_distance_; // [m] 4.0m 設定距離に連動
 
       it->second.x = estimated_dist * std::cos(heading_err_rad) + camera_offset_x_;
       it->second.y = estimated_dist * std::sin(heading_err_rad) + camera_offset_y_;
