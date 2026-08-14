@@ -75,8 +75,9 @@ def check_can_nodes():
     ping_thread.daemon = True
 
     try:
+        # loopback (自ノード送信分) を除外するために -L または candump の出力から自送信を除外してキャプチャ
         proc = subprocess.Popen(
-            ["candump", "can0"],
+            ["candump", "-L", "can0"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -88,13 +89,23 @@ def check_can_nodes():
             line = proc.stdout.readline()
             if not line:
                 break
-            parts = line.split()
+            # logformat: (timestamp) interface id#data
+            # 例: (1786700000.000) can0 020#0000
+            # 自ノードが ping 送信した ID#0000 と完全一致するデータはループバック（自分が送ったデータ）として除外
+            parts = line.strip().split()
             if len(parts) >= 3:
                 try:
-                    can_id_str = parts[1]
-                    can_id = int(can_id_str, 16)
+                    can_data_str = parts[2]
+                    id_data = can_data_str.split('#')
+                    can_id = int(id_data[0], 16)
+                    data_hex = id_data[1] if len(id_data) > 1 else ""
+
+                    # 送信したPingパケット(データが"0000"のもの)は受信データから除外する
+                    if data_hex == "0000" and can_id in NODE_MAP:
+                        continue
+
                     detected_ids.add(can_id)
-                except ValueError:
+                except (ValueError, IndexError):
                     pass
         proc.terminate()
         proc.wait(timeout=1.0)
