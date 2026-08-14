@@ -157,9 +157,18 @@ void Game2AutoNode::tag_detections_callback(
     auto it = panel_grid_.find(id);
     if (it != panel_grid_.end()) {
       it->second.last_seen = current_time;
+      it->second.detected = true;
+
+      // 画像中心 (1920x1080 -> cx=960) からの左右ズレ (左が正、右が負)
+      // 1080p 焦点距離 fx ≈ 1000px, 距離約2.0m での左右変位 (m)
+      const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
+      it->second.y = - (pixel_x_err / 960.0) * 1.5;  // 左右オフセット (m)
+      it->second.x = 2.0;  // 推定距離 2.0m
+
       RCLCPP_INFO_THROTTLE(
-        get_logger(), *get_clock(), 1000,
-        "📷 [AprilTag Seen] Target Tag ID %d detected in camera frame!", id);
+        get_logger(), *get_clock(), 500,
+        "📷 [AprilTag Track] Tag ID %d seen: PixelErr=%.1f px, LateralErr=%.3f m",
+        id, pixel_x_err, it->second.y);
     }
   }
 }
@@ -198,6 +207,30 @@ void Game2AutoNode::select_target_and_aim()
 {
   target_valid_ = false;
 
+  // 1. テストモード時は見えている任意のタグ（ID 14〜22）を即座にターゲットに選定
+  if (test_alignment_only_) {
+    int best_id = -1;
+    double min_y_err = 1e9;
+    for (const auto & [id, panel] : panel_grid_) {
+      if (panel.detected) {
+        if (std::abs(panel.y) < min_y_err) {
+          min_y_err = std::abs(panel.y);
+          best_id = id;
+        }
+      }
+    }
+    if (best_id != -1) {
+      const auto & target = panel_grid_[best_id];
+      target_x_ = target.x;
+      target_y_ = target.y;
+      target_z_ = target.z;
+      target_valid_ = true;
+      active_row_ = target.row;
+      return;
+    }
+  }
+
+  // 2. 本番モード: 下段(0) -> 中段(1) -> 上段(2) の順にクリア
   for (int row = active_row_; row <= 2; ++row) {
     int best_id = -1;
     double min_dist_sq = 1e9;
