@@ -21,7 +21,11 @@ def launch_setup(context, *args, **kwargs):
         "max_hamming": 0,
         "publish_tf": True,
         "pose_estimation_method": "",
-        "min_margin": 5.0,
+        "decimate": 1.0,
+        "blur": 0.0,
+        "threads": 4,
+        "debug": False,
+        "refine_edges": 1,
     }
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
