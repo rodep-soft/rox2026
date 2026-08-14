@@ -380,9 +380,11 @@ void DribbleControllerNode::control_timer_callback()
   // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
   constexpr int max_rpm_step = 150;
   if (current_filtered_roller_rpm_ < target_rpm) {
-    current_filtered_roller_rpm_ = std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+    current_filtered_roller_rpm_ =
+      std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
   } else if (current_filtered_roller_rpm_ > target_rpm) {
-    current_filtered_roller_rpm_ = std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+    current_filtered_roller_rpm_ =
+      std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
   }
 
   actuator_msgs::msg::ActuatorTarget roller_command;

@@ -334,7 +334,9 @@ void JoyControllerNode::loop_callback()
   if (spring_fire_input_triggered && !spring_fire_pending_) {
     // 1) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
     publish_spring_decel(true);
-    RCLCPP_INFO(get_logger(), "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
+    RCLCPP_INFO(
+      get_logger(),
+      "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
 
     // 2) 減速完了待機モードにセット
     spring_fire_pending_ = true;
