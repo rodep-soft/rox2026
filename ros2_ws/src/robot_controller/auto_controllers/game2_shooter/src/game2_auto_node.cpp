@@ -333,6 +333,9 @@ void Game2AutoNode::control_loop()
 
   switch (state_) {
     case robot_msgs::msg::Game2State::SEARCHING:
+    case robot_msgs::msg::Game2State::ALIGNING: {
+        state_ = robot_msgs::msg::Game2State::ALIGNING;
+
         // 📐 ロボット旋回中心から見た真の目標角度誤差 (rad)
         const double heading_err = std::atan2(y_err, target_x_);
         const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
