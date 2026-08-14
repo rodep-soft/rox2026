@@ -322,16 +322,17 @@ void Game2AutoNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
         state_ = robot_msgs::msg::Game2State::ALIGNING;
-        cmd.linear.x = 0.0;  // 前後移動オフ
-        cmd.linear.y = 0.0;
-
-        double wz = -kp_yaw_ * y_err;
-        if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
-          wz -= kd_yaw_ * gyro_z_;
-        }
-        cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
-
         const bool is_aligned = (std::abs(y_err) < yaw_tolerance_);
+        if (is_aligned) {
+          cmd.angular.z = 0.0;  // 中心にピタッと一致したら旋回トルクをゼロにしてブレーキ
+        } else {
+          double wz = -kp_yaw_ * y_err;
+          if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
+            wz -= kd_yaw_ * gyro_z_;
+          }
+          cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
+        }
+
         const bool is_ball_settled = ball_detected_ &&
           ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
