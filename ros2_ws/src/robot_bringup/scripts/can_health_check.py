@@ -114,7 +114,7 @@ def analyze_can_bus_traffic():
             if len(parts) >= 3:
                 try:
                     can_data_str = parts[2]
-                    id_data = can_data_str.split('#')
+                    id_data = can_data_str.split("#")
                     can_id = int(id_data[0], 16)
                     data_hex = id_data[1] if len(id_data) > 1 else ""
 
