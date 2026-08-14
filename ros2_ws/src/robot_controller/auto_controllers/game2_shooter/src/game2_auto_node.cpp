@@ -157,6 +157,7 @@ void Game2AutoNode::tag_detections_callback(
 {
   const auto current_time = now();
 
+  // 1. 各タグの検出状態を更新
   for (const auto & detection : msg->detections) {
     const int id = detection.id;
     auto it = panel_grid_.find(id);
@@ -164,24 +165,50 @@ void Game2AutoNode::tag_detections_callback(
       it->second.last_seen = current_time;
       it->second.detected = true;
 
-      // 1080p 画像中心 (cx=960) からのピクセルズレ (右が正, 左が負)
-      const double pixel_x_err = static_cast<double>(detection.centre.x) - 960.0;
+      // 🎯 カメラが車体中心より左(+35mm)にあるため、射出口をタグに向ける目標ピクセル中心は 953.0px (960 - 7px)
+      const double target_pixel_center = 960.0 - (camera_offset_y_ / target_distance_) * 800.0;
+      const double pixel_x_err = static_cast<double>(detection.centre.x) - target_pixel_center;
 
-      // カメラ視野角から見たタグの光軸角度 (rad) (1080p fx ≈ 800.0 px)
-      // タグが左 (pixel_x_err < 0) -> 角度は左 (+rad, 反時計回り)
-      // タグが右 (pixel_x_err > 0) -> 角度は右 (-rad, 時計回り)
+      // 📐 射出口をタグに向けるための真の旋回誤差 (rad)
+      // タグが左 (pixel_x_err < 0) -> +wz (反時計回り・左旋回)
+      // タグが右 (pixel_x_err > 0) -> -wz (時計回り・右旋回)
       const double heading_err_rad = -std::atan2(pixel_x_err, 800.0);
-      const double estimated_dist = target_distance_; // [m] 4.0m 設定距離に連動
 
-      // 📐 base_link 基準変換: カメラが左(+Y)にあるため、ロボット中心基準では -camera_offset_y_
-      it->second.x = estimated_dist * std::cos(heading_err_rad) + camera_offset_x_;
-      it->second.y = estimated_dist * std::sin(heading_err_rad) - camera_offset_y_;
+      it->second.x = target_distance_;
+      it->second.y = target_distance_ * std::tan(heading_err_rad);
       it->second.z = camera_offset_z_;
+    }
+  }
+
+  // 2. 🧪 テストモード時: 今まさに受信したメッセージの中で、一番画面中心に近いタグをダイレクト選択
+  if (test_alignment_only_) {
+    int best_id = -1;
+    double min_pixel_err_abs = 1e9;
+    double best_heading_err = 0.0;
+    const double target_pixel_center = 960.0 - (camera_offset_y_ / target_distance_) * 800.0;
+
+    for (const auto & detection : msg->detections) {
+      const int id = detection.id;
+      if (panel_grid_.find(id) != panel_grid_.end()) {
+        const double pixel_err = static_cast<double>(detection.centre.x) - target_pixel_center;
+        if (std::abs(pixel_err) < min_pixel_err_abs) {
+          min_pixel_err_abs = std::abs(pixel_err);
+          best_id = id;
+          best_heading_err = -std::atan2(pixel_err, 800.0);
+        }
+      }
+    }
+
+    if (best_id != -1) {
+      target_x_ = target_distance_;
+      target_y_ = target_distance_ * std::tan(best_heading_err);
+      target_z_ = camera_offset_z_;
+      target_valid_ = true;
 
       RCLCPP_INFO_THROTTLE(
-        get_logger(), *get_clock(), 500,
-        "📷 [AprilTag Track] Tag ID %d: PixelErr=%.1f px -> HeadingErr=%.2f deg",
-        id, pixel_x_err, heading_err_rad * 180.0 / M_PI);
+        get_logger(), *get_clock(), 200,
+        "📷 [AprilTag Direct] Tracking Tag ID %d: HeadingErr=%.2f deg (PixelErr=%.1f px)",
+        best_id, best_heading_err * 180.0 / M_PI, min_pixel_err_abs);
     }
   }
 }
@@ -191,8 +218,8 @@ void Game2AutoNode::update_panel_states()
   const auto current_time = now();
 
   for (auto & [id, panel] : panel_grid_) {
-    // 1.0秒以上見えなくなったらロスト判定
-    if ((current_time - panel.last_seen).seconds() > 1.0) {
+    // 0.4秒以上見えなくなったらロスト判定
+    if ((current_time - panel.last_seen).seconds() > 0.4) {
       panel.detected = false;
     }
   }
@@ -200,33 +227,18 @@ void Game2AutoNode::update_panel_states()
 
 void Game2AutoNode::select_target_and_aim()
 {
-  target_valid_ = false;
-
-  // 1. テストモード時: 現在検出されているタグの中で、一番正面に近い（画面中心に近い）タグをダイレクト追尾
   if (test_alignment_only_) {
-    int best_id = -1;
-    double min_y_abs = 1e9;
-
-    for (const auto & [id, panel] : panel_grid_) {
-      if (panel.detected && (now() - panel.last_seen).seconds() < 0.3) {
-        if (std::abs(panel.y) < min_y_abs) {
-          min_y_abs = std::abs(panel.y);
-          best_id = id;
-        }
-      }
+    // テストモード時は tag_detections_callback でダイレクトに target_x_, target_y_ が決定される
+    // 0.4秒以上検出が途絶えたら無効化
+    if (now() - last_imu_time_ > std::chrono::milliseconds(400)) {
+      // no-op
     }
-
-    if (best_id != -1) {
-      const auto & target = panel_grid_[best_id];
-      target_x_ = target.x;
-      target_y_ = target.y;
-      target_z_ = target.z;
-      target_valid_ = true;
-      return;
-    }
+    return;
   }
 
-  // 2. 本番モード: 下段(0) -> 中段(1) -> 上段(2) の順にクリア
+  target_valid_ = false;
+
+  // 本番モード: 下段(0) -> 中段(1) -> 上段(2) の順にクリア
   for (int row = active_row_; row <= 2; ++row) {
     int best_id = -1;
     double min_dist_sq = 1e9;
