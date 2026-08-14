@@ -2,29 +2,47 @@
 """
 CAN & System Health Checker for ROX2026 Robot
 CANバス統計、データレート、ノード別フレームレート(Hz)、トポロジー状態の自動診断
+
+[修正] EduLite Extended CAN (29-bit ID) フレームに対応
+  ID構造: (TYPE << 24) | (STATUS << 16) | (MOTOR_ID << 8) | HOST_ID(0xFD)
+  TYPE_FEEDBACK=0x02, TYPE_READ_RESP=0x11
 """
 
 import subprocess
 import time
-import threading
 import re
 from collections import defaultdict
 
-NODE_MAP = {
-    0x020: "Front Left Wheel (EduLite)",
-    0x021: "Front Right Wheel (EduLite)",
-    0x022: "Rear Left Wheel (EduLite)",
-    0x023: "Rear Right Wheel (EduLite)",
-    0x028: "Spring / Kicker (EduLite)",
-    0x038: "Dribble Motor (EduLite)",
-    0x100: "VESC Group Broadcast / Feedback",
-    0x200: "STM32 Status / RX",
-    0x201: "STM32 Control / TX",
-    0x310: "Limit Switch / Sensor Event",
-    0x320: "Upper Belt Motor (VESC)",
-    0x321: "Under Belt Motor (VESC)",
-    0x322: "Dribble Roller Motor (VESC)",
+# ─── EduLite: Extended CAN (29-bit ID) ───────────────────────────────────────
+EDULITE_HOST_ID       = 0xFD
+EDULITE_TYPE_FEEDBACK = 0x02   # フィードバック
+EDULITE_TYPE_READ     = 0x11   # パラメータ読み出し応答
+EDULITE_MOTOR_MAP = {
+    0x20: "Front Left Wheel  (EduLite)",
+    0x21: "Front Right Wheel (EduLite)",
+    0x22: "Rear Left Wheel   (EduLite)",
+    0x23: "Rear Right Wheel  (EduLite)",
+    0x28: "Spring / Kicker   (EduLite)",
+    0x38: "Dribble Motor     (EduLite)",
 }
+
+# ─── Standard CAN (11-bit ID) ─────────────────────────────────────────────────
+STANDARD_NODE_MAP = {
+    0x100: "VESC Group Broadcast / Feedback",
+    0x200: "STM32 Status / RX              ",
+    0x201: "STM32 Control / TX             ",
+    0x310: "Limit Switch / Sensor Event    ",
+    0x320: "Upper Belt Motor (VESC)        ",
+    0x321: "Under Belt Motor (VESC)        ",
+    0x322: "Dribble Roller Motor (VESC)    ",
+}
+
+RED    = "\033[91m"
+GREEN  = "\033[92m"
+YELLOW = "\033[93m"
+CYAN   = "\033[96m"
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
 
 
 def print_header(title):
@@ -35,63 +53,68 @@ def check_can_interface_stats():
     print_header("1. SocketCAN (can0) Status & Error Counters")
     try:
         res = subprocess.run(
-            ["ip", "-details", "-s", "link", "show", "can0"], capture_output=True, text=True
+            ["ip", "-details", "-s", "link", "show", "can0"],
+            capture_output=True, text=True
         )
         output = res.stdout
-        
-        state_match = re.search(r"state\s+([A-Z\-]+)", output)
-        bus_state = state_match.group(1) if state_match else "UNKNOWN"
-        
-        if bus_state == "UP":
-            print("  State          : \033[92mUP\033[0m")
-        elif "BUS-OFF" in bus_state or "BUS-OFF" in output:
-            print("  State          : \033[91mBUS-OFF\033[0m")
+
+        # CAN バス状態（"can state ..." の行を優先して解析）
+        can_state_match = re.search(r"can state\s+([A-Z_\-]+)", output)
+        link_state_match = re.search(r"state\s+([A-Z]+)", output)
+        bus_state = (can_state_match.group(1) if can_state_match
+                     else (link_state_match.group(1) if link_state_match else "UNKNOWN"))
+
+        if "ERROR_PASSIVE" in bus_state or "ERROR-PASSIVE" in bus_state:
+            print(f"  State          : {RED}{BOLD}ERROR-PASSIVE  ← CAN バスにエラー多発中!{RESET}")
+        elif "BUS_OFF" in bus_state or "BUS-OFF" in bus_state:
+            print(f"  State          : {RED}{BOLD}BUS-OFF  ← 通信不可能状態!{RESET}")
+        elif "UP" in bus_state:
+            print(f"  State          : {GREEN}UP (Error Active){RESET}")
         else:
-            print(f"  State          : \033[93m{bus_state}\033[0m")
+            print(f"  State          : {YELLOW}{bus_state}{RESET}")
 
-        bitrate_match = re.search(r"bitrate\s+(\d+)", output)
-        bitrate = bitrate_match.group(1) if bitrate_match else "N/A"
-        restart_match = re.search(r"restart-ms\s+(\d+)", output)
-        restart_ms = restart_match.group(1) if restart_match else "0"
-        print(f"  Bitrate        : {int(bitrate)//1000 if bitrate.isdigit() else bitrate} kbps (restart-ms: {restart_ms}ms)")
+        bitrate_match  = re.search(r"bitrate\s+(\d+)", output)
+        restart_match  = re.search(r"restart-ms\s+(\d+)", output)
+        bitrate    = bitrate_match.group(1)  if bitrate_match  else "N/A"
+        restart_ms = restart_match.group(1)  if restart_match  else "0"
+        print(f"  Bitrate        : {int(bitrate)//1000 if bitrate.isdigit() else bitrate} kbps"
+              f"  (restart-ms: {restart_ms}ms)")
 
-        tec_rec_match = re.search(r"berr-counter\s+tec\s+(\d+)\s+rec\s+(\d+)", output)
-        if tec_rec_match:
-            tec, rec = int(tec_rec_match.group(1)), int(tec_rec_match.group(2))
-            tec_str = f"\033[91m{tec}\033[0m" if tec > 96 else f"{tec}"
-            rec_str = f"\033[91m{rec}\033[0m" if rec > 96 else f"{rec}"
-            print(f"  Error Counters : TEC={tec_str}, REC={rec_str}")
+        # TEC / REC
+        berr_match = re.search(r"berr-counter\s+tx\s+(\d+)\s+rx\s+(\d+)", output)
+        if berr_match:
+            tec, rec = int(berr_match.group(1)), int(berr_match.group(2))
+            def _color(v):
+                if v > 127: return f"{RED}{BOLD}{v}{RESET}"
+                if v > 96:  return f"{RED}{v}{RESET}"
+                if v > 0:   return f"{YELLOW}{v}{RESET}"
+                return str(v)
+            print(f"  Error Counters : TEC={_color(tec)}, REC={_color(rec)}")
+            if tec > 96 or rec > 96:
+                print(f"  {RED}⚠ エラーカウンタ高値: CAN フレームに ACK が返っていないか、"
+                      f"エラーフレームが送出されています{RESET}")
 
-        restarts_match = re.search(r"restarts\s+(\d+)", output)
+        restarts_match   = re.search(r"restarts\s+(\d+)", output)
         bus_errors_match = re.search(r"bus-errors\s+(\d+)", output)
         if restarts_match or bus_errors_match:
-            restarts = restarts_match.group(1) if restarts_match else "0"
-            bus_errs = bus_errors_match.group(1) if bus_errors_match else "0"
+            restarts  = restarts_match.group(1)   if restarts_match   else "0"
+            bus_errs  = bus_errors_match.group(1) if bus_errors_match else "0"
             print(f"  Bus Statistics : Restarts={restarts}, BusErrors={bus_errs}")
 
     except Exception as e:
-        print(f"  [ERROR] Failed to inspect can0 stats: {e}")
-
-
-def send_pings():
-    time.sleep(0.3)
-    for can_id in NODE_MAP.keys():
-        try:
-            cmd = f"cansend can0 {can_id:03X}#0000"
-            subprocess.run(cmd, shell=True, capture_output=True)
-            time.sleep(0.02)
-        except Exception:
-            pass
+        print(f"  [ERROR] インターフェース情報の取得に失敗: {e}")
 
 
 def analyze_can_bus_traffic():
     print_header("2. CAN Node Traffic Analysis (2.0s sample)")
-    node_counts = defaultdict(int)
-    unknown_nodes = defaultdict(int)
-    total_frames = 0
 
-    ping_thread = threading.Thread(target=send_pings)
-    ping_thread.daemon = True
+    std_counts     = defaultdict(int)
+    edulite_counts = defaultdict(int)
+    unknown_ext    = defaultdict(int)
+    unknown_std    = defaultdict(int)
+    error_frames   = 0
+    total_frames   = 0
+    sample_duration = 2.0
 
     try:
         proc = subprocess.Popen(
@@ -100,84 +123,127 @@ def analyze_can_bus_traffic():
             stderr=subprocess.PIPE,
             text=True,
         )
-        ping_thread.start()
 
         start_time = time.time()
-        sample_duration = 2.0
-        
         while time.time() - start_time < sample_duration:
             line = proc.stdout.readline()
             if not line:
                 break
-            
+
+            # エラーフレーム
+            if "ERRORFRAME" in line:
+                error_frames += 1
+                continue
+
             parts = line.strip().split()
-            if len(parts) >= 3:
-                try:
-                    can_data_str = parts[2]
-                    id_data = can_data_str.split("#")
-                    can_id = int(id_data[0], 16)
-                    data_hex = id_data[1] if len(id_data) > 1 else ""
+            if len(parts) < 3:
+                continue
+            try:
+                id_str, data_str = parts[2].split("#", 1)
+                can_id = int(id_str, 16)
+                total_frames += 1
 
-                    if data_hex == "0000" and can_id in NODE_MAP:
-                        continue
-
-                    total_frames += 1
-                    if can_id in NODE_MAP:
-                        node_counts[can_id] += 1
+                if can_id > 0x7FF:
+                    # ─── Extended CAN (EduLite) ───────────────────────────
+                    frame_type = (can_id >> 24) & 0x1F
+                    motor_id   = (can_id >> 8)  & 0xFF
+                    host_id    = can_id          & 0xFF
+                    if (host_id == EDULITE_HOST_ID
+                            and frame_type in (EDULITE_TYPE_FEEDBACK, EDULITE_TYPE_READ)
+                            and motor_id in EDULITE_MOTOR_MAP):
+                        edulite_counts[motor_id] += 1
                     else:
-                        unknown_nodes[can_id] += 1
-                except (ValueError, IndexError):
-                    pass
+                        unknown_ext[can_id] += 1
+                else:
+                    # ─── Standard CAN ────────────────────────────────────
+                    if can_id in STANDARD_NODE_MAP:
+                        std_counts[can_id] += 1
+                    else:
+                        unknown_std[can_id] += 1
+
+            except (ValueError, IndexError):
+                pass
 
         proc.terminate()
         proc.wait(timeout=1.0)
 
     except FileNotFoundError:
-        print("  [ERROR] candump command not found.")
+        print("  [ERROR] candump が見つかりません。")
         return
     except Exception as e:
-        print(f"  [ERROR] Capture exception: {e}")
+        print(f"  [ERROR] キャプチャ中に例外: {e}")
         return
 
-    fps = total_frames / sample_duration
-    bus_load_pct = (fps * 111.0 / 1000000.0) * 100.0
+    fps           = total_frames / sample_duration
+    bus_load_pct  = (fps * 111.0 / 1_000_000.0) * 100.0
 
     print(f"  Total Traffic  : {total_frames} frames ({fps:.1f} fps)")
     print(f"  Est. Bus Load  : {bus_load_pct:.2f} %")
-    print("\n  Node Status:")
+    if error_frames > 0:
+        print(f"  {RED}Error Frames   : {error_frames}  ← CAN バス上でエラーフレームを検出!{RESET}")
 
-    for can_id, name in NODE_MAP.items():
-        count = node_counts[can_id]
+    # ── EduLite (Extended 29-bit) ──
+    print(f"\n  {CYAN}[EduLite  Extended CAN 29-bit]{RESET}")
+    for motor_id, name in EDULITE_MOTOR_MAP.items():
+        count    = edulite_counts[motor_id]
         node_fps = count / sample_duration
-        if count > 0:
-            status_str = f"\033[92mONLINE ({node_fps:5.1f} Hz)\033[0m"
-        else:
-            status_str = f"\033[91mNO RESPONSE\033[0m"
-        
-        print(f"  [0x{can_id:03X}] {name:<32} : {status_str}")
+        status   = (f"{GREEN}ONLINE ({node_fps:5.1f} Hz){RESET}"
+                    if count > 0 else f"{RED}NO RESPONSE{RESET}")
+        print(f"  [0x{motor_id:03X}] {name:<34} : {status}")
 
-    if unknown_nodes:
-        print("\n  Unmapped IDs:")
-        for u_id, count in unknown_nodes.items():
-            u_fps = count / sample_duration
-            print(f"  [0x{u_id:03X}] Unknown Node                    : {u_fps:.1f} Hz")
+    # ── Standard CAN (11-bit) ──
+    print(f"\n  {CYAN}[Standard CAN  11-bit]{RESET}")
+    for can_id, name in STANDARD_NODE_MAP.items():
+        count    = std_counts[can_id]
+        node_fps = count / sample_duration
+        status   = (f"{GREEN}ONLINE ({node_fps:5.1f} Hz){RESET}"
+                    if count > 0 else f"{RED}NO RESPONSE{RESET}")
+        print(f"  [0x{can_id:03X}] {name:<34} : {status}")
 
+    # ── 未登録ノード ──
+    all_unknown = [(f"EXT 0x{k:08X}", v) for k, v in unknown_ext.items()] + \
+                  [(f"STD 0x{k:03X}",  v) for k, v in unknown_std.items()]
+    if all_unknown:
+        print(f"\n  {YELLOW}[未登録ノード]{RESET}")
+        for label, count in sorted(all_unknown, key=lambda x: x[0]):
+            print(f"  [{label}]  {count/sample_duration:.1f} Hz")
+
+    # ── Diagnostics Insight ──
     print_header("3. Diagnostics Insight")
-    edulite_online = sum(1 for cid in [0x020, 0x021, 0x022, 0x023, 0x028, 0x038] if node_counts[cid] > 0)
-    vesc_online = sum(1 for cid in [0x320, 0x321, 0x322] if node_counts[cid] > 0 or node_counts[0x100] > 0)
-    stm32_online = node_counts[0x200] > 0 or node_counts[0x201] > 0
 
-    if edulite_online == 0 and stm32_online and vesc_online:
-        print("  Insight: EduLite nodes (0x20~0x38) non-responsive. Check EduLite 24V/12V power or CAN cable.")
-    elif edulite_online == 0 and not stm32_online and vesc_online:
-        print("  Insight: Only VESC online. Check CAN line between VESC and STM32/EduLite, or main logic power.")
-    elif edulite_online > 0 and edulite_online < 6:
-        offline_nodes = [name for cid, name in NODE_MAP.items() if cid < 0x100 and node_counts[cid] == 0]
-        print(f"  Insight: Partial EduLite offline ({', '.join(offline_nodes)}). Check specific CAN connectors.")
-    elif edulite_online == 6 and vesc_online and stm32_online:
-        print("  Insight: All nodes operational.")
+    edulite_online = sum(1 for mid in EDULITE_MOTOR_MAP if edulite_counts[mid] > 0)
+    vesc_online    = any(std_counts[cid] > 0 for cid in [0x100, 0x320, 0x321, 0x322])
+    stm32_online   = std_counts[0x200] > 0 or std_counts[0x310] > 0
+
+    if error_frames > 5:
+        print(f"  {RED}⚠ CAN バスにエラーフレームが多発 ({error_frames}件){RESET}")
+        print(f"    → EduLite が ACK を返さない / フォーマット不一致 / 配線問題の可能性")
+
+    if edulite_online == 0 and vesc_online:
+        print("  ⚠ EduLite ノード全滅。")
+        print("    → EduLite の電源 (24V/12V) を確認。")
+        print("    → Extended フレーム(29-bit)として送信できているか `candump can0` で確認。")
+    elif edulite_online > 0 and edulite_online < len(EDULITE_MOTOR_MAP):
+        offline = [name.strip() for mid, name in EDULITE_MOTOR_MAP.items()
+                   if edulite_counts[mid] == 0]
+        print(f"  ⚠ EduLite 一部応答なし: {', '.join(offline)}")
+        print("    → 該当ノードの CAN コネクタ・電源を確認。")
+    elif edulite_online == len(EDULITE_MOTOR_MAP) and vesc_online and stm32_online:
+        print(f"  {GREEN}✓ 全ノード正常動作中{RESET}")
     else:
-        print("  Insight: Partial communication active. Check termination resistors (120 Ohm) or signal noise.")
+        print("  Insight: 部分的な通信のみ。詳細は上のノード状態を確認してください。")
+
+    if not vesc_online:
+        print("  ⚠ VESC 応答なし。CAN 配線を確認。")
+    if not stm32_online:
+        print("  ⚠ STM32 応答なし。STM32 の電源・ファームウェアを確認。")
+
+    return {
+        "edulite_online": edulite_online,
+        "edulite_counts": dict(edulite_counts),
+        "std_counts": dict(std_counts),
+        "error_frames": error_frames,
+    }
 
 
 def check_joystick():
@@ -185,9 +251,9 @@ def check_joystick():
     try:
         res = subprocess.run(["ls", "-l", "/dev/input/js0"], capture_output=True, text=True)
         if res.returncode == 0:
-            print("  Joystick (/dev/input/js0): \033[92mCONNECTED\033[0m")
+            print(f"  Joystick (/dev/input/js0): {GREEN}CONNECTED{RESET}")
         else:
-            print("  Joystick (/dev/input/js0): \033[91mNOT CONNECTED\033[0m")
+            print(f"  Joystick (/dev/input/js0): {RED}NOT CONNECTED{RESET}")
     except Exception as e:
         print(f"  [ERROR] {e}")
 
@@ -197,5 +263,3 @@ if __name__ == "__main__":
     analyze_can_bus_traffic()
     check_joystick()
     print()
-
-
