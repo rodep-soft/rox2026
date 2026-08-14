@@ -33,7 +33,10 @@ class Nv12ToMono8Node(Node):
 
         self.last_camera_info_ = None
         self.info_sub_1_ = self.create_subscription(
-            CameraInfo, "/image_combine_raw/left/camera_info", self.camera_info_callback, 10
+            CameraInfo,
+            "/image_combine_raw/left/camera_info",
+            self.camera_info_callback,
+            10,
         )
         self.info_sub_2_ = self.create_subscription(
             CameraInfo, "/image_left_raw/camera_info", self.camera_info_callback, 10
@@ -75,7 +78,20 @@ class Nv12ToMono8Node(Node):
             info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
             info_msg.k = [800.0, 0.0, 960.0, 0.0, 800.0, 540.0, 0.0, 0.0, 1.0]
             info_msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-            info_msg.p = [800.0, 0.0, 960.0, 0.0, 0.0, 800.0, 540.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+            info_msg.p = [
+                800.0,
+                0.0,
+                960.0,
+                0.0,
+                0.0,
+                800.0,
+                540.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+            ]
 
         info_msg.header = msg.header
         self.camera_info_pub_.publish(info_msg)
