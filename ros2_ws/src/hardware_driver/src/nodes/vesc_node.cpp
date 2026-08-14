@@ -227,39 +227,24 @@ private:
     }
 
     const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-    const auto rpm_control_start_rpm =
-      std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
-    const auto measured_rpm = static_cast<double>(motor.measured_rpm);
-    const bool rotating_in_target_direction = desired_rpm * measured_rpm > 0.0;
-    const bool rpm_control_start_reached = rotating_in_target_direction &&
-      std::abs(measured_rpm) >= rpm_control_start_rpm;
 
-    if (!motor.rpm_control_active && motor.feedback_received && rpm_control_start_reached) {
-      motor.rpm_control_active = true;
-      motor.rpm_command = measured_rpm;
-    }
-
-    // モーターが停止している場合は、まずは電流制御で回転させる
-    if (!motor.rpm_control_active) {
-      const auto startup_current_a = std::copysign(motor.config.startup_current_a, desired_rpm);
-      can_publisher_->publish(
-        protocol::make_set_current_frame(
-          motor.config.controller_id,
-          startup_current_a));
-      return;
-    }
-
-    // RPM制御を行う場合は、目標RPMに向かってスロープ制御を行う
-    // elapsed_secondsは、前回のスロープ制御からの経過時間を秒単位で表す
+    // スロープ制御で目標RPMまで滑らかに加速
     const auto elapsed_seconds =
       std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
-    const auto maximum_step = motor.config.rpm_slew_rate * elapsed_seconds;
-    // VESC は設定された極数に基づき RPM 指令をそのまま受け付ける
-    const auto rpm_command = motor.rpm_command;
+    motor.last_ramp_update_time = now;
+
+    const auto maximum_step = (elapsed_seconds > 0.0 && elapsed_seconds < 1.0) ?
+      motor.config.rpm_slew_rate * elapsed_seconds : motor.config.rpm_slew_rate * 0.02;
+
+    motor.rpm_command += std::clamp(desired_rpm - motor.rpm_command, -maximum_step, maximum_step);
+
+    // VESC は eRPM (電気的回転数 = メカニカルRPM * 極対数) を受け取る仕様
+    const auto erpm_command = motor.rpm_command * motor_pole_pairs;
+
     can_publisher_->publish(
       protocol::make_set_rpm_frame(
         motor.config.controller_id,
-        static_cast<int32_t>(std::lround(rpm_command))));
+        static_cast<int32_t>(std::lround(erpm_command))));
   }
 
   /// @brief CANフレーム受信時のコールバック関数(即時にモーターの状態を配信する)
@@ -274,7 +259,8 @@ private:
     if (motor == nullptr) {
       return;
     }
-    motor->measured_rpm = static_cast<float>(status.erpm);
+    const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
+    motor->measured_rpm = static_cast<float>(status.erpm / motor_pole_pairs);
     motor->measured_current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
