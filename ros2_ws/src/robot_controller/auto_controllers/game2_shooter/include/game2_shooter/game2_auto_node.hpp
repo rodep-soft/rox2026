@@ -45,6 +45,7 @@ private:
   void control_loop();
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+  void ball_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void publish_all(
     const geometry_msgs::msg::Twist & cmd_vel,
     float belt_rpm,
@@ -60,6 +61,7 @@ private:
   // Subscriptions & Publishers & Timers
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr ball_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
@@ -84,10 +86,13 @@ private:
   double rpm_middle_;
   double rpm_top_;
   double shoot_hold_duration_;
+  double ball_settle_duration_{0.3};
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
   bool is_enabled_{false};
+  bool ball_detected_{false};
+  rclcpp::Time ball_detected_time_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top
   double target_x_{0.0};

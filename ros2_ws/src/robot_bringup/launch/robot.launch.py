@@ -43,14 +43,14 @@ def generate_launch_description():
         ),
     )
 
-    # USB Webカメラ (V4L2)
+    # USB Webカメラ (V4L2) - 単体モニタ用（AprilTag/ビジョンはCSIカメラを使用）
     webcam_launch = include(
         "webcam_launch.py",
         condition=IfCondition(LaunchConfiguration("enable_webcam")),
         launch_arguments=list(
             {
                 "video_device": LaunchConfiguration("video_device"),
-                "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+                "enable_apriltag": "false",
             }.items()
         ),
     )
