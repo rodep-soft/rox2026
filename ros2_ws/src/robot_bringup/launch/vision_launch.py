@@ -99,7 +99,6 @@ def launch_setup(context, *args, **kwargs):
             output="screen",
         )
         launch_nodes.append(camera_info_relay)
-
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"
         )
@@ -108,7 +107,7 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=list(
                 {
                     "node_name": "apriltag_csi_node",
-                    "image_topic": "/StereoNetNode/rectify_left_image",
+                    "image_topic": "/StereoNetNode/origin_left_image",
                     "camera_info_topic": "/StereoNetNode/camera_info",
                     "tag_family": tag_family,
                     "tag_size": tag_size,
