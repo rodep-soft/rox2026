@@ -13,6 +13,8 @@ JoyControllerNode::JoyControllerNode()
   joy_timeout_ms_ = declare_parameter<int>("joy_timeout_ms", 200);
   state_publish_period_ms_ = declare_parameter<int>("state_publish_period_ms", 20);
 
+  is_emergency_stop_ = true;
+
   max_vel_x_m_s_ = declare_parameter<double>("linear_x_limit", 2.0);
   max_vel_y_m_s_ = declare_parameter<double>("linear_y_limit", 2.0);
   max_vel_z_rad_s_ = declare_parameter<double>("angular_z_limit", 2.0);
