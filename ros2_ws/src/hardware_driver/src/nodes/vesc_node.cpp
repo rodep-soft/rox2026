@@ -227,32 +227,9 @@ private:
     }
 
     const auto motor_pole_pairs = static_cast<double>(protocol::MOTOR_POLES) / 2.0;
-    const auto measured_rpm = static_cast<double>(motor.measured_rpm);
-    const auto rpm_control_start_rpm =
-      std::min(motor.config.rpm_control_threshold_rpm, std::abs(desired_rpm));
 
-    // 実測値が target 方向に回り始めたら RPM 制御へ
-    const bool rotating_in_target_direction = desired_rpm * measured_rpm > 0.0;
-    const bool rpm_control_start_reached = rotating_in_target_direction &&
-      std::abs(measured_rpm) >= rpm_control_start_rpm;
-
-    if (rpm_control_start_reached) {
-      motor.rpm_control_active = true;
-    }
-
-    // 停止中〜極低速時は、強力な始動電流を流して確実にモータを回す（脱調・音鳴り防止）
-    if (!motor.rpm_control_active) {
-      const auto startup_current_a = std::copysign(motor.config.startup_current_a, desired_rpm);
-      can_publisher_->publish(
-        protocol::make_set_current_frame(
-          motor.config.controller_id,
-          startup_current_a));
-      motor.last_ramp_update_time = now;
-      motor.rpm_command = measured_rpm;
-      return;
-    }
-
-    // RPM 制御モード: スロープ制御で目標 RPM まで滑らかに加速・維持
+    // RPM 制御: スロープ制御で 0 RPM から目標 RPM まで滑らかに加速・維持
+    // VESC (FOC) は SET_RPM を受け取ると自動でオープンループ始動 -> クローズドループへ移行する
     const auto elapsed_seconds =
       std::chrono::duration<double>(now - motor.last_ramp_update_time).count();
     motor.last_ramp_update_time = now;
