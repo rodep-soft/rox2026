@@ -50,7 +50,25 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    launch_nodes = [webcam_node]
+    # 📐 base_link -> webcam_link (実測値: 前方 +0.300m, 左右 0.000m, 上方 +0.380m)
+    webcam_tf_node = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="base_to_webcam_tf",
+        arguments=[
+            "--x", "0.300",
+            "--y", "0.000",
+            "--z", "0.380",
+            "--roll", "0.0",
+            "--pitch", "0.0",
+            "--yaw", "0.0",
+            "--frame-id", "base_link",
+            "--child-frame-id", camera_frame_id,
+        ],
+        output="screen",
+    )
+
+    launch_nodes = [webcam_node, webcam_tf_node]
 
     if enable_apriltag:
         bringup_share = get_package_share_directory("robot_bringup")
