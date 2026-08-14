@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "apriltag_msgs/msg/april_tag_detection_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
@@ -40,6 +41,7 @@ public:
   explicit Game2AutoNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
+  void tag_detections_callback(const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg);
   void update_panel_states();
   void select_target_and_aim();
   void control_loop();
@@ -59,6 +61,7 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   // Subscriptions & Publishers & Timers
+  rclcpp::Subscription<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr ball_sub_;

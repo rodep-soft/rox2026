@@ -55,6 +55,9 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
+  detections_sub_ = create_subscription<apriltag_msgs::msg::AprilTagDetectionArray>(
+    "/detections", 10,
+    std::bind(&Game2AutoNode::tag_detections_callback, this, std::placeholders::_1));
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game2/command_start", 10,
     std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
@@ -144,14 +147,46 @@ void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
+void Game2AutoNode::tag_detections_callback(
+  const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
+{
+  const auto current_time = now();
+
+  for (const auto & detection : msg->detections) {
+    if (detection.id.empty()) {
+      continue;
+    }
+    const int id = detection.id[0];
+    auto it = panel_grid_.find(id);
+    if (it != panel_grid_.end()) {
+      // カメラ座標系 (X: 右, Y: 下, Z: 前方奥行き) -> ロボット base_link (X: 前方, Y: 左, Z: 上)
+      // カメラ光軸 Z がロボットの前方 X、カメラ X(右) がロボットの -Y(右)
+      const double cam_x = detection.pose.pose.pose.position.x;
+      const double cam_y = detection.pose.pose.pose.position.y;
+      const double cam_z = detection.pose.pose.pose.position.z;
+
+      it->second.x = cam_z;        // ロボット前方距離
+      it->second.y = -cam_x;       // ロボット左右方向 (左が正、右が負)
+      it->second.z = -cam_y;
+      it->second.detected = true;
+      it->second.last_seen = current_time;
+
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "📷 [AprilTag Direct] Tag ID %d seen: Front=%.2fm, Left/Right=%.3fm",
+        id, it->second.x, it->second.y);
+    }
+  }
+}
+
 void Game2AutoNode::update_panel_states()
 {
   const auto current_time = now();
 
   for (auto & [id, panel] : panel_grid_) {
+    // 1. TF が利用可能な場合は TF で精密更新
     const std::string frame1 = tag_prefix_ + std::to_string(id);
     const std::string frame2 = "tag_" + std::to_string(id);
-    bool found = false;
 
     for (const auto & frame : {frame1, frame2}) {
       try {
@@ -161,14 +196,14 @@ void Game2AutoNode::update_panel_states()
         panel.z = tf.transform.translation.z;
         panel.detected = true;
         panel.last_seen = current_time;
-        found = true;
         break;
       } catch (const tf2::TransformException &) {
-        // 次の候補フレームを試行
+        // TF が無ければ tag_detections_callback の direct 検出結果をそのまま使用
       }
     }
 
-    if (!found && (current_time - panel.last_seen).seconds() > 1.5) {
+    // 2. 1.5秒以上どちらからも見えなくなったらロスト判定
+    if ((current_time - panel.last_seen).seconds() > 1.5) {
       panel.detected = false;
     }
   }

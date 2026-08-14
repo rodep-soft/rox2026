@@ -18,6 +18,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(robot_msgs REQUIRED)
+find_package(apriltag_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -74,6 +75,7 @@ add_controller(
   sensor_msgs
   std_msgs
   robot_msgs
+  apriltag_msgs
   tf2
   tf2_ros)
 add_controller(
