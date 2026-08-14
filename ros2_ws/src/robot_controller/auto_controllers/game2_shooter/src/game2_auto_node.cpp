@@ -239,10 +239,10 @@ void Game2AutoNode::control_loop()
   if (!target_valid_) {
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
-    cmd.angular.z = 0.2;
+    cmd.angular.z = 0.2;  // パネル探索旋回
     publish_all(
-      cmd, static_cast<float>(target_rpm_),
-      false, true, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      cmd, 0.0f,
+      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
@@ -256,7 +256,7 @@ void Game2AutoNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
         state_ = robot_msgs::msg::Game2State::ALIGNING;
-        cmd.linear.x = 0.0;  // 前後移動は行わず、その場旋回で角度のみ合わせる
+        cmd.linear.x = 0.0;  // 前後移動オフ
         cmd.linear.y = 0.0;
 
         double wz = -kp_yaw_ * y_err;
@@ -266,48 +266,12 @@ void Game2AutoNode::control_loop()
         cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
         const bool is_aligned = (std::abs(y_err) < yaw_tolerance_);
-        const bool is_ball_settled = ball_detected_ &&
-          ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
-
-        if (is_aligned && is_ball_settled) {
-          RCLCPP_INFO(get_logger(), "Game2: Aligned & Ball Settled! Moving arm to OPEN.");
-          state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-          shoot_start_time_ = now();
-        } else if (is_aligned && !ball_detected_) {
+        if (is_aligned) {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 2000,
-            "Game2: Aligned to Target, waiting for ball intake...");
+            "Game2: Target Aligned (y_err: %.3f m)!", y_err);
         }
         arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        arm_mode = robot_msgs::msg::ArmPosition::OPEN;
-        if ((now() - shoot_start_time_).seconds() > 0.3) {
-          RCLCPP_INFO(get_logger(), "Game2: arm open. Moving to FEED.");
-          state_ = robot_msgs::msg::Game2State::SHOOTING;
-          shoot_start_time_ = now();
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::SHOOTING: {
-        arm_mode = robot_msgs::msg::ArmPosition::FEED;
-        shoot_trigger = true;
-        if ((now() - shoot_start_time_).seconds() > shoot_hold_duration_) {
-          RCLCPP_INFO(get_logger(), "Game2: shot complete. Returning arm to DRIBBLE.");
-          state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
-          shoot_start_time_ = now();
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        if ((now() - shoot_start_time_).seconds() > 1.2) {
-          state_ = robot_msgs::msg::Game2State::ALIGNING;
-        }
         break;
       }
 
@@ -315,9 +279,10 @@ void Game2AutoNode::control_loop()
       break;
   }
 
+  // ドリブル・ベルト・ばねは動かさず、純粋に角度合わせ（cmd）のみを配信
   publish_all(
-    cmd, static_cast<float>(target_rpm_),
-    shoot_trigger, true, arm_mode, false);
+    cmd, 0.0f,
+    false, false, arm_mode, false);
 }
 
 void Game2AutoNode::publish_all(
