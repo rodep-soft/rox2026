@@ -14,12 +14,11 @@ def launch_setup(context, *args, **kwargs):
     tag_size = float(LaunchConfiguration("tag_size").perform(context))
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
-
     node_params = {
         "image_transport": "raw",
         "family": tag_family,
         "size": tag_size,
-        "max_hamming": 1,
+        "max_hamming": 0,
         "publish_tf": True,
         "pose_estimation_method": "",
     }
