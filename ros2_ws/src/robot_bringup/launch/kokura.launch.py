@@ -83,6 +83,16 @@ def generate_launch_description():
                     ("imu/data", "/imu/data"),
                 ],
             ),
+            # 📐 base_link -> imu_link 静的 TF
+            Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="base_to_imu_tf",
+                arguments=["--x", "0.0", "--y", "0.0", "--z", "0.1",
+                           "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
+                           "--frame-id", "base_link", "--child-frame-id", "imu_link"],
+                output="screen",
+            ),
 
             # --- 5. 🎯 libbno055-linux: 実績PID完全準拠 高性能 Heading Hold ノード ---
             Node(
@@ -108,5 +118,8 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
+
+            # --- 7. 🛰️ 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
+            include("ekf.launch.py"),
         ]
     )
