@@ -10,13 +10,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     bringup_share = get_package_share_directory("robot_bringup")
+    bno055_share = get_package_share_directory("libbno055_linux")
     launch_dir = os.path.join(bringup_share, "launch")
-
-    try:
-        bno055_share = get_package_share_directory("libbno055_linux")
-        heading_control_parameter_file = os.path.join(bno055_share, "config", "heading_control_params.yaml")
-    except Exception:
-        heading_control_parameter_file = None
 
     def include(launch_file, launch_arguments=None):
         return IncludeLaunchDescription(
@@ -28,38 +23,11 @@ def generate_launch_description():
     mecanum_parameter_file = os.path.join(
         bringup_share, "config", "mecanum_controller.yaml"
     )
-    heading_hold_parameter_file = os.path.join(
-        bringup_share, "config", "heading_hold.yaml"
-    )
     odometry_parameter_file = os.path.join(
         bringup_share, "config", "sensors.yaml"
     )
-
-    # heading_hold.yaml があれば優先、なければ libbno055_linux 側をロード
-    heading_hold_params = (
-        [heading_hold_parameter_file]
-        if os.path.exists(heading_hold_parameter_file)
-        else (
-            [heading_control_parameter_file]
-            if heading_control_parameter_file and os.path.exists(heading_control_parameter_file)
-            else [
-                {
-                    "kp": 4.0,
-                    "ki": 0.0,
-                    "kd": 0.05,
-                    "integral_limit": 0.5,
-                    "heading_deadband_rad": 0.02,
-                    "rotation_input_deadband_rad_s": 0.02,
-                    "max_correction_rad_s": 1.5,
-                    "control_period_ms": 10,
-                    "command_timeout_ms": 500,
-                    "imu_timeout_ms": 250,
-                    "raw_cmd_vel_topic": "/drive/cmd_vel",
-                    "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
-                    "imu_topic": "/imu/data",
-                }
-            ]
-        )
+    heading_control_parameter_file = os.path.join(
+        bno055_share, "config", "heading_control_params.yaml"
     )
 
     return LaunchDescription(
@@ -93,7 +61,7 @@ def generate_launch_description():
                 executable="bno055_heading_control_node",
                 name="bno055_heading_hold_node",
                 output="screen",
-                parameters=heading_hold_params,
+                parameters=[heading_control_parameter_file],
             ),
 
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
