@@ -12,6 +12,14 @@ def generate_launch_description():
     bringup_share = get_package_share_directory("robot_bringup")
     launch_dir = os.path.join(bringup_share, "launch")
 
+    try:
+        bno055_share = get_package_share_directory("libbno055_linux")
+        bno055_parameter_file = os.path.join(bno055_share, "config", "bno055_params.yaml")
+        heading_control_parameter_file = os.path.join(bno055_share, "config", "heading_control_params.yaml")
+    except Exception:
+        bno055_parameter_file = None
+        heading_control_parameter_file = None
+
     def include(launch_file, launch_arguments=None):
         return IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file)),
@@ -22,11 +30,30 @@ def generate_launch_description():
     mecanum_parameter_file = os.path.join(
         bringup_share, "config", "mecanum_controller.yaml"
     )
-    heading_hold_parameter_file = os.path.join(
-        bringup_share, "config", "heading_hold.yaml"
-    )
     odometry_parameter_file = os.path.join(
         bringup_share, "config", "sensors.yaml"
+    )
+
+    heading_hold_params = (
+        [heading_control_parameter_file]
+        if heading_control_parameter_file and os.path.exists(heading_control_parameter_file)
+        else [
+            {
+                "kp": 4.0,
+                "ki": 0.0,
+                "kd": 0.05,
+                "integral_limit": 0.5,
+                "heading_deadband_rad": 0.02,
+                "rotation_input_deadband_rad_s": 0.02,
+                "max_correction_rad_s": 1.5,
+                "control_period_ms": 10,
+                "command_timeout_ms": 500,
+                "imu_timeout_ms": 250,
+                "raw_cmd_vel_topic": "/drive/cmd_vel",
+                "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
+                "imu_topic": "/imu/data",
+            }
+        ]
     )
 
     return LaunchDescription(
@@ -36,16 +63,6 @@ def generate_launch_description():
                 "can_interface",
                 default_value="can0",
                 description="SocketCAN interface for actuators",
-            ),
-            DeclareLaunchArgument(
-                "imu_i2c_bus",
-                default_value="/dev/i2c-0",
-                description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-0, /dev/i2c-5)",
-            ),
-            DeclareLaunchArgument(
-                "imu_i2c_address",
-                default_value="40",  # 0x28 (decimal 40)
-                description="I2C address for BNO055 IMU (decimal 40 for 0x28, 41 for 0x29)",
             ),
 
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
@@ -70,23 +87,7 @@ def generate_launch_description():
                 executable="bno055_heading_control_node",
                 name="bno055_heading_hold_node",
                 output="screen",
-                parameters=[
-                    {
-                        "kp": 4.0,
-                        "ki": 0.0,
-                        "kd": 0.05,
-                        "integral_limit": 0.5,
-                        "heading_deadband_rad": 0.02,
-                        "rotation_input_deadband_rad_s": 0.02,
-                        "max_correction_rad_s": 1.5,
-                        "control_period_ms": 10,
-                        "command_timeout_ms": 500,
-                        "imu_timeout_ms": 250,
-                        "raw_cmd_vel_topic": "/drive/cmd_vel",
-                        "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
-                        "imu_topic": "/imu/data",
-                    }
-                ],
+                parameters=heading_hold_params,
             ),
 
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
