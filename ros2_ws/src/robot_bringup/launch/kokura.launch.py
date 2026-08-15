@@ -55,13 +55,18 @@ def generate_launch_description():
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
 
-            # --- 4. 🎯 libbno055-linux: 実績PID完全準拠 高性能 Heading Hold ノード ---
+            # --- 4. 🎯 libbno055-linux: 公式 Heading Control ノード ---
             Node(
                 package="libbno055_linux",
                 executable="bno055_heading_control_node",
-                name="bno055_heading_hold_node",
+                name="bno055_heading_control_node",
                 output="screen",
                 parameters=[heading_control_parameter_file],
+                remappings=[
+                    ("cmd_vel_in", "/drive/cmd_vel"),
+                    ("cmd_vel", "/mecanum/cmd_vel_heading"),
+                    ("imu/data", "/imu/data"),
+                ],
             ),
 
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
