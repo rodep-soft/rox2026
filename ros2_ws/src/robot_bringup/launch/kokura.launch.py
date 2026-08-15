@@ -64,37 +64,7 @@ def generate_launch_description():
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
 
-            # --- 4. 🧭 libbno055-linux: I2C 直結 100Hz IMU ドライバノード ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_publisher_node",
-                name="bno055_imu_node",
-                output="screen",
-                parameters=[
-                    {
-                        "device": LaunchConfiguration("imu_i2c_bus"),
-                        "address": 40,
-                        "frame_id": "imu_link",
-                        "publish_rate_hz": 100,
-                        "operation_mode": "ndof",  # 9-axis fusion
-                    }
-                ],
-                remappings=[
-                    ("imu/data", "/imu/data"),
-                ],
-            ),
-            # 📐 base_link -> imu_link 静的 TF
-            Node(
-                package="tf2_ros",
-                executable="static_transform_publisher",
-                name="base_to_imu_tf",
-                arguments=["--x", "0.0", "--y", "0.0", "--z", "0.1",
-                           "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                           "--frame-id", "base_link", "--child-frame-id", "imu_link"],
-                output="screen",
-            ),
-
-            # --- 5. 🎯 libbno055-linux: 実績PID完全準拠 高性能 Heading Hold ノード ---
+            # --- 4. 🎯 libbno055-linux: 実績PID完全準拠 高性能 Heading Hold ノード ---
             Node(
                 package="libbno055_linux",
                 executable="bno055_heading_control_node",
@@ -119,7 +89,7 @@ def generate_launch_description():
                 ],
             ),
 
-            # --- 6. メカナム車輪制御 ＆ オドメトリノード ---
+            # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
             Node(
                 package="robot_controller",
                 executable="mecanum_controller_node",
@@ -135,7 +105,7 @@ def generate_launch_description():
                 parameters=[odometry_parameter_file],
             ),
 
-            # --- 7. 🛰️ 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
+            # --- 6. 🛰️ 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
         ]
     )
