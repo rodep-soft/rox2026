@@ -305,9 +305,12 @@ void JoyControllerNode::loop_callback()
     hh_msg.data = is_heading_hold_enabled_;
     heading_control_enable_pub_->publish(hh_msg);
     if (is_heading_hold_enabled_) {
-      RCLCPP_INFO(get_logger(), "=== [JoyController] Heading Hold: ENABLED (IMU Stabilization ON) ===");
+      RCLCPP_INFO(
+        get_logger(), "=== [JoyController] Heading Hold: ENABLED (IMU Stabilization ON) ===");
     } else {
-      RCLCPP_WARN(get_logger(), "=== [JoyController] Heading Hold: DISABLED (Raw Manual Passthrough Mode) ===");
+      RCLCPP_WARN(
+        get_logger(),
+        "=== [JoyController] Heading Hold: DISABLED (Raw Manual Passthrough Mode) ===");
     }
   }
 
