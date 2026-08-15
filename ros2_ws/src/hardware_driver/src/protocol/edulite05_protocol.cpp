@@ -39,6 +39,8 @@ Protocol::Protocol(const MotorConfig & config)
   switch (config_.control_mode) {
     case ControlMode::VELOCITY:
       initialization_parameters_.push_back(
+        {SPEED_REFERENCE, 0.0f, false});
+      initialization_parameters_.push_back(
         {CURRENT_LIMIT, config_.current_limit, false});
       initialization_parameters_.push_back(
         {ACCELERATION, config_.acceleration, false});
