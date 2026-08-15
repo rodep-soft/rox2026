@@ -23,9 +23,7 @@ def generate_launch_description():
     mecanum_parameter_file = os.path.join(
         bringup_share, "config", "mecanum_controller.yaml"
     )
-    odometry_parameter_file = os.path.join(
-        bringup_share, "config", "sensors.yaml"
-    )
+    odometry_parameter_file = os.path.join(bringup_share, "config", "sensors.yaml")
 
     return LaunchDescription(
         [
@@ -35,23 +33,19 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface for actuators",
             ),
-
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
                 "hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
-
             # --- 2. 操作系 & Foxglove Bridge ---
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-
             # --- 3. アーム・射出・LED 各種コントローラ ---
             include("controllers/belt_controller.launch.py"),
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-
             # --- 4. libbno055-linux: 公式 heading_control_launch.py を直接呼び出し ---
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -62,7 +56,6 @@ def generate_launch_description():
                     "node_type": "standard",
                 }.items(),
             ),
-
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
             Node(
                 package="robot_controller",
@@ -78,7 +71,6 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-
             # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
         ]
