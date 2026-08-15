@@ -79,7 +79,7 @@ def generate_launch_description():
                 parameters=[odometry_parameter_file],
             ),
 
-            # --- 6. 🛰️ 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
+            # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
         ]
     )
