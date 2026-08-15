@@ -55,16 +55,16 @@ def generate_launch_description():
                 remappings=[("/imu/data", "/bno055/imu")],
                 output="screen",
             ),
-            # --- 4.1 IMU MUX (Dual IMU 自動フォールバック: /bno055/imu + /stm32/imu -> /imu/data) ---
+            # --- 4.1 IMU MUX (Dual IMU: STM32 CANを最優先メイン、BNO055をバックアップに設定) ---
             Node(
                 package="robot_controller",
                 executable="imu_mux_node",
                 name="imu_mux_node",
                 parameters=[{
-                    "primary_imu_topic": "/bno055/imu",
-                    "secondary_imu_topic": "/stm32/imu",
+                    "primary_imu_topic": "/stm32/imu",
+                    "secondary_imu_topic": "/bno055/imu",
                     "output_imu_topic": "/imu/data",
-                    "timeout_ms": 50,
+                    "timeout_ms": 100,
                 }],
                 output="screen",
             ),
