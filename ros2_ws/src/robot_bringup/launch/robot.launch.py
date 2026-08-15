@@ -37,6 +37,8 @@ def generate_launch_description():
         launch_arguments=list(
             {
                 "stereonet_version": LaunchConfiguration("stereonet_version"),
+                "publish_visual_enabled": LaunchConfiguration("publish_visual_enabled"),
+                "publish_pcd_enabled": LaunchConfiguration("publish_pcd_enabled"),
                 "enable_apriltag": LaunchConfiguration("enable_apriltag"),
                 "enable_yolo": LaunchConfiguration("enable_yolo"),
             }.items()
@@ -61,7 +63,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game1")),
     )
 
-    # Game2 パネル戦術自動射出ノード
+    # Game2 パネル戦術自動射出ノード (YAMLからパラメータ一括読み込み)
     game2_shooter_launch = include(
         "game2.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game2")),
@@ -85,12 +87,13 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_ekf")),
     )
 
-    # 分割された5つの独立コントローラーノード＋入力を一括起動
+    # 分割された6つの独立コントローラーノード＋入力を一括起動
     launch_files = [
         "controllers/belt_controller.launch.py",
         "controllers/dribble_controller.launch.py",
         "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
+        "controllers/led_controller.launch.py",
         "input/joy_controller.launch.py",
     ]
 
@@ -160,6 +163,16 @@ def generate_launch_description():
                 "stereonet_version",
                 default_value="v2.4_int16",
                 description="hobot_stereonet model version for 230AI",
+            ),
+            DeclareLaunchArgument(
+                "publish_visual_enabled",
+                default_value="False",
+                description="Enable publishing visualization image for Web UI (False for lightweight)",
+            ),
+            DeclareLaunchArgument(
+                "publish_pcd_enabled",
+                default_value="False",
+                description="Enable publishing PointCloud2 (False for lightweight)",
             ),
             DeclareLaunchArgument(
                 "enable_foxglove",

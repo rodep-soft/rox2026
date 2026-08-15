@@ -10,7 +10,7 @@ sync:
 	vcs import ros2_ws/src < ros2_ws/src/rox2026.repos
 
 build:
-	cd ros2_ws && colcon build --symlink-install
+	cd ros2_ws && colcon build --symlink-install --event-handlers console_direct- status+ console_stderr+
 
 # ── 🛠️ トラブルシューティング＆診断一発起動 ──
 debug:

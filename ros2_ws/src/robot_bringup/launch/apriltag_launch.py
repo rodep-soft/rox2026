@@ -20,10 +20,10 @@ def launch_setup(context, *args, **kwargs):
         "size": tag_size,
         "max_hamming": 0,
         "publish_tf": True,
-        "pose_estimation_method": "",
+        "pose_estimation_method": "pnp",
         "decimate": 1.0,
         "blur": 0.0,
-        "threads": 4,
+        "threads": 1,
         "debug": False,
         "refine_edges": 1,
     }

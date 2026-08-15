@@ -43,77 +43,103 @@ def launch_setup(context, *args, **kwargs):
     camera_info_topic = "/image_combine_raw/right/camera_info"
     left_camera_info_topic = "/image_combine_raw/left/camera_info"
 
-    try:
-        stereonet_share = get_package_share_directory("hobot_stereonet")
-    except Exception as e:
-        context.get_logger().error(
-            f"Failed to find package 'hobot_stereonet': {e}. "
-            "Please ensure TogetheROS.bot (tros-humble-hobot-stereonet) is installed and sourced."
+    enable_stereonet = LaunchConfiguration("enable_stereonet").perform(
+        context
+    ).lower() in ["true", "1"]
+
+    launch_nodes = []
+
+    if enable_stereonet:
+        try:
+            stereonet_share = get_package_share_directory("hobot_stereonet")
+            stereonet_launch_file = os.path.join(
+                stereonet_share,
+                "launch",
+                f"stereonet_model_web_visual_{stereonet_version}.launch.py",
+            )
+            stereonet_launch = IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(stereonet_launch_file),
+                launch_arguments=list(
+                    {
+                        "use_mipi_cam": use_mipi_cam,
+                        "mipi_rotation": mipi_rotation,
+                        "mipi_cal_rotation": "0.0",
+                        "mipi_channel": mipi_channel,
+                        "mipi_channel2": mipi_channel2,
+                        "publish_visual_enabled": publish_visual_enabled,
+                        "publish_pcd_enabled": publish_pcd_enabled,
+                        "publish_rectify_bgr": "True",
+                        "stereo_image_topic": stereo_image_topic,
+                        "camera_info_topic": camera_info_topic,
+                        "left_camera_info_topic": left_camera_info_topic,
+                    }.items()
+                ),
+            )
+            launch_nodes.append(stereonet_launch)
+        except Exception as e:
+            context.get_logger().error(f"Failed to find hobot_stereonet: {e}")
+    else:
+        # 🚀 超軽量 MIPI カメラ単体起動 (CPU/BPU 負荷ゼロ)
+        from launch_ros.actions import Node
+
+        mipi_node = Node(
+            package="mipi_cam",
+            executable="mipi_cam",
+            name="mipi_cam",
+            output="screen",
+            parameters=[
+                {
+                    "video_device_name": "default",
+                    "channel": int(mipi_channel),
+                    "channel2": int(mipi_channel2),
+                    "device_mode": "dual",
+                    "dual_combine": 1,
+                    "framerate": 10.0,
+                    "image_width": 1920,
+                    "image_height": 1080,
+                    "out_format_name": "nv12",
+                    "io_method_name": "ros",
+                    "cal_alpha": 0.0,
+                    "gdc_enable": True,
+                    "lpwm_enable": False,
+                }
+            ],
+            arguments=["--ros-args", "--log-level", "warn"],
         )
-        raise e
-
-    stereonet_launch_file = os.path.join(
-        stereonet_share,
-        "launch",
-        f"stereonet_model_web_visual_{stereonet_version}.launch.py",
-    )
-
-    stereonet_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(stereonet_launch_file),
-        launch_arguments=list(
-            {
-                "use_mipi_cam": use_mipi_cam,
-                "mipi_rotation": mipi_rotation,
-                "mipi_cal_rotation": "0.0",
-                "mipi_channel": mipi_channel,
-                "mipi_channel2": mipi_channel2,
-                "publish_visual_enabled": publish_visual_enabled,
-                "publish_pcd_enabled": publish_pcd_enabled,
-                "publish_rectify_bgr": "True",
-                "stereo_image_topic": stereo_image_topic,
-                "camera_info_topic": camera_info_topic,
-                "left_camera_info_topic": left_camera_info_topic,
-            }.items()
-        ),
-    )
-
-    launch_nodes = [stereonet_launch]
+        launch_nodes.append(mipi_node)
 
     bringup_share = get_package_share_directory("robot_bringup")
 
     if enable_apriltag:
-        # NV12 (1080p) -> mono8 高速グレースケール変換ノード
-        # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
-        mono_script = os.path.join(bringup_share, "scripts", "nv12_to_mono8_node.py")
-        mono_node = ExecuteProcess(
-            cmd=[
-                "python3",
-                mono_script,
-                "--ros-args",
-                "-p",
-                "input_topic:=/image_left_raw",
-                "-p",
-                "output_topic:=/camera/left_mono8",
-            ],
-            output="screen",
-        )
-        launch_nodes.append(mono_node)
+        # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
+        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
+        from launch_ros.actions import Node
 
-        # CameraInfo リレーノード (/camera/left_mono8/camera_info への同期供給)
-        relay_script = os.path.join(bringup_share, "scripts", "camera_info_relay.py")
-        camera_info_relay = ExecuteProcess(
-            cmd=[
-                "python3",
-                relay_script,
-                "--ros-args",
-                "-p",
-                "input_topic:=/image_left_raw/camera_info",
-                "-p",
-                "output_topic:=/camera/camera_info",
+        camera_tf_node = Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="base_to_camera_tf",
+            arguments=[
+                "--x",
+                "0.265",
+                "--y",
+                "0.035",
+                "--z",
+                "0.193",
+                "--roll",
+                "0.0",
+                "--pitch",
+                "0.0",
+                "--yaw",
+                "0.0",
+                "--frame-id",
+                "base_link",
+                "--child-frame-id",
+                "default_cam",
             ],
             output="screen",
         )
-        launch_nodes.append(camera_info_relay)
+        launch_nodes.append(camera_tf_node)
 
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"
@@ -123,8 +149,9 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=list(
                 {
                     "node_name": "apriltag_csi_node",
-                    "image_topic": "/camera/left_mono8",
-                    "camera_info_topic": "/camera/camera_info",
+                    "image_topic": "/image_left_raw",
+                    "camera_info_topic": "/image_combine_raw/left/camera_info",
+                    "camera_frame_id": "default_cam",
                     "tag_family": tag_family,
                     "tag_size": tag_size,
                 }.items()
@@ -151,6 +178,11 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "enable_stereonet",
+                default_value="false",
+                description="Enable heavy 3D hobot_stereonet depth inference and web visualizer (default false for lightweight AprilTag)",
+            ),
             DeclareLaunchArgument(
                 "stereonet_version",
                 default_value="v2.4_int16",

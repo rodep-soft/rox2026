@@ -15,13 +15,17 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   kd_yaw_ = declare_parameter<double>("kd_yaw", 0.05);
   kp_dist_ = declare_parameter<double>("kp_dist", 0.8);
   max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
-  target_distance_ = declare_parameter<double>("target_distance", 1.5);
-  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.04);
+  target_distance_ = declare_parameter<double>("target_distance", 4.0);
+  camera_offset_x_ = declare_parameter<double>("camera_offset_x", 0.265);
+  camera_offset_y_ = declare_parameter<double>("camera_offset_y", 0.035);
+  camera_offset_z_ = declare_parameter<double>("camera_offset_z", 0.193);
+  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.02);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.03);
   rpm_bottom_ = declare_parameter<double>("rpm_bottom", 3000.0);
   rpm_middle_ = declare_parameter<double>("rpm_middle", 4500.0);
   rpm_top_ = declare_parameter<double>("rpm_top", 6000.0);
   shoot_hold_duration_ = declare_parameter<double>("shoot_hold_duration", 0.8);
+  test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
 
   // シュートパネルのTag IDを段ごとに登録 (row: 0=下段, 1=中段, 2=上段)
   const std::vector<int64_t> default_bottom = {20, 21, 22};
@@ -38,6 +42,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
         info.tag_id = id;
         info.row = row;
         info.col = static_cast<int>(col);
+        info.last_seen = this->now();
         panel_grid_[id] = info;
       }
     };
@@ -45,9 +50,17 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   register_row(middle_tags, 1);
   register_row(top_tags, 2);
 
+  const auto init_now = this->now();
+  ball_detected_time_ = init_now;
+  shoot_start_time_ = init_now;
+  last_imu_time_ = init_now;
+
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
+  detections_sub_ = create_subscription<apriltag_msgs::msg::AprilTagDetectionArray>(
+    "/detections", 10,
+    std::bind(&Game2AutoNode::tag_detections_callback, this, std::placeholders::_1));
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game2/command_start", 10,
     std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
@@ -58,7 +71,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     "/dribble/ball_detected", 10,
     std::bind(&Game2AutoNode::ball_callback, this, std::placeholders::_1));
 
-  cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
+  cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/mecanum/cmd_vel_heading", 10);
   belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", 10);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
@@ -82,11 +95,17 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     active_row_ = 0;
+    locked_target_id_ = -1;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
+    const auto start_time = this->now();
+    ball_detected_time_ = start_time;
+    shoot_start_time_ = start_time;
+    last_imu_time_ = start_time;
     RCLCPP_INFO(get_logger(), "Game 2 START. IMU Yaw Zero-Reset (Offset: %.3f rad).", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
+    locked_target_id_ = -1;
     state_ = robot_msgs::msg::Game2State::STANDBY;
     RCLCPP_INFO(get_logger(), "Game 2 STOP.");
   }
@@ -133,31 +152,93 @@ void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
+void Game2AutoNode::tag_detections_callback(
+  const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
+{
+  const auto current_time = now();
+
+  // 1. 各タグの検出状態を更新
+  for (const auto & detection : msg->detections) {
+    const int id = detection.id;
+    auto it = panel_grid_.find(id);
+    if (it != panel_grid_.end()) {
+      it->second.last_seen = current_time;
+      it->second.detected = true;
+
+      // 🎯 カメラが車体中心より左(+35mm)にあるため、射出口をタグに向ける目標ピクセル中心は 953.0px (960 - 7px)
+      const double target_pixel_center = 960.0 - (camera_offset_y_ / target_distance_) * 800.0;
+      const double pixel_x_err = static_cast<double>(detection.centre.x) - target_pixel_center;
+
+      // 📐 射出口をタグに向けるための真の旋回誤差 (rad)
+      // タグが左 (pixel_x_err < 0) -> +wz (反時計回り・左旋回)
+      // タグが右 (pixel_x_err > 0) -> -wz (時計回り・右旋回)
+      const double heading_err_rad = -std::atan2(pixel_x_err, 800.0);
+
+      it->second.x = target_distance_;
+      it->second.y = target_distance_ * std::tan(heading_err_rad);
+      it->second.z = camera_offset_z_;
+    }
+  }
+
+  // 2. 🧪 テストモード時: 今まさに受信したメッセージの中で、一番画面中心に近いタグをダイレクト選択
+  if (test_alignment_only_) {
+    int best_id = -1;
+    double min_pixel_err_abs = 1e9;
+    double best_heading_err = 0.0;
+    const double target_pixel_center = 960.0 - (camera_offset_y_ / target_distance_) * 800.0;
+
+    for (const auto & detection : msg->detections) {
+      const int id = detection.id;
+      if (panel_grid_.find(id) != panel_grid_.end()) {
+        const double pixel_err = static_cast<double>(detection.centre.x) - target_pixel_center;
+        if (std::abs(pixel_err) < min_pixel_err_abs) {
+          min_pixel_err_abs = std::abs(pixel_err);
+          best_id = id;
+          best_heading_err = -std::atan2(pixel_err, 800.0);
+        }
+      }
+    }
+
+    if (best_id != -1) {
+      target_x_ = target_distance_;
+      target_y_ = target_distance_ * std::tan(best_heading_err);
+      target_z_ = camera_offset_z_;
+      target_valid_ = true;
+
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 200,
+        "📷 [AprilTag Direct] Tracking Tag ID %d: HeadingErr=%.2f deg (PixelErr=%.1f px)",
+        best_id, best_heading_err * 180.0 / M_PI, min_pixel_err_abs);
+    }
+  }
+}
+
 void Game2AutoNode::update_panel_states()
 {
   const auto current_time = now();
 
   for (auto & [id, panel] : panel_grid_) {
-    const std::string frame = tag_prefix_ + std::to_string(id);
-    try {
-      const auto tf = tf_buffer_->lookupTransform(base_frame_, frame, tf2::TimePointZero);
-      panel.x = tf.transform.translation.x;
-      panel.y = tf.transform.translation.y;
-      panel.z = tf.transform.translation.z;
-      panel.detected = true;
-      panel.last_seen = current_time;
-    } catch (const tf2::TransformException &) {
-      if ((current_time - panel.last_seen).seconds() > 1.5) {
-        panel.detected = false;
-      }
+    // 0.4秒以上見えなくなったらロスト判定
+    if ((current_time - panel.last_seen).seconds() > 0.4) {
+      panel.detected = false;
     }
   }
 }
 
 void Game2AutoNode::select_target_and_aim()
 {
+  if (test_alignment_only_) {
+    // テストモード時は tag_detections_callback でダイレクトに target_x_, target_y_ が決定される
+    // 0.4秒以上検出が途絶えたら無効化
+    if (now() - last_imu_time_ > std::chrono::milliseconds(400)) {
+      // no-op
+    }
+    return;
+  }
+
   target_valid_ = false;
 
+  // 本番モード: 下段(0) -> 中段(1) -> 上段(2) の順にクリア
   for (int row = active_row_; row <= 2; ++row) {
     int best_id = -1;
     double min_dist_sq = 1e9;
@@ -229,10 +310,15 @@ void Game2AutoNode::control_loop()
   if (!target_valid_) {
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     geometry_msgs::msg::Twist cmd;
-    cmd.angular.z = 0.2;
+    cmd.angular.z = 0.0;  // タグ未検出時は勝手に回転せず静止待機
+    RCLCPP_INFO_THROTTLE(
+      get_logger(),
+      *get_clock(), 1000,
+      "🔍 [Game2 Search] Waiting for target AprilTags (Row: %d)... Standing still (0.0 rad/s)",
+      active_row_);
     publish_all(
-      cmd, static_cast<float>(target_rpm_),
-      false, true, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
+      false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
@@ -246,28 +332,53 @@ void Game2AutoNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING:
     case robot_msgs::msg::Game2State::ALIGNING: {
         state_ = robot_msgs::msg::Game2State::ALIGNING;
-        cmd.linear.x = kp_dist_ * dist_err;
-        cmd.linear.y = 0.0;
 
-        double wz = -kp_yaw_ * y_err;
-        if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
-          wz -= kd_yaw_ * gyro_z_;
+        // 📐 ロボット旋回中心から見た真の目標角度誤差 (rad)
+        const double heading_err = std::atan2(y_err, target_x_);
+        const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+
+        if (is_aligned) {
+          cmd.angular.z = 0.0;  // 中心にピタッと一致したら完全制動
+        } else {
+          // 📐 正しい回転方向: 左にあるタグ(heading_err > 0)へは反時計回り(+wz)で向く
+          double wz = kp_yaw_ * heading_err;
+          if (imu_received_ && (now() - last_imu_time_).seconds() < 1.0) {
+            wz -= kd_yaw_ * gyro_z_;
+          }
+          const double min_angular_z = 0.12;
+          if (std::abs(wz) < min_angular_z) {
+            wz = std::copysign(min_angular_z, wz);
+          }
+          cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
         }
-        cmd.angular.z = std::clamp(wz, -max_angular_z_, max_angular_z_);
 
-        const bool is_aligned =
-          (std::abs(y_err) < yaw_tolerance_ && std::abs(dist_err) < dist_tolerance_);
         const bool is_ball_settled = ball_detected_ &&
           ((now() - ball_detected_time_).seconds() >= ball_settle_duration_);
 
-        if (is_aligned && is_ball_settled) {
-          RCLCPP_INFO(get_logger(), "Game2: Aligned & Ball Settled! Moving arm to OPEN.");
-          state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-          shoot_start_time_ = now();
-        } else if (is_aligned && !ball_detected_) {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 2000,
-            "Game2: Aligned to Target, waiting for ball intake...");
+        // 📊 リアルタイム詳細デバッグ出力 (200ms周期)
+        RCLCPP_INFO_THROTTLE(
+          get_logger(),
+          *get_clock(), 200,
+          "🎯 [Game2 Track] Target: x=%.2fm, y=%.3fm (HeadingErr: %.2f deg) | Cmd wz: %.3f rad/s | %s",
+          target_x_, y_err, heading_err * 180.0 / M_PI, cmd.angular.z,
+          is_aligned ? "✨ ALIGNED (MATCH)" : "🔄 TURNING");
+
+        if (test_alignment_only_) {
+          if (is_aligned) {
+            RCLCPP_INFO_THROTTLE(
+              get_logger(), *get_clock(), 1000,
+              "✨ [Game2 TEST] Target Perfect Aligned! Holding heading.");
+          }
+        } else {
+          if (is_aligned && is_ball_settled) {
+            RCLCPP_INFO(get_logger(), "Game2: Aligned & Ball Settled! Moving arm to OPEN.");
+            state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
+            shoot_start_time_ = now();
+          } else if (is_aligned && !ball_detected_) {
+            RCLCPP_INFO_THROTTLE(
+              get_logger(), *get_clock(), 2000,
+              "Game2: Aligned to Target, waiting for ball intake...");
+          }
         }
         arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
         break;
@@ -307,8 +418,10 @@ void Game2AutoNode::control_loop()
   }
 
   publish_all(
-    cmd, static_cast<float>(target_rpm_),
-    shoot_trigger, true, arm_mode, false);
+    cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
+    test_alignment_only_ ? false : shoot_trigger,
+    test_alignment_only_ ? false : true,
+    arm_mode, false);
 }
 
 void Game2AutoNode::publish_all(

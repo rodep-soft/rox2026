@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "apriltag_msgs/msg/april_tag_detection_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
@@ -40,6 +41,7 @@ public:
   explicit Game2AutoNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
+  void tag_detections_callback(const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg);
   void update_panel_states();
   void select_target_and_aim();
   void control_loop();
@@ -59,6 +61,7 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   // Subscriptions & Publishers & Timers
+  rclcpp::Subscription<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr ball_sub_;
@@ -80,6 +83,9 @@ private:
   double kp_dist_;
   double max_angular_z_;
   double target_distance_;
+  double camera_offset_x_{0.265};
+  double camera_offset_y_{0.035};
+  double camera_offset_z_{0.193};
   double yaw_tolerance_;
   double dist_tolerance_;
   double rpm_bottom_;
@@ -87,6 +93,7 @@ private:
   double rpm_top_;
   double shoot_hold_duration_;
   double ball_settle_duration_{0.3};
+  bool test_alignment_only_{false};
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
@@ -100,6 +107,7 @@ private:
   double target_z_{0.0};
   double target_rpm_{0.0};
   bool target_valid_{false};
+  int locked_target_id_{-1};
   rclcpp::Time shoot_start_time_;
 
   // IMU Feedback State (Full Telemetry)
