@@ -71,6 +71,7 @@ private:
   int circle_button_{2};
   int dribble_enable_button_{5};
   int game2_start_button_{9};
+  int heading_hold_toggle_button_{8};
   int left_trigger_axis_{3};
   int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
@@ -97,6 +98,7 @@ private:
   bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
+  bool is_heading_hold_enabled_{true};
   bool joy_received_{false};
   bool joy_timeout_active_{false};
   bool spring_actuator_ready_{false};
@@ -116,6 +118,7 @@ private:
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_actuator_ready_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
