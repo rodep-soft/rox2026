@@ -26,12 +26,6 @@ def generate_launch_description():
     odometry_parameter_file = os.path.join(
         bringup_share, "config", "sensors.yaml"
     )
-    bno055_imu_parameter_file = os.path.join(
-        bno055_share, "config", "bno055_params.yaml"
-    )
-    heading_control_parameter_file = os.path.join(
-        bno055_share, "config", "heading_control_params.yaml"
-    )
 
     return LaunchDescription(
         [
@@ -58,30 +52,15 @@ def generate_launch_description():
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
 
-            # --- 4. libbno055-linux: 公式 IMU ドライバノード ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_publisher_node",
-                name="bno055_publisher_node",
-                output="screen",
-                parameters=[bno055_imu_parameter_file],
-                remappings=[
-                    ("imu/data", "/imu/data"),
-                ],
-            ),
-
-            # --- 5. libbno055-linux: 公式 Heading Control ノード ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_heading_control_node",
-                name="bno055_heading_control_node",
-                output="screen",
-                parameters=[heading_control_parameter_file],
-                remappings=[
-                    ("cmd_vel_in", "/drive/cmd_vel"),
-                    ("cmd_vel", "/mecanum/cmd_vel_heading"),
-                    ("imu/data", "/imu/data"),
-                ],
+            # --- 4. libbno055-linux: 公式 heading_control_launch.py を直接呼び出し ---
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bno055_share, "launch", "heading_control_launch.py")
+                ),
+                launch_arguments={
+                    "use_composition": "false",
+                    "node_type": "standard",
+                }.items(),
             ),
 
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
