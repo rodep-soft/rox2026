@@ -2,8 +2,8 @@
   ros__parameters:
     imu_topic: /imu/data
     imu_frame_id: imu_link
-    led_command_topic: "/hardware/led_cmd"   # LEDのコマンドを制御ノードから受信するトピック
-    limit_switches_topic: "/hardware/limit_switches" # limitswのデータを制御ノードへ送信するトピック
-    timeout_ms: 500             # stm32のタイムアウト検知時間
-    keep_alive_period_ms: 100   # heartbeatの送信と判断周期
-   # publish_period_ms: 10      # 制御ノードに送るimudataの現在の送信周期
+    led_command_topic: "/hardware/led_cmd"
+    limit_switches_topic: "/hardware/limit_switches"
+    timeout_ms: 1000            # stm32のタイムアウト検知時間 (500ms -> 1000msに緩和)
+    keep_alive_period_ms: 200   # heartbeatの送信と判断周期
+
