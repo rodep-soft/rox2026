@@ -39,8 +39,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "imu_i2c_bus",
-                default_value="/dev/i2c-1",
-                description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-1, /dev/i2c-0)",
+                default_value="/dev/i2c-0",
+                description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-0, /dev/i2c-5)",
             ),
             DeclareLaunchArgument(
                 "imu_i2c_address",
@@ -100,7 +100,23 @@ def generate_launch_description():
                 executable="bno055_heading_control_node",
                 name="bno055_heading_hold_node",
                 output="screen",
-                parameters=[heading_hold_parameter_file],
+                parameters=[
+                    {
+                        "kp": 4.0,
+                        "ki": 0.0,
+                        "kd": 0.05,
+                        "integral_limit": 0.5,
+                        "heading_deadband_rad": 0.02,
+                        "rotation_input_deadband_rad_s": 0.02,
+                        "max_correction_rad_s": 1.5,
+                        "control_period_ms": 10,
+                        "command_timeout_ms": 500,
+                        "imu_timeout_ms": 250,
+                        "raw_cmd_vel_topic": "/drive/cmd_vel",
+                        "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
+                        "imu_topic": "/imu/data",
+                    }
+                ],
             ),
 
             # --- 6. メカナム車輪制御 ＆ オドメトリノード ---
