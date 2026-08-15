@@ -46,15 +46,34 @@ def generate_launch_description():
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-            # --- 4. libbno055-linux: 公式 heading_control_launch.py を直接呼び出し ---
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(bno055_share, "launch", "heading_control_launch.py")
-                ),
-                launch_arguments={
-                    "use_composition": "false",
-                    "node_type": "standard",
-                }.items(),
+            # --- 4. libbno055-linux: BNO055 Publisher (/bno055/imu) ＆ Heading Controller (/imu/data購読) ---
+            Node(
+                package="libbno055_linux",
+                executable="bno055_publisher_node",
+                name="bno055_publisher_node",
+                parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
+                remappings=[("/imu/data", "/bno055/imu")],
+                output="screen",
+            ),
+            # --- 4.1 IMU MUX (Dual IMU 自動フォールバック: /bno055/imu + /stm32/imu -> /imu/data) ---
+            Node(
+                package="robot_controller",
+                executable="imu_mux_node",
+                name="imu_mux_node",
+                parameters=[{
+                    "primary_imu_topic": "/bno055/imu",
+                    "secondary_imu_topic": "/stm32/imu",
+                    "output_imu_topic": "/imu/data",
+                    "timeout_ms": 50,
+                }],
+                output="screen",
+            ),
+            Node(
+                package="libbno055_linux",
+                executable="bno055_heading_control_node",
+                name="bno055_heading_control_node",
+                parameters=[os.path.join(bno055_share, "config", "heading_control_params.yaml")],
+                output="screen",
             ),
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
             Node(
