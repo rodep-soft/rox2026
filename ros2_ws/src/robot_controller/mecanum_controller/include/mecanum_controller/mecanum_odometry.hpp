@@ -40,9 +40,9 @@ inline BodyVelocity calculate_body_velocity(
   const double w_rr = wheel_velocity_rad_s[REAR_RIGHT];
 
   BodyVelocity velocity;
-  velocity.x_m_s = ( w_fl - w_fr + w_rl - w_rr) * wheel_radius_m / 4.0;
-  velocity.y_m_s = (-w_fl - w_fr + w_rl + w_rr) * wheel_radius_m / 4.0;
-  velocity.yaw_rad_s = ( w_fl + w_fr + w_rl + w_rr) * wheel_radius_m / (4.0 * rotation_radius_m);
+  velocity.x_m_s = (-w_fl + w_fr - w_rl + w_rr) * wheel_radius_m / 4.0;
+  velocity.y_m_s = ( w_fl + w_fr - w_rl - w_rr) * wheel_radius_m / 4.0;
+  velocity.yaw_rad_s = (-w_fl - w_fr - w_rl - w_rr) * wheel_radius_m / (4.0 * rotation_radius_m);
   return velocity;
 }
 
