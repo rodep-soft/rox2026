@@ -1,6 +1,6 @@
 ekf_filter_node:
   ros__parameters:
-    frequency: 20.0
+    frequency: 30.0
     two_d_mode: true
     publish_tf: true
 
@@ -11,36 +11,39 @@ ekf_filter_node:
 
     # 1. 車輪オドメトリ (/wheel/odometry)
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
+    # 💡 鉄則: 車輪オドメトリからは「速度(vx, vy)」のみ融合し、位置の二重積分ドリフトを防止
     odom0: /wheel/odometry
-    odom0_config: [true,  true,  false,    # x, y 位置
+    odom0_config: [false, false, false,    # x, y, z 位置 (速度から積分するため false)
                    false, false, false,    # roll, pitch, yaw 姿勢
-                   true,  true,  false,    # vx, vy 並進速度
-                   false, false, true,     # vyaw 旋回角速度
+                   true,  true,  false,    # vx, vy 並進速度 (高精度融合)
+                   false, false, false,    # vyaw (旋回角速度はIMUを優先するため false)
                    false, false, false]    # 加速度
     odom0_differential: false
     odom0_queue_size: 10
 
     # 2. IMU センサ (/imu/data) - BNO055 9軸フュージョン
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
+    # 💡 鉄則: Yaw姿勢角と高精度ジャイロ角速度(vyaw)のみ融合。加速度による発散を完全防止
     imu0: /imu/data
-    imu0_config: [false, false, false,    # 位置 (IMU単体からは取らない)
-                  false, false, true,     # 姿勢 (yaw角のみ融合)
-                  false, false, false,    # 線速度 (IMU単体からは取らない)
-                  true,  true,  true,     # 3軸角速度 (vroll, vpitch, vyaw を融合)
-                  true,  true,  false]    # 2軸線加速度 (ax, ay を融合)
+    imu0_config: [false, false, false,    # 位置
+                  false, false, true,     # yaw 姿勢角 (絶対方位融合)
+                  false, false, false,    # 線速度
+                  false, false, true,     # vyaw 旋回角速度 (ジャイロ融合)
+                  false, false, false]    # 加速度 (ノイズ発散防止のため false)
     imu0_differential: false
-    imu0_relative: true
+    imu0_relative: false
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
 
     # 3. AprilTag ビジョン絶対位置補正 (/apriltag/pose)
-    # カメラでタグ認識した際、累積誤差(ドリフト)を絶対座標(x, y, yaw)で補正
+    # カメラでタグ認識した際、累積誤差(ドリフト)を絶対座標(x, y, yaw)で瞬時にリセット補正
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
     pose0: /apriltag/pose
-    pose0_config: [true,  true,  false,    # x, y 絶対位置
-                   false, false, true,     # yaw 絶対姿勢
+    pose0_config: [true,  true,  false,    # x, y 絶対位置補正
+                   false, false, true,     # yaw 絶対姿勢補正
                    false, false, false,    # 速度
                    false, false, false,    # 角速度
                    false, false, false]    # 加速度
     pose0_differential: false
     pose0_queue_size: 5
+
