@@ -28,19 +28,19 @@ inline BodyVelocity calculate_body_velocity(
   const std::array<double, WHEEL_COUNT> & wheel_velocity_rad_s,
   const double wheel_radius_m, const double rotation_radius_m)
 {
-  // Positive motor rotation is reversed on the left side.
-  const double front_left_m_s = -wheel_velocity_rad_s[FRONT_LEFT] * wheel_radius_m;
-  const double front_right_m_s = wheel_velocity_rad_s[FRONT_RIGHT] * wheel_radius_m;
-  const double rear_left_m_s = -wheel_velocity_rad_s[REAR_LEFT] * wheel_radius_m;
-  const double rear_right_m_s = wheel_velocity_rad_s[REAR_RIGHT] * wheel_radius_m;
+  // Motor feedback polarity matching EduLite hardware
+  const double front_left_m_s = wheel_velocity_rad_s[FRONT_LEFT] * wheel_radius_m;
+  const double front_right_m_s = -wheel_velocity_rad_s[FRONT_RIGHT] * wheel_radius_m;
+  const double rear_left_m_s = wheel_velocity_rad_s[REAR_LEFT] * wheel_radius_m;
+  const double rear_right_m_s = -wheel_velocity_rad_s[REAR_RIGHT] * wheel_radius_m;
 
   BodyVelocity velocity;
   velocity.x_m_s =
-    (front_left_m_s + front_right_m_s + rear_left_m_s + rear_right_m_s) / 4.0;
+    -(front_left_m_s + front_right_m_s + rear_left_m_s + rear_right_m_s) / 4.0;
   velocity.y_m_s =
-    (-front_left_m_s + front_right_m_s + rear_left_m_s - rear_right_m_s) / 4.0;
+    (front_left_m_s - front_right_m_s - rear_left_m_s + rear_right_m_s) / 4.0;
   velocity.yaw_rad_s =
-    (front_left_m_s - front_right_m_s + rear_left_m_s - rear_right_m_s) /
+    (-front_left_m_s + front_right_m_s - rear_left_m_s + rear_right_m_s) /
     (4.0 * rotation_radius_m);
   return velocity;
 }
