@@ -21,6 +21,7 @@ public:
         primary_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
             primary_topic_, rclcpp::SensorDataQoS(),
             [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+                if (!is_valid_imu(*msg)) return;
                 last_primary_time_ = this->now();
                 if (active_source_ != Source::PRIMARY) {
                     RCLCPP_INFO(this->get_logger(), "[IMU MUX] Switched to PRIMARY source: %s", primary_topic_.c_str());
@@ -32,6 +33,7 @@ public:
         secondary_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
             secondary_topic_, rclcpp::SensorDataQoS(),
             [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+                if (!is_valid_imu(*msg)) return;
                 const auto now_time = this->now();
                 const bool primary_healthy = (last_primary_time_.nanoseconds() != 0) &&
                     ((now_time - last_primary_time_).nanoseconds() <= timeout_ms_ * 1000000LL);
@@ -51,6 +53,16 @@ public:
     }
 
 private:
+    static bool is_valid_imu(const sensor_msgs::msg::Imu& msg) {
+        const auto& q = msg.orientation;
+        if (!std::isfinite(q.x) || !std::isfinite(q.y) || !std::isfinite(q.z) || !std::isfinite(q.w) ||
+            !std::isfinite(msg.angular_velocity.z)) {
+            return false;
+        }
+        const double norm_sq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+        return (norm_sq > 1e-6);
+    }
+
     enum class Source { NONE, PRIMARY, SECONDARY };
 
     std::string primary_topic_;
