@@ -139,7 +139,7 @@ def generate_launch_description():
                     "--pitch",
                     "0.0",
                     "--yaw",
-                    "3.14159265",
+                    "0.0",
                     "--frame-id",
                     "base_link",
                     "--child-frame-id",
