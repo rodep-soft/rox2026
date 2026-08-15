@@ -14,10 +14,8 @@ def generate_launch_description():
 
     try:
         bno055_share = get_package_share_directory("libbno055_linux")
-        bno055_parameter_file = os.path.join(bno055_share, "config", "bno055_params.yaml")
         heading_control_parameter_file = os.path.join(bno055_share, "config", "heading_control_params.yaml")
     except Exception:
-        bno055_parameter_file = None
         heading_control_parameter_file = None
 
     def include(launch_file, launch_arguments=None):
@@ -30,30 +28,38 @@ def generate_launch_description():
     mecanum_parameter_file = os.path.join(
         bringup_share, "config", "mecanum_controller.yaml"
     )
+    heading_hold_parameter_file = os.path.join(
+        bringup_share, "config", "heading_hold.yaml"
+    )
     odometry_parameter_file = os.path.join(
         bringup_share, "config", "sensors.yaml"
     )
 
+    # heading_hold.yaml があれば優先、なければ libbno055_linux 側をロード
     heading_hold_params = (
-        [heading_control_parameter_file]
-        if heading_control_parameter_file and os.path.exists(heading_control_parameter_file)
-        else [
-            {
-                "kp": 4.0,
-                "ki": 0.0,
-                "kd": 0.05,
-                "integral_limit": 0.5,
-                "heading_deadband_rad": 0.02,
-                "rotation_input_deadband_rad_s": 0.02,
-                "max_correction_rad_s": 1.5,
-                "control_period_ms": 10,
-                "command_timeout_ms": 500,
-                "imu_timeout_ms": 250,
-                "raw_cmd_vel_topic": "/drive/cmd_vel",
-                "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
-                "imu_topic": "/imu/data",
-            }
-        ]
+        [heading_hold_parameter_file]
+        if os.path.exists(heading_hold_parameter_file)
+        else (
+            [heading_control_parameter_file]
+            if heading_control_parameter_file and os.path.exists(heading_control_parameter_file)
+            else [
+                {
+                    "kp": 4.0,
+                    "ki": 0.0,
+                    "kd": 0.05,
+                    "integral_limit": 0.5,
+                    "heading_deadband_rad": 0.02,
+                    "rotation_input_deadband_rad_s": 0.02,
+                    "max_correction_rad_s": 1.5,
+                    "control_period_ms": 10,
+                    "command_timeout_ms": 500,
+                    "imu_timeout_ms": 250,
+                    "raw_cmd_vel_topic": "/drive/cmd_vel",
+                    "corrected_cmd_vel_topic": "/mecanum/cmd_vel_heading",
+                    "imu_topic": "/imu/data",
+                }
+            ]
+        )
     )
 
     return LaunchDescription(
