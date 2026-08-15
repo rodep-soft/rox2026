@@ -60,19 +60,23 @@ def generate_launch_description():
                 package="robot_controller",
                 executable="imu_mux_node",
                 name="imu_mux_node",
-                parameters=[{
-                    "primary_imu_topic": "/stm32/imu",
-                    "secondary_imu_topic": "/bno055/imu",
-                    "output_imu_topic": "/imu/data",
-                    "timeout_ms": 100,
-                }],
+                parameters=[
+                    {
+                        "primary_imu_topic": "/stm32/imu",
+                        "secondary_imu_topic": "/bno055/imu",
+                        "output_imu_topic": "/imu/data",
+                        "timeout_ms": 100,
+                    }
+                ],
                 output="screen",
             ),
             Node(
                 package="libbno055_linux",
                 executable="bno055_heading_control_node",
                 name="bno055_heading_control_node",
-                parameters=[os.path.join(bno055_share, "config", "heading_control_params.yaml")],
+                parameters=[
+                    os.path.join(bno055_share, "config", "heading_control_params.yaml")
+                ],
                 output="screen",
             ),
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
