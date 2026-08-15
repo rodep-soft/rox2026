@@ -14,7 +14,7 @@
       - dribble
 
     upper_belt:
-      logical_id: 10                  # 倫理ID(ROS2上での認識ID)
+      logical_id: 10
       controller_id: 51               # モータID(10進数)
       command_timeout_ms: 500         # コマンドが来ているかのタイムアウト用
       feedback_timeout_ms: 500        # フィードバックが返ってきているかのタイムアウト用
