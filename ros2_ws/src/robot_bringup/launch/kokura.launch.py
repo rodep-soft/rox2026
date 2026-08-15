@@ -25,9 +25,7 @@ def generate_launch_description():
     heading_hold_parameter_file = os.path.join(
         bringup_share, "config", "heading_hold.yaml"
     )
-    odometry_parameter_file = os.path.join(
-        bringup_share, "config", "sensors.yaml"
-    )
+    odometry_parameter_file = os.path.join(bringup_share, "config", "sensors.yaml")
 
     return LaunchDescription(
         [
@@ -47,23 +45,19 @@ def generate_launch_description():
                 default_value="40",  # 0x28 (decimal 40)
                 description="I2C address for BNO055 IMU (decimal 40 for 0x28, 41 for 0x29)",
             ),
-
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
                 "hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
-
             # --- 2. 操作系 & Foxglove Bridge ---
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-
             # --- 3. アーム・射出・LED 各種コントローラ ---
             include("controllers/belt_controller.launch.py"),
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-
             # --- 4. 🧭 libbno055-linux: I2C 直結 100Hz IMU ドライバノード ---
             Node(
                 package="libbno055_linux",
@@ -88,12 +82,26 @@ def generate_launch_description():
                 package="tf2_ros",
                 executable="static_transform_publisher",
                 name="base_to_imu_tf",
-                arguments=["--x", "0.0", "--y", "0.0", "--z", "0.1",
-                           "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                           "--frame-id", "base_link", "--child-frame-id", "imu_link"],
+                arguments=[
+                    "--x",
+                    "0.0",
+                    "--y",
+                    "0.0",
+                    "--z",
+                    "0.1",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "imu_link",
+                ],
                 output="screen",
             ),
-
             # --- 5. 🎯 libbno055-linux: 実績PID完全準拠 高性能 Heading Hold ノード ---
             Node(
                 package="libbno055_linux",
@@ -118,7 +126,6 @@ def generate_launch_description():
                     }
                 ],
             ),
-
             # --- 6. メカナム車輪制御 ＆ オドメトリノード ---
             Node(
                 package="robot_controller",
@@ -134,7 +141,6 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-
             # --- 7. 🛰️ 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
         ]
