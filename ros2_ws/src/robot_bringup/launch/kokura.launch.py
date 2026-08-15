@@ -99,16 +99,16 @@ def generate_launch_description():
                 output="screen",
                 respawn=False,
             ),
-            # base_link -> stm32_imu_link 静的 TF (STM32 IMU)
+            # base_link -> stm32_imu_link 静的 TF (STM32 IMU: 後方-195mm, 左+65mm, 地上高+225mm)
             Node(
                 package="tf2_ros",
                 executable="static_transform_publisher",
                 name="base_to_stm32_imu_tf",
                 arguments=[
                     "--x",
-                    "-0.190",
+                    "-0.195",
                     "--y",
-                    "-0.020",
+                    "0.065",
                     "--z",
                     "0.225",
                     "--roll",
