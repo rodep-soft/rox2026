@@ -7,7 +7,8 @@ dev:
 
 sync:
 	git submodule update --init --recursive
-	vcs import ros2_ws/src < ros2_ws/src/rox2026.repos
+	vcs import ros2_ws/src < ros2_ws/src/rox2026.repos || true
+	vcs custom ros2_ws/src --git --args pull origin main || (cd ros2_ws/src/libbno055-linux && git pull origin main)
 
 build:
 	cd ros2_ws && colcon build --symlink-install --event-handlers console_direct- status+ console_stderr+
