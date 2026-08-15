@@ -14,29 +14,35 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "imu_i2c_address",
-                default_value="0x28",
-                description="I2C address for BNO055 IMU (0x28 or 0x29)",
+                default_value="40",  # 0x28 (decimal 40) or 0x29 (decimal 41)
+                description="I2C address for BNO055 IMU (decimal 40 for 0x28)",
             ),
             DeclareLaunchArgument(
                 "imu_frame_id",
                 default_value="imu_link",
                 description="TF frame ID for IMU sensor",
             ),
+            DeclareLaunchArgument(
+                "publish_rate_hz",
+                default_value="100",
+                description="Publish rate in Hz",
+            ),
             Node(
-                package="bno055",
-                executable="bno055_node",
+                package="libbno055_linux",
+                executable="bno055_publisher_node",
                 name="bno055_imu_node",
                 output="screen",
                 parameters=[
                     {
-                        "connection_type": "i2c",
-                        "i2c_bus": LaunchConfiguration("imu_i2c_bus"),
-                        "i2c_address": LaunchConfiguration("imu_i2c_address"),
+                        "device": LaunchConfiguration("imu_i2c_bus"),
+                        "address": 40,
                         "frame_id": LaunchConfiguration("imu_frame_id"),
+                        "publish_rate_hz": 100,
+                        "operation_mode": "ndof",  # 9-axis fusion
                     }
                 ],
                 remappings=[
-                    ("bno055/imu", "/imu/data"),
+                    ("imu/data", "/imu/data"),
                 ],
             ),
         ]
