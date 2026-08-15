@@ -1,7 +1,7 @@
 /stm32_driver_node:
   ros__parameters:
-    imu_topic: /imu/data
-    imu_frame_id: imu_link
+    imu_topic: /stm32/imu
+    imu_frame_id: stm32_imu_link
     led_command_topic: "/hardware/led_cmd"
     limit_switches_topic: "/hardware/limit_switches"
     timeout_ms: 1000            # stm32のタイムアウト検知時間 (500ms -> 1000msに緩和)

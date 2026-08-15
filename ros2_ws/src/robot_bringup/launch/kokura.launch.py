@@ -73,7 +73,7 @@ def generate_launch_description():
             ),
             # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
-            # base_link -> imu_link 静的 TF (Game1基準: 後方-190mm, 右-20mm, 地上高+225mm)
+            # base_link -> imu_link 静的 TF (RDK BNO055: 後方-190mm, 右-20mm, 地上高+225mm)
             Node(
                 package="tf2_ros",
                 executable="static_transform_publisher",
@@ -97,6 +97,33 @@ def generate_launch_description():
                     "imu_link",
                 ],
                 output="screen",
+                respawn=False,
+            ),
+            # base_link -> stm32_imu_link 静的 TF (STM32 IMU: 後方-195mm, 右-65mm, 地上高+225mm)
+            Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="base_to_stm32_imu_tf",
+                arguments=[
+                    "--x",
+                    "-0.195",
+                    "--y",
+                    "-0.065",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "stm32_imu_link",
+                ],
+                output="screen",
+                respawn=False,
             ),
         ]
     )
