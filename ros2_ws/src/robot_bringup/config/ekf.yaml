@@ -31,7 +31,7 @@ ekf_filter_node:
                   false, false, true,     # vyaw 旋回角速度 (ジャイロ融合)
                   false, false, false]    # 加速度 (ノイズ発散防止のため false)
     imu0_differential: false
-    imu0_relative: false
+    imu0_relative: true
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
 
