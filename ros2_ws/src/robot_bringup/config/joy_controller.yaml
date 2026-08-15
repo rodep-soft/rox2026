@@ -27,6 +27,8 @@
     right_stick_x_axis: 2
     # PSボタンで前後左右の並進方向を反転
     ps_button: 12
+    # Share/BackボタンでHeading Hold(IMU補正)のON/OFF切替
+    heading_hold_toggle_button: 8
 
     # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05

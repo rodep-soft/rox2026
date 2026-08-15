@@ -54,9 +54,10 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 
 | 操作 (ボタン・コンボ) | 機能・動作 |
 |---|---|
-| **PS ボタン** (または Touchpad) | **非常停止 (TOGGLE)** (ACTIVE ↔ STOP) |
-| **Options ボタン** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
-| **PS ボタン (中央)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
+| **タッチパッド (Home / Button 13)** | **非常停止 (TOGGLE)** (ACTIVE ↔ STOP) |
+| **Share / Create ボタン (Button 8)** | **Heading Hold (IMU姿勢補正) ON / OFF トグル** (異常時等の手動直結バイパス) |
+| **PS ボタン (Button 12)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
+| **Options ボタン (Button 9)** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
 | **R1** | **ドリブラー回転 ON / OFF** |
 | **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
@@ -178,3 +179,5 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
 | publish | `/game2/start` | `std_msgs/msg/Bool` |
+| publish | `/heading_control/enable` | `std_msgs/msg/Bool` |
+| publish | `/drive/reversed` | `std_msgs/msg/Bool` |

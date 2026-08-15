@@ -32,6 +32,7 @@ JoyControllerNode::JoyControllerNode()
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
+  heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -103,8 +104,16 @@ JoyControllerNode::JoyControllerNode()
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/command_start", command_qos);
 
+  heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
+
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
+
+  // 初期状態で Heading Hold を ON でパブリッシュ
+  std_msgs::msg::Bool initial_heading_enable_msg;
+  initial_heading_enable_msg.data = is_heading_hold_enabled_;
+  heading_control_enable_pub_->publish(initial_heading_enable_msg);
 
   publish_stop_commands();
 
@@ -287,6 +296,22 @@ void JoyControllerNode::loop_callback()
     publish_drive_reversed(is_drive_reversed_);
     RCLCPP_INFO(
       get_logger(), "Drive direction toggled: %s", is_drive_reversed_ ? "REVERSED" : "FORWARD");
+  }
+
+  // 4b. Heading Hold ON/OFF 切替 (SHARE / BACK)
+  if (is_button_just_pressed(joy_msg_, heading_hold_toggle_button_)) {
+    is_heading_hold_enabled_ = !is_heading_hold_enabled_;
+    std_msgs::msg::Bool hh_msg;
+    hh_msg.data = is_heading_hold_enabled_;
+    heading_control_enable_pub_->publish(hh_msg);
+    if (is_heading_hold_enabled_) {
+      RCLCPP_INFO(
+        get_logger(), "=== [JoyController] Heading Hold: ENABLED (IMU Stabilization ON) ===");
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "=== [JoyController] Heading Hold: DISABLED (Raw Manual Passthrough Mode) ===");
+    }
   }
 
   // 5. 自動シュートサイクル要求 (L2 + ○)

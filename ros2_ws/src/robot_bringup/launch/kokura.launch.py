@@ -46,15 +46,38 @@ def generate_launch_description():
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-            # --- 4. libbno055-linux: 公式 heading_control_launch.py を直接呼び出し ---
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(bno055_share, "launch", "heading_control_launch.py")
-                ),
-                launch_arguments={
-                    "use_composition": "false",
-                    "node_type": "standard",
-                }.items(),
+            # --- 4. libbno055-linux: BNO055 Publisher (/bno055/imu) ＆ Heading Controller (/imu/data購読) ---
+            Node(
+                package="libbno055_linux",
+                executable="bno055_publisher_node",
+                name="bno055_publisher_node",
+                parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
+                remappings=[("/imu/data", "/bno055/imu")],
+                output="screen",
+            ),
+            # --- 4.1 IMU MUX (Dual IMU: STM32 CANを最優先メイン、BNO055をバックアップに設定) ---
+            Node(
+                package="robot_controller",
+                executable="imu_mux_node",
+                name="imu_mux_node",
+                parameters=[
+                    {
+                        "primary_imu_topic": "/stm32/imu",
+                        "secondary_imu_topic": "/bno055/imu",
+                        "output_imu_topic": "/imu/data",
+                        "timeout_ms": 100,
+                    }
+                ],
+                output="screen",
+            ),
+            Node(
+                package="libbno055_linux",
+                executable="bno055_heading_control_node",
+                name="bno055_heading_control_node",
+                parameters=[
+                    os.path.join(bno055_share, "config", "heading_control_params.yaml")
+                ],
+                output="screen",
             ),
             # --- 5. メカナム車輪制御 ＆ オドメトリノード ---
             Node(
@@ -73,7 +96,7 @@ def generate_launch_description():
             ),
             # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
-            # base_link -> imu_link 静的 TF (Game1基準: 後方-190mm, 右-20mm, 地上高+225mm)
+            # base_link -> imu_link 静的 TF (RDK BNO055: 後方-190mm, 右-20mm, 地上高+225mm)
             Node(
                 package="tf2_ros",
                 executable="static_transform_publisher",
@@ -97,6 +120,33 @@ def generate_launch_description():
                     "imu_link",
                 ],
                 output="screen",
+                respawn=False,
+            ),
+            # base_link -> stm32_imu_link 静的 TF (STM32 IMU: 後方-195mm, 右-65mm, 地上高+225mm)
+            Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="base_to_stm32_imu_tf",
+                arguments=[
+                    "--x",
+                    "-0.195",
+                    "--y",
+                    "-0.065",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "-1.218",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "stm32_imu_link",
+                ],
+                output="screen",
+                respawn=False,
             ),
         ]
     )
