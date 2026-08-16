@@ -8,8 +8,9 @@ from launch_ros.actions import Node
 def generate_launch_description():
     bringup_dir = get_package_share_directory("robot_bringup")
     config_path = os.path.join(bringup_dir, "config", "game1.yaml")
+    tag_map_path = os.path.join(bringup_dir, "config", "apriltag_tag_map.yaml")
 
-    node = Node(
+    game1_node = Node(
         package="robot_controller",
         executable="game1_auto_node",
         name="game1_auto_node",
@@ -17,4 +18,13 @@ def generate_launch_description():
         parameters=[config_path],
     )
 
-    return LaunchDescription([node])
+    # AprilTagをフィールド絶対座標に変換 → /apriltag/pose → EKF自己位置補正
+    localizer_node = Node(
+        package="robot_controller",
+        executable="apriltag_localizer_node",
+        name="apriltag_localizer_node",
+        output="screen",
+        parameters=[tag_map_path],
+    )
+
+    return LaunchDescription([game1_node, localizer_node])

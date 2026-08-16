@@ -1,0 +1,38 @@
+apriltag_localizer_node:
+  ros__parameters:
+    base_frame: "base_link"
+    tag_prefix: "tag16h5:"
+
+    # ── 使用するタグIDリスト ──
+    # ここに列挙したIDのタグだけを自己位置補正に使用する
+    # (フィールドに貼られていても使わないタグはここに入れない)
+    active_tag_ids: [0, 1, 2, 3]
+
+    # ── フィールド絶対座標マップ [x (m), y (m), yaw (rad)] ──
+    # フィールド原点: スタート位置 (0, 0, 0)
+    # yaw: タグの正面方向 (タグが向いている方向をロボットに向けた場合)
+
+    # 例: ゲートに貼ったタグ ID=0
+    tag_0_x:   1.5
+    tag_0_y:   0.0
+    tag_0_yaw: 3.14159  # ゲートはロボット側を向いている
+
+    # 例: ゲート横の壁 ID=1
+    tag_1_x:   2.5
+    tag_1_y:   1.0
+    tag_1_yaw: 3.14159
+
+    # 例: パスエリア付近 ID=2
+    tag_2_x:   2.0
+    tag_2_y:  -1.0
+    tag_2_yaw: 1.5708
+
+    # 例: スタート付近 ID=3
+    tag_3_x:   0.3
+    tag_3_y:   0.0
+    tag_3_yaw: 0.0
+
+    # ── 共分散パラメータ (EKFへの信頼度) ──
+    # 小さいほど高信頼 (EKFがよく引き寄せられる)
+    position_covariance: 0.01   # x, y の測定誤差分散 [m^2]
+    yaw_covariance:      0.005  # yaw の測定誤差分散 [rad^2]
