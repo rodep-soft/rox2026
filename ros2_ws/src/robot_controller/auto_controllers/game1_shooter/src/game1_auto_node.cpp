@@ -16,6 +16,12 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
+  // テストモード設定
+  test_mode_ = declare_parameter<bool>("test_mode", false);
+  wp_test_.x = declare_parameter<double>("wp_test_x", 1.0);
+  wp_test_.y = declare_parameter<double>("wp_test_y", 0.0);
+  wp_test_.yaw = declare_parameter<double>("wp_test_yaw", 0.0);
+
   // YAML からの Waypoint 読み込み
   wp_gate_.x = declare_parameter<double>("wp_gate_x", 1.5);
   wp_gate_.y = declare_parameter<double>("wp_gate_y", 0.0);
@@ -52,6 +58,10 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "/detection", 10,
     std::bind(&Game1AutoNode::ball_detection_callback, this, std::placeholders::_1));
+
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
+    "/joy", rclcpp::SensorDataQoS(),
+    std::bind(&Game1AutoNode::joy_callback, this, std::placeholders::_1));
 
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
@@ -93,18 +103,43 @@ void Game1AutoNode::ball_detection_callback(const geometry_msgs::msg::PoseStampe
   detected_ball_y_ = msg->pose.position.y;
 }
 
+void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
+{
+  if (!is_enabled_) {
+    return;
+  }
+
+  // ジョイスティックの各軸（スティック）の操作量を判定
+  constexpr double deadzone = 0.15;
+  bool joystick_moved = false;
+  for (const float axis_val : msg->axes) {
+    if (std::abs(axis_val) > deadzone) {
+      joystick_moved = true;
+      break;
+    }
+  }
+
+  if (joystick_moved) {
+    is_enabled_ = false;
+    state_ = Game1State::STANDBY;
+    RCLCPP_WARN(
+      get_logger(),
+      "Joystick input detected! Emergency Manual Override: Stopping Game 1 Auto Sequence.");
+  }
+}
+
 void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data && !is_enabled_) {
     is_enabled_ = true;
-    state_ = Game1State::NAV_TO_GATE;
+    state_ = test_mode_ ? Game1State::TEST_SINGLE_WP : Game1State::NAV_TO_GATE;
     state_start_time_ = now();
     // スタート時のIMU/EKF生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
     yaw_offset_ = raw_yaw_;
     current_yaw_ = 0.0;
     RCLCPP_INFO(
-      get_logger(), "Game 1 Auto Sequence STARTED. EKF/IMU Zero-Reset (Offset: %.3f rad).",
-      yaw_offset_);
+      get_logger(), "Game 1 Auto Sequence STARTED (TestMode: %s). EKF/IMU Zero-Reset (Offset: %.3f rad).",
+      test_mode_ ? "ON" : "OFF", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -265,6 +300,15 @@ void Game1AutoNode::control_loop()
         cmd = compute_pure_pursuit(wp_start_);
         if ((now() - state_start_time_).seconds() > 4.0) {
           RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED!");
+          state_ = Game1State::COMPLETED;
+        }
+        break;
+      }
+
+    case Game1State::TEST_SINGLE_WP: {
+        cmd = compute_pure_pursuit(wp_test_);
+        if (is_aligned_to_target(wp_test_) || elapsed > 15.0) {
+          RCLCPP_INFO(get_logger(), "Test Single Waypoint Movement COMPLETED!");
           state_ = Game1State::COMPLETED;
         }
         break;
