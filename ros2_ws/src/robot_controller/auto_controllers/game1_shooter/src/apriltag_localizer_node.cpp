@@ -38,8 +38,8 @@ public:
     for (const auto id : active_ids) {
       const std::string prefix = "tag_" + std::to_string(id) + "_";
       TagMapEntry entry;
-      entry.x   = declare_parameter<double>(prefix + "x",   0.0);
-      entry.y   = declare_parameter<double>(prefix + "y",   0.0);
+      entry.x = declare_parameter<double>(prefix + "x", 0.0);
+      entry.y = declare_parameter<double>(prefix + "y", 0.0);
       entry.yaw = declare_parameter<double>(prefix + "yaw", 0.0);
       tag_map_[static_cast<int>(id)] = entry;
       RCLCPP_INFO(
@@ -57,7 +57,8 @@ public:
       "/detections", 10,
       std::bind(&ApriltagLocalizerNode::detections_callback, this, std::placeholders::_1));
 
-    RCLCPP_INFO(get_logger(), "ApriltagLocalizerNode initialized. %zu tags registered.",
+    RCLCPP_INFO(
+      get_logger(), "ApriltagLocalizerNode initialized. %zu tags registered.",
       tag_map_.size());
   }
 
@@ -80,7 +81,8 @@ private:
           base_frame_, tag_frame,
           tf2::TimePointZero, tf2::durationFromSec(0.05));
       } catch (const tf2::TransformException & ex) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000,
           "TF lookup failed for %s: %s", tag_frame.c_str(), ex.what());
         continue;
       }
@@ -125,8 +127,8 @@ private:
 
       // 共分散 (EKFが参照するx,y,yaw成分のみ設定)
       // 6x6行列 [x,y,z,roll,pitch,yaw]
-      pose_msg.pose.covariance[0]  = position_covariance_;  // x
-      pose_msg.pose.covariance[7]  = position_covariance_;  // y
+      pose_msg.pose.covariance[0] = position_covariance_;   // x
+      pose_msg.pose.covariance[7] = position_covariance_;   // y
       pose_msg.pose.covariance[14] = 1e6;                   // z (使わない)
       pose_msg.pose.covariance[21] = 1e6;                   // roll
       pose_msg.pose.covariance[28] = 1e6;                   // pitch
@@ -134,7 +136,8 @@ private:
 
       pose_pub_->publish(pose_msg);
 
-      RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 1000,
         "[Tag ID=%d] Robot absolute pose: (%.3f, %.3f, %.3frad)",
         tag_id, robot_x, robot_y, robot_yaw);
     }
