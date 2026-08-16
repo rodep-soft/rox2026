@@ -23,15 +23,17 @@ ekf_filter_node:
 
     # 2. IMU センサ (/imu/data) - BNO055 9軸フュージョン
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
-    # 💡 鉄則: Yaw姿勢角と高精度ジャイロ角速度(vyaw)のみ融合。加速度による発散を完全防止
+    # 💡 絶対Yaw角 + 角速度 両方融合
+    #    imu0_relative: true → 起動時Yaw=0固定 (スタート方向を基準)
+    #    imu_mux_node がフリップ検出・補正済みなので安全に使用可能
     imu0: /imu/data
     imu0_config: [false, false, false,    # 位置
-                  false, false, false,    # yaw (絶対角度は除外し、角速度vyawの連続積分に任せることで起動時の向きを100% 0度に固定)
+                  false, false, true,     # yaw 絶対姿勢角 (フリップ補正済み・ドリフトなし)
                   false, false, false,    # 線速度
-                  false, false, true,     # vyaw 旋回角速度 (ジャイロ融合: 常に安定)
+                  false, false, true,     # vyaw 旋回角速度 (高速応答)
                   false, false, false]    # 加速度
     imu0_differential: false
-    imu0_relative: false
+    imu0_relative: true                  # 起動時Yaw=0固定
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
 
