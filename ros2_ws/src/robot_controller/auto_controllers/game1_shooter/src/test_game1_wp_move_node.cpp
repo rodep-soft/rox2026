@@ -97,7 +97,9 @@ private:
     const double dist_err = std::hypot(dx, dy);
     const double yaw_err = std::remainder(target_yaw_ - current_yaw_, 2.0 * M_PI);
 
-    if ((dist_err <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) || elapsed > timeout_sec_) {
+    if ((dist_err <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) ||
+      elapsed > timeout_sec_)
+    {
       cmd_vel_pub_->publish(geometry_msgs::msg::Twist());
 
       std_msgs::msg::Bool comp_msg;

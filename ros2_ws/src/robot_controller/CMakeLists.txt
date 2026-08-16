@@ -110,11 +110,7 @@ ament_target_dependencies(
 
 add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp)
 ament_target_dependencies(
-  test_game1_wp_move_node
-  geometry_msgs
-  nav_msgs
-  rclcpp
-  std_msgs)
+  test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
 
 add_executable(imu_mux_node imu_mux/src/imu_mux_node.cpp)
 ament_target_dependencies(
