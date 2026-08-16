@@ -45,7 +45,9 @@ def generate_launch_description():
             launch_arguments=launch_arguments,
         )
 
-    mecanum_parameter_file = os.path.join(bringup_share, "config", "mecanum_controller.yaml")
+    mecanum_parameter_file = os.path.join(
+        bringup_share, "config", "mecanum_controller.yaml"
+    )
     odometry_parameter_file = os.path.join(bringup_share, "config", "sensors.yaml")
     tag_map_path = os.path.join(bringup_share, "config", "apriltag_tag_map.yaml")
 
@@ -77,23 +79,19 @@ def generate_launch_description():
                 default_value="/dev/video0",
                 description="USB webcam device path",
             ),
-
             # ── 1. ハードウェア ───────────────────────────────────────
             include(
                 "hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
-
             # ── 2. 操作系 & Foxglove Bridge ──────────────────────────
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-
             # ── 3. アーム・射出・LED コントローラ ────────────────────
             include("controllers/belt_controller.launch.py"),
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-
             # ── 4. IMU ────────────────────────────────────────────────
             Node(
                 package="libbno055_linux",
@@ -126,7 +124,6 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-
             # ── 5. メカナム車輪制御 & オドメトリ ─────────────────────
             Node(
                 package="robot_controller",
@@ -142,19 +139,30 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-
             # ── 6. EKF ───────────────────────────────────────────────
             include("ekf.launch.py"),
-
             # ── 7. 静的 TF ───────────────────────────────────────────
             Node(
                 package="tf2_ros",
                 executable="static_transform_publisher",
                 name="base_to_imu_tf",
                 arguments=[
-                    "--x", "-0.190", "--y", "-0.020", "--z", "0.225",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                    "--frame-id", "base_link", "--child-frame-id", "imu_link",
+                    "--x",
+                    "-0.190",
+                    "--y",
+                    "-0.020",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "imu_link",
                 ],
                 output="screen",
             ),
@@ -163,9 +171,22 @@ def generate_launch_description():
                 executable="static_transform_publisher",
                 name="base_to_stm32_imu_tf",
                 arguments=[
-                    "--x", "-0.195", "--y", "-0.065", "--z", "0.225",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "-1.218",
-                    "--frame-id", "base_link", "--child-frame-id", "stm32_imu_link",
+                    "--x",
+                    "-0.195",
+                    "--y",
+                    "-0.065",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "-1.218",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "stm32_imu_link",
                 ],
                 output="screen",
             ),
@@ -174,13 +195,25 @@ def generate_launch_description():
                 executable="static_transform_publisher",
                 name="base_to_camera_tf",
                 arguments=[
-                    "--x", "0.265", "--y", "0.035", "--z", "0.193",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                    "--frame-id", "base_link", "--child-frame-id", "camera_link",
+                    "--x",
+                    "0.265",
+                    "--y",
+                    "0.035",
+                    "--z",
+                    "0.193",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "camera_link",
                 ],
                 output="screen",
             ),
-
             # ── 8. ステレオカメラ + AprilTag + YOLO (CSI) ────────────
             include(
                 "vision_launch.py",
@@ -194,7 +227,6 @@ def generate_launch_description():
                     }.items()
                 ),
             ),
-
             # ── 9. USB Webcam ─────────────────────────────────────────
             include(
                 "webcam_launch.py",
@@ -205,7 +237,6 @@ def generate_launch_description():
                     }.items()
                 ),
             ),
-
             # ── 10. AprilTag ローカライザ (EKF 自己位置補正) ──────────
             # auto_node なしでもタグ→/apriltag/pose→EKF の動作確認が可能
             Node(
