@@ -218,7 +218,9 @@ void Game1AutoNode::control_loop()
         const double dist_err = std::hypot(wp_gate_.x - current_x_, wp_gate_.y - current_y_);
         cmd = compute_pure_pursuit(nav_target);
         if (dist_err <= pos_tolerance_ || elapsed > 10.0) {
-          RCLCPP_INFO(get_logger(), "Arrived at gate WP. Aligning to gate tag ID=%d.", gate_tag_id_);
+          RCLCPP_INFO(
+            get_logger(), "Arrived at gate WP. Aligning to gate tag ID=%d.",
+            gate_tag_id_);
           state_ = Game1State::ALIGN_TO_GATE;
           state_start_time_ = now();
         }
