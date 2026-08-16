@@ -185,12 +185,19 @@ def generate_launch_description():
             ),
 
             # ── 9. Game1 自動シーケンス (enable_game1:=true で有効) ───
+            # Game1: CSIカメラ(AprilTag/YOLO) + USBウェブカメラ 両方使用
             include(
                 "game1.launch.py",
                 condition=IfCondition(LaunchConfiguration("enable_game1")),
             ),
+            include(
+                "webcam_launch.py",
+                list({"enable_apriltag": "false"}.items()),
+                condition=IfCondition(LaunchConfiguration("enable_game1")),
+            ),
 
             # ── 10. Game2 パネル射出 (enable_game2:=true で有効) ──────
+            # Game2: CSIカメラのみ使用
             include(
                 "game2.launch.py",
                 condition=IfCondition(LaunchConfiguration("enable_game2")),
