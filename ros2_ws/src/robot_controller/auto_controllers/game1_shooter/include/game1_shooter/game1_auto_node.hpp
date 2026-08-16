@@ -38,6 +38,7 @@ enum class Game1State : uint8_t
   FIRE_PASS_SPRING = 6,
   NAV_TO_START = 7,
   COMPLETED = 8,
+  TEST_SINGLE_WP = 9,          // 目標1つの移動テストモード
 };
 
 class Game1AutoNode : public rclcpp::Node
@@ -82,6 +83,10 @@ private:
   double max_angular_vel_{1.0};
   double pos_tolerance_{0.08};
   double yaw_tolerance_{0.05};
+
+  // Test Mode Parameters
+  bool test_mode_{false};
+  Waypoint wp_test_{1.0, 0.0, 0.0};
 
   // State Variables
   Game1State state_{Game1State::STANDBY};
