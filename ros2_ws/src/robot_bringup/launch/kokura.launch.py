@@ -27,7 +27,9 @@ def generate_launch_description():
         return IncludeLaunchDescription(**kwargs)
 
     # パラメータファイルパス
-    mecanum_parameter_file = os.path.join(bringup_share, "config", "mecanum_controller.yaml")
+    mecanum_parameter_file = os.path.join(
+        bringup_share, "config", "mecanum_controller.yaml"
+    )
     odometry_parameter_file = os.path.join(bringup_share, "config", "sensors.yaml")
 
     return LaunchDescription(
@@ -63,23 +65,19 @@ def generate_launch_description():
                 default_value="false",
                 description="Enable YOLO ball detection",
             ),
-
             # ── 1. ハードウェア (CAN / VESC / EduLite / STM32) ──────
             include(
                 "hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
-
             # ── 2. 操作系 & Foxglove Bridge ──────────────────────────
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-
             # ── 3. アーム・射出・LED 各種コントローラ ────────────────
             include("controllers/belt_controller.launch.py"),
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-
             # ── 4. BNO055 IMU + IMU MUX + Heading Controller ─────────
             Node(
                 package="libbno055_linux",
@@ -113,7 +111,6 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-
             # ── 5. メカナム車輪制御 & オドメトリ ─────────────────────
             Node(
                 package="robot_controller",
@@ -129,19 +126,30 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-
             # ── 6. EKF 自己位置推定 ───────────────────────────────────
             include("ekf.launch.py"),
-
             # ── 7. 静的TF (base_link → imu_link / stm32_imu_link / camera_link) ──
             Node(
                 package="tf2_ros",
                 executable="static_transform_publisher",
                 name="base_to_imu_tf",
                 arguments=[
-                    "--x", "-0.190", "--y", "-0.020", "--z", "0.225",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                    "--frame-id", "base_link", "--child-frame-id", "imu_link",
+                    "--x",
+                    "-0.190",
+                    "--y",
+                    "-0.020",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "imu_link",
                 ],
                 output="screen",
             ),
@@ -150,9 +158,22 @@ def generate_launch_description():
                 executable="static_transform_publisher",
                 name="base_to_stm32_imu_tf",
                 arguments=[
-                    "--x", "-0.195", "--y", "-0.065", "--z", "0.225",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "-1.218",
-                    "--frame-id", "base_link", "--child-frame-id", "stm32_imu_link",
+                    "--x",
+                    "-0.195",
+                    "--y",
+                    "-0.065",
+                    "--z",
+                    "0.225",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "-1.218",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "stm32_imu_link",
                 ],
                 output="screen",
             ),
@@ -163,13 +184,25 @@ def generate_launch_description():
                 executable="static_transform_publisher",
                 name="base_to_camera_tf",
                 arguments=[
-                    "--x", "0.265", "--y", "0.035", "--z", "0.193",
-                    "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-                    "--frame-id", "base_link", "--child-frame-id", "camera_link",
+                    "--x",
+                    "0.265",
+                    "--y",
+                    "0.035",
+                    "--z",
+                    "0.193",
+                    "--roll",
+                    "0.0",
+                    "--pitch",
+                    "0.0",
+                    "--yaw",
+                    "0.0",
+                    "--frame-id",
+                    "base_link",
+                    "--child-frame-id",
+                    "camera_link",
                 ],
                 output="screen",
             ),
-
             # ── 8. ステレオカメラ + AprilTag + YOLO (230AI) ───────────
             include(
                 "vision_launch.py",
@@ -183,7 +216,6 @@ def generate_launch_description():
                     }.items()
                 ),
             ),
-
             # ── 9. Game1 自動シーケンス (enable_game1:=true で有効) ───
             # Game1: CSIカメラ(AprilTag/YOLO) + USBウェブカメラ 両方使用
             include(
@@ -195,7 +227,6 @@ def generate_launch_description():
                 list({"enable_apriltag": "false"}.items()),
                 condition=IfCondition(LaunchConfiguration("enable_game1")),
             ),
-
             # ── 10. Game2 パネル射出 (enable_game2:=true で有効) ──────
             # Game2: CSIカメラのみ使用
             include(
