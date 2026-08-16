@@ -7,6 +7,11 @@ game1_auto_node:
     pos_tolerance: 0.08
     yaw_tolerance: 0.05
 
+    # ── ゲートAprilTag設定 ──
+    gate_tag_id: 0          # ゲートに貼ってあるタグのID (要変更)
+    tag_prefix: "tag16h5:"  # タグファミリープレフィックス
+    align_timeout: 3.0      # タグが見えない場合のタイムアウト [s]
+
     # ── テストモード設定 (単一WP移動テスト) ──
     test_mode: false
     wp_test_x: 1.0

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "apriltag_msgs/msg/april_tag_detection_array.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
@@ -18,6 +19,9 @@
 #include "nav_msgs/msg/odometry.hpp"
 
 #include "sensor_msgs/msg/joy.hpp"
+
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 
 namespace robot_controller
 {
@@ -33,14 +37,15 @@ enum class Game1State : uint8_t
 {
   STANDBY = 0,
   NAV_TO_GATE = 1,
-  FIRE_GATE_SPRING = 2,
-  NAV_AROUND_GATE = 3,         // ゲートの横を通って回り込む
-  SEARCH_AND_CATCH_BALL = 4,   // YOLOカメラでボールを動的発見＆バックスピン追従キャッチ
-  NAV_TO_PASS_AREA = 5,
-  FIRE_PASS_SPRING = 6,
-  NAV_TO_START = 7,
-  COMPLETED = 8,
-  TEST_SINGLE_WP = 9,          // 目標1つの移動テストモード
+  ALIGN_TO_GATE = 2,           // AprilTagでゲート方向に向き合わせ
+  FIRE_GATE_SPRING = 3,
+  NAV_AROUND_GATE = 4,         // ゲートの横を通って回り込む
+  SEARCH_AND_CATCH_BALL = 5,   // YOLOカメラでボールを動的発見＆バックスピン追従キャッチ
+  NAV_TO_PASS_AREA = 6,
+  FIRE_PASS_SPRING = 7,
+  NAV_TO_START = 8,
+  COMPLETED = 9,
+  TEST_SINGLE_WP = 10,         // 目標1つの移動テストモード
 };
 
 class Game1AutoNode : public rclcpp::Node
@@ -87,6 +92,11 @@ private:
   double max_angular_vel_{1.0};
   double pos_tolerance_{0.08};
   double yaw_tolerance_{0.05};
+  double align_timeout_{3.0};     // ゲートタグが見えない場合のタイムアウト [s]
+
+  // Gate AprilTag Parameters
+  int gate_tag_id_{0};            // ゲートに貼ってあるタグID
+  std::string tag_prefix_{"tag16h5:"};
 
   // Test Mode Parameters
   bool test_mode_{false};
@@ -120,6 +130,10 @@ private:
   double raw_yaw_{0.0};
   double yaw_offset_{0.0};
   double current_yaw_{0.0};
+
+  // TF2 (for AprilTag gate alignment)
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 }  // namespace robot_controller

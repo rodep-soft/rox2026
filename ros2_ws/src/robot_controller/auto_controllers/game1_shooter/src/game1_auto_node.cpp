@@ -15,6 +15,11 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
   pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
+  align_timeout_ = declare_parameter<double>("align_timeout", 3.0);
+
+  // ゲートに貼ってあるAprilTagのID
+  gate_tag_id_ = declare_parameter<int>("gate_tag_id", 0);
+  tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
 
   // テストモード設定
   test_mode_ = declare_parameter<bool>("test_mode", false);
@@ -42,6 +47,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   wp_start_.x = declare_parameter<double>("wp_start_x", 0.0);
   wp_start_.y = declare_parameter<double>("wp_start_y", 0.0);
   wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0);
+
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,
@@ -204,12 +212,62 @@ void Game1AutoNode::control_loop()
 
   switch (state_) {
     case Game1State::NAV_TO_GATE: {
-        // 1. ゲート射出位置へ移動
-        cmd = compute_pure_pursuit(wp_gate_);
-        // 位置差分 pos_tolerance 以下 ＆ 角度差分 yaw_tolerance (ゲート方向向いた) 以下で射出許可 (タイムアウト5秒)
-        if (is_aligned_to_target(wp_gate_) || elapsed > 5.0) {
+        // 1. ゲート射出位置へ移動 (yaw合わせは次のステートで行う)
+        Waypoint nav_target = wp_gate_;
+        nav_target.yaw = current_yaw_;  // 移動中は向き問わず位置だけ合わせる
+        const double dist_err = std::hypot(wp_gate_.x - current_x_, wp_gate_.y - current_y_);
+        cmd = compute_pure_pursuit(nav_target);
+        if (dist_err <= pos_tolerance_ || elapsed > 10.0) {
+          RCLCPP_INFO(get_logger(), "Arrived at gate WP. Aligning to gate tag ID=%d.", gate_tag_id_);
+          state_ = Game1State::ALIGN_TO_GATE;
+          state_start_time_ = now();
+        }
+        break;
+      }
+
+    case Game1State::ALIGN_TO_GATE: {
+        // 2. ゲートのAprilTagを見てゲート方向に向き合わせ
+        const std::string tag_frame = tag_prefix_ + std::to_string(gate_tag_id_);
+        bool aligned = false;
+
+        try {
+          // base_link → gate_tag の変換を取得
+          const auto t = tf_buffer_->lookupTransform(
+            "base_link", tag_frame, tf2::TimePointZero, tf2::durationFromSec(0.05));
+
+          const double tx = t.transform.translation.x;
+          const double ty = t.transform.translation.y;
+
+          // タグがbase_linkからどの方向にあるか
+          const double yaw_to_tag = std::atan2(ty, tx);
+          const double yaw_err = std::remainder(yaw_to_tag, 2.0 * M_PI);
+
+          cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
+
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 500,
+            "[ALIGN_TO_GATE] tag=%s  yaw_err=%.3f rad", tag_frame.c_str(), yaw_err);
+
+          if (std::abs(yaw_err) <= yaw_tolerance_) {
+            aligned = true;
+          }
+        } catch (const tf2::TransformException & ex) {
+          // タグが見えない場合: wp_gate_.yaw にフォールバック
+          RCLCPP_WARN_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "[ALIGN_TO_GATE] Tag not visible (%s). Falling back to wp_gate_.yaw.", ex.what());
+          const double yaw_err = std::remainder(wp_gate_.yaw - current_yaw_, 2.0 * M_PI);
+          cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
+          if (std::abs(yaw_err) <= yaw_tolerance_) {
+            aligned = true;
+          }
+        }
+
+        // 向き合わせ完了 or タイムアウト → 射出へ
+        if (aligned || elapsed > align_timeout_) {
           RCLCPP_INFO(
-            get_logger(), "Aligned at Gate shooting position (yaw aligned!). Firing 1st Spring!");
+            get_logger(), "Gate alignment done (aligned=%s, t=%.1fs). Firing spring!",
+            aligned ? "true" : "timeout", elapsed);
           state_ = Game1State::FIRE_GATE_SPRING;
           state_start_time_ = now();
         }
