@@ -226,7 +226,9 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::ALIGN_TO_GATE: {
-        // 2. ゲートのAprilTagを見てゲート方向に向き合わせ
+        // 2. ゲートのAprilTagを正面に捉えるまで横移動＋回転で合わせ
+        //    tx: タグの前後距離, ty: タグの左右ずれ
+        //    目標: ty→0 (横ずれなし) かつ yaw_to_tag→0 (正面を向く)
         const std::string tag_frame = tag_prefix_ + std::to_string(gate_tag_id_);
         bool aligned = false;
 
@@ -238,21 +240,26 @@ void Game1AutoNode::control_loop()
           const double tx = t.transform.translation.x;
           const double ty = t.transform.translation.y;
 
-          // タグがbase_linkからどの方向にあるか
+          // ① 横ずれ補正: タグが右(ty<0)なら右へ、左(ty>0)なら左へ移動
+          const double lateral_err = ty;
+          cmd.linear.y = std::clamp(kp_linear_ * lateral_err, -max_linear_vel_, max_linear_vel_);
+
+          // ② 向き補正: タグがbase_linkからどの方向にあるか
           const double yaw_to_tag = std::atan2(ty, tx);
           const double yaw_err = std::remainder(yaw_to_tag, 2.0 * M_PI);
-
           cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 500,
-            "[ALIGN_TO_GATE] tag=%s  yaw_err=%.3f rad", tag_frame.c_str(), yaw_err);
+            "[ALIGN_TO_GATE] tag=%s  tx=%.3f ty=%.3f yaw_err=%.3f rad",
+            tag_frame.c_str(), tx, ty, yaw_err);
 
-          if (std::abs(yaw_err) <= yaw_tolerance_) {
+          // 横ずれ・角度誤差ともに許容値以下で完了
+          if (std::abs(lateral_err) <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
             aligned = true;
           }
         } catch (const tf2::TransformException & ex) {
-          // タグが見えない場合: wp_gate_.yaw にフォールバック
+          // タグが見えない場合: wp_gate_.yaw にフォールバック (回転のみ)
           RCLCPP_WARN_THROTTLE(
             get_logger(), *get_clock(), 1000,
             "[ALIGN_TO_GATE] Tag not visible (%s). Falling back to wp_gate_.yaw.", ex.what());
@@ -263,7 +270,7 @@ void Game1AutoNode::control_loop()
           }
         }
 
-        // 向き合わせ完了 or タイムアウト → 射出へ
+        // 向き＋横位置合わせ完了 or タイムアウト → 射出へ
         if (aligned || elapsed > align_timeout_) {
           RCLCPP_INFO(
             get_logger(), "Gate alignment done (aligned=%s, t=%.1fs). Firing spring!",
