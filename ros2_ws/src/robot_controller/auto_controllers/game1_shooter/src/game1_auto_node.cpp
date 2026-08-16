@@ -59,6 +59,10 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     "/detection", 10,
     std::bind(&Game1AutoNode::ball_detection_callback, this, std::placeholders::_1));
 
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
+    "/joy", rclcpp::SensorDataQoS(),
+    std::bind(&Game1AutoNode::joy_callback, this, std::placeholders::_1));
+
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/drive/cmd_vel", 10);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", 10);
   arm_position_pub_ =
@@ -97,6 +101,31 @@ void Game1AutoNode::ball_detection_callback(const geometry_msgs::msg::PoseStampe
   last_ball_detection_time_ = now();
   detected_ball_x_ = msg->pose.position.x;
   detected_ball_y_ = msg->pose.position.y;
+}
+
+void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
+{
+  if (!is_enabled_) {
+    return;
+  }
+
+  // ジョイスティックの各軸（スティック）の操作量を判定
+  constexpr double deadzone = 0.15;
+  bool joystick_moved = false;
+  for (const float axis_val : msg->axes) {
+    if (std::abs(axis_val) > deadzone) {
+      joystick_moved = true;
+      break;
+    }
+  }
+
+  if (joystick_moved) {
+    is_enabled_ = false;
+    state_ = Game1State::STANDBY;
+    RCLCPP_WARN(
+      get_logger(),
+      "Joystick input detected! Emergency Manual Override: Stopping Game 1 Auto Sequence.");
+  }
 }
 
 void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
