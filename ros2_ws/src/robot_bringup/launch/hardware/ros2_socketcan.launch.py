@@ -62,7 +62,7 @@ def create_socketcan_nodes(interface_name):
             {
                 "interface": interface_name,
                 "enable_can_fd": False,
-                "enable_frame_loopback": False,
+                "enable_frame_loopback": True,
                 "timeout_sec": 0.05,
                 # Avoid launch-service races on slower computers.
                 "auto_configure": True,
