@@ -26,7 +26,7 @@ private:
   void belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void vesc_state_callback(const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg);
-  void emergency_stop_timer_callback();
+  void command_timer_callback();
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
@@ -53,7 +53,7 @@ private:
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr vesc_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltStatus>::SharedPtr status_pub_;
-  rclcpp::TimerBase::SharedPtr emergency_stop_timer_;
+  rclcpp::TimerBase::SharedPtr command_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 

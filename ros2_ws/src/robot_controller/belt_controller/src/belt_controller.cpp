@@ -59,9 +59,9 @@ BeltControllerNode::BeltControllerNode()
   status_pub_ = create_publisher<robot_msgs::msg::BeltStatus>(
     "/belt/status", command_qos);
 
-  emergency_stop_timer_ = create_wall_timer(
+  command_timer_ = create_wall_timer(
     std::chrono::milliseconds(emergency_stop_period_ms),
-    std::bind(&BeltControllerNode::emergency_stop_timer_callback, this));
+    std::bind(&BeltControllerNode::command_timer_callback, this));
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(&BeltControllerNode::parameter_callback, this, std::placeholders::_1));
@@ -117,11 +117,11 @@ void BeltControllerNode::vesc_state_callback(
   status_pub_->publish(status);
 }
 
-void BeltControllerNode::emergency_stop_timer_callback()
+void BeltControllerNode::command_timer_callback()
 {
-  if (emergency_stop_active_) {
-    publish_command();
-  }
+  // Keep refreshing the VESC target before hardware_driver's command timeout.
+  // publish_command() already sends zero RPM while emergency stop is active.
+  publish_command();
 }
 
 rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
