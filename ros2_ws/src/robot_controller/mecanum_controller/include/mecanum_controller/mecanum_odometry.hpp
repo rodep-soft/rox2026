@@ -70,9 +70,9 @@ inline AxisCovarianceScale calculate_covariance_multipliers(
   const double maximum_multiplier)
 {
   auto axis_scale = [maximum_multiplier](const double abs_accel, const double threshold) -> double {
-    const double slip_level = std::clamp(std::abs(abs_accel) / threshold - 1.0, 0.0, 1.0);
-    return 1.0 + slip_level * (maximum_multiplier - 1.0);
-  };
+      const double slip_level = std::clamp(std::abs(abs_accel) / threshold - 1.0, 0.0, 1.0);
+      return 1.0 + slip_level * (maximum_multiplier - 1.0);
+    };
   return {
     axis_scale(acceleration.x_m_s, x_threshold_m_s2),
     axis_scale(acceleration.y_m_s, y_threshold_m_s2),

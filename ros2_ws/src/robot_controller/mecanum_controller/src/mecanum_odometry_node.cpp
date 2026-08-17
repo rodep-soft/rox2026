@@ -27,8 +27,8 @@ public:
     configure_parameters();
 
     // pose_covariance_xy_ / yaw_ が確定してから pose_cov_* を初期化する
-    pose_cov_x_   = pose_covariance_xy_;
-    pose_cov_y_   = pose_covariance_xy_;
+    pose_cov_x_ = pose_covariance_xy_;
+    pose_cov_y_ = pose_covariance_xy_;
     pose_cov_yaw_ = pose_covariance_yaw_;
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -148,8 +148,8 @@ private:
     // now() を使うと EKF が「いつ計測されたか」を誤解し、タイムスタンプベースの融合が乱れる。
     // header.stamp が未設定 (0) の場合は受信時刻にフォールバックする。
     const auto & msg_stamp = message.header.stamp;
-    feedback_stamp_ = (msg_stamp.sec != 0 || msg_stamp.nanosec != 0)
-      ? rclcpp::Time(msg_stamp) : now();
+    feedback_stamp_ = (msg_stamp.sec != 0 || msg_stamp.nanosec != 0) ?
+      rclcpp::Time(msg_stamp) : now();
     if (feedback_valid_) {
       wheel_velocity_ = received;
     }
@@ -290,12 +290,13 @@ private:
 
     if (feedback_usable) {
       // scale² を乗じて速度補正係数の影響を分散に反映する
-      message.twist.covariance[0]  = twist_covariance_xy_  * scale_x_   * scale_x_   * slip_scale.x;
-      message.twist.covariance[7]  = twist_covariance_xy_  * scale_y_   * scale_y_   * slip_scale.y;
-      message.twist.covariance[35] = twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw;
+      message.twist.covariance[0] = twist_covariance_xy_ * scale_x_ * scale_x_ * slip_scale.x;
+      message.twist.covariance[7] = twist_covariance_xy_ * scale_y_ * scale_y_ * slip_scale.y;
+      message.twist.covariance[35] = twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ *
+        slip_scale.yaw;
     } else {
-      message.twist.covariance[0]  = kInvalidFeedbackVariance;
-      message.twist.covariance[7]  = kInvalidFeedbackVariance;
+      message.twist.covariance[0] = kInvalidFeedbackVariance;
+      message.twist.covariance[7] = kInvalidFeedbackVariance;
       message.twist.covariance[35] = kInvalidFeedbackVariance;
     }
     // twist: 非観測軸 (vz, wx, wy) — 平面ロボットなので巨大な不確かさ
@@ -307,13 +308,14 @@ private:
     // 積分誤差を軸別に累積。twist covと同じ scale² 補正を適用する。
     // フィードバック無効時は積分を止めているので pose cov は増加しない。
     if (feedback_usable) {
-      pose_cov_x_   += twist_covariance_xy_  * scale_x_   * scale_x_   * slip_scale.x   * odom_drift_rate_;
-      pose_cov_y_   += twist_covariance_xy_  * scale_y_   * scale_y_   * slip_scale.y   * odom_drift_rate_;
-      pose_cov_yaw_ += twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw * odom_drift_rate_;
+      pose_cov_x_ += twist_covariance_xy_ * scale_x_ * scale_x_ * slip_scale.x * odom_drift_rate_;
+      pose_cov_y_ += twist_covariance_xy_ * scale_y_ * scale_y_ * slip_scale.y * odom_drift_rate_;
+      pose_cov_yaw_ += twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw *
+        odom_drift_rate_;
     }
     // pose: 観測軸
-    message.pose.covariance[0]  = pose_cov_x_;    // x
-    message.pose.covariance[7]  = pose_cov_y_;    // y
+    message.pose.covariance[0] = pose_cov_x_;     // x
+    message.pose.covariance[7] = pose_cov_y_;     // y
     message.pose.covariance[35] = pose_cov_yaw_;  // yaw
     // pose: 非観測軸
     message.pose.covariance[14] = kUnobservedVariance;  // z
@@ -340,7 +342,6 @@ private:
       tf_broadcaster_->sendTransform(t);
     }
   }
-
 
 
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_sub_;
