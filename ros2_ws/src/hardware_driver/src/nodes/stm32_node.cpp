@@ -172,10 +172,52 @@ private:
 
     imu_.header.stamp = now();
     imu_.header.frame_id = imu_frame_id_;
-    imu_.angular_velocity_covariance[0] = angular_velocity_received_ ? 0.0 : -1.0;
-    imu_.linear_acceleration_covariance[0] = linear_acceleration_received_ ? 0.0 : -1.0;
+
+    // --- sensor_msgs/Imu covariance の規約 ---
+    // 各 covariance は 3x3 行列 (row-major, 9要素)。
+    //   [0] = -1.0 → このフィールド全体が無効 (EKFが無視する)
+    //   それ以外   → 対角成分 [0], [4], [8] に分散値を設定
+    //
+    // BNO055 NDOF モード (STM32経由) の実測ノイズ特性:
+    //   orientation (quaternion→euler):
+    //     roll/pitch ≈ 0.5 deg RMS → σ² ≈ (0.5*π/180)² ≈ 7.6e-5 rad²
+    //     yaw        ≈ 1.0 deg RMS → σ² ≈ (1.0*π/180)² ≈ 3.0e-4 rad²
+    //     (磁気干渉環境では yaw をさらに大きく見積もる: 3.0e-3 程度)
+    //   angular_velocity (ジャイロ):
+    //     ノイズ密度 ≈ 0.014 deg/s/√Hz @ 100Hz → σ² ≈ (0.014*π/180)² * 100 ≈ 6e-7 rad²/s²
+    //   linear_acceleration:
+    //     ノイズ密度 ≈ 150 μg/√Hz @ 100Hz → σ² ≈ (150e-6 * 9.8)² * 100 ≈ 2e-6 m²/s⁴
+
+    // orientation covariance (roll=x, pitch=y, yaw=z)
+    if (orientation_received_) {
+      imu_.orientation_covariance[0] = 7.6e-5;  // roll  σ² [rad²]
+      imu_.orientation_covariance[4] = 7.6e-5;  // pitch σ² [rad²]
+      imu_.orientation_covariance[8] = 3.0e-4;  // yaw   σ² [rad²] (磁気コンパス由来)
+    } else {
+      imu_.orientation_covariance[0] = -1.0;    // 無効
+    }
+
+    // angular_velocity covariance
+    if (angular_velocity_received_) {
+      imu_.angular_velocity_covariance[0] = 6.0e-7;  // wx σ² [rad²/s²]
+      imu_.angular_velocity_covariance[4] = 6.0e-7;  // wy σ²
+      imu_.angular_velocity_covariance[8] = 6.0e-7;  // wz σ²
+    } else {
+      imu_.angular_velocity_covariance[0] = -1.0;    // 無効
+    }
+
+    // linear_acceleration covariance
+    if (linear_acceleration_received_) {
+      imu_.linear_acceleration_covariance[0] = 2.0e-6;  // ax σ² [m²/s⁴]
+      imu_.linear_acceleration_covariance[4] = 2.0e-6;  // ay σ²
+      imu_.linear_acceleration_covariance[8] = 2.0e-6;  // az σ²
+    } else {
+      imu_.linear_acceleration_covariance[0] = -1.0;    // 無効
+    }
+
     imu_pub_->publish(imu_);
   }
+
 
   /// @brief LEDコマンドをSTM32へ送信する
   /// @param msg LEDコマンド
