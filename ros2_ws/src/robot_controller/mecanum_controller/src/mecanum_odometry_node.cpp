@@ -26,6 +26,11 @@ public:
   {
     configure_parameters();
 
+    // pose_covariance_xy_ / yaw_ が確定してから pose_cov_* を初期化する
+    pose_cov_x_   = pose_covariance_xy_;
+    pose_cov_y_   = pose_covariance_xy_;
+    pose_cov_yaw_ = pose_covariance_yaw_;
+
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     state_sub_ = create_subscription<actuator_msgs::msg::ActuatorStateArray>(
@@ -75,6 +80,9 @@ private:
     pose_covariance_yaw_ = declare_parameter("pose_covariance_yaw", 0.05);
     twist_covariance_xy_ = declare_parameter("twist_covariance_xy", 0.03);
     twist_covariance_yaw_ = declare_parameter("twist_covariance_yaw", 0.06);
+    // odom_drift_rate: pose covariance を毎ステップ増加させる比率 (twist covに対する倍率)。
+    // ホイールオドメトリの累積誤差モデル。0 にすると pose cov が固定になる。
+    odom_drift_rate_ = declare_parameter("odom_drift_rate", 0.02);
 
     state_topic_ = declare_parameter<std::string>(
       "state_array_topic",
@@ -136,7 +144,12 @@ private:
       }
     }
     feedback_valid_ = std::all_of(found.cbegin(), found.cend(), [](bool value) {return value;});
-    feedback_stamp_ = now();
+    // メッセージの header.stamp を計測時刻として使う。
+    // now() を使うと EKF が「いつ計測されたか」を誤解し、タイムスタンプベースの融合が乱れる。
+    // header.stamp が未設定 (0) の場合は受信時刻にフォールバックする。
+    const auto & msg_stamp = message.header.stamp;
+    feedback_stamp_ = (msg_stamp.sec != 0 || msg_stamp.nanosec != 0)
+      ? rclcpp::Time(msg_stamp) : now();
     if (feedback_valid_) {
       wheel_velocity_ = received;
     }
@@ -168,46 +181,51 @@ private:
     return filtered_;
   }
 
-  double covariance_multiplier(
+  mecanum_odometry::AxisCovarianceScale covariance_multiplier(
     const mecanum_odometry::BodyVelocity & velocity, const double dt_s)
   {
     if (!slip_enabled_ || !previous_velocity_initialized_) {
       previous_velocity_ = velocity;
       previous_velocity_initialized_ = true;
-      return 1.0;
+      return {};  // x=y=yaw=1.0
     }
     const mecanum_odometry::BodyVelocity acceleration{
       (velocity.x_m_s - previous_velocity_.x_m_s) / dt_s,
       (velocity.y_m_s - previous_velocity_.y_m_s) / dt_s,
       (velocity.yaw_rad_s - previous_velocity_.yaw_rad_s) / dt_s};
     previous_velocity_ = velocity;
-    return mecanum_odometry::calculate_covariance_multiplier(
+    return mecanum_odometry::calculate_covariance_multipliers(
       acceleration, accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_,
       max_covariance_multiplier_);
   }
 
   void update()
   {
-    const auto stamp = now();
-    const double dt_s = (stamp - last_update_).seconds();
-    last_update_ = stamp;
+    const auto now_stamp = now();
+    const double dt_s = (now_stamp - last_update_).seconds();
+    last_update_ = now_stamp;
     if (dt_s <= 0.0 || dt_s > 1.0) {
       return;
     }
 
-    const double feedback_age_ms = (stamp - feedback_stamp_).seconds() * 1000.0;
+    const double feedback_age_ms = (now_stamp - feedback_stamp_).seconds() * 1000.0;
     const bool usable = feedback_valid_ && feedback_age_ms >= 0.0 &&
       feedback_age_ms <= feedback_timeout_ms_;
     mecanum_odometry::BodyVelocity velocity;
-    double covariance_scale = 1000.0;
+    mecanum_odometry::AxisCovarianceScale slip_scale;
     if (usable) {
-      velocity = filtered_velocity(measured_velocity());
-      covariance_scale = covariance_multiplier(velocity, dt_s);
+      // スリップ検出はフィルタ前の生速度に対して行う。
+      // フィルタ後では急加速が平滑化されてスリップを見逃す可能性がある。
+      const auto raw_velocity = measured_velocity();
+      slip_scale = covariance_multiplier(raw_velocity, dt_s);
+      velocity = filtered_velocity(raw_velocity);
       const double cos_yaw = std::cos(yaw_rad_);
       const double sin_yaw = std::sin(yaw_rad_);
       position_x_m_ += (velocity.x_m_s * cos_yaw - velocity.y_m_s * sin_yaw) * dt_s;
       position_y_m_ += (velocity.x_m_s * sin_yaw + velocity.y_m_s * cos_yaw) * dt_s;
-      yaw_rad_ = std::remainder(yaw_rad_ + velocity.yaw_rad_s * dt_s, 2.0 * M_PI);
+      // yaw は std::remainder で正規化しない。EKFやquaternion変換は連続値を期待するケースがある。
+      // 正規化は orientation を TF2 quaternion で作る際に暗黙的に行われる。
+      yaw_rad_ += velocity.yaw_rad_s * dt_s;
     } else {
       filter_initialized_ = false;
       previous_velocity_initialized_ = false;
@@ -215,17 +233,47 @@ private:
         get_logger(), *get_clock(), 2000,
         "Wheel feedback is incomplete, not ready, or stale; integration is paused");
     }
-    publish(stamp, velocity, covariance_scale);
+
+    // odometry のタイムスタンプは実際の計測時刻 (feedback_stamp_) を使う。
+    // robot_localization はタイムスタンプを使ってセンサフュージョンを時系列で正確に行うため、
+    // ここで now() (タイマー発火時刻) を使うと最大 feedback_timeout_ms_ 分の遅延誤差が生じる。
+    // TF は now_stamp を使う (未来タイムスタンプを送ると tf2 が拒否するため)。
+    const auto odom_stamp = usable ? feedback_stamp_ : now_stamp;
+    publish(odom_stamp, now_stamp, velocity, slip_scale, usable);
   }
 
+
   void publish(
-    const rclcpp::Time & stamp, const mecanum_odometry::BodyVelocity & velocity,
-    const double covariance_scale)
+    const rclcpp::Time & stamp, const rclcpp::Time & tf_stamp,
+    const mecanum_odometry::BodyVelocity & velocity,
+    const mecanum_odometry::AxisCovarianceScale & slip_scale, const bool feedback_usable)
   {
     tf2::Quaternion orientation;
     orientation.setRPY(0.0, 0.0, yaw_rad_);
 
-    // 1. Odometry Topic Publish
+    // --- 6×6 covariance matrices (row-major, indices: x=0,y=1,z=2,roll=3,pitch=4,yaw=5) ---
+    //
+    // EKFに突っ込む前提での設計方針:
+    //   - twist covariance: ホイールで直接計測した速度の不確かさ → EKFの observation noise
+    //     各軸独立のスリップスケールを適用。フィードバック無効時は巨大値でEKFに無視させる。
+    //   - velocity_scale²: velocity_scale_x/y/yaw は速度をスケールする補正係数なので、
+    //     分散は scale の二乗を乗じる必要がある (σ²(scale*v) = scale² * σ²(v))。
+    //   - pose covariance: odom フレームでの積分誤差累積 (differential モードでは未参照)
+    //   - z / roll / pitch: 平面ロボット。1e9 でEKFが事実上無視する大きさ。
+    //
+    // nav_msgs/Odometry::pose.covariance の index 対応:
+    //   [row*6+col] → row/col: 0=x, 1=y, 2=z, 3=roll, 4=pitch, 5=yaw
+
+    constexpr double kUnobservedVariance = 1e9;
+    constexpr double kInvalidFeedbackVariance = 1e12;
+
+    // ---------- twist covariance ----------
+    // 各軸の最終的な twist 分散:
+    //   σ²_twist_x   = twist_covariance_xy  * scale_x²  * slip_scale.x
+    //   σ²_twist_y   = twist_covariance_xy  * scale_y²  * slip_scale.y
+    //   σ²_twist_yaw = twist_covariance_yaw * scale_yaw² * slip_scale.yaw
+    //
+    // 連帯責任排除: スリップは軸ごとに独立評価。X がスリップしても yaw の分散は増えない。
     nav_msgs::msg::Odometry message;
     message.header.stamp = stamp;
     message.header.frame_id = odom_frame_;
@@ -239,18 +287,47 @@ private:
     message.twist.twist.linear.x = velocity.x_m_s;
     message.twist.twist.linear.y = velocity.y_m_s;
     message.twist.twist.angular.z = velocity.yaw_rad_s;
-    message.pose.covariance[0] = message.pose.covariance[7] = pose_covariance_xy_ *
-      covariance_scale;
-    message.pose.covariance[35] = pose_covariance_yaw_ * covariance_scale;
-    message.twist.covariance[0] = message.twist.covariance[7] = twist_covariance_xy_ *
-      covariance_scale;
-    message.twist.covariance[35] = twist_covariance_yaw_ * covariance_scale;
+
+    if (feedback_usable) {
+      // scale² を乗じて速度補正係数の影響を分散に反映する
+      message.twist.covariance[0]  = twist_covariance_xy_  * scale_x_   * scale_x_   * slip_scale.x;
+      message.twist.covariance[7]  = twist_covariance_xy_  * scale_y_   * scale_y_   * slip_scale.y;
+      message.twist.covariance[35] = twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw;
+    } else {
+      message.twist.covariance[0]  = kInvalidFeedbackVariance;
+      message.twist.covariance[7]  = kInvalidFeedbackVariance;
+      message.twist.covariance[35] = kInvalidFeedbackVariance;
+    }
+    // twist: 非観測軸 (vz, wx, wy) — 平面ロボットなので巨大な不確かさ
+    message.twist.covariance[14] = kUnobservedVariance;  // vz
+    message.twist.covariance[21] = kUnobservedVariance;  // wx (roll rate)
+    message.twist.covariance[28] = kUnobservedVariance;  // wy (pitch rate)
+
+    // ---------- pose covariance ----------
+    // 積分誤差を軸別に累積。twist covと同じ scale² 補正を適用する。
+    // フィードバック無効時は積分を止めているので pose cov は増加しない。
+    if (feedback_usable) {
+      pose_cov_x_   += twist_covariance_xy_  * scale_x_   * scale_x_   * slip_scale.x   * odom_drift_rate_;
+      pose_cov_y_   += twist_covariance_xy_  * scale_y_   * scale_y_   * slip_scale.y   * odom_drift_rate_;
+      pose_cov_yaw_ += twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw * odom_drift_rate_;
+    }
+    // pose: 観測軸
+    message.pose.covariance[0]  = pose_cov_x_;    // x
+    message.pose.covariance[7]  = pose_cov_y_;    // y
+    message.pose.covariance[35] = pose_cov_yaw_;  // yaw
+    // pose: 非観測軸
+    message.pose.covariance[14] = kUnobservedVariance;  // z
+    message.pose.covariance[21] = kUnobservedVariance;  // roll
+    message.pose.covariance[28] = kUnobservedVariance;  // pitch
+
     odom_pub_->publish(message);
 
-    // 2. ROS 2 Best Practice: Transform Broadcaster (odom -> base_link)
+    // TF は tf_stamp (now) を使う。
+    // odometry は計測時刻 (stamp) を使うが、TF に過去のタイムスタンプを送ると
+    // tf2::lookupTransform が「過去に遡れない」エラーになるため現在時刻を使う。
     if (publish_tf_) {
       geometry_msgs::msg::TransformStamped t;
-      t.header.stamp = stamp;
+      t.header.stamp = tf_stamp;
       t.header.frame_id = odom_frame_;
       t.child_frame_id = base_frame_;
       t.transform.translation.x = position_x_m_;
@@ -263,6 +340,8 @@ private:
       tf_broadcaster_->sendTransform(t);
     }
   }
+
+
 
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
@@ -285,7 +364,14 @@ private:
   double accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_;
   double max_covariance_multiplier_;
   double pose_covariance_xy_, pose_covariance_yaw_, twist_covariance_xy_, twist_covariance_yaw_;
+  double odom_drift_rate_;
   double position_x_m_{0.0}, position_y_m_{0.0}, yaw_rad_{0.0};
+  // pose covariance の累積値。configure_parameters() 後に base 値で初期化。
+  // robot_localization の differential モードでは twist cov のみ参照されるため、
+  // ここの値が絶対的な精度に影響することはないが、absolute pose モードのために設定する。
+  double pose_cov_x_{0.0};
+  double pose_cov_y_{0.0};
+  double pose_cov_yaw_{0.0};
   std::string state_topic_, odom_topic_, odom_frame_, base_frame_;
 };
 

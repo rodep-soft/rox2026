@@ -1,0 +1,656 @@
+CMAKE_BUILD_PARALLEL_LEVEL=3 \
+colcon build \
+	--executor parallel --parallel-workers 2 --symlink-install --event-handlers console_direct+ \
+	--cmake-args -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTING=OFF
+Starting >>> actuator_msgs
+Starting >>> robot_msgs
+[1/2] cd /home/sunrise/rox2026/ros2_ws/build/actuator_msgs && /usr/bin/cmake -E create_symlink /home/sunrise/rox2026/ros2_ws/build/actuator_msgs/rosidl_generator_py/actuator_msgs /home/sunrise/rox2026/ros2_ws/build/actuator_msgs/ament_cmake_python/actuator_msgs/actuator_msgs
+[1/2] cd /home/sunrise/rox2026/ros2_ws/build/robot_msgs && /usr/bin/cmake -E create_symlink /home/sunrise/rox2026/ros2_ws/build/robot_msgs/rosidl_generator_py/robot_msgs /home/sunrise/rox2026/ros2_ws/build/robot_msgs/ament_cmake_python/robot_msgs/robot_msgs
+[2/2] cd /home/sunrise/rox2026/ros2_ws/build/actuator_msgs/ament_cmake_python/actuator_msgs && /usr/bin/python3 setup.py egg_info
+running egg_info
+writing actuator_msgs.egg-info/PKG-INFO
+writing dependency_links to actuator_msgs.egg-info/dependency_links.txt
+writing top-level names to actuator_msgs.egg-info/top_level.txt
+reading manifest file 'actuator_msgs.egg-info/SOURCES.txt'
+writing manifest file 'actuator_msgs.egg-info/SOURCES.txt'
+[2/2] cd /home/sunrise/rox2026/ros2_ws/build/robot_msgs/ament_cmake_python/robot_msgs && /usr/bin/python3 setup.py egg_info
+running egg_info
+writing robot_msgs.egg-info/PKG-INFO
+writing dependency_links to robot_msgs.egg-info/dependency_links.txt
+writing top-level names to robot_msgs.egg-info/top_level.txt
+reading manifest file 'robot_msgs.egg-info/SOURCES.txt'
+writing manifest file 'robot_msgs.egg-info/SOURCES.txt'
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/ament_index/resource_index/rosidl_interfaces/actuator_msgs
+-- Install configuration: ""
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_state.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_state_array.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_target.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_target_array.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__functions.h
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/ament_index/resource_index/rosidl_interfaces/robot_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/arm_position.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/belt_mode.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/belt_status.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/rosidl_generator_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/set_position.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/library_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/library_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/game2_state.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/rosidl_generator_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/shot_cycle_state.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/library_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/library_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_state.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_state_array.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_target.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/actuator_target_array.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/arm_position.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/belt_mode.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/belt_status.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/set_position.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/game2_state.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/shot_cycle_state.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_state_array__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/msg/detail/actuator_target_array__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/include/actuator_msgs/actuator_msgs/srv/detail/set_position__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/pythonpath.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/pythonpath.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/arm_position__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_mode__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs-0.0.1-py3.10.egg-info/PKG-INFO
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs-0.0.1-py3.10.egg-info/SOURCES.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/belt_status__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs-0.0.1-py3.10.egg-info/dependency_links.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/game2_state__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs-0.0.1-py3.10.egg-info/top_level.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/include/robot_msgs/robot_msgs/msg/detail/shot_cycle_state__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/pythonpath.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/pythonpath.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs-0.1.0-py3.10.egg-info/PKG-INFO
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs-0.1.0-py3.10.egg-info/SOURCES.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/_actuator_msgs_s.ep.rosidl_typesupport_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs-0.1.0-py3.10.egg-info/dependency_links.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/_actuator_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs-0.1.0-py3.10.egg-info/top_level.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/_actuator_msgs_s.ep.rosidl_typesupport_introspection_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/libactuator_msgs__rosidl_generator_py.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_state.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/_robot_msgs_s.ep.rosidl_typesupport_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_state_array.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/_robot_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_state_array_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/_robot_msgs_s.ep.rosidl_typesupport_introspection_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_state_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/librobot_msgs__rosidl_generator_py.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_target.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_target_array.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_arm_position.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_target_array_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_arm_position_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg/_actuator_target_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_belt_mode.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/srv/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_belt_mode_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/srv/_set_position.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_belt_status.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/srv/_set_position_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_belt_status_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_game2_state.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_game2_state_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_shot_cycle_state.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg/_shot_cycle_state_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/actuator_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/ament_index/resource_index/rust_packages/actuator_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/Cargo.toml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/build.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/src/lib.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/robot_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/src/msg.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/src/msg/rmw.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/ament_index/resource_index/rust_packages/robot_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/src/srv.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/rust/src/srv/rmw.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/rust/Cargo.toml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorTarget.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/rust/build.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorTargetArray.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/rust/src/lib.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/rust/src/msg.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorState.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/rust/src/msg/rmw.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorStateArray.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/BeltMode.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/srv/SetPosition.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/ArmPosition.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorTarget.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/ShotCycleState.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorTargetArray.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/BeltStatus.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorState.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/Game2State.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/msg/ActuatorStateArray.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/BeltMode.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/srv/SetPosition.srv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/ArmPosition.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/srv/SetPosition_Request.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/ShotCycleState.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/srv/SetPosition_Response.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/BeltStatus.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/ament_index/resource_index/package_run_dependencies/actuator_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/msg/Game2State.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/ament_index/resource_index/parent_prefix_path/actuator_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/ament_index/resource_index/package_run_dependencies/robot_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/ament_index/resource_index/parent_prefix_path/robot_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/local_setup.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/local_setup.sh
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/ament_index/resource_index/packages/robot_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/ament_index/resource_index/packages/actuator_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/rosidl_cmake-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/rosidl_cmake-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/rosidl_cmake_aggregate_target-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/rosidl_cmake_aggregate_target-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgsConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgsConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgsConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgsConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/package.xml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/package.xml
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_generator_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_generator_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_fastrtps_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_fastrtps_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_introspection_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_introspection_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_fastrtps_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_fastrtps_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_introspection_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_introspection_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_typesupport_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_typesupport_cpp.so
+Listing '/home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs'...
+Listing '/home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/msg'...
+Listing '/home/sunrise/rox2026/ros2_ws/install/actuator_msgs/local/lib/python3.10/dist-packages/actuator_msgs/srv'...
+Listing '/home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs'...
+Listing '/home/sunrise/rox2026/ros2_ws/install/robot_msgs/local/lib/python3.10/dist-packages/robot_msgs/msg'...
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/lib/librobot_msgs__rosidl_generator_py.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/lib/libactuator_msgs__rosidl_generator_py.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_generator_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_generator_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_generator_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_generator_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_introspection_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_introspection_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_generator_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_generator_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_introspection_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_introspection_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/robot_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/actuator_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_generator_pyExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_generator_pyExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/robot_msgs/share/robot_msgs/cmake/export_robot_msgs__rosidl_generator_pyExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/actuator_msgs/share/actuator_msgs/cmake/export_actuator_msgs__rosidl_generator_pyExport-noconfig.cmake
+Finished <<< actuator_msgs [2.71s]
+Finished <<< robot_msgs [2.78s]
+Starting >>> ros2_socketcan_msgs
+Starting >>> hardware_driver
+ninja: no work to do.
+[1/2] cd /home/sunrise/rox2026/ros2_ws/build/ros2_socketcan_msgs && /usr/bin/cmake -E create_symlink /home/sunrise/rox2026/ros2_ws/build/ros2_socketcan_msgs/rosidl_generator_py/ros2_socketcan_msgs /home/sunrise/rox2026/ros2_ws/build/ros2_socketcan_msgs/ament_cmake_python/ros2_socketcan_msgs/ros2_socketcan_msgs
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/lib/hardware_driver/stm32_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/lib/hardware_driver/edulite05_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/lib/hardware_driver/vesc_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/include/edulite05_driver/edulite05_node.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/include/edulite05_driver/edulite05_protocol.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/include/stm32_driver/stm32_protocol.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/include/vesc_driver/vesc_protocol.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/library_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/library_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/ament_index/resource_index/package_run_dependencies/hardware_driver
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/ament_index/resource_index/parent_prefix_path/hardware_driver
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/ament_index/resource_index/packages/hardware_driver
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/hardware_driverConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/hardware_driverConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/package.xml
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/lib/libstm32_protocol.a
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/lib/libedulite05_protocol.a
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/export_hardware_driverExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/hardware_driver/share/hardware_driver/cmake/export_hardware_driverExport-noconfig.cmake
+Finished <<< hardware_driver [0.33s]
+Starting >>> joy_controller
+ninja: no work to do.
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/lib/joy_controller/joy_controller_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/include/joy_controller/joy_controller_node.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/include/joy_controller/slew_rate_limiter.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/ament_index/resource_index/package_run_dependencies/joy_controller
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/ament_index/resource_index/parent_prefix_path/joy_controller
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/ament_index/resource_index/packages/joy_controller
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/cmake/joy_controllerConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/cmake/joy_controllerConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/joy_controller/share/joy_controller/package.xml
+Finished <<< joy_controller [0.31s]
+Starting >>> robot_controller
+[2/2] cd /home/sunrise/rox2026/ros2_ws/build/ros2_socketcan_msgs/ament_cmake_python/ros2_socketcan_msgs && /usr/bin/python3 setup.py egg_info
+running egg_info
+writing ros2_socketcan_msgs.egg-info/PKG-INFO
+writing dependency_links to ros2_socketcan_msgs.egg-info/dependency_links.txt
+writing top-level names to ros2_socketcan_msgs.egg-info/top_level.txt
+reading manifest file 'ros2_socketcan_msgs.egg-info/SOURCES.txt'
+writing manifest file 'ros2_socketcan_msgs.egg-info/SOURCES.txt'
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ament_index/resource_index/rosidl_interfaces/ros2_socketcan_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__functions.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__struct.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__type_support.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/fd_frame.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/rosidl_generator_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/library_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/library_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__rosidl_typesupport_introspection_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__builder.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__struct.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__traits.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__type_support.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/fd_frame.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/include/ros2_socketcan_msgs/ros2_socketcan_msgs/msg/detail/fd_frame__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/pythonpath.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/pythonpath.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs-1.3.0-py3.10.egg-info/PKG-INFO
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs-1.3.0-py3.10.egg-info/SOURCES.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs-1.3.0-py3.10.egg-info/dependency_links.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs-1.3.0-py3.10.egg-info/top_level.txt
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/_ros2_socketcan_msgs_s.ep.rosidl_typesupport_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/_ros2_socketcan_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/_ros2_socketcan_msgs_s.ep.rosidl_typesupport_introspection_c.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/libros2_socketcan_msgs__rosidl_generator_py.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/msg/__init__.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/msg/_fd_frame.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/msg/_fd_frame_s.c
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_introspection_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/ros2_socketcan_msgs_s__rosidl_typesupport_c.cpython-310-aarch64-linux-gnu.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ament_index/resource_index/rust_packages/ros2_socketcan_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/rust/Cargo.toml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/rust/build.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/rust/src/lib.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/rust/src/msg.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/rust/src/msg/rmw.rs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/msg/FdFrame.idl
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/msg/FdFrame.msg
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ament_index/resource_index/package_run_dependencies/ros2_socketcan_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ament_index/resource_index/parent_prefix_path/ros2_socketcan_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ament_index/resource_index/packages/ros2_socketcan_msgs
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/rosidl_cmake-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/rosidl_cmake_aggregate_target-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgsConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgsConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/package.xml
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_generator_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_fastrtps_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_introspection_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_c.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_fastrtps_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_introspection_cpp.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_typesupport_cpp.so
+Listing '/home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs'...
+Listing '/home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/local/lib/python3.10/dist-packages/ros2_socketcan_msgs/msg'...
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/lib/libros2_socketcan_msgs__rosidl_generator_py.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_generator_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_generator_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_introspection_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_cExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_cExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_generator_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_introspection_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_cppExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/ros2_socketcan_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_generator_pyExport.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan_msgs/share/ros2_socketcan_msgs/cmake/export_ros2_socketcan_msgs__rosidl_generator_pyExport-noconfig.cmake
+Finished <<< ros2_socketcan_msgs [2.94s]
+Starting >>> ros2_socketcan
+[1/4] Linking CXX static library libgame1_auto_node_implementation.a
+ninja: no work to do.
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/lib/ros2_socketcan/socket_can_receiver_node_exe
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/lib/ros2_socketcan/socket_can_sender_node_exe
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_common.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_id.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_receiver.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_receiver_node.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_sender.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/socket_can_sender_node.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/include/ros2_socketcan/visibility_control.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/library_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/library_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/lib/libros2_socketcan.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/lib/libsocket_can_receiver_node.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/lib/libsocket_can_sender_node.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/launch/socket_can_bridge.launch.xml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/launch/socket_can_receiver.launch.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/launch/socket_can_sender.launch.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ament_index/resource_index/package_run_dependencies/ros2_socketcan
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ament_index/resource_index/parent_prefix_path/ros2_socketcan
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ament_index/resource_index/packages/ros2_socketcan
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ament_index/resource_index/rclcpp_components/ros2_socketcan
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/cmake/ros2_socketcanConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/cmake/ros2_socketcanConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/ros2_socketcan/share/ros2_socketcan/package.xml
+Finished <<< ros2_socketcan [0.37s]
+Starting >>> libbno055_linux
+ninja: no work to do.
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_publisher_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_heading_control_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_publisher_node_container
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_heading_control_container
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_ros2_components.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_heading_control_components.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_lifecycle_publisher_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_lifecycle_heading_control_node
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_lifecycle_publisher_node_container
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_linux/bno055_lifecycle_heading_control_container
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_ros2_lifecycle_components.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055_lifecycle_heading_control_components.so
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/config/bno055_params.yaml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/config/heading_control_params.yaml
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/launch/bno055_launch.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/launch/heading_control_launch.py
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/calibrate_imu
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/read_data_noexcept
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/read_all_data
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/benchmark_imu
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/heading_control_demo
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/bin/c_demo
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/include/libbno055-linux/bno055.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/include/libbno055-linux/bno055_c.h
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/include/libbno055-linux/controllers/heading_controller.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/include/libbno055-linux/mock_transport.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/include/libbno055-linux/transport.hpp
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/cmake/libbno055-linux/libbno055-linuxConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/cmake/libbno055-linux/libbno055-linuxConfigVersion.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/ament_index/resource_index/package_run_dependencies/libbno055_linux
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/ament_index/resource_index/parent_prefix_path/libbno055_linux
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/environment/path.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/environment/path.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/local_setup.bash
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/local_setup.sh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/local_setup.zsh
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/local_setup.dsv
+-- Symlinking: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/package.dsv
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/ament_index/resource_index/packages/libbno055_linux
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/ament_index/resource_index/rclcpp_components/libbno055_linux
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/cmake/libbno055_linuxConfig.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/cmake/libbno055_linuxConfig-version.cmake
+-- Up-to-date symlink: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/share/libbno055_linux/package.xml
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055-linux.so.1.9.0
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055-linux.so.1
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/libbno055-linux.so
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/cmake/libbno055-linux/libbno055-linuxTargets.cmake
+-- Up-to-date: /home/sunrise/rox2026/ros2_ws/install/libbno055_linux/lib/cmake/libbno055-linux/libbno055-linuxTargets-noconfig.cmake
+Finished <<< libbno055_linux [0.47s]
+[2/4] Linking CXX executable game1_auto_node
+[3/4] Building CXX object CMakeFiles/test_game1_wp_move_node.dir/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp.o
+[Processing: robot_controller]
+FAILED: CMakeFiles/test_game1_wp_move_node.dir/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp.o 
+ccache /usr/bin/c++ -DDEFAULT_RMW_IMPLEMENTATION=rmw_fastrtps_cpp -DFASTCDR_DYN_LINK -DRCUTILS_ENABLE_FAULT_INJECTION -isystem /opt/ros/humble/include/geometry_msgs -isystem /opt/ros/humble/include/nav_msgs -isystem /opt/ros/humble/include/rclcpp -isystem /opt/ros/humble/include/std_msgs -isystem /opt/ros/humble/include/builtin_interfaces -isystem /opt/ros/humble/include/rosidl_runtime_c -isystem /opt/ros/humble/include/rcutils -isystem /opt/ros/humble/include/rosidl_typesupport_interface -isystem /opt/ros/humble/include/fastcdr -isystem /opt/ros/humble/include/rosidl_runtime_cpp -isystem /opt/ros/humble/include/rosidl_typesupport_fastrtps_cpp -isystem /opt/ros/humble/include/rmw -isystem /opt/ros/humble/include/rosidl_typesupport_fastrtps_c -isystem /opt/ros/humble/include/rosidl_typesupport_introspection_c -isystem /opt/ros/humble/include/rosidl_typesupport_introspection_cpp -isystem /opt/ros/humble/include/ament_index_cpp -isystem /opt/ros/humble/include/libstatistics_collector -isystem /opt/ros/humble/include/rcl -isystem /opt/ros/humble/include/rcl_interfaces -isystem /opt/ros/humble/include/rcl_logging_interface -isystem /opt/ros/humble/include/rcl_yaml_param_parser -isystem /opt/ros/humble/include/libyaml_vendor -isystem /opt/ros/humble/include/tracetools -isystem /opt/ros/humble/include/rcpputils -isystem /opt/ros/humble/include/statistics_msgs -isystem /opt/ros/humble/include/rosgraph_msgs -isystem /opt/ros/humble/include/rosidl_typesupport_cpp -isystem /opt/ros/humble/include/rosidl_typesupport_c -Wall -Wextra -Wpedantic -std=c++17 -MD -MT CMakeFiles/test_game1_wp_move_node.dir/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp.o -MF CMakeFiles/test_game1_wp_move_node.dir/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp.o.d -o CMakeFiles/test_game1_wp_move_node.dir/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp.o -c /home/sunrise/rox2026/ros2_ws/src/robot_controller/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp
+/home/sunrise/rox2026/ros2_ws/src/robot_controller/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp: In function ‘int main(int, char**)’:
+/home/sunrise/rox2026/ros2_ws/src/robot_controller/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp:169:9: error: expected primary-expression before ‘.’ token
+  169 |   rclcpp.init(argc, argv);
+      |         ^
+/home/sunrise/rox2026/ros2_ws/src/robot_controller/auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp:172:9: error: expected primary-expression before ‘.’ token
+  172 |   rclcpp.shutdown();
+      |         ^
+ninja: build stopped: subcommand failed.
+
+Summary: 7 packages finished [38.0s]
+  1 package failed: robot_controller
+  1 package not processed
+[1.221s] WARNING:colcon.colcon_ros.prefix_path.ament:The path '/home/sunrise/rox2026/ros2_ws/install/robot_bringup' in the environment variable AMENT_PREFIX_PATH doesn't exist
+[1.223s] WARNING:colcon.colcon_ros.prefix_path.catkin:The path '/home/sunrise/rox2026/ros2_ws/install/robot_bringup' in the environment variable CMAKE_PREFIX_PATH doesn't exist
+Failed   <<< robot_controller [33.5s, exited with code 1]
+make: *** [Makefile:19: build] Error 1

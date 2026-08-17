@@ -11,15 +11,24 @@ ekf_filter_node:
 
     # 1. 車輪オドメトリ (/wheel/odometry)
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
-    # 💡 鉄則: 車輪オドメトリからは「速度(vx, vy)」のみ融合し、位置の二重積分ドリフトを防止
+    #
+    # 設計方針: vx, vy のみ融合 (differential=false / absolute twist として扱う)
+    #   - pose (x,y,yaw) は使わない: ホイールオドメトリの位置は積分ドリフトがあり不正確
+    #   - vyaw は使わない: IMUジャイロ (imu0) を優先する
+    #   - 速度の covariance はオドメトリノードがスリップ検出に応じて動的に調整する
+    #
+    # odom0_relative: true — 起動時の odom フレーム絶対座標が不明なため、
+    #   差分 (Δvx, Δvy) として融合する。pose0 (AprilTag) の絶対座標と矛盾しない。
     odom0: /wheel/odometry
-    odom0_config: [false, false, false,    # x, y, z 位置 (速度から積分するため false)
+    odom0_config: [false, false, false,    # x, y, z 位置
                    false, false, false,    # roll, pitch, yaw 姿勢
-                   true,  true,  false,    # vx, vy 並進速度 (高精度融合)
-                   false, false, false,    # vyaw (旋回角速度はIMUを優先するため false)
+                   true,  true,  false,    # vx, vy 並進速度
+                   false, false, false,    # vyaw (IMUを優先)
                    false, false, false]    # 加速度
     odom0_differential: false
+    odom0_relative: true
     odom0_queue_size: 10
+
 
     # 2. IMU センサ (/imu/data) - BNO055 9軸フュージョン
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
