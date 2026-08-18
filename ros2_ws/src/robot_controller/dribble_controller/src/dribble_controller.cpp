@@ -153,7 +153,8 @@ void DribbleControllerNode::load_parameters()
     ball_lost_threshold_a_ < 0.0 || !std::isfinite(current_lpf_alpha_) ||
     current_lpf_alpha_ <= 0.0 || current_lpf_alpha_ > 1.0)
   {
-    throw std::runtime_error("position parameters, durations, velocities, or ball detection parameters are invalid");
+    throw std::runtime_error(
+            "position parameters, durations, velocities, or ball detection parameters are invalid");
   }
   position_logical_id_ = static_cast<uint16_t>(position_logical_id);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
@@ -291,7 +292,8 @@ void DribbleControllerNode::vesc_state_callback(
       roller_current_initialized_ = true;
     } else {
       filtered_roller_current_a_ =
-        current_lpf_alpha_ * msg->current_a + (1.0 - current_lpf_alpha_) * filtered_roller_current_a_;
+        current_lpf_alpha_ * msg->current_a + (1.0 - current_lpf_alpha_) *
+        filtered_roller_current_a_;
     }
 
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
