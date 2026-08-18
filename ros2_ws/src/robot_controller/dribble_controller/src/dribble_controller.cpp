@@ -548,7 +548,9 @@ void DribbleControllerNode::control_timer_callback()
       reverse_transition_active_ = false;
       current_filtered_roller_rpm_ = target_rpm;
     }
-  } else if (manual_transition_active_ && !shot_cycle_active_ && dribble_enabled_ && !spring_decel_active_) {
+  } else if (manual_transition_active_ && !shot_cycle_active_ && dribble_enabled_ &&
+    !spring_decel_active_)
+  {
     const double mode_target_rad = target_position_rad();
     double max_vel_rad_s = returning_max_velocity_rad_s_;
     double accel_factor = 1.0;
