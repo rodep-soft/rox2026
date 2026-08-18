@@ -58,6 +58,9 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ## 実行中に変更できるparameter
 
 - `dribble_on_rpm`
+- `ball_detection_threshold_a`（ボール検知閾値[A]、デフォルト1.7）
+- `ball_lost_threshold_a`（ボール喪失閾値[A]、デフォルト1.0）
+- `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数、デフォルト0.3）
 - `shot_cycle_belt_spinup_level`（1〜4、shot cycle時にbeltをONするレベル）
 - `belt_spinup_delay_sec`（beltがSTOPからONになった後の待機時間[s]）
 - `enable_receive_state`（RECEIVE状態の有無：false の場合は常に DRIBBLE 姿勢を使用）

@@ -106,7 +106,9 @@ void DribbleControllerNode::load_parameters()
   dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 1.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
   dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.5);
-  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 3.5);
+  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 1.7);
+  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
+  current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
   shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
@@ -146,9 +148,12 @@ void DribbleControllerNode::load_parameters()
     feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0 ||
     dribbling_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
     opening_accel_factor_ <= 0.0 || !std::isfinite(dribbling_accel_factor_) ||
-    dribbling_accel_factor_ <= 0.0)
+    dribbling_accel_factor_ <= 0.0 || !std::isfinite(ball_detection_threshold_a_) ||
+    ball_detection_threshold_a_ < 0.0 || !std::isfinite(ball_lost_threshold_a_) ||
+    ball_lost_threshold_a_ < 0.0 || !std::isfinite(current_lpf_alpha_) ||
+    current_lpf_alpha_ <= 0.0 || current_lpf_alpha_ > 1.0)
   {
-    throw std::runtime_error("position parameters, durations, or velocities are invalid");
+    throw std::runtime_error("position parameters, durations, velocities, or ball detection parameters are invalid");
   }
   position_logical_id_ = static_cast<uint16_t>(position_logical_id);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
@@ -280,15 +285,24 @@ void DribbleControllerNode::vesc_state_callback(
   }
 
   if (msg->logical_id == roller_logical_id_) {
+    // ローラー電流値に一次ローパスフィルタを適用 (最新値係数: current_lpf_alpha_)
+    if (!roller_current_initialized_) {
+      filtered_roller_current_a_ = msg->current_a;
+      roller_current_initialized_ = true;
+    } else {
+      filtered_roller_current_a_ =
+        current_lpf_alpha_ * msg->current_a + (1.0 - current_lpf_alpha_) * filtered_roller_current_a_;
+    }
+
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
-    if (msg->current_a >= ball_detection_threshold_a_) {
+    if (filtered_roller_current_a_ >= ball_detection_threshold_a_) {
       ball_detected_counter_++;
       ball_lost_counter_ = 0;
       if (ball_detected_counter_ >= ball_detection_debounce_count_) {
         has_ball_ = true;
       }
-    } else if (msg->current_a <= 2.0) {
+    } else if (filtered_roller_current_a_ <= ball_lost_threshold_a_) {
       ball_lost_counter_++;
       ball_detected_counter_ = 0;
       if (ball_lost_counter_ >= ball_detection_debounce_count_) {
@@ -302,7 +316,8 @@ void DribbleControllerNode::vesc_state_callback(
     if (previous_has_ball != has_ball_) {
       if (has_ball_) {
         RCLCPP_INFO(
-          get_logger(), ">>> BALL DETECTED (Current: %.2f A) <<<", msg->current_a);
+          get_logger(), ">>> BALL DETECTED (Current: %.2f A, Filtered: %.2f A) <<<",
+          msg->current_a, filtered_roller_current_a_);
         if (!shot_cycle_active_ &&
           (position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE ||
           position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE))
@@ -317,7 +332,8 @@ void DribbleControllerNode::vesc_state_callback(
         }
       } else {
         RCLCPP_INFO(
-          get_logger(), "--- BALL LOST (Current: %.2f A) ---", msg->current_a);
+          get_logger(), "--- BALL LOST (Current: %.2f A, Filtered: %.2f A) ---",
+          msg->current_a, filtered_roller_current_a_);
         if (!shot_cycle_active_ &&
           (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE ||
           position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE))
@@ -405,33 +421,49 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       if (!std::isfinite(val)) {
         result.successful = false; result.reason = name + " must be finite"; return result;
       }
-      trajectory_changed = true;
+      if ((name == "ball_detection_threshold_a" || name == "ball_lost_threshold_a") && val < 0.0) {
+        result.successful = false; result.reason = name + " must be non-negative"; return result;
+      }
+      if (name == "current_lpf_alpha" && (val <= 0.0 || val > 1.0)) {
+        result.successful = false; result.reason = name + " must be in (0.0, 1.0]"; return result;
+      }
 
-      if (name == "receive_position_rad") {
-        receive_position_rad_ = val;
-      } else if (name == "dribble_position_rad") {
-        dribble_position_rad_ = val;
-      } else if (name == "open_position_rad") {
-        open_position_rad_ = val;
-      } else if (name == "feed_position_rad") {
-        feed_position_rad_ = val;
-      } else if (name == "open_duration_sec") {
-        open_duration_sec_ = val;
-      } else if (name == "feed_duration_sec") {
-        feed_duration_sec_ = val;
-      } else if (name == "opening_max_velocity_rad_s") {
-        opening_max_velocity_rad_s_ = val;
-      } else if (name == "feeding_max_velocity_rad_s") {
-        feeding_max_velocity_rad_s_ = val;
-      } else if (name == "returning_max_velocity_rad_s") {
-        returning_max_velocity_rad_s_ = val;
-      } else if (name == "dribbling_max_velocity_rad_s") {
-        dribbling_max_velocity_rad_s_ = val;
-      } else if (name == "opening_accel_factor") {
-        opening_accel_factor_ = val;
-      } else if (name == "dribbling_accel_factor") {
-        dribbling_accel_factor_ = val;
-      } else if (name == "belt_spinup_delay_sec") {belt_spinup_delay_sec_ = val;}
+      if (name == "ball_detection_threshold_a") {
+        ball_detection_threshold_a_ = val;
+      } else if (name == "ball_lost_threshold_a") {
+        ball_lost_threshold_a_ = val;
+      } else if (name == "current_lpf_alpha") {
+        current_lpf_alpha_ = val;
+      } else {
+        trajectory_changed = true;
+        if (name == "receive_position_rad") {
+          receive_position_rad_ = val;
+        } else if (name == "dribble_position_rad") {
+          dribble_position_rad_ = val;
+        } else if (name == "open_position_rad") {
+          open_position_rad_ = val;
+        } else if (name == "feed_position_rad") {
+          feed_position_rad_ = val;
+        } else if (name == "open_duration_sec") {
+          open_duration_sec_ = val;
+        } else if (name == "feed_duration_sec") {
+          feed_duration_sec_ = val;
+        } else if (name == "opening_max_velocity_rad_s") {
+          opening_max_velocity_rad_s_ = val;
+        } else if (name == "feeding_max_velocity_rad_s") {
+          feeding_max_velocity_rad_s_ = val;
+        } else if (name == "returning_max_velocity_rad_s") {
+          returning_max_velocity_rad_s_ = val;
+        } else if (name == "dribbling_max_velocity_rad_s") {
+          dribbling_max_velocity_rad_s_ = val;
+        } else if (name == "opening_accel_factor") {
+          opening_accel_factor_ = val;
+        } else if (name == "dribbling_accel_factor") {
+          dribbling_accel_factor_ = val;
+        } else if (name == "belt_spinup_delay_sec") {
+          belt_spinup_delay_sec_ = val;
+        }
+      }
     }
   }
 

@@ -59,7 +59,9 @@ private:
   double dribbling_max_velocity_rad_s_{1.0};
   double opening_accel_factor_{1.8};
   double dribbling_accel_factor_{1.5};
-  double ball_detection_threshold_a_{3.5};
+  double ball_detection_threshold_a_{1.7};
+  double ball_lost_threshold_a_{1.0};
+  double current_lpf_alpha_{0.3};
   int dribble_on_rpm_{800};
   int spring_fire_dribble_rpm_{600};
   int shot_cycle_opening_rpm_{800};
@@ -97,6 +99,8 @@ private:
   int current_filtered_roller_rpm_{0};
   bool belt_auto_started_{false};
   bool has_ball_{false};
+  double filtered_roller_current_a_{0.0};
+  bool roller_current_initialized_{false};
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{3};  // 連続3回(約600ms)の判定で確実化
