@@ -719,38 +719,38 @@ int DribbleControllerNode::roller_target_rpm() const
     // 逆回転モード: 一定の逆回転RPMを出力
     return -std::abs(dribble_reverse_rpm_);
   }
+  if (shot_cycle_active_) {
+    switch (shot_cycle_phase_) {
+      case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
+        return shot_cycle_opening_rpm_;
+      case robot_msgs::msg::ShotCycleState::OPENING:
+        return shot_cycle_opening_rpm_;
+      case robot_msgs::msg::ShotCycleState::FEEDING: {
+          // FEEDING 移動中、アーム角度が真下 (bottom_position_rad_) を通過するまでは回転数を 100% 維持
+          // 真下を通過して逆側 (FEED) へ向かう間に 0 RPM へ滑らかに減速
+          const double arm_pos = current_arm_position_rad_;
+          if (arm_pos < bottom_position_rad_) {
+            // まだ真下に到達していない（OPEN 姿勢から真下へ移動中）
+            return shot_cycle_opening_rpm_;
+          }
+          // 真下を通過して逆側の FEED へ進行中 -> 0 RPM へ減速
+          const double total_range = std::max(0.001, feed_position_rad_ - bottom_position_rad_);
+          const double progress =
+            std::clamp((arm_pos - bottom_position_rad_) / total_range, 0.0, 1.0);
+          return static_cast<int>(
+            shot_cycle_opening_rpm_ +
+            (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
+        }
+      case robot_msgs::msg::ShotCycleState::RETURNING:
+        return shot_cycle_returning_rpm_;
+    }
+  }
+
   if (!dribble_enabled_) {
     // 通常 OFF 時（何もしていない時）：当然 0 RPM（完全停止）
     return 0;
   }
-  if (!shot_cycle_active_) {
-    return dribble_on_rpm_;
-  }
 
-  switch (shot_cycle_phase_) {
-    case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
-      return dribble_on_rpm_;
-    case robot_msgs::msg::ShotCycleState::OPENING:
-      return shot_cycle_opening_rpm_;
-    case robot_msgs::msg::ShotCycleState::FEEDING: {
-        // FEEDING 移動中、アーム角度が真下 (bottom_position_rad_) を通過するまでは回転数を 100% 維持
-        // 真下を通過して逆側 (FEED) へ向かう間に 0 RPM へ滑らかに減速
-        const double arm_pos = current_arm_position_rad_;
-        if (arm_pos < bottom_position_rad_) {
-          // まだ真下に到達していない（OPEN 姿勢から真下へ移動中）
-          return shot_cycle_opening_rpm_;
-        }
-        // 真下を通過して逆側の FEED へ進行中 -> 0 RPM へ減速
-        const double total_range = std::max(0.001, feed_position_rad_ - bottom_position_rad_);
-        const double progress =
-          std::clamp((arm_pos - bottom_position_rad_) / total_range, 0.0, 1.0);
-        return static_cast<int>(
-          shot_cycle_opening_rpm_ +
-          (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
-      }
-    case robot_msgs::msg::ShotCycleState::RETURNING:
-      return shot_cycle_returning_rpm_;
-  }
   return dribble_on_rpm_;
 }
 

@@ -101,6 +101,7 @@ private:
   double current_arm_position_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
+  float roller_measured_rpm_{0.0f};
   float upper_belt_min_shot_rpm_{99999.0f};
   float under_belt_min_shot_rpm_{99999.0f};
 
