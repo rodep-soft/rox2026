@@ -17,6 +17,8 @@
 
 #include "nav_msgs/msg/odometry.hpp"
 
+#include "sensor_msgs/msg/joy.hpp"
+
 namespace robot_controller
 {
 
@@ -38,6 +40,7 @@ enum class Game1State : uint8_t
   FIRE_PASS_SPRING = 6,
   NAV_TO_START = 7,
   COMPLETED = 8,
+  TEST_SINGLE_WP = 9,          // 目標1つの移動テストモード
 };
 
 class Game1AutoNode : public rclcpp::Node
@@ -51,6 +54,7 @@ private:
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
 
   void publish_commands(
     const geometry_msgs::msg::Twist & cmd_vel,
@@ -67,6 +71,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr ball_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
@@ -82,6 +87,10 @@ private:
   double max_angular_vel_{1.0};
   double pos_tolerance_{0.08};
   double yaw_tolerance_{0.05};
+
+  // Test Mode Parameters
+  bool test_mode_{false};
+  Waypoint wp_test_{1.0, 0.0, 0.0};
 
   // State Variables
   Game1State state_{Game1State::STANDBY};

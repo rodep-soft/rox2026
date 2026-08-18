@@ -11,27 +11,49 @@ ekf_filter_node:
 
     # 1. 車輪オドメトリ (/wheel/odometry)
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
-    # 💡 鉄則: 車輪オドメトリからは「速度(vx, vy)」のみ融合し、位置の二重積分ドリフトを防止
+    #
+    # 設計方針: vx, vy のみ融合 (differential=false / absolute twist として扱う)
+    #   - pose (x,y,yaw) は使わない: ホイールオドメトリの位置は積分ドリフトがあり不正確
+    #   - vyaw は使わない: IMUジャイロ (imu0) を優先する
+    #   - 速度の covariance はオドメトリノードがスリップ検出に応じて動的に調整する
+    #
+    # odom0_relative: true — 起動時の odom フレーム絶対座標が不明なため、
+    #   差分 (Δvx, Δvy) として融合する。pose0 (AprilTag) の絶対座標と矛盾しない。
     odom0: /wheel/odometry
-    odom0_config: [false, false, false,    # x, y, z 位置 (速度から積分するため false)
+    odom0_config: [false, false, false,    # x, y, z 位置
                    false, false, false,    # roll, pitch, yaw 姿勢
-                   true,  true,  false,    # vx, vy 並進速度 (高精度融合)
-                   false, false, false,    # vyaw (旋回角速度はIMUを優先するため false)
+                   true,  true,  false,    # vx, vy 並進速度
+                   false, false, false,    # vyaw (IMUを優先)
                    false, false, false]    # 加速度
     odom0_differential: false
+    odom0_relative: true
     odom0_queue_size: 10
 
-    # 2. IMU センサ (/imu/data) - BNO055 9軸フュージョン
+
+    # 2. IMU センサ (/imu/data) - BNO055 NDOF (9軸フュージョン: ジャイロ+加速度計+磁気コンパス)
     # 構造: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
-    # 💡 鉄則: Yaw姿勢角と高精度ジャイロ角速度(vyaw)のみ融合。加速度による発散を完全防止
+    #
+    # 設計方針: yaw + vyaw の両方を融合する
+    #   - yaw (絶対姿勢): BNO055 NDOFは磁気北基準の絶対yawを出力する。長期ドリフト補正に有効。
+    #   - vyaw (角速度): ジャイロによる高周波・高精度な回転レート。短期精度に有効。
+    #   - 両方を使うことで「短期はジャイロ、長期は磁気コンパス」という理想的なフュージョンになる。
+    #
+    # imu0_relative: true — 起動時のyaw値を0とした差分で融合する。
+    #   これにより「起動時向き=0度」が維持されつつ、磁気北基準のドリフト補正が効く。
+    #   false にすると起動時の絶対磁気方位がEKFの初期yawになり、ゲームフィールドでの
+    #   絶対座標系と一致しない場合がある。
+    #
+    # ⚠️ 注意: BNO055の磁気コンパスはモーター・大電流ケーブル・鉄構造に敏感。
+    #   キャリブレーション状態 (mag_calib_status) を起動時に確認すること。
+    #   フィールド上で磁気干渉が大きい場合は yaw を false に戻して vyaw のみにする。
     imu0: /imu/data
     imu0_config: [false, false, false,    # 位置
-                  false, false, false,    # yaw (絶対角度は除外し、角速度vyawの連続積分に任せることで起動時の向きを100% 0度に固定)
+                  false, false, true,     # yaw (NDOFの磁気コンパス融合で長期ドリフト補正)
                   false, false, false,    # 線速度
-                  false, false, true,     # vyaw 旋回角速度 (ジャイロ融合: 常に安定)
+                  false, false, true,     # vyaw (ジャイロ: 短期精度・高周波応答)
                   false, false, false]    # 加速度
     imu0_differential: false
-    imu0_relative: false
+    imu0_relative: true                   # 起動時yaw=0を維持しつつ磁気コンパスでドリフト補正
     imu0_queue_size: 10
     imu0_remove_gravitational_acceleration: true
 
