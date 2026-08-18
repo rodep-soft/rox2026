@@ -45,6 +45,7 @@ private:
     double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
+  double receive_position_rad_{0.0};
   double dribble_position_rad_{0.35};
   double open_position_rad_{-1.0};
   double bottom_position_rad_{0.0};
@@ -69,21 +70,21 @@ private:
   uint16_t under_belt_logical_id_{11};
 
   // ── 状態変数 ────────────────────────────────────────
-  uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
+  uint8_t position_mode_{robot_msgs::msg::ArmPosition::RECEIVE};
   bool dribble_enabled_{false};
   bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
 
   bool manual_transition_active_{false};
   rclcpp::Time manual_transition_start_time_;
-  double manual_transition_start_position_rad_{0.35};
+  double manual_transition_start_position_rad_{0.0};
 
   bool shot_cycle_active_{false};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::OPENING};
   rclcpp::Time shot_cycle_start_time_;
-  double shot_cycle_start_position_rad_{0.35};
-  double last_position_command_rad_{0.35};
-  double current_arm_position_rad_{0.35};
+  double shot_cycle_start_position_rad_{0.0};
+  double last_position_command_rad_{0.0};
+  double current_arm_position_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
   float upper_belt_min_shot_rpm_{99999.0f};
