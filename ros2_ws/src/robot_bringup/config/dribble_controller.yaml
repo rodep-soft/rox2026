@@ -31,8 +31,8 @@
     
     # [A] 電流値によるボール検知しきい値
     ball_detection_threshold_a: 1.7 # 1.7A 以上でボール保持(BALL DETECTED)と判定
-    ball_lost_threshold_a: 1.0      # 1.0A 以下でボール喪失(BALL LOST)と判定
-    current_lpf_alpha: 0.3          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
+    ball_lost_threshold_a: 1.1      # 1.1A 以下でボール喪失(BALL LOST)と判定
+    current_lpf_alpha: 0.5          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
     
     # [ms] 指令再送周期
     command_period_ms: 10
