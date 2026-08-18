@@ -34,6 +34,8 @@ JoyControllerNode::JoyControllerNode()
   dribble_reverse_button_ = declare_parameter<int>("dribble_reverse_button", -1);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
+  slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
+  slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -51,6 +53,7 @@ JoyControllerNode::JoyControllerNode()
   if (!std::isfinite(max_vel_x_m_s_) || max_vel_x_m_s_ < 0.0 ||
     !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
     !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0 ||
+    !std::isfinite(slow_turn_scale_) || slow_turn_scale_ < 0.0 ||
     !std::isfinite(acceleration_x_m_s2_) || acceleration_x_m_s2_ <= 0.0 ||
     !std::isfinite(acceleration_y_m_s2_) || acceleration_y_m_s2_ <= 0.0 ||
     !std::isfinite(acceleration_yaw_rad_s2_) || acceleration_yaw_rad_s2_ <= 0.0 ||
@@ -163,12 +166,14 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     // パラメータ値の適用 (int / double 自動分岐)
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
-      if (val < 0 && name != "joy_timeout_ms" && name != "dribble_reverse_button") {
+      if (val < 0 && name != "joy_timeout_ms" && name != "dribble_reverse_button" &&
+        name != "slow_turn_button")
+      {
         result.successful = false;
         result.reason = name + " must be non-negative";
         return result;
       }
-      if (val < -1 && name == "dribble_reverse_button") {
+      if (val < -1 && (name == "dribble_reverse_button" || name == "slow_turn_button")) {
         result.successful = false;
         result.reason = name + " must be >= -1";
         return result;
@@ -183,6 +188,10 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         dribble_reverse_button_ = val;
       } else if (name == "game2_start_button") {
         game2_start_button_ = val;
+      } else if (name == "heading_hold_toggle_button") {
+        heading_hold_toggle_button_ = val;
+      } else if (name == "slow_turn_button") {
+        slow_turn_button_ = val;
       } else if (name == "left_trigger_axis") {
         left_trigger_axis_ = val;
       } else if (name == "right_trigger_axis") {
@@ -221,7 +230,11 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         deceleration_yaw_rad_s2_ = val;
       } else if (name == "axis_deadzone") {
         axis_deadzone_ = val;
-      } else if (name == "axis_on_threshold") {axis_on_threshold_ = val;}
+      } else if (name == "axis_on_threshold") {
+        axis_on_threshold_ = val;
+      } else if (name == "slow_turn_scale" || name == "slow_turn_ratio") {
+        slow_turn_scale_ = val;
+      }
     }
   }
 
@@ -443,10 +456,26 @@ void JoyControllerNode::loop_callback()
       raw_vy = -raw_vy;
     }
 
+    bool is_slow_turn_active = false;
+    if (slow_turn_button_ >= 0) {
+      if (is_button_down(joy_msg_, slow_turn_button_)) {
+        is_slow_turn_active = true;
+      } else if (slow_turn_button_ == 7 && is_r2_active) {
+        is_slow_turn_active = true;
+      } else if (slow_turn_button_ == 6 && is_l2_active) {
+        is_slow_turn_active = true;
+      }
+    }
+
+    double target_yaw = apply_axis_deadzone(raw_wz) * max_vel_z_rad_s_;
+    if (is_slow_turn_active) {
+      target_yaw *= slow_turn_scale_;
+    }
+
     publish_limited_velocity(
       apply_axis_deadzone(raw_vx) * max_vel_x_m_s_,
       apply_axis_deadzone(raw_vy) * max_vel_y_m_s_,
-      apply_axis_deadzone(raw_wz) * max_vel_z_rad_s_);
+      target_yaw);
   }
 
   last_joy_msg_ = joy_msg_;
