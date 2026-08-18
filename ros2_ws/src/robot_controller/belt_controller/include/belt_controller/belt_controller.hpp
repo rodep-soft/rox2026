@@ -22,6 +22,7 @@ public:
 private:
   static constexpr std::size_t num_levels = 4;
 
+  void load_parameters();
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -42,10 +43,14 @@ private:
   float last_underbelt_target_rpm_{0.0f};
   float last_upperbelt_target_rpm_{0.0f};
 
+  // ── パラメータ ──────────────────────────────────────
   std::array<int, num_levels> underbelt_rpms_{3000, 3500, 4000, 4500};
   std::array<int, num_levels> upperbelt_rpms_{3000, 3500, 4000, 4500};
+  int emergency_stop_period_ms_{50};
+  int qos_depth_{1};
   uint16_t underbelt_logical_id_{11};
   uint16_t upperbelt_logical_id_{10};
+  std::string target_array_topic_{"/vesc/target_array"};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
