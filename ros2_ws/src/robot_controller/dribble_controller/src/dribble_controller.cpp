@@ -56,6 +56,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_enabled", command_qos,
     std::bind(&DribbleControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
+  dribble_reverse_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/command_reverse", command_qos,
+    std::bind(&DribbleControllerNode::dribble_reverse_callback, this, std::placeholders::_1));
+
   spring_decel_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/spring_decel", command_qos,
     std::bind(&DribbleControllerNode::spring_decel_callback, this, std::placeholders::_1));
@@ -92,6 +96,8 @@ DribbleControllerNode::DribbleControllerNode()
 
 void DribbleControllerNode::load_parameters()
 {
+  enable_receive_state_ = declare_parameter<bool>("enable_receive_state", true);
+  receive_position_rad_ = declare_parameter<double>("receive_position_rad", 0.0);
   dribble_position_rad_ = declare_parameter<double>("dribble_position_rad", 0.35);
   open_position_rad_ = declare_parameter<double>("open_position_rad", -1.0);
   bottom_position_rad_ = declare_parameter<double>("bottom_position_rad", 0.0);
@@ -101,9 +107,17 @@ void DribbleControllerNode::load_parameters()
   opening_max_velocity_rad_s_ = declare_parameter<double>("opening_max_velocity_rad_s", 4.0);
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
+  dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 1.0);
+  receiving_max_velocity_rad_s_ = declare_parameter<double>("receiving_max_velocity_rad_s", 1.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
-  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 3.5);
+  dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.5);
+  receiving_accel_factor_ = declare_parameter<double>("receiving_accel_factor", 1.5);
+  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 1.7);
+  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
+  current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
+  dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
+  dribble_reverse_ramp_sec_ = declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
   shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
   shot_cycle_returning_rpm_ = declare_parameter<int>("shot_cycle_returning_rpm", 800);
@@ -120,7 +134,7 @@ void DribbleControllerNode::load_parameters()
   {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
-  if (dribble_on_rpm_ < 0 || shot_cycle_opening_rpm_ < 0 ||
+  if (dribble_on_rpm_ < 0 || dribble_reverse_rpm_ < 0 || shot_cycle_opening_rpm_ < 0 ||
     shot_cycle_feeding_rpm_ < 0 || shot_cycle_returning_rpm_ < 0)
   {
     throw std::runtime_error("roller RPM parameters must be nonnegative");
@@ -131,40 +145,76 @@ void DribbleControllerNode::load_parameters()
   if (belt_spinup_delay_sec_ < 0.0) {
     throw std::runtime_error("belt_spinup_delay_sec must be nonnegative");
   }
-  if (!std::isfinite(dribble_position_rad_) || !std::isfinite(open_position_rad_) ||
+  if (!std::isfinite(receive_position_rad_) || !std::isfinite(dribble_position_rad_) ||
+    !std::isfinite(open_position_rad_) ||
     !std::isfinite(feed_position_rad_) || !std::isfinite(open_duration_sec_) ||
     !std::isfinite(feed_duration_sec_) || open_duration_sec_ < 0.0 ||
-    feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
+    feed_duration_sec_ < 0.0 || !std::isfinite(dribble_reverse_ramp_sec_) ||
+    dribble_reverse_ramp_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
-    !std::isfinite(returning_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
-    feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0)
+    !std::isfinite(returning_max_velocity_rad_s_) ||
+    !std::isfinite(dribbling_max_velocity_rad_s_) ||
+    !std::isfinite(receiving_max_velocity_rad_s_) ||
+    opening_max_velocity_rad_s_ <= 0.0 || feeding_max_velocity_rad_s_ <= 0.0 ||
+    returning_max_velocity_rad_s_ <= 0.0 || dribbling_max_velocity_rad_s_ <= 0.0 ||
+    receiving_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
+    opening_accel_factor_ <= 0.0 || !std::isfinite(dribbling_accel_factor_) ||
+    dribbling_accel_factor_ <= 0.0 || !std::isfinite(receiving_accel_factor_) ||
+    receiving_accel_factor_ <= 0.0 || !std::isfinite(ball_detection_threshold_a_) ||
+    ball_detection_threshold_a_ < 0.0 || !std::isfinite(ball_lost_threshold_a_) ||
+    ball_lost_threshold_a_ < 0.0 || !std::isfinite(current_lpf_alpha_) ||
+    current_lpf_alpha_ <= 0.0 || current_lpf_alpha_ > 1.0)
   {
-    throw std::runtime_error("position parameters, durations, or velocities are invalid");
+    throw std::runtime_error(
+            "position parameters, durations, velocities, or ball detection parameters are invalid");
   }
   position_logical_id_ = static_cast<uint16_t>(position_logical_id);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
   upper_belt_logical_id_ = static_cast<uint16_t>(upper_belt_logical_id);
   under_belt_logical_id_ = static_cast<uint16_t>(under_belt_logical_id);
-  last_position_command_rad_ = dribble_position_rad_;
+  position_mode_ = enable_receive_state_ ?
+    robot_msgs::msg::ArmPosition::RECEIVE : robot_msgs::msg::ArmPosition::DRIBBLE;
+  last_position_command_rad_ = enable_receive_state_ ?
+    receive_position_rad_ : dribble_position_rad_;
 }
 
 void DribbleControllerNode::position_mode_callback(
   const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  if (msg->position > robot_msgs::msg::ArmPosition::FEED) {return;}
+  if (msg->position > robot_msgs::msg::ArmPosition::RECEIVE) {return;}
 
-  if (msg->position != position_mode_ || shot_cycle_active_) {
+  uint8_t target_mode = msg->position;
+  if (!enable_receive_state_ && target_mode == robot_msgs::msg::ArmPosition::RECEIVE) {
+    target_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+  }
+  if (target_mode == robot_msgs::msg::ArmPosition::DRIBBLE && !has_ball_) {
+    if (enable_receive_state_) {
+      target_mode = robot_msgs::msg::ArmPosition::RECEIVE;
+    }
+  }
+
+  if (target_mode != position_mode_ || shot_cycle_active_) {
     shot_cycle_active_ = false;
     manual_transition_active_ = true;
     manual_transition_start_time_ = now();
     manual_transition_start_position_rad_ = last_position_command_rad_;
-    position_mode_ = msg->position;
+    position_mode_ = target_mode;
   }
 }
 
 void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   dribble_enabled_ = msg->data;
+}
+
+void DribbleControllerNode::dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data != dribble_reverse_enabled_) {
+    dribble_reverse_enabled_ = msg->data;
+    reverse_transition_active_ = true;
+    reverse_transition_start_time_ = now();
+    reverse_transition_start_rpm_ = current_filtered_roller_rpm_;
+  }
 }
 
 void DribbleControllerNode::spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -211,6 +261,8 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
     if (msg->data) {
       shot_cycle_active_ = false;
       manual_transition_active_ = false;
+      reverse_transition_active_ = false;
+      current_filtered_roller_rpm_ = 0;
       RCLCPP_WARN(
         get_logger(),
         "Emergency stop activated in dribble controller");
@@ -258,15 +310,25 @@ void DribbleControllerNode::vesc_state_callback(
   }
 
   if (msg->logical_id == roller_logical_id_) {
+    // ローラー電流値に一次ローパスフィルタを適用 (最新値係数: current_lpf_alpha_)
+    if (!roller_current_initialized_) {
+      filtered_roller_current_a_ = msg->current_a;
+      roller_current_initialized_ = true;
+    } else {
+      filtered_roller_current_a_ =
+        current_lpf_alpha_ * msg->current_a + (1.0 - current_lpf_alpha_) *
+        filtered_roller_current_a_;
+    }
+
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
-    if (msg->current_a >= ball_detection_threshold_a_) {
+    if (filtered_roller_current_a_ >= ball_detection_threshold_a_) {
       ball_detected_counter_++;
       ball_lost_counter_ = 0;
       if (ball_detected_counter_ >= ball_detection_debounce_count_) {
         has_ball_ = true;
       }
-    } else if (msg->current_a <= 2.0) {
+    } else if (filtered_roller_current_a_ <= ball_lost_threshold_a_) {
       ball_lost_counter_++;
       ball_detected_counter_ = 0;
       if (ball_lost_counter_ >= ball_detection_debounce_count_) {
@@ -280,10 +342,40 @@ void DribbleControllerNode::vesc_state_callback(
     if (previous_has_ball != has_ball_) {
       if (has_ball_) {
         RCLCPP_INFO(
-          get_logger(), ">>> BALL DETECTED (Current: %.2f A) <<<", msg->current_a);
+          get_logger(), ">>> BALL DETECTED (Current: %.2f A, Filtered: %.2f A) <<<",
+          msg->current_a, filtered_roller_current_a_);
+        if (!shot_cycle_active_ &&
+          (position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE ||
+          position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE))
+        {
+          if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
+            position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+            manual_transition_active_ = true;
+            manual_transition_start_time_ = now();
+            manual_transition_start_position_rad_ = last_position_command_rad_;
+            RCLCPP_INFO(get_logger(), "Ball detected -> Transitioning to DRIBBLE position");
+          }
+        }
       } else {
         RCLCPP_INFO(
-          get_logger(), "--- BALL LOST (Current: %.2f A) ---", msg->current_a);
+          get_logger(), "--- BALL LOST (Current: %.2f A, Filtered: %.2f A) ---",
+          msg->current_a, filtered_roller_current_a_);
+        if (!shot_cycle_active_ &&
+          (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE ||
+          position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE))
+        {
+          const uint8_t lost_target_mode = enable_receive_state_ ?
+            robot_msgs::msg::ArmPosition::RECEIVE : robot_msgs::msg::ArmPosition::DRIBBLE;
+          if (position_mode_ != lost_target_mode) {
+            position_mode_ = lost_target_mode;
+            manual_transition_active_ = true;
+            manual_transition_start_time_ = now();
+            manual_transition_start_position_rad_ = last_position_command_rad_;
+            RCLCPP_INFO(
+              get_logger(), "Ball lost -> Transitioning to %s position",
+              enable_receive_state_ ? "RECEIVE" : "DRIBBLE");
+          }
+        }
       }
     }
 
@@ -313,13 +405,36 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       return result;
     }
 
-    if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
+      if (name == "enable_receive_state") {
+        const bool new_val = param.as_bool();
+        if (new_val != enable_receive_state_) {
+          enable_receive_state_ = new_val;
+          trajectory_changed = true;
+          if (!enable_receive_state_ && position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE) {
+            position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+            manual_transition_active_ = true;
+            manual_transition_start_time_ = now();
+            manual_transition_start_position_rad_ = last_position_command_rad_;
+          } else if (enable_receive_state_ && !has_ball_ &&
+            position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE)
+          {
+            position_mode_ = robot_msgs::msg::ArmPosition::RECEIVE;
+            manual_transition_active_ = true;
+            manual_transition_start_time_ = now();
+            manual_transition_start_position_rad_ = last_position_command_rad_;
+          }
+        }
+      }
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
       if (val < 0) {
         result.successful = false; result.reason = name + " must be non-negative"; return result;
       }
       if (name == "dribble_on_rpm") {
         dribble_on_rpm_ = val;
+      } else if (name == "dribble_reverse_rpm") {
+        dribble_reverse_rpm_ = val;
       } else if (name == "shot_cycle_opening_rpm") {
         shot_cycle_opening_rpm_ = val;
       } else if (name == "shot_cycle_feeding_rpm") {
@@ -334,25 +449,58 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       if (!std::isfinite(val)) {
         result.successful = false; result.reason = name + " must be finite"; return result;
       }
-      trajectory_changed = true;
+      if ((name == "ball_detection_threshold_a" || name == "ball_lost_threshold_a") && val < 0.0) {
+        result.successful = false; result.reason = name + " must be non-negative"; return result;
+      }
+      if (name == "current_lpf_alpha" && (val <= 0.0 || val > 1.0)) {
+        result.successful = false; result.reason = name + " must be in (0.0, 1.0]"; return result;
+      }
 
-      if (name == "dribble_position_rad") {
-        dribble_position_rad_ = val;
-      } else if (name == "open_position_rad") {
-        open_position_rad_ = val;
-      } else if (name == "feed_position_rad") {
-        feed_position_rad_ = val;
-      } else if (name == "open_duration_sec") {
-        open_duration_sec_ = val;
-      } else if (name == "feed_duration_sec") {
-        feed_duration_sec_ = val;
-      } else if (name == "opening_max_velocity_rad_s") {
-        opening_max_velocity_rad_s_ = val;
-      } else if (name == "feeding_max_velocity_rad_s") {
-        feeding_max_velocity_rad_s_ = val;
-      } else if (name == "returning_max_velocity_rad_s") {
-        returning_max_velocity_rad_s_ = val;
-      } else if (name == "belt_spinup_delay_sec") {belt_spinup_delay_sec_ = val;}
+      if (name == "ball_detection_threshold_a") {
+        ball_detection_threshold_a_ = val;
+      } else if (name == "ball_lost_threshold_a") {
+        ball_lost_threshold_a_ = val;
+      } else if (name == "current_lpf_alpha") {
+        current_lpf_alpha_ = val;
+      } else if (name == "dribble_reverse_ramp_sec") {
+        if (val < 0.0) {
+          result.successful = false; result.reason = name + " must be nonnegative"; return result;
+        }
+        dribble_reverse_ramp_sec_ = val;
+      } else {
+        trajectory_changed = true;
+        if (name == "receive_position_rad") {
+          receive_position_rad_ = val;
+        } else if (name == "dribble_position_rad") {
+          dribble_position_rad_ = val;
+        } else if (name == "open_position_rad") {
+          open_position_rad_ = val;
+        } else if (name == "feed_position_rad") {
+          feed_position_rad_ = val;
+        } else if (name == "open_duration_sec") {
+          open_duration_sec_ = val;
+        } else if (name == "feed_duration_sec") {
+          feed_duration_sec_ = val;
+        } else if (name == "opening_max_velocity_rad_s") {
+          opening_max_velocity_rad_s_ = val;
+        } else if (name == "feeding_max_velocity_rad_s") {
+          feeding_max_velocity_rad_s_ = val;
+        } else if (name == "returning_max_velocity_rad_s") {
+          returning_max_velocity_rad_s_ = val;
+        } else if (name == "dribbling_max_velocity_rad_s") {
+          dribbling_max_velocity_rad_s_ = val;
+        } else if (name == "receiving_max_velocity_rad_s") {
+          receiving_max_velocity_rad_s_ = val;
+        } else if (name == "opening_accel_factor") {
+          opening_accel_factor_ = val;
+        } else if (name == "dribbling_accel_factor") {
+          dribbling_accel_factor_ = val;
+        } else if (name == "receiving_accel_factor") {
+          receiving_accel_factor_ = val;
+        } else if (name == "belt_spinup_delay_sec") {
+          belt_spinup_delay_sec_ = val;
+        }
+      }
     }
   }
 
@@ -377,14 +525,31 @@ void DribbleControllerNode::control_timer_callback()
 {
   publish_shot_cycle_state();
   const int target_rpm = roller_target_rpm();
-  // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
-  constexpr int max_rpm_step = 150;
-  if (current_filtered_roller_rpm_ < target_rpm) {
-    current_filtered_roller_rpm_ =
-      std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
-  } else if (current_filtered_roller_rpm_ > target_rpm) {
-    current_filtered_roller_rpm_ =
-      std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+  if (emergency_stop_active_) {
+    current_filtered_roller_rpm_ = 0;
+    reverse_transition_active_ = false;
+  } else if (reverse_transition_active_) {
+    const double elapsed_sec = (now() - reverse_transition_start_time_).seconds();
+    const double ramp_duration = std::max(0.001, dribble_reverse_ramp_sec_);
+    const double progress = std::clamp(elapsed_sec / ramp_duration, 0.0, 1.0);
+    current_filtered_roller_rpm_ = static_cast<int>(
+      std::round(
+        reverse_transition_start_rpm_ + (target_rpm - reverse_transition_start_rpm_) *
+        progress));
+    if (elapsed_sec >= ramp_duration) {
+      reverse_transition_active_ = false;
+      current_filtered_roller_rpm_ = target_rpm;
+    }
+  } else {
+    // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
+    constexpr int max_rpm_step = 150;
+    if (current_filtered_roller_rpm_ < target_rpm) {
+      current_filtered_roller_rpm_ =
+        std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+    } else if (current_filtered_roller_rpm_ > target_rpm) {
+      current_filtered_roller_rpm_ =
+        std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+    }
   }
 
   actuator_msgs::msg::ActuatorTarget roller_command;
@@ -397,8 +562,10 @@ void DribbleControllerNode::control_timer_callback()
     manual_transition_active_ = false;
     actuator_msgs::msg::ActuatorTarget position_command;
     position_command.logical_id = position_logical_id_;
-    position_command.target = static_cast<float>(dribble_position_rad_);
-    last_position_command_rad_ = dribble_position_rad_;
+    const double estop_target_rad =
+      (has_ball_ || !enable_receive_state_) ? dribble_position_rad_ : receive_position_rad_;
+    position_command.target = static_cast<float>(estop_target_rad);
+    last_position_command_rad_ = estop_target_rad;
     position_command_pub_->publish(position_command);
     return;
   }
@@ -408,19 +575,27 @@ void DribbleControllerNode::control_timer_callback()
   if (manual_transition_active_ && !shot_cycle_active_) {
     const double mode_target_rad = target_position_rad();
     double max_vel_rad_s = returning_max_velocity_rad_s_;
+    double accel_factor = 1.0;
     if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
       max_vel_rad_s = opening_max_velocity_rad_s_;
+      accel_factor = opening_accel_factor_;
     } else if (position_mode_ == robot_msgs::msg::ArmPosition::FEED) {
       max_vel_rad_s = feeding_max_velocity_rad_s_;
+    } else if (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
+      max_vel_rad_s = dribbling_max_velocity_rad_s_;
+      accel_factor = dribbling_accel_factor_;
+    } else if (position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE) {
+      max_vel_rad_s = receiving_max_velocity_rad_s_;
+      accel_factor = receiving_accel_factor_;
     }
 
     const double elapsed_sec =
       (now() - manual_transition_start_time_).seconds();
     const double move_duration_sec = transition_duration_sec(
-      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s);
+      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s, accel_factor);
     position_command_rad = interpolated_position_rad(
       manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
-      max_vel_rad_s);
+      max_vel_rad_s, accel_factor);
     if (elapsed_sec >= move_duration_sec) {
       manual_transition_active_ = false;
       position_command_rad = mode_target_rad;
@@ -448,7 +623,12 @@ void DribbleControllerNode::control_timer_callback()
           belt_spinup_delay_sec_, upper_belt_measured_rpm_, under_belt_measured_rpm_);
       }
     } else {
-      double phase_target_rad = dribble_position_rad_;
+      const uint8_t return_mode = enable_receive_state_ ?
+        robot_msgs::msg::ArmPosition::RECEIVE : robot_msgs::msg::ArmPosition::DRIBBLE;
+      const double return_target_rad = enable_receive_state_ ?
+        receive_position_rad_ : dribble_position_rad_;
+
+      double phase_target_rad = return_target_rad;
       double phase_max_vel_rad_s = returning_max_velocity_rad_s_;
       double hold_duration_sec = 0.0;
 
@@ -466,7 +646,9 @@ void DribbleControllerNode::control_timer_callback()
           hold_duration_sec = feed_duration_sec_;
           break;
         case robot_msgs::msg::ShotCycleState::RETURNING:
-          position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+          position_mode_ = return_mode;
+          phase_target_rad = return_target_rad;
+          phase_max_vel_rad_s = returning_max_velocity_rad_s_;
           break;
         default:
           break;
@@ -493,11 +675,15 @@ void DribbleControllerNode::control_timer_callback()
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
           RCLCPP_INFO(
             get_logger(),
-            "Shot Cycle: FEED -> DRIBBLE | Shot Impact Min Belt RPM -> Upper: %.1f RPM, Under: %.1f RPM",
+            "Shot Cycle: FEED -> RETURNING | Shot Impact Min Belt RPM -> Upper: %.1f RPM, Under: %.1f RPM",
             upper_belt_min_shot_rpm_ == 99999.0f ? 0.0f : upper_belt_min_shot_rpm_,
             under_belt_min_shot_rpm_ == 99999.0f ? 0.0f : under_belt_min_shot_rpm_);
         } else {
           shot_cycle_active_ = false;
+          has_ball_ = false;
+          ball_detected_counter_ = 0;
+          ball_lost_counter_ = ball_detection_debounce_count_;
+          position_mode_ = return_mode;
           if (belt_auto_started_) {
             belt_auto_started_ = false;
             robot_msgs::msg::BeltMode belt_msg;
@@ -505,7 +691,9 @@ void DribbleControllerNode::control_timer_callback()
             belt_mode_pub_->publish(belt_msg);
             RCLCPP_INFO(get_logger(), "Shot Cycle Completed: Belt auto-stopped");
           }
-          RCLCPP_INFO(get_logger(), "Shot Cycle Completed: Returned to DRIBBLE");
+          RCLCPP_INFO(
+            get_logger(), "Shot Cycle Completed: Returned to %s",
+            enable_receive_state_ ? "RECEIVE" : "DRIBBLE");
         }
       }
     }
@@ -526,6 +714,10 @@ int DribbleControllerNode::roller_target_rpm() const
   if (spring_decel_active_) {
     // ばね発射シーケンス中のみ：300 RPM へ滑らか減速してボール案内
     return spring_fire_dribble_rpm_;
+  }
+  if (dribble_reverse_enabled_) {
+    // 逆回転モード: 一定の逆回転RPMを出力
+    return -std::abs(dribble_reverse_rpm_);
   }
   if (!dribble_enabled_) {
     // 通常 OFF 時（何もしていない時）：当然 0 RPM（完全停止）
@@ -576,6 +768,9 @@ double DribbleControllerNode::target_position_rad() const
       return open_position_rad_;
     case robot_msgs::msg::ArmPosition::FEED:
       return feed_position_rad_;
+    case robot_msgs::msg::ArmPosition::RECEIVE:
+      return enable_receive_state_ ? receive_position_rad_ : dribble_position_rad_;
+    case robot_msgs::msg::ArmPosition::DRIBBLE:
     default:
       return dribble_position_rad_;
   }

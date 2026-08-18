@@ -13,8 +13,10 @@
     right_trigger_axis: 4
     circle_button: 2
 
-    # R1でdribble回転をON/OFFする
+    # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
+    # L1でdribble逆回転をON/OFFする (トグル)
+    dribble_reverse_button: 4
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
