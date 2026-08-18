@@ -86,6 +86,8 @@ public:
   explicit AutoGame1Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   virtual ~AutoGame1Node() = default;
 
+  friend class AutoGame1NodeTest;
+
 private:
   // 1. Parameter宣言・取得
   void declare_parameters();

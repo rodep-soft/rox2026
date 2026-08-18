@@ -62,6 +62,29 @@ install(DIRECTORY include/
   DESTINATION include
 )
 
-# Testing section (omitted)
+# Testing section
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_auto_game1_logic
+    test/test_auto_game1_logic.cpp
+    src/auto_game1_node.cpp
+  )
+  target_include_directories(test_auto_game1_logic PRIVATE include)
+  ament_target_dependencies(test_auto_game1_logic
+    rclcpp rclcpp_action std_msgs geometry_msgs sensor_msgs nav2_msgs tf2 tf2_ros tf2_geometry_msgs
+  )
+  target_link_libraries(test_auto_game1_logic "${cpp_typesupport_target}")
+
+  ament_add_gtest(test_state_machine
+    test/test_state_machine.cpp
+    src/auto_game1_node.cpp
+  )
+  target_include_directories(test_state_machine PRIVATE include)
+  ament_target_dependencies(test_state_machine
+    rclcpp rclcpp_action std_msgs geometry_msgs sensor_msgs nav2_msgs tf2 tf2_ros tf2_geometry_msgs
+  )
+  target_link_libraries(test_state_machine "${cpp_typesupport_target}")
+endif()
 
 ament_package()
