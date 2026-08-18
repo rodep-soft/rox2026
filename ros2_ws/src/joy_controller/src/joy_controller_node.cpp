@@ -31,7 +31,7 @@ JoyControllerNode::JoyControllerNode()
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
-  dribble_reverse_button_ = declare_parameter<int>("dribble_reverse_button", 4);
+  dribble_reverse_button_ = declare_parameter<int>("dribble_reverse_button", -1);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
 
@@ -163,9 +163,14 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     // パラメータ値の適用 (int / double 自動分岐)
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
-      if (val < 0 && name != "joy_timeout_ms") {
+      if (val < 0 && name != "joy_timeout_ms" && name != "dribble_reverse_button") {
         result.successful = false;
         result.reason = name + " must be non-negative";
+        return result;
+      }
+      if (val < -1 && name == "dribble_reverse_button") {
+        result.successful = false;
+        result.reason = name + " must be >= -1";
         return result;
       }
       if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "ps_button") {
@@ -300,8 +305,8 @@ void JoyControllerNode::loop_callback()
     publish_dribble_enabled(dribble_enabled_);
   }
 
-  // 3b. ドリブル逆回転ON/OFF (L1)
-  if (is_button_just_pressed(joy_msg_, dribble_reverse_button_)) {
+  // 3b. ドリブル逆回転ON/OFF (未割り当てでない場合)
+  if (dribble_reverse_button_ >= 0 && is_button_just_pressed(joy_msg_, dribble_reverse_button_)) {
     dribble_reversed_ = !dribble_reversed_;
     if (dribble_reversed_) {
       dribble_enabled_ = false;

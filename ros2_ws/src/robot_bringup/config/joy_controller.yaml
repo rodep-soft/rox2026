@@ -15,8 +15,8 @@
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
-    # L1でdribble逆回転をON/OFFする (トグル)
-    dribble_reverse_button: 4
+    # ドリブル逆回転 (ボタン割り当て解除: -1)
+    dribble_reverse_button: -1
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
