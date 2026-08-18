@@ -104,8 +104,10 @@ void DribbleControllerNode::load_parameters()
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
   dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 1.0);
+  receiving_max_velocity_rad_s_ = declare_parameter<double>("receiving_max_velocity_rad_s", 1.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
   dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.5);
+  receiving_accel_factor_ = declare_parameter<double>("receiving_accel_factor", 1.5);
   ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 1.7);
   ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
   current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
@@ -144,11 +146,13 @@ void DribbleControllerNode::load_parameters()
     feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
     !std::isfinite(returning_max_velocity_rad_s_) ||
-    !std::isfinite(dribbling_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
-    feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0 ||
-    dribbling_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
+    !std::isfinite(dribbling_max_velocity_rad_s_) || !std::isfinite(receiving_max_velocity_rad_s_) ||
+    opening_max_velocity_rad_s_ <= 0.0 || feeding_max_velocity_rad_s_ <= 0.0 ||
+    returning_max_velocity_rad_s_ <= 0.0 || dribbling_max_velocity_rad_s_ <= 0.0 ||
+    receiving_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
     opening_accel_factor_ <= 0.0 || !std::isfinite(dribbling_accel_factor_) ||
-    dribbling_accel_factor_ <= 0.0 || !std::isfinite(ball_detection_threshold_a_) ||
+    dribbling_accel_factor_ <= 0.0 || !std::isfinite(receiving_accel_factor_) ||
+    receiving_accel_factor_ <= 0.0 || !std::isfinite(ball_detection_threshold_a_) ||
     ball_detection_threshold_a_ < 0.0 || !std::isfinite(ball_lost_threshold_a_) ||
     ball_lost_threshold_a_ < 0.0 || !std::isfinite(current_lpf_alpha_) ||
     current_lpf_alpha_ <= 0.0 || current_lpf_alpha_ > 1.0)
@@ -458,10 +462,14 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
           returning_max_velocity_rad_s_ = val;
         } else if (name == "dribbling_max_velocity_rad_s") {
           dribbling_max_velocity_rad_s_ = val;
+        } else if (name == "receiving_max_velocity_rad_s") {
+          receiving_max_velocity_rad_s_ = val;
         } else if (name == "opening_accel_factor") {
           opening_accel_factor_ = val;
         } else if (name == "dribbling_accel_factor") {
           dribbling_accel_factor_ = val;
+        } else if (name == "receiving_accel_factor") {
+          receiving_accel_factor_ = val;
         } else if (name == "belt_spinup_delay_sec") {
           belt_spinup_delay_sec_ = val;
         }
@@ -532,6 +540,9 @@ void DribbleControllerNode::control_timer_callback()
     } else if (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
       max_vel_rad_s = dribbling_max_velocity_rad_s_;
       accel_factor = dribbling_accel_factor_;
+    } else if (position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE) {
+      max_vel_rad_s = receiving_max_velocity_rad_s_;
+      accel_factor = receiving_accel_factor_;
     }
 
     const double elapsed_sec =

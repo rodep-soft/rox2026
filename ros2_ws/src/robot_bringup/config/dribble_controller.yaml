@@ -21,6 +21,8 @@
     returning_max_velocity_rad_s: 6.0 # FEED -> RECEIVE
     dribbling_max_velocity_rad_s: 1.0 # RECEIVE -> DRIBBLE (捕球後にボールを落とさず滑らかに保持姿勢へ移行)
     dribbling_accel_factor: 1.5       # DRIBBLE 遷移の加速緩やかさ倍率
+    receiving_max_velocity_rad_s: 1.0 # DRIBBLE -> RECEIVE (ボール喪失後などに滑らかに迎える姿勢へ移行)
+    receiving_accel_factor: 1.5       # RECEIVE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1320

@@ -70,8 +70,10 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `feeding_max_velocity_rad_s`
 - `returning_max_velocity_rad_s`
 - `dribbling_max_velocity_rad_s`
+- `receiving_max_velocity_rad_s`（DRIBBLE -> RECEIVE の移動最大角速度[rad/s]）
 - `opening_accel_factor`
 - `dribbling_accel_factor`
+- `receiving_accel_factor`（RECEIVE 遷移の加速緩やかさ倍率）
 
 更新値はまとめて検証される。位置は有限値、保持時間とRPMは0以上、区間速度は正の
 有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は、現在の
