@@ -374,7 +374,9 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
             manual_transition_active_ = true;
             manual_transition_start_time_ = now();
             manual_transition_start_position_rad_ = last_position_command_rad_;
-          } else if (enable_receive_state_ && !has_ball_ && position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
+          } else if (enable_receive_state_ && !has_ball_ &&
+            position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE)
+          {
             position_mode_ = robot_msgs::msg::ArmPosition::RECEIVE;
             manual_transition_active_ = true;
             manual_transition_start_time_ = now();
