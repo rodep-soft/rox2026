@@ -66,6 +66,7 @@ private:
   double ball_lost_threshold_a_{1.0};
   double current_lpf_alpha_{0.3};
   int dribble_on_rpm_{800};
+  int dribble_receive_rpm_{500};
   int dribble_reverse_rpm_{800};
   double dribble_reverse_ramp_sec_{2.0};
   int spring_fire_dribble_rpm_{600};
@@ -92,6 +93,7 @@ private:
   bool manual_transition_active_{false};
   rclcpp::Time manual_transition_start_time_;
   double manual_transition_start_position_rad_{0.0};
+  int manual_transition_start_rpm_{0};
 
   bool shot_cycle_active_{false};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::OPENING};

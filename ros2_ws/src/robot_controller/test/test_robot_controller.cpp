@@ -250,6 +250,9 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
+  const auto recv_rpm_update =
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", 900));
+  ASSERT_TRUE(recv_rpm_update.successful);
   const auto rev_rpm_update =
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", 750));
   ASSERT_TRUE(rev_rpm_update.successful);
@@ -258,6 +261,8 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   ASSERT_TRUE(ramp_sec_update.successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", -1)).successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", -1)).successful);
   EXPECT_FALSE(
