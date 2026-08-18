@@ -153,7 +153,8 @@ void DribbleControllerNode::load_parameters()
     dribble_reverse_ramp_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
     !std::isfinite(returning_max_velocity_rad_s_) ||
-    !std::isfinite(dribbling_max_velocity_rad_s_) || !std::isfinite(receiving_max_velocity_rad_s_) ||
+    !std::isfinite(dribbling_max_velocity_rad_s_) ||
+    !std::isfinite(receiving_max_velocity_rad_s_) ||
     opening_max_velocity_rad_s_ <= 0.0 || feeding_max_velocity_rad_s_ <= 0.0 ||
     returning_max_velocity_rad_s_ <= 0.0 || dribbling_max_velocity_rad_s_ <= 0.0 ||
     receiving_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
@@ -532,7 +533,9 @@ void DribbleControllerNode::control_timer_callback()
     const double ramp_duration = std::max(0.001, dribble_reverse_ramp_sec_);
     const double progress = std::clamp(elapsed_sec / ramp_duration, 0.0, 1.0);
     current_filtered_roller_rpm_ = static_cast<int>(
-      std::round(reverse_transition_start_rpm_ + (target_rpm - reverse_transition_start_rpm_) * progress));
+      std::round(
+        reverse_transition_start_rpm_ + (target_rpm - reverse_transition_start_rpm_) *
+        progress));
     if (elapsed_sec >= ramp_duration) {
       reverse_transition_active_ = false;
       current_filtered_roller_rpm_ = target_rpm;
