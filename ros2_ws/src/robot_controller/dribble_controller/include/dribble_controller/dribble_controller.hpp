@@ -55,7 +55,9 @@ private:
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
+  double dribbling_max_velocity_rad_s_{1.0};
   double opening_accel_factor_{1.8};
+  double dribbling_accel_factor_{1.5};
   double ball_detection_threshold_a_{3.5};
   int dribble_on_rpm_{800};
   int spring_fire_dribble_rpm_{600};

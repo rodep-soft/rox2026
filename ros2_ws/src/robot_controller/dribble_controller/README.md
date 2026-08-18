@@ -65,6 +65,9 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `opening_max_velocity_rad_s`
 - `feeding_max_velocity_rad_s`
 - `returning_max_velocity_rad_s`
+- `dribbling_max_velocity_rad_s`
+- `opening_accel_factor`
+- `dribbling_accel_factor`
 
 更新値はまとめて検証される。位置は有限値、保持時間とRPMは0以上、区間速度は正の
 有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は、現在の

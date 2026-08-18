@@ -102,7 +102,9 @@ void DribbleControllerNode::load_parameters()
   opening_max_velocity_rad_s_ = declare_parameter<double>("opening_max_velocity_rad_s", 4.0);
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
+  dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 1.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
+  dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.5);
   ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 3.5);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
@@ -138,8 +140,12 @@ void DribbleControllerNode::load_parameters()
     !std::isfinite(feed_duration_sec_) || open_duration_sec_ < 0.0 ||
     feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
-    !std::isfinite(returning_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
-    feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0)
+    !std::isfinite(returning_max_velocity_rad_s_) ||
+    !std::isfinite(dribbling_max_velocity_rad_s_) || opening_max_velocity_rad_s_ <= 0.0 ||
+    feeding_max_velocity_rad_s_ <= 0.0 || returning_max_velocity_rad_s_ <= 0.0 ||
+    dribbling_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
+    opening_accel_factor_ <= 0.0 || !std::isfinite(dribbling_accel_factor_) ||
+    dribbling_accel_factor_ <= 0.0)
   {
     throw std::runtime_error("position parameters, durations, or velocities are invalid");
   }
@@ -385,6 +391,12 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
         feeding_max_velocity_rad_s_ = val;
       } else if (name == "returning_max_velocity_rad_s") {
         returning_max_velocity_rad_s_ = val;
+      } else if (name == "dribbling_max_velocity_rad_s") {
+        dribbling_max_velocity_rad_s_ = val;
+      } else if (name == "opening_accel_factor") {
+        opening_accel_factor_ = val;
+      } else if (name == "dribbling_accel_factor") {
+        dribbling_accel_factor_ = val;
       } else if (name == "belt_spinup_delay_sec") {belt_spinup_delay_sec_ = val;}
     }
   }
@@ -442,19 +454,24 @@ void DribbleControllerNode::control_timer_callback()
   if (manual_transition_active_ && !shot_cycle_active_) {
     const double mode_target_rad = target_position_rad();
     double max_vel_rad_s = returning_max_velocity_rad_s_;
+    double accel_factor = 1.0;
     if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
       max_vel_rad_s = opening_max_velocity_rad_s_;
+      accel_factor = opening_accel_factor_;
     } else if (position_mode_ == robot_msgs::msg::ArmPosition::FEED) {
       max_vel_rad_s = feeding_max_velocity_rad_s_;
+    } else if (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
+      max_vel_rad_s = dribbling_max_velocity_rad_s_;
+      accel_factor = dribbling_accel_factor_;
     }
 
     const double elapsed_sec =
       (now() - manual_transition_start_time_).seconds();
     const double move_duration_sec = transition_duration_sec(
-      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s);
+      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s, accel_factor);
     position_command_rad = interpolated_position_rad(
       manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
-      max_vel_rad_s);
+      max_vel_rad_s, accel_factor);
     if (elapsed_sec >= move_duration_sec) {
       manual_transition_active_ = false;
       position_command_rad = mode_target_rad;
