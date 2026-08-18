@@ -58,7 +58,8 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **Share / Create ボタン (Button 8)** | **Heading Hold (IMU姿勢補正) ON / OFF トグル** (異常時等の手動直結バイパス) |
 | **PS ボタン (Button 12)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
 | **Options ボタン (Button 9)** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
-| **R1** | **ドリブラー回転 ON / OFF** |
+| **R1** | **ドリブラー正回転 ON / OFF (トグル)** |
+| **L1** | **ドリブラー逆回転 ON / OFF (トグル、2秒かけて移行)** |
 | **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
@@ -173,7 +174,8 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 |---|---|---|
 | publish | `/shot_cycle/request` | `std_msgs/msg/Bool` |
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
-| publish | `/dribble/enabled` | `std_msgs/msg/Bool` |
+| publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
+| publish | `/dribble/command_reverse` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
 | publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
