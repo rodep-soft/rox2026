@@ -60,6 +60,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `dribble_on_rpm`
 - `shot_cycle_belt_spinup_level`（1〜4、shot cycle時にbeltをONするレベル）
 - `belt_spinup_delay_sec`（beltがSTOPからONになった後の待機時間[s]）
+- `enable_receive_state`（RECEIVE状態の有無：false の場合は常に DRIBBLE 姿勢を使用）
 - `receive_position_rad`、`dribble_position_rad`、`open_position_rad`、`feed_position_rad`
 - `open_duration_sec`、`feed_duration_sec`
 - `opening_max_velocity_rad_s`
