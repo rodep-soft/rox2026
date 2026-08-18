@@ -146,7 +146,8 @@ void DribbleControllerNode::load_parameters()
     feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
     !std::isfinite(returning_max_velocity_rad_s_) ||
-    !std::isfinite(dribbling_max_velocity_rad_s_) || !std::isfinite(receiving_max_velocity_rad_s_) ||
+    !std::isfinite(dribbling_max_velocity_rad_s_) ||
+    !std::isfinite(receiving_max_velocity_rad_s_) ||
     opening_max_velocity_rad_s_ <= 0.0 || feeding_max_velocity_rad_s_ <= 0.0 ||
     returning_max_velocity_rad_s_ <= 0.0 || dribbling_max_velocity_rad_s_ <= 0.0 ||
     receiving_max_velocity_rad_s_ <= 0.0 || !std::isfinite(opening_accel_factor_) ||
