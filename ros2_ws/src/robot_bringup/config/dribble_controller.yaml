@@ -26,6 +26,8 @@
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 1320
+    dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
+    dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
     spring_fire_dribble_rpm: 600    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
     shot_cycle_opening_rpm: 1700    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
     shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)

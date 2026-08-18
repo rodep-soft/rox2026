@@ -6,15 +6,17 @@
 
 | 種別 | topic | 内容 |
 |---|---|---|
-| sub | `/dribble/enabled` | ローラー回転ON/OFF |
+| sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
+| sub | `/dribble/command_reverse` | ローラー逆転ON/OFF |
 | sub | `/dribble/position_mode` | `DRIBBLE`、`OPEN`、`FEED`、`RECEIVE`姿勢 |
-| sub | `/shot_cycle/request` | `OPEN → FEED → RECEIVE`自動動作 |
-| sub | `/belt/mode` | beltの現在モード把握（0=STOP、1〜4=LEVEL） |
-| sub | `/emergency_stop` | ローラー停止、安全姿勢復帰 |
+| sub | `/dribble/command_position` | `DRIBBLE`、`OPEN`、`FEED`姿勢 |
+| sub | `/dribble/shot_cycle_request` | `OPEN → FEED → RECEIVE`自動動作 |
+| sub | `/belt/command_mode` | beltの現在モード把握（0=STOP、1〜4=LEVEL） |
+| sub | `/system/emergency_stop` | ローラー停止、安全姿勢復帰 |
 | pub | `/vesc/target` | ローラー目標RPM |
 | pub | `/edulite/target` | 姿勢目標角度[rad] |
-| pub | `/belt/mode` | shot cycle時のbelt自動ON/OFF |
-| pub | `/shot_cycle/state` | サイクル進行フェーズ（LED通知用） |
+| pub | `/belt/command_mode` | shot cycle時のbelt自動ON/OFF |
+| pub | `/dribble/shot_cycle_state` | サイクル進行フェーズ（LED通知用） |
 
 ## shot cycleの動作
 
@@ -58,6 +60,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ## 実行中に変更できるparameter
 
 - `dribble_on_rpm`
+- `dribble_reverse_rpm`（逆回転時の一定RPM）
+- `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]、デフォルト 2.0s）
 - `ball_detection_threshold_a`（ボール検知閾値[A]、デフォルト1.7）
 - `ball_lost_threshold_a`（ボール喪失閾値[A]、デフォルト1.0）
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数、デフォルト0.3）

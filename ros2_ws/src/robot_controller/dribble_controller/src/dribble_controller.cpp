@@ -56,6 +56,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/command_enabled", command_qos,
     std::bind(&DribbleControllerNode::dribble_enabled_callback, this, std::placeholders::_1));
 
+  dribble_reverse_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/command_reverse", command_qos,
+    std::bind(&DribbleControllerNode::dribble_reverse_callback, this, std::placeholders::_1));
+
   spring_decel_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/spring_decel", command_qos,
     std::bind(&DribbleControllerNode::spring_decel_callback, this, std::placeholders::_1));
@@ -112,6 +116,8 @@ void DribbleControllerNode::load_parameters()
   ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
   current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 800);
+  dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
+  dribble_reverse_ramp_sec_ = declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
   shot_cycle_feeding_rpm_ = declare_parameter<int>("shot_cycle_feeding_rpm", 500);
   shot_cycle_returning_rpm_ = declare_parameter<int>("shot_cycle_returning_rpm", 800);
@@ -128,7 +134,7 @@ void DribbleControllerNode::load_parameters()
   {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
-  if (dribble_on_rpm_ < 0 || shot_cycle_opening_rpm_ < 0 ||
+  if (dribble_on_rpm_ < 0 || dribble_reverse_rpm_ < 0 || shot_cycle_opening_rpm_ < 0 ||
     shot_cycle_feeding_rpm_ < 0 || shot_cycle_returning_rpm_ < 0)
   {
     throw std::runtime_error("roller RPM parameters must be nonnegative");
@@ -143,7 +149,8 @@ void DribbleControllerNode::load_parameters()
     !std::isfinite(open_position_rad_) ||
     !std::isfinite(feed_position_rad_) || !std::isfinite(open_duration_sec_) ||
     !std::isfinite(feed_duration_sec_) || open_duration_sec_ < 0.0 ||
-    feed_duration_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
+    feed_duration_sec_ < 0.0 || !std::isfinite(dribble_reverse_ramp_sec_) ||
+    dribble_reverse_ramp_sec_ < 0.0 || !std::isfinite(opening_max_velocity_rad_s_) ||
     !std::isfinite(feeding_max_velocity_rad_s_) ||
     !std::isfinite(returning_max_velocity_rad_s_) ||
     !std::isfinite(dribbling_max_velocity_rad_s_) || !std::isfinite(receiving_max_velocity_rad_s_) ||
@@ -199,6 +206,16 @@ void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::
   dribble_enabled_ = msg->data;
 }
 
+void DribbleControllerNode::dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data != dribble_reverse_enabled_) {
+    dribble_reverse_enabled_ = msg->data;
+    reverse_transition_active_ = true;
+    reverse_transition_start_time_ = now();
+    reverse_transition_start_rpm_ = current_filtered_roller_rpm_;
+  }
+}
+
 void DribbleControllerNode::spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   spring_decel_active_ = msg->data;
@@ -243,6 +260,8 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
     if (msg->data) {
       shot_cycle_active_ = false;
       manual_transition_active_ = false;
+      reverse_transition_active_ = false;
+      current_filtered_roller_rpm_ = 0;
       RCLCPP_WARN(
         get_logger(),
         "Emergency stop activated in dribble controller");
@@ -413,6 +432,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       }
       if (name == "dribble_on_rpm") {
         dribble_on_rpm_ = val;
+      } else if (name == "dribble_reverse_rpm") {
+        dribble_reverse_rpm_ = val;
       } else if (name == "shot_cycle_opening_rpm") {
         shot_cycle_opening_rpm_ = val;
       } else if (name == "shot_cycle_feeding_rpm") {
@@ -440,6 +461,11 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
         ball_lost_threshold_a_ = val;
       } else if (name == "current_lpf_alpha") {
         current_lpf_alpha_ = val;
+      } else if (name == "dribble_reverse_ramp_sec") {
+        if (val < 0.0) {
+          result.successful = false; result.reason = name + " must be nonnegative"; return result;
+        }
+        dribble_reverse_ramp_sec_ = val;
       } else {
         trajectory_changed = true;
         if (name == "receive_position_rad") {
@@ -498,14 +524,29 @@ void DribbleControllerNode::control_timer_callback()
 {
   publish_shot_cycle_state();
   const int target_rpm = roller_target_rpm();
-  // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
-  constexpr int max_rpm_step = 150;
-  if (current_filtered_roller_rpm_ < target_rpm) {
-    current_filtered_roller_rpm_ =
-      std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
-  } else if (current_filtered_roller_rpm_ > target_rpm) {
-    current_filtered_roller_rpm_ =
-      std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+  if (emergency_stop_active_) {
+    current_filtered_roller_rpm_ = 0;
+    reverse_transition_active_ = false;
+  } else if (reverse_transition_active_) {
+    const double elapsed_sec = (now() - reverse_transition_start_time_).seconds();
+    const double ramp_duration = std::max(0.001, dribble_reverse_ramp_sec_);
+    const double progress = std::clamp(elapsed_sec / ramp_duration, 0.0, 1.0);
+    current_filtered_roller_rpm_ = static_cast<int>(
+      std::round(reverse_transition_start_rpm_ + (target_rpm - reverse_transition_start_rpm_) * progress));
+    if (elapsed_sec >= ramp_duration) {
+      reverse_transition_active_ = false;
+      current_filtered_roller_rpm_ = target_rpm;
+    }
+  } else {
+    // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
+    constexpr int max_rpm_step = 150;
+    if (current_filtered_roller_rpm_ < target_rpm) {
+      current_filtered_roller_rpm_ =
+        std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+    } else if (current_filtered_roller_rpm_ > target_rpm) {
+      current_filtered_roller_rpm_ =
+        std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+    }
   }
 
   actuator_msgs::msg::ActuatorTarget roller_command;
@@ -670,6 +711,10 @@ int DribbleControllerNode::roller_target_rpm() const
   if (spring_decel_active_) {
     // ばね発射シーケンス中のみ：300 RPM へ滑らか減速してボール案内
     return spring_fire_dribble_rpm_;
+  }
+  if (dribble_reverse_enabled_) {
+    // 逆回転モード: 一定の逆回転RPMを出力
+    return -std::abs(dribble_reverse_rpm_);
   }
   if (!dribble_enabled_) {
     // 通常 OFF 時（何もしていない時）：当然 0 RPM（完全停止）

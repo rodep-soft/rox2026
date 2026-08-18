@@ -31,6 +31,7 @@ JoyControllerNode::JoyControllerNode()
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
+  dribble_reverse_button_ = declare_parameter<int>("dribble_reverse_button", 4);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
 
@@ -88,6 +89,9 @@ JoyControllerNode::JoyControllerNode()
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/command_enabled", command_qos);
+
+  dribble_reverse_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/dribble/command_reverse", command_qos);
 
   spring_decel_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/spring_decel", command_qos);
@@ -170,6 +174,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         circle_button_ = val;
       } else if (name == "dribble_enable_button") {
         dribble_enable_button_ = val;
+      } else if (name == "dribble_reverse_button") {
+        dribble_reverse_button_ = val;
       } else if (name == "game2_start_button") {
         game2_start_button_ = val;
       } else if (name == "left_trigger_axis") {
@@ -286,8 +292,23 @@ void JoyControllerNode::loop_callback()
   // 3. ドリブル回転ON/OFF (R1)
   if (is_button_just_pressed(joy_msg_, dribble_enable_button_)) {
     dribble_enabled_ = !dribble_enabled_;
+    if (dribble_enabled_) {
+      dribble_reversed_ = false;
+      publish_dribble_reverse(false);
+    }
     RCLCPP_INFO(get_logger(), "Dribble toggled: %s", dribble_enabled_ ? "ON" : "OFF");
     publish_dribble_enabled(dribble_enabled_);
+  }
+
+  // 3b. ドリブル逆回転ON/OFF (L1)
+  if (is_button_just_pressed(joy_msg_, dribble_reverse_button_)) {
+    dribble_reversed_ = !dribble_reversed_;
+    if (dribble_reversed_) {
+      dribble_enabled_ = false;
+      publish_dribble_enabled(false);
+    }
+    RCLCPP_INFO(get_logger(), "Dribble reverse toggled: %s", dribble_reversed_ ? "ON" : "OFF");
+    publish_dribble_reverse(dribble_reversed_);
   }
 
   // 4. 前後反転 (PS)
@@ -455,6 +476,7 @@ void JoyControllerNode::state_publish_timer_callback()
   publish_emergency_stop(is_emergency_stop_);
   publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
+  publish_dribble_reverse(dribble_reversed_);
   publish_drive_reversed(is_drive_reversed_);
 }
 
@@ -477,6 +499,13 @@ void JoyControllerNode::publish_dribble_enabled(bool enabled)
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);
+}
+
+void JoyControllerNode::publish_dribble_reverse(bool reversed)
+{
+  std_msgs::msg::Bool msg;
+  msg.data = reversed;
+  dribble_reverse_pub_->publish(msg);
 }
 
 void JoyControllerNode::publish_spring_decel(bool active)
@@ -518,6 +547,9 @@ void JoyControllerNode::publish_stop_commands()
 
   dribble_enabled_ = false;
   publish_dribble_enabled(dribble_enabled_);
+
+  dribble_reversed_ = false;
+  publish_dribble_reverse(dribble_reversed_);
 }
 
 void JoyControllerNode::publish_limited_velocity(
