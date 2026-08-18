@@ -247,7 +247,6 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
       "Belt was STOP: auto-starting belt LEVEL_%u, waiting %.2f s for spin-up",
       shot_cycle_belt_spinup_level_, belt_spinup_delay_sec_);
     shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::BELT_SPINUP;
-    position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
   } else {
     belt_auto_started_ = false;
     shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::OPENING;
