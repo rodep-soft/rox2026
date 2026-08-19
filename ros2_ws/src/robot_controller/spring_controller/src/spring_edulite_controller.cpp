@@ -218,7 +218,15 @@ void SpringEduliteController::control_timer_callback()
 {
   if (state_ == State::UNINITIALIZED || zero_service_pending_) {return;}
 
-  // ホーミングタイムアウト判定
+  if (emergency_stop_active_) {
+    // 非常停止中はホーミングタイマーをリセットして待機
+    if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
+      homing_start_time_ = now();
+    }
+    return;
+  }
+
+  // ホーミングタイムアウト判定（非常停止解除中のみカウント）
   if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
     if ((now() - homing_start_time_).seconds() >= homing_timeout_sec_) {
       state_ = State::ERROR;
@@ -233,7 +241,7 @@ void SpringEduliteController::control_timer_callback()
       state_ = State::WAITING_FOR_STOP;
       stopped_count_ = 0;
       RCLCPP_INFO(get_logger(), "Limit switch activated. Waiting for motion to settle.");
-    } else if (!emergency_stop_active_) {
+    } else {
       const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
       target_position_rad_ -= homing_velocity_rad_s_ * period_sec;
       publish_target(target_position_rad_);
