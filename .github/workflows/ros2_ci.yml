@@ -56,6 +56,8 @@ jobs:
             CFG=\$(find /opt/ros \
             -path "*/ament_uncrustify/configuration/ament_code_style.cfg" | head -n 1) && \
             find src \
+            -path 'src/libbno055-linux' -prune \
+            -o \
             \( \
               -name '*.cpp' \
               -o -name '*.hpp' \
@@ -74,14 +76,17 @@ jobs:
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            black src"
+            black src --exclude '/libbno055-linux/'"
 
       - name: Format CMake
         if: github.event_name == 'pull_request'
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            find src -name 'CMakeLists.txt' \
+            find src \
+            -path 'src/libbno055-linux' -prune \
+            -o \
+            -name 'CMakeLists.txt' \
             -exec cmake-format --config-files .cmake-format.yml \
             --in-place {} +"
 
