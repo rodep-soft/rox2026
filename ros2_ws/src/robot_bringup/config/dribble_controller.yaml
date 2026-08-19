@@ -45,6 +45,14 @@
     # ROS 2 QoS queue depth
     qos_depth: 1
 
+    # ── 高速移動時のボール保持安定化 (運動補正) ──
+    cmd_vel_topic: "/mecanum/cmd_vel_heading" # 監視する足回り速度指令トピック
+    enable_motion_compensation: true          # 運動補正の有効化
+    backward_velocity_boost_rpm_per_mps: 500.0  # 後退速度 1.0 m/s あたりのRPM上乗せ量
+    acceleration_boost_rpm_per_mps2: 200.0     # 急減速 1.0 m/s^2 あたりのRPM上乗せ量
+    max_boost_rpm: 1200                       # 最大上乗せRPM制限 (通常1320 + 1200 = 最大2520 RPM)
+    backward_arm_clamp_rad: 0.05              # 後退・急減速時のアーム押し込み補正量 [rad]
+
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
     roller_logical_id: 12   # ROS2上の認識ID(ドリブルローラー)
     position_target_topic: "/edulite/target"

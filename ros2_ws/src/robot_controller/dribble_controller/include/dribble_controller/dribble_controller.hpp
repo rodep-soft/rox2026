@@ -6,6 +6,7 @@
 
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
@@ -32,6 +33,7 @@ private:
   void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
   void actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+  void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void control_timer_callback();
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
@@ -80,6 +82,14 @@ private:
   uint16_t upper_belt_logical_id_{10};
   uint16_t under_belt_logical_id_{11};
 
+  // ── 運動補正パラメータ (後退・急減速時のボール安定化) ──
+  bool enable_motion_compensation_{true};
+  double backward_velocity_boost_rpm_per_mps_{500.0};
+  double acceleration_boost_rpm_per_mps2_{200.0};
+  int max_boost_rpm_{1200};
+  double backward_arm_clamp_rad_{0.05};
+  std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
+
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::RECEIVE};
   bool dribble_enabled_{false};
@@ -89,6 +99,14 @@ private:
   int reverse_transition_start_rpm_{0};
   bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
+
+  // 運動補正用の一時変数
+  double cmd_vel_vx_{0.0};
+  double cmd_vel_ax_{0.0};
+  double last_cmd_vel_vx_{0.0};
+  rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
+  int current_motion_boost_rpm_{0};
+  double current_motion_arm_clamp_rad_{0.0};
 
   bool manual_transition_active_{false};
   rclcpp::Time manual_transition_start_time_;
@@ -128,6 +146,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr actuator_state_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr vesc_state_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
