@@ -10,14 +10,26 @@
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
-  standby_offset_rad_ = declare_parameter<double>("standby_offset_rad", 0.0);
+  auto declare_double_parameter = [this](const std::string & name, double default_value) -> double {
+    rcl_interfaces::msg::ParameterDescriptor desc;
+    desc.dynamic_typing = true;
+    const auto param = declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+      return param.get_value<double>();
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      return static_cast<double>(param.get_value<int64_t>());
+    }
+    return default_value;
+  };
+
+  standby_offset_rad_ = declare_double_parameter("standby_offset_rad", 0.0);
   standby_position_tolerance_rad_ =
-    declare_parameter<double>("standby_position_tolerance_rad", 0.05);
+    declare_double_parameter("standby_position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
-  fire_increment_rad_ = declare_parameter<double>("fire_increment_rad", -6.283185307);
-  homing_velocity_rad_s_ = declare_parameter<double>("homing_velocity_rad_s", 0.5);
-  homing_timeout_sec_ = declare_parameter<double>("homing_timeout_sec", 30.0);
-  zeroing_velocity_threshold_rad_s_ = declare_parameter<double>(
+  fire_increment_rad_ = declare_double_parameter("fire_increment_rad", -6.283185307);
+  homing_velocity_rad_s_ = declare_double_parameter("homing_velocity_rad_s", 0.5);
+  homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
+  zeroing_velocity_threshold_rad_s_ = declare_double_parameter(
     "zeroing_velocity_threshold_rad_s",
     0.05);
   required_stopped_count_ = declare_parameter<int>("zeroing_required_stable_feedback_count", 3);
