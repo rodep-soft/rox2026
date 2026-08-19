@@ -10,14 +10,26 @@
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
-  standby_offset_rad_ = declare_parameter<double>("standby_offset_rad", 0.0);
+  auto declare_double_parameter = [this](const std::string & name, double default_value) -> double {
+    rcl_interfaces::msg::ParameterDescriptor desc;
+    desc.dynamic_typing = true;
+    const auto param = declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+      return param.get_value<double>();
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      return static_cast<double>(param.get_value<int64_t>());
+    }
+    return default_value;
+  };
+
+  standby_offset_rad_ = declare_double_parameter("standby_offset_rad", 0.0);
   standby_position_tolerance_rad_ =
-    declare_parameter<double>("standby_position_tolerance_rad", 0.05);
+    declare_double_parameter("standby_position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
-  fire_increment_rad_ = declare_parameter<double>("fire_increment_rad", -6.283185307);
-  homing_velocity_rad_s_ = declare_parameter<double>("homing_velocity_rad_s", 0.5);
-  homing_timeout_sec_ = declare_parameter<double>("homing_timeout_sec", 30.0);
-  zeroing_velocity_threshold_rad_s_ = declare_parameter<double>(
+  fire_increment_rad_ = declare_double_parameter("fire_increment_rad", -6.283185307);
+  homing_velocity_rad_s_ = declare_double_parameter("homing_velocity_rad_s", 0.5);
+  homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
+  zeroing_velocity_threshold_rad_s_ = declare_double_parameter(
     "zeroing_velocity_threshold_rad_s",
     0.05);
   required_stopped_count_ = declare_parameter<int>("zeroing_required_stable_feedback_count", 3);
@@ -206,7 +218,15 @@ void SpringEduliteController::control_timer_callback()
 {
   if (state_ == State::UNINITIALIZED || zero_service_pending_) {return;}
 
-  // ホーミングタイムアウト判定
+  if (emergency_stop_active_) {
+    // 非常停止中はホーミングタイマーをリセットして待機
+    if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
+      homing_start_time_ = now();
+    }
+    return;
+  }
+
+  // ホーミングタイムアウト判定（非常停止解除中のみカウント）
   if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
     if ((now() - homing_start_time_).seconds() >= homing_timeout_sec_) {
       state_ = State::ERROR;
@@ -221,7 +241,7 @@ void SpringEduliteController::control_timer_callback()
       state_ = State::WAITING_FOR_STOP;
       stopped_count_ = 0;
       RCLCPP_INFO(get_logger(), "Limit switch activated. Waiting for motion to settle.");
-    } else if (!emergency_stop_active_) {
+    } else {
       const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
       target_position_rad_ -= homing_velocity_rad_s_ * period_sec;
       publish_target(target_position_rad_);
