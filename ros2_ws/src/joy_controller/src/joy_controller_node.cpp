@@ -181,7 +181,9 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         result.reason = name + " must be >= -1";
         return result;
       }
-      if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "spring_arm_restore_delay_ms") {
+      if (name == "joy_timeout_ms") {
+        joy_timeout_ms_ = val;
+      } else if (name == "spring_arm_restore_delay_ms") {
         spring_arm_restore_delay_ms_ = val;
       } else if (name == "ps_button") {
         ps_button_ = val;

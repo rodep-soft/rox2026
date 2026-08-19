@@ -458,7 +458,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
         result.successful = false; result.reason = name + " must be finite"; return result;
       }
       if ((name == "ball_detection_threshold_a" || name == "ball_lost_threshold_a" ||
-        name == "backward_velocity_boost_rpm_per_mps" || name == "acceleration_boost_rpm_per_mps2" ||
+        name == "backward_velocity_boost_rpm_per_mps" ||
+        name == "acceleration_boost_rpm_per_mps2" ||
         name == "backward_arm_clamp_rad") && val < 0.0)
       {
         result.successful = false; result.reason = name + " must be non-negative"; return result;
@@ -555,7 +556,7 @@ void DribbleControllerNode::control_timer_callback()
     const double backward_accel = std::max(0.0, -ax);
 
     const double raw_boost = backward_vel * backward_velocity_boost_rpm_per_mps_ +
-                             backward_accel * acceleration_boost_rpm_per_mps2_;
+      backward_accel * acceleration_boost_rpm_per_mps2_;
     current_motion_boost_rpm_ = std::min(max_boost_rpm_, static_cast<int>(std::round(raw_boost)));
 
     // アームの押し付け量 (後退速度または減速度に応じて 0.0〜backward_arm_clamp_rad_ を算出)
