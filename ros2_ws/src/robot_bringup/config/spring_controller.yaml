@@ -15,6 +15,11 @@
     # [rad/request] 発射要求1回で累積目標へ加算する角度
     fire_increment_rad: -43.9822971
     
+    # ── ゆっくり射出 (逆回転・正方向押し出し) ──
+    slow_fire_target_rad: 14.0             # [rad] ゆっくり射出時の目標角度 (正方向・上限14.0 rad)
+    slow_fire_velocity_rad_s: 4.0          # [rad/s] 前進（押し出し）速度
+    slow_fire_return_velocity_rad_s: 6.0   # [rad/s] 待機位置への復帰速度
+    
     # [rad/s] 未原点時に目標位置を負方向へずらす速度
     homing_velocity_rad_s: 5.0
     

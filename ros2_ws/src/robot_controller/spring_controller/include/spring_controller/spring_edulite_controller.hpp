@@ -25,10 +25,13 @@ private:
     MOVING_TO_STANDBY,
     READY,
     FIRING,
+    SLOW_FIRING_EXTENDING,
+    SLOW_FIRING_RETURNING,
     ERROR,
   };
 
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void slow_fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
@@ -41,6 +44,7 @@ private:
   State state_{State::UNINITIALIZED};
   bool emergency_stop_active_{true};
   bool fire_request_active_{false};
+  bool slow_fire_request_active_{false};
   bool limit_switch_active_{false};
   bool actuator_ready_{false};
   bool position_reference_set_{false};
@@ -54,6 +58,9 @@ private:
   double standby_offset_rad_{0.0};
   double standby_position_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
+  double slow_fire_target_rad_{14.0};
+  double slow_fire_velocity_rad_s_{4.0};
+  double slow_fire_return_velocity_rad_s_{6.0};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
   double zeroing_velocity_threshold_rad_s_{0.05};
@@ -68,6 +75,7 @@ private:
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr slow_fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr actuator_state_sub_;

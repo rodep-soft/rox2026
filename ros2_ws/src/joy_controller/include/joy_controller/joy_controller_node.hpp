@@ -76,6 +76,7 @@ private:
   int game2_start_button_{9};
   int heading_hold_toggle_button_{8};
   int slow_turn_button_{7};
+  int slow_fire_button_{4};
   double slow_turn_scale_{0.5};
   double slow_linear_scale_{0.5};
   int left_trigger_axis_{3};
@@ -105,6 +106,10 @@ private:
   bool spring_arm_restore_pending_{false};
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
+  bool slow_fire_pending_{false};
+  bool slow_fire_arm_restore_pending_{false};
+  int slow_fire_arm_restore_delay_ms_{6000};
+  std::chrono::steady_clock::time_point slow_fire_released_time_{};
   bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
@@ -121,6 +126,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr emergency_stop_pub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mecanum_cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr slow_fire_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_reverse_pub_;
