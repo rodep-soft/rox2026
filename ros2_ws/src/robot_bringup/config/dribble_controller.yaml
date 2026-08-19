@@ -3,7 +3,7 @@
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
     enable_receive_state: true    # RECEIVE状態の有無 (true: ボール未保持時にRECEIVE姿勢 / false: 常にDRIBBLE姿勢)
-    receive_position_rad: -0.31     # RECEIVE姿勢 (捕球迎える姿勢)
+    receive_position_rad: -0.36     # RECEIVE姿勢 (捕球迎える姿勢)
     dribble_position_rad: 0.31    # DRIBBLE姿勢
     open_position_rad: -1.02      # OPEN姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
@@ -19,14 +19,14 @@
     opening_accel_factor: 2.0         # OPEN 動作で最高速度に達するまでの遅さ倍率 (大きいほどTop speedまでゆったり加速)
     feeding_max_velocity_rad_s: 11.0  # OPEN -> FEED
     returning_max_velocity_rad_s: 6.0 # FEED -> RECEIVE
-    dribbling_max_velocity_rad_s: 1.0 # RECEIVE -> DRIBBLE (捕球後にボールを落とさず滑らかに保持姿勢へ移行)
-    dribbling_accel_factor: 1.5       # DRIBBLE 遷移の加速緩やかさ倍率
-    receiving_max_velocity_rad_s: 1.0 # DRIBBLE -> RECEIVE (ボール喪失後などに滑らかに迎える姿勢へ移行)
+    dribbling_max_velocity_rad_s: 2.5 # RECEIVE -> DRIBBLE (捕球後にボールを落とさず滑らかに保持姿勢へ移行)
+    dribbling_accel_factor: 3.0       # DRIBBLE 遷移の加速緩やかさ倍率
+    receiving_max_velocity_rad_s: 1.5 # DRIBBLE -> RECEIVE (ボール喪失後などに滑らかに迎える姿勢へ移行)
     receiving_accel_factor: 1.5       # RECEIVE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 1320            # DRIBBLE姿勢 (ボール保持中) の回転数
-    dribble_receive_rpm: 500        # RECEIVE姿勢 (捕球待ち) の回転数 (ボールのはじき防止・緩やか捕球)
+    dribble_on_rpm: 1620            # DRIBBLE姿勢 (ボール保持中) の回転数
+    dribble_receive_rpm: 400        # RECEIVE姿勢 (捕球待ち) の回転数 (ボールのはじき防止・緩やか捕球)
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
     spring_fire_dribble_rpm: 400    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
@@ -35,9 +35,9 @@
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
-    ball_detection_threshold_a: 1.7 # 1.7A 以上でボール保持(BALL DETECTED)と判定
-    ball_lost_threshold_a: 1.1      # 1.1A 以下でボール喪失(BALL LOST)と判定
-    current_lpf_alpha: 0.5          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
+    ball_detection_threshold_a: 4.9 # 1.7A 以上でボール保持(BALL DETECTED)と判定
+    ball_lost_threshold_a: 0.9      # 1.1A 以下でボール喪失(BALL LOST)と判定
+    current_lpf_alpha: 0.25          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
     
     # [ms] 指令再送周期
     command_period_ms: 10
