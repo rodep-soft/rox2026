@@ -1,0 +1,186 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version to release (e.g. 1.9.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-bump version (if triggered manually)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.net"
+          NEW_VER="${{ inputs.version }}"
+          NEW_VER="${NEW_VER#v}"
+          chmod +x scripts/bump_version.sh
+          ./scripts/bump_version.sh "$NEW_VER"
+          git add -A
+          git commit -m "chore: bump version to ${NEW_VER}"
+          git tag -a "v${NEW_VER}" -m "Release v${NEW_VER}"
+          git push origin main --tags
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="v${{ inputs.version }}"
+            TAG_NAME="${TAG_NAME#vv}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "VERSION=${TAG_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Extract the section for this version from CHANGELOG.md
+          awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found" CHANGELOG.md > release_notes.md
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG_NAME }}
+          name: Release ${{ steps.version.outputs.TAG_NAME }}
+          body: ${{ steps.changelog.outputs.NOTES }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  build-packages:
+    name: Build Packages (${{ matrix.os }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF -DENABLE_CLANG_TIDY=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package (CPack)
+        run: |
+          cd build
+          cpack -G DEB
+          cpack -G TGZ
+
+      - name: Rename packages with OS suffix
+        run: |
+          cd build
+          for f in *.deb *.tar.gz; do
+            if [ -f "$f" ]; then
+              if [[ "$f" == *.tar.gz ]]; then
+                base="${f%.tar.gz}"
+                mv "$f" "${base}-${{ matrix.os }}.tar.gz"
+              else
+                base="${f%.*}"
+                ext="${f##*.}"
+                mv "$f" "${base}-${{ matrix.os }}.${ext}"
+              fi
+            fi
+          done
+
+      - name: Upload packages to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            build/*-${{ matrix.os }}.deb
+            build/*-${{ matrix.os }}.tar.gz
+
+  publish-crates-io:
+    name: Publish to crates.io
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          cd rust
+          cargo publish --token $CARGO_REGISTRY_TOKEN
+
+  build-python-packages:
+    name: Build Python Wheels & sdist
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_ARCHS_LINUX: x86_64 aarch64 armv7l
+          CIBW_BUILD_FRONTEND: build
+          CIBW_SKIP: "pp*"
+
+      - name: Collect all distributions into dist/
+        run: cp wheelhouse/*.whl dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build-python-packages
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/libbno055-linux
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
