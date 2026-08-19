@@ -449,7 +449,7 @@ void JoyControllerNode::loop_callback()
   spring_fire_msg.data = should_publish_spring_fire;
   spring_fire_pub_->publish(spring_fire_msg);
 
-  // 8b. L1 (slow_fire_button_) 押下でスプリングゆっくり射出シーケンスを開始
+  // 8b. L1 (slow_fire_button_) 押下でスプリングゆっくり射出シーケンスを開始 (ドリブル回転なし)
   const bool slow_fire_input_triggered = (slow_fire_button_ >= 0) &&
     is_button_just_pressed(joy_msg_, slow_fire_button_);
   bool should_publish_slow_fire = false;
@@ -457,16 +457,14 @@ void JoyControllerNode::loop_callback()
   if (slow_fire_input_triggered && !slow_fire_pending_ && !spring_fire_pending_ &&
     !slow_fire_arm_restore_pending_ && !spring_arm_restore_pending_)
   {
-    // 1) アームを OPEN 姿勢へ開く
+    // 1) アームを OPEN 姿勢へ開く (ドリブルローラーは回転させない)
     publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
 
-    // 2) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
-    publish_spring_decel(true);
     RCLCPP_INFO(
       get_logger(),
-      "Spring slow fire sequence started (L1): Opening arm (OPEN) and decelerating dribble roller to 300 RPM...");
+      "Spring slow fire sequence started (L1): Opening arm (OPEN) without dribble rotation...");
 
-    // 3) 減速完了待機モードにセット
+    // 2) 展開開始待機モードにセット
     slow_fire_pending_ = true;
     slow_fire_pending_start_time_ = std::chrono::steady_clock::now();
   }
@@ -480,7 +478,7 @@ void JoyControllerNode::loop_callback()
       slow_fire_pending_ = false;
       slow_fire_arm_restore_pending_ = true;
       slow_fire_released_time_ = now_tp;
-      RCLCPP_INFO(get_logger(), "Dribble decel complete -> Spring SLOW FIRE released!");
+      RCLCPP_INFO(get_logger(), "Arm opened -> Spring SLOW FIRE released!");
     }
   }
 
@@ -509,13 +507,12 @@ void JoyControllerNode::loop_callback()
     if (is_ready_rising || elapsed_ms >= slow_fire_arm_restore_delay_ms_) {
       slow_fire_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
-      publish_spring_decel(false);
       RCLCPP_INFO(
         get_logger(),
         "Spring slow fire complete -> Arm automatically restored to DRIBBLE (Dribble: %s)",
         dribble_enabled_ ? "ON" : "OFF");
     }
-  } else if (is_ready_rising || should_publish_spring_fire || should_publish_slow_fire) {
+  } else if (is_ready_rising || should_publish_spring_fire) {
     publish_spring_decel(false);
   }
 

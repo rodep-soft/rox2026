@@ -30,8 +30,8 @@ SpringEduliteController::SpringEduliteController()
     declare_double_parameter("standby_position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ = declare_double_parameter("fire_increment_rad", -6.283185307);
-  slow_fire_target_rad_ = declare_double_parameter("slow_fire_target_rad", 14.0);
-  slow_fire_velocity_rad_s_ = declare_double_parameter("slow_fire_velocity_rad_s", 4.0);
+  slow_fire_target_rad_ = declare_double_parameter("slow_fire_target_rad", 13.5);
+  slow_fire_velocity_rad_s_ = declare_double_parameter("slow_fire_velocity_rad_s", 12.0);
   slow_fire_return_velocity_rad_s_ =
     declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
   homing_velocity_rad_s_ = declare_double_parameter("homing_velocity_rad_s", 0.5);
