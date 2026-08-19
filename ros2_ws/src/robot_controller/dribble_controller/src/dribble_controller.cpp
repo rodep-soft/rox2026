@@ -145,7 +145,7 @@ void DribbleControllerNode::load_parameters()
   {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
-  if (dribble_on_rpm_ < 0 || dribble_receive_rpm_ < 0 || dribble_reverse_rpm_ < 0 ||
+  if (dribble_on_rpm_ < 0 || dribble_reverse_rpm_ < 0 ||
     shot_cycle_opening_rpm_ < 0 || shot_cycle_feeding_rpm_ < 0 || shot_cycle_returning_rpm_ < 0 ||
     max_boost_rpm_ < 0)
   {
@@ -405,28 +405,7 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     }
 
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-      if (name == "enable_receive_state") {
-        const bool new_val = param.as_bool();
-        if (new_val != enable_receive_state_) {
-          enable_receive_state_ = new_val;
-          trajectory_changed = true;
-          if (!enable_receive_state_ && position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE) {
-            position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-            manual_transition_active_ = true;
-            manual_transition_start_time_ = now();
-            manual_transition_start_position_rad_ = last_position_command_rad_;
-            manual_transition_start_rpm_ = current_filtered_roller_rpm_;
-          } else if (enable_receive_state_ && !has_ball_ &&
-            position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE)
-          {
-            position_mode_ = robot_msgs::msg::ArmPosition::RECEIVE;
-            manual_transition_active_ = true;
-            manual_transition_start_time_ = now();
-            manual_transition_start_position_rad_ = last_position_command_rad_;
-            manual_transition_start_rpm_ = current_filtered_roller_rpm_;
-          }
-        }
-      } else if (name == "enable_motion_compensation") {
+      if (name == "enable_motion_compensation") {
         enable_motion_compensation_ = param.as_bool();
         RCLCPP_INFO(
           get_logger(), "enable_motion_compensation set to %s",
@@ -434,7 +413,6 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       } else if (name == "test_mode") {
         test_mode_ = param.as_bool();
         RCLCPP_INFO(get_logger(), "test_mode parameter updated: %s", test_mode_ ? "true" : "false");
-      }
       }
     } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
@@ -830,11 +808,6 @@ int DribbleControllerNode::roller_target_rpm() const
   }
 
   int base_rpm = dribble_on_rpm_;
-  if (!shot_cycle_active_) {
-    if (position_mode_ == robot_msgs::msg::ArmPosition::RECEIVE && enable_receive_state_) {
-      base_rpm = dribble_receive_rpm_;
-    }
-  }
 
   // 運動補正ブーストを加算 (後退・急減速時の慣性力対策)
   if (enable_motion_compensation_ && current_motion_boost_rpm_ > 0) {
