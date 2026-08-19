@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -13,10 +14,11 @@ def generate_launch_description():
     bno055_share = get_package_share_directory("libbno055_linux")
     launch_dir = os.path.join(bringup_share, "launch")
 
-    def include(launch_file, launch_arguments=None):
+    def include(launch_file, launch_arguments=None, condition=None):
         return IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(launch_dir, launch_file)),
             launch_arguments=launch_arguments,
+            condition=condition,
         )
 
     # 1. パラメータファイルパス
@@ -33,6 +35,66 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface for actuators",
             ),
+            DeclareLaunchArgument(
+                "enable_vision",
+                default_value="false",
+                description="Enable 230AI MIPI stereo vision launch (mipi_cam / hobot_stereonet / apriltag / yolo)",
+            ),
+            DeclareLaunchArgument(
+                "enable_stereonet",
+                default_value="false",
+                description="Enable heavy 3D hobot_stereonet depth inference and web visualizer",
+            ),
+            DeclareLaunchArgument(
+                "stereonet_version",
+                default_value="v2.4_int16",
+                description="hobot_stereonet model version for 230AI",
+            ),
+            DeclareLaunchArgument(
+                "publish_visual_enabled",
+                default_value="False",
+                description="Enable publishing visualization image for Web UI",
+            ),
+            DeclareLaunchArgument(
+                "publish_pcd_enabled",
+                default_value="False",
+                description="Enable publishing PointCloud2",
+            ),
+            DeclareLaunchArgument(
+                "enable_apriltag",
+                default_value="false",
+                description="Enable AprilTag detection node on CSI camera",
+            ),
+            DeclareLaunchArgument(
+                "tag_family",
+                default_value="16h5",
+                description="AprilTag family (16h5)",
+            ),
+            DeclareLaunchArgument(
+                "tag_size",
+                default_value="0.18",
+                description="AprilTag size in meters",
+            ),
+            DeclareLaunchArgument(
+                "enable_yolo",
+                default_value="false",
+                description="Enable BPU-accelerated YOLO ball detection node",
+            ),
+            DeclareLaunchArgument(
+                "model_name",
+                default_value="yolov5s",
+                description="YOLO model name",
+            ),
+            DeclareLaunchArgument(
+                "enable_webcam",
+                default_value="false",
+                description="Enable USB webcam launch (v4l2_camera)",
+            ),
+            DeclareLaunchArgument(
+                "video_device",
+                default_value="/dev/video0",
+                description="V4L2 video device path for webcam",
+            ),
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
                 "hardware.launch.py",
@@ -46,16 +108,7 @@ def generate_launch_description():
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-            # --- 4. libbno055-linux: BNO055 Publisher (/bno055/imu) ＆ Heading Controller (/imu/data購読) ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_publisher_node",
-                name="bno055_publisher_node",
-                parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
-                remappings=[("/imu/data", "/bno055/imu")],
-                output="screen",
-            ),
-            # --- 4.1 IMU MUX (Dual IMU: STM32 CANを最優先メイン、BNO055をバックアップに設定) ---
+            # --- 4. STM32 CAN IMU 中継 (/stm32/imu -> /imu/data) ＆ Heading Controller ---
             Node(
                 package="robot_controller",
                 executable="imu_mux_node",
@@ -63,7 +116,7 @@ def generate_launch_description():
                 parameters=[
                     {
                         "primary_imu_topic": "/stm32/imu",
-                        "secondary_imu_topic": "/bno055/imu",
+                        "secondary_imu_topic": "/stm32/imu",
                         "output_imu_topic": "/imu/data",
                         "timeout_ms": 100,
                     }
@@ -96,31 +149,38 @@ def generate_launch_description():
             ),
             # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
             include("ekf.launch.py"),
-            # base_link -> imu_link 静的 TF (RDK BNO055: 後方-190mm, 右-20mm, 地上高+225mm)
-            Node(
-                package="tf2_ros",
-                executable="static_transform_publisher",
-                name="base_to_imu_tf",
-                arguments=[
-                    "--x",
-                    "-0.190",
-                    "--y",
-                    "-0.020",
-                    "--z",
-                    "0.225",
-                    "--roll",
-                    "0.0",
-                    "--pitch",
-                    "0.0",
-                    "--yaw",
-                    "0.0",
-                    "--frame-id",
-                    "base_link",
-                    "--child-frame-id",
-                    "imu_link",
-                ],
-                output="screen",
-                respawn=False,
+            # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
+            include(
+                "vision_launch.py",
+                launch_arguments=list(
+                    {
+                        "enable_stereonet": LaunchConfiguration("enable_stereonet"),
+                        "stereonet_version": LaunchConfiguration("stereonet_version"),
+                        "publish_visual_enabled": LaunchConfiguration(
+                            "publish_visual_enabled"
+                        ),
+                        "publish_pcd_enabled": LaunchConfiguration(
+                            "publish_pcd_enabled"
+                        ),
+                        "enable_apriltag": LaunchConfiguration("enable_apriltag"),
+                        "enable_yolo": LaunchConfiguration("enable_yolo"),
+                        "tag_family": LaunchConfiguration("tag_family"),
+                        "tag_size": LaunchConfiguration("tag_size"),
+                        "model_name": LaunchConfiguration("model_name"),
+                    }.items()
+                ),
+                condition=IfCondition(LaunchConfiguration("enable_vision")),
+            ),
+            # --- 8. USB Webカメラ (V4L2) ---
+            include(
+                "webcam_launch.py",
+                launch_arguments=list(
+                    {
+                        "video_device": LaunchConfiguration("video_device"),
+                        "enable_apriltag": "false",
+                    }.items()
+                ),
+                condition=IfCondition(LaunchConfiguration("enable_webcam")),
             ),
             # base_link -> stm32_imu_link 静的 TF (STM32 IMU: 後方-195mm, 右-65mm, 地上高+225mm)
             Node(

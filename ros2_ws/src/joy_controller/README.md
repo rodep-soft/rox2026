@@ -63,12 +63,13 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
-| **L2 + R2 同時押し** | **キッカー（ばね）発射** (150ms ドリブル減速後に発射) |
+| **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms ドリブル減速後に発射) |
+| **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms 減速後に発射 ➔ 発射完了後に自動でDRIBBLE姿勢へ復帰) |
 | **R2 + DPAD 右** | **【手動アーム操作】 OPEN** (アームを開く) |
 | **R2 + DPAD 左** | **【手動アーム操作】 DRIBBLE** (アームをドリブル位置に戻す) |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
-| **R2 + 右スティック (左右)** | **低速旋回** (通常の1/2の旋回速度、`slow_turn_scale`で倍率変更可) |
+| **R2 + スティック (並進・旋回)** | **低速走行・低速旋回** (線速度は `slow_linear_scale` (初期値0.5)、旋回速度は `slow_turn_scale` (初期値0.5) で倍率変更可) |
 
 ## Joy入力の処理順
 
@@ -120,14 +121,16 @@ SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続け
 |---|---|---|
 | `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
-| `state_publish_period_ms` | `int` | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
+| `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
+| `dribble_enable_button` | int | dribble ON/OFFのbutton index |
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
 | `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |
 | `linear_y_limit` | double | スティック全倒し時の最大左右速度[m/s] |
 | `angular_z_limit` | double | スティック全倒し時の最大旋回速度[rad/s] |
-| `slow_turn_button` | int | 低速旋回を有効化するボタン番号。デフォルト: 7 (R2)、-1で無効 |
+| `slow_turn_button` | int | 低速走行・低速旋回を有効化するボタン番号。デフォルト: 7 (R2)、-1で無効 |
 | `slow_turn_scale` | double | 低速旋回時の旋回速度倍率（減速率）。デフォルト: 0.5 (1/2) |
+| `slow_linear_scale` | double | 低速走行時の並進（前後・左右）線速度倍率（減速率）。デフォルト: 0.5 (1/2) |
 
 Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
 変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは

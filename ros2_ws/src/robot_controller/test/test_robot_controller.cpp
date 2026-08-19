@@ -11,6 +11,7 @@
 #include "std_msgs/msg/u_int8.hpp"
 
 #include "robot_msgs/msg/arm_position.hpp"
+#include "robot_msgs/msg/belt_mode.hpp"
 #include "dribble_controller/dribble_controller.hpp"
 #include "belt_controller/belt_controller.hpp"
 #include "mecanum_controller/mecanum_controller_node.hpp"
@@ -250,9 +251,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
-  const auto recv_rpm_update =
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", 900));
-  ASSERT_TRUE(recv_rpm_update.successful);
   const auto rev_rpm_update =
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", 750));
   ASSERT_TRUE(rev_rpm_update.successful);
@@ -261,8 +259,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   ASSERT_TRUE(ramp_sec_update.successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", -1)).successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", -1)).successful);
   EXPECT_FALSE(
@@ -322,15 +318,15 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   executor.add_node(dribble_node);
   executor.add_node(test_node);
 
-  // 状態0: 初期姿勢 RECEIVE (0.0 rad)
+  // 状態0: 初期姿勢 DRIBBLE (-0.86 rad)
   auto start = std::chrono::steady_clock::now();
-  while (std::abs(last_position_rad - 0.0f) > 0.01f &&
+  while (std::abs(last_position_rad - (-0.86f)) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_position_rad, 0.0f, 0.01f);
+  EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
 
   const auto position_update = dribble_node->set_parameters_atomically(
   {
@@ -364,6 +360,77 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   EXPECT_NEAR(last_position_rad, 1.3f, 0.01f);
+}
+
+TEST_F(RobotControllerTest, DribbleControllerShotCycleTestModeTest)
+{
+  auto dribble_node = std::make_shared<DribbleControllerNode>();
+  auto test_node = std::make_shared<rclcpp::Node>("test_dribble_test_mode_client");
+
+  float last_position_rad = 999.0f;
+  auto position_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
+    "/edulite/target", 1,
+    [&last_position_rad](const actuator_msgs::msg::ActuatorTarget::SharedPtr msg) {
+      if (msg->logical_id == 5) {
+        last_position_rad = msg->target;
+      }
+    });
+
+  uint8_t last_published_belt_mode = 255;
+  auto belt_mode_sub = test_node->create_subscription<robot_msgs::msg::BeltMode>(
+    "/belt/command_mode", 1,
+    [&last_published_belt_mode](const robot_msgs::msg::BeltMode::SharedPtr msg) {
+      last_published_belt_mode = msg->mode;
+    });
+
+  auto pub_shot_cycle = test_node->create_publisher<std_msgs::msg::Bool>(
+    "/dribble/shot_cycle_request", 1);
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(dribble_node);
+  executor.add_node(test_node);
+
+  // 初期化待ち (DRIBBLE姿勢: -0.86 rad)
+  auto start = std::chrono::steady_clock::now();
+  while (std::abs(last_position_rad - (-0.86f)) > 0.01f &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
+
+  // test_mode を true に設定
+  const auto param_res = dribble_node->set_parameter(rclcpp::Parameter("test_mode", true));
+  ASSERT_TRUE(param_res.successful);
+
+  // beltがSTOPのままでも、test_mode=trueならBELT_SPINUPを経由せず即座にFEED (1.3 rad) へ向かう
+  std_msgs::msg::Bool shot_msg;
+  shot_msg.data = true;
+  pub_shot_cycle->publish(shot_msg);
+
+  // FEED (1.3 rad) に到達することを確認
+  start = std::chrono::steady_clock::now();
+  while (std::abs(last_position_rad - 1.3f) > 0.01f &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_NEAR(last_position_rad, 1.3f, 0.01f);
+
+  // FEED保持時間後、DRIBBLE (-0.86 rad) に自動復帰することを確認
+  start = std::chrono::steady_clock::now();
+  while (std::abs(last_position_rad - (-0.86f)) > 0.01f &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(3))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
+
+  // test_mode のため自動起動・自動停止コマンドは発行されない
+  EXPECT_NE(last_published_belt_mode, robot_msgs::msg::BeltMode::STOP);
 }
 
 TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)

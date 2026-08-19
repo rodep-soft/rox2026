@@ -12,6 +12,7 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
+    spring_arm_restore_delay_ms: 600  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
@@ -32,9 +33,12 @@
     # Share/BackボタンでHeading Hold(IMU補正)のON/OFF切替
     heading_hold_toggle_button: 8
 
-    # R2ボタン押下時の旋回減速機能 (ボタン番号: 7 (R2), 旋回速度倍率: 0.5で通常の1/2)
+    # R2ボタン押下時の低速走行・減速機能 (ボタン番号: 7 (R2))
+    # slow_turn_scale: 旋回速度倍率 (0.5で通常の1/2)
+    # slow_linear_scale: 並進線速度倍率 (0.5で通常の1/2)
     slow_turn_button: 7
     slow_turn_scale: 0.5
+    slow_linear_scale: 0.5
 
     # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
