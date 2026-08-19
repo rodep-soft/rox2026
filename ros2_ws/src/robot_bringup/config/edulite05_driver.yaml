@@ -64,7 +64,7 @@
       resume_position_on_startup: true # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
       allow_unreferenced_position_commands: true #
       minimum_position_rad: -1000000.0 # 
-      maximum_position_rad: 0.0        #
+      maximum_position_rad: 1000000.0  # 逆回転(正方向)の待機オフセットを許可
 
       current_limit: 11.0
       acceleration: 150.0
