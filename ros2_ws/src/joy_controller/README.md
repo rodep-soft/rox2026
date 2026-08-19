@@ -58,7 +58,8 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **Share / Create ボタン (Button 8)** | **Heading Hold (IMU姿勢補正) ON / OFF トグル** (異常時等の手動直結バイパス) |
 | **PS ボタン (Button 12)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
 | **Options ボタン (Button 9)** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
-| **R1** | **ドリブラー回転 ON / OFF** |
+| **R1** | **ドリブラー正回転 ON / OFF (トグル)** |
+| **L1** | *(未割り当て)* |
 | **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
@@ -67,6 +68,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **R2 + DPAD 左** | **【手動アーム操作】 DRIBBLE** (アームをドリブル位置に戻す) |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
+| **R2 + 右スティック (左右)** | **低速旋回** (通常の1/2の旋回速度、`slow_turn_scale`で倍率変更可) |
 
 ## Joy入力の処理順
 
@@ -124,6 +126,8 @@ SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続け
 | `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |
 | `linear_y_limit` | double | スティック全倒し時の最大左右速度[m/s] |
 | `angular_z_limit` | double | スティック全倒し時の最大旋回速度[rad/s] |
+| `slow_turn_button` | int | 低速旋回を有効化するボタン番号。デフォルト: 7 (R2)、-1で無効 |
+| `slow_turn_scale` | double | 低速旋回時の旋回速度倍率（減速率）。デフォルト: 0.5 (1/2) |
 
 Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
 変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは
@@ -173,7 +177,8 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 |---|---|---|
 | publish | `/shot_cycle/request` | `std_msgs/msg/Bool` |
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
-| publish | `/dribble/enabled` | `std_msgs/msg/Bool` |
+| publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
+| publish | `/dribble/command_reverse` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
 | publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |

@@ -18,7 +18,7 @@ __pycache__/
 rosbag2_*/
 
 # debag file (.txt)
-*log.txt
+*log*.txt
 
 #about vscode setting
 .vacode/

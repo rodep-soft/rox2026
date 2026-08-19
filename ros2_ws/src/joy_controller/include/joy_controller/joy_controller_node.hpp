@@ -33,6 +33,7 @@ private:
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_dribble_enabled(bool enabled);
+  void publish_dribble_reverse(bool reversed);
   void publish_spring_decel(bool active);
   void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
@@ -70,8 +71,11 @@ private:
   int home_button_{13};
   int circle_button_{2};
   int dribble_enable_button_{5};
+  int dribble_reverse_button_{-1};
   int game2_start_button_{9};
   int heading_hold_toggle_button_{8};
+  int slow_turn_button_{7};
+  double slow_turn_scale_{0.5};
   int left_trigger_axis_{3};
   int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
@@ -91,6 +95,7 @@ private:
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   int shot_cycle_opening_rpm_{1500};
   bool dribble_enabled_{false};
+  bool dribble_reversed_{false};
   bool dribble_enabled_before_spring_{false};
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{150};
@@ -113,6 +118,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_reverse_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_decel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;

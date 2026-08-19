@@ -10,6 +10,7 @@
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
+#include "robot_msgs/msg/arm_position.hpp"
 #include "dribble_controller/dribble_controller.hpp"
 #include "belt_controller/belt_controller.hpp"
 #include "mecanum_controller/mecanum_controller_node.hpp"
@@ -249,8 +250,23 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
+  const auto recv_rpm_update =
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", 900));
+  ASSERT_TRUE(recv_rpm_update.successful);
+  const auto rev_rpm_update =
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", 750));
+  ASSERT_TRUE(rev_rpm_update.successful);
+  const auto ramp_sec_update =
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_ramp_sec", 1.5));
+  ASSERT_TRUE(ramp_sec_update.successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", -1)).successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", -1)).successful);
+  EXPECT_FALSE(
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_ramp_sec", -0.5)).successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
   EXPECT_TRUE(
@@ -299,22 +315,22 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
       }
     });
 
-  auto position_mode_pub = test_node->create_publisher<std_msgs::msg::UInt8>(
-    "/dribble/position_mode", 1);
+  auto position_mode_pub = test_node->create_publisher<robot_msgs::msg::ArmPosition>(
+    "/dribble/command_position", 1);
 
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(dribble_node);
   executor.add_node(test_node);
 
-  // 状態0: 初期姿勢 DRIBBLE (0.35 rad)
+  // 状態0: 初期姿勢 RECEIVE (0.0 rad)
   auto start = std::chrono::steady_clock::now();
-  while (std::abs(last_position_rad - 0.35f) > 0.01f &&
+  while (std::abs(last_position_rad - 0.0f) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_position_rad, 0.35f, 0.01f);
+  EXPECT_NEAR(last_position_rad, 0.0f, 0.01f);
 
   const auto position_update = dribble_node->set_parameters_atomically(
   {
@@ -323,8 +339,8 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   ASSERT_TRUE(position_update.successful);
 
   // 状態1: runtime parameterで変更したOPEN位置 (-0.5 rad) へ遷移
-  std_msgs::msg::UInt8 mode_msg;
-  mode_msg.data = 1; // OPEN
+  robot_msgs::msg::ArmPosition mode_msg;
+  mode_msg.position = robot_msgs::msg::ArmPosition::OPEN;
   position_mode_pub->publish(mode_msg);
 
   start = std::chrono::steady_clock::now();
@@ -337,7 +353,7 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   EXPECT_NEAR(last_position_rad, -0.5f, 0.01f);
 
   // 状態2: FEED 位置 (1.3 rad) へ遷移
-  mode_msg.data = 2; // FEED
+  mode_msg.position = robot_msgs::msg::ArmPosition::FEED;
   position_mode_pub->publish(mode_msg);
 
   start = std::chrono::steady_clock::now();

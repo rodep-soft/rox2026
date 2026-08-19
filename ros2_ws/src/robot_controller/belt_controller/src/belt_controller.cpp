@@ -9,31 +9,9 @@
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
 {
-  underbelt_rpms_[0] = declare_parameter<int>("underbelt_level_1_rpm", 3000);
-  underbelt_rpms_[1] = declare_parameter<int>("underbelt_level_2_rpm", 3500);
-  underbelt_rpms_[2] = declare_parameter<int>("underbelt_level_3_rpm", 4000);
-  underbelt_rpms_[3] = declare_parameter<int>("underbelt_level_4_rpm", 4500);
-  upperbelt_rpms_[0] = declare_parameter<int>("upperbelt_level_1_rpm", 3000);
-  upperbelt_rpms_[1] = declare_parameter<int>("upperbelt_level_2_rpm", 3500);
-  upperbelt_rpms_[2] = declare_parameter<int>("upperbelt_level_3_rpm", 4000);
-  upperbelt_rpms_[3] = declare_parameter<int>("upperbelt_level_4_rpm", 4500);
+  load_parameters();
 
-  const auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 50);
-  const auto qos_depth = declare_parameter<int>("qos_depth", 1);
-  const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
-  const auto upperbelt_logical_id = declare_parameter<int>("upperbelt_logical_id", 10);
-  const auto target_array_topic = declare_parameter<std::string>(
-    "target_array_topic",
-    "/vesc/target_array");
-
-  if (emergency_stop_period_ms <= 0 || qos_depth <= 0 || target_array_topic.empty()) {
-    throw std::runtime_error("Invalid belt parameters");
-  }
-
-  underbelt_logical_id_ = static_cast<uint16_t>(underbelt_logical_id);
-  upperbelt_logical_id_ = static_cast<uint16_t>(upperbelt_logical_id);
-
-  const auto command_qos = rclcpp::QoS(qos_depth);
+  const auto command_qos = rclcpp::QoS(qos_depth_);
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
   belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
@@ -53,20 +31,57 @@ BeltControllerNode::BeltControllerNode()
     std::bind(&BeltControllerNode::vesc_state_callback, this, std::placeholders::_1));
 
   target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
-    target_array_topic, command_qos);
+    target_array_topic_, command_qos);
 
   // 定量評価用ベルトステータストピック (/belt/status)
   status_pub_ = create_publisher<robot_msgs::msg::BeltStatus>(
     "/belt/status", command_qos);
 
-  emergency_stop_timer_ = create_wall_timer(
-    std::chrono::milliseconds(emergency_stop_period_ms),
-    std::bind(&BeltControllerNode::emergency_stop_timer_callback, this));
+  command_timer_ = create_wall_timer(
+    std::chrono::milliseconds(emergency_stop_period_ms_),
+    std::bind(&BeltControllerNode::command_timer_callback, this));
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(&BeltControllerNode::parameter_callback, this, std::placeholders::_1));
 
   RCLCPP_INFO(get_logger(), "BeltControllerNode initialized. Monitoring topic: /belt/status");
+}
+
+void BeltControllerNode::load_parameters()
+{
+  underbelt_rpms_[0] = declare_parameter<int>("underbelt_level_1_rpm", 3000);
+  underbelt_rpms_[1] = declare_parameter<int>("underbelt_level_2_rpm", 3500);
+  underbelt_rpms_[2] = declare_parameter<int>("underbelt_level_3_rpm", 4000);
+  underbelt_rpms_[3] = declare_parameter<int>("underbelt_level_4_rpm", 4500);
+  upperbelt_rpms_[0] = declare_parameter<int>("upperbelt_level_1_rpm", 3000);
+  upperbelt_rpms_[1] = declare_parameter<int>("upperbelt_level_2_rpm", 3500);
+  upperbelt_rpms_[2] = declare_parameter<int>("upperbelt_level_3_rpm", 4000);
+  upperbelt_rpms_[3] = declare_parameter<int>("upperbelt_level_4_rpm", 4500);
+
+  emergency_stop_period_ms_ = declare_parameter<int>("emergency_stop_period_ms", 50);
+  qos_depth_ = declare_parameter<int>("qos_depth", 1);
+  const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
+  const auto upperbelt_logical_id = declare_parameter<int>("upperbelt_logical_id", 10);
+  target_array_topic_ = declare_parameter<std::string>(
+    "target_array_topic",
+    "/vesc/target_array");
+
+  if (emergency_stop_period_ms_ <= 0 || qos_depth_ <= 0 || target_array_topic_.empty()) {
+    throw std::runtime_error("Invalid belt parameters: timing or topic is invalid");
+  }
+  if (underbelt_logical_id < 0 || underbelt_logical_id > 65535 ||
+    upperbelt_logical_id < 0 || upperbelt_logical_id > 65535)
+  {
+    throw std::runtime_error("Invalid belt parameters: logical IDs must be in [0, 65535]");
+  }
+  for (std::size_t i = 0; i < num_levels; ++i) {
+    if (underbelt_rpms_[i] < 0 || upperbelt_rpms_[i] < 0) {
+      throw std::runtime_error("Invalid belt parameters: RPM must be non-negative");
+    }
+  }
+
+  underbelt_logical_id_ = static_cast<uint16_t>(underbelt_logical_id);
+  upperbelt_logical_id_ = static_cast<uint16_t>(upperbelt_logical_id);
 }
 
 void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
@@ -117,11 +132,11 @@ void BeltControllerNode::vesc_state_callback(
   status_pub_->publish(status);
 }
 
-void BeltControllerNode::emergency_stop_timer_callback()
+void BeltControllerNode::command_timer_callback()
 {
-  if (emergency_stop_active_) {
-    publish_command();
-  }
+  // Keep refreshing the VESC target before hardware_driver's command timeout.
+  // publish_command() already sends zero RPM while emergency stop is active.
+  publish_command();
 }
 
 rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
@@ -129,38 +144,90 @@ rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
 {
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
+  bool rpm_updated = false;
 
   for (const auto & param : parameters) {
     const auto & name = param.get_name();
 
-    if (name == "emergency_stop_period_ms" || name == "qos_depth" ||
-      name == "underbelt_logical_id" || name == "upperbelt_logical_id" ||
-      name == "target_array_topic")
-    {
-      result.successful = false;
-      result.reason = name + " requires a node restart";
-      return result;
+    // 再起動が必要なパラメータ（同じ値なら許可、変更時は拒否）
+    if (name == "qos_depth") {
+      if (param.as_int() != qos_depth_) {
+        result.successful = false;
+        result.reason = name + " requires a node restart";
+        return result;
+      }
+      continue;
+    }
+    if (name == "emergency_stop_period_ms") {
+      if (param.as_int() != emergency_stop_period_ms_) {
+        result.successful = false;
+        result.reason = name + " requires a node restart";
+        return result;
+      }
+      continue;
+    }
+    if (name == "underbelt_logical_id") {
+      if (static_cast<uint16_t>(param.as_int()) != underbelt_logical_id_) {
+        result.successful = false;
+        result.reason = name + " requires a node restart";
+        return result;
+      }
+      continue;
+    }
+    if (name == "upperbelt_logical_id") {
+      if (static_cast<uint16_t>(param.as_int()) != upperbelt_logical_id_) {
+        result.successful = false;
+        result.reason = name + " requires a node restart";
+        return result;
+      }
+      continue;
+    }
+    if (name == "target_array_topic") {
+      if (param.as_string() != target_array_topic_) {
+        result.successful = false;
+        result.reason = name + " requires a node restart";
+        return result;
+      }
+      continue;
     }
 
-    for (std::size_t level = 0; level < num_levels; ++level) {
-      const auto level_str = std::to_string(level + 1);
-      if (name == "underbelt_level_" + level_str + "_rpm") {
-        const int val = static_cast<int>(param.as_int());
-        if (val < 0) {
-          result.successful = false; result.reason = "RPM must be non-negative"; return result;
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+      for (std::size_t level = 0; level < num_levels; ++level) {
+        const auto level_str = std::to_string(level + 1);
+        if (name == "underbelt_level_" + level_str + "_rpm") {
+          const int val = static_cast<int>(param.as_int());
+          if (val < 0) {
+            result.successful = false;
+            result.reason = "RPM must be non-negative";
+            return result;
+          }
+          if (underbelt_rpms_[level] != val) {
+            underbelt_rpms_[level] = val;
+            rpm_updated = true;
+            RCLCPP_INFO(
+              get_logger(), "Updated %s: %d RPM", name.c_str(), val);
+          }
+        } else if (name == "upperbelt_level_" + level_str + "_rpm") {
+          const int val = static_cast<int>(param.as_int());
+          if (val < 0) {
+            result.successful = false;
+            result.reason = "RPM must be non-negative";
+            return result;
+          }
+          if (upperbelt_rpms_[level] != val) {
+            upperbelt_rpms_[level] = val;
+            rpm_updated = true;
+            RCLCPP_INFO(
+              get_logger(), "Updated %s: %d RPM", name.c_str(), val);
+          }
         }
-        underbelt_rpms_[level] = val;
-      } else if (name == "upperbelt_level_" + level_str + "_rpm") {
-        const int val = static_cast<int>(param.as_int());
-        if (val < 0) {
-          result.successful = false; result.reason = "RPM must be non-negative"; return result;
-        }
-        upperbelt_rpms_[level] = val;
       }
     }
   }
 
-  publish_command();
+  if (rpm_updated) {
+    publish_command();
+  }
   return result;
 }
 
