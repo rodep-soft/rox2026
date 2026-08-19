@@ -3,7 +3,7 @@
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
     enable_receive_state: true    # RECEIVE状態の有無 (true: ボール未保持時にRECEIVE姿勢 / false: 常にDRIBBLE姿勢)
-    receive_position_rad: 0.0     # RECEIVE姿勢 (捕球迎える姿勢)
+    receive_position_rad: -0.31     # RECEIVE姿勢 (捕球迎える姿勢)
     dribble_position_rad: 0.31    # DRIBBLE姿勢
     open_position_rad: -1.02      # OPEN姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
@@ -29,7 +29,7 @@
     dribble_receive_rpm: 500        # RECEIVE姿勢 (捕球待ち) の回転数 (ボールのはじき防止・緩やか捕球)
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
-    spring_fire_dribble_rpm: 600    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
+    spring_fire_dribble_rpm: 400    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
     shot_cycle_opening_rpm: 1700    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
     shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE

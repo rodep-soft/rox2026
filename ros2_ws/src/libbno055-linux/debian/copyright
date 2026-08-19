@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: libbno055-linux
+Source: https://github.com/lazytatzv/libbno055-linux
+
+Files: *
+Copyright: 2024 lazytatzv
+License: MIT
