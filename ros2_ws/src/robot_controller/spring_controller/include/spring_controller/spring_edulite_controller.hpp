@@ -22,8 +22,9 @@ private:
     UNINITIALIZED,
     HOMING,
     WAITING_FOR_STOP,
+    MOVING_TO_STANDBY,
     READY,
-    WAITING_REARM_STOP,
+    FIRING,
     ERROR,
   };
 
@@ -50,6 +51,8 @@ private:
   int stopped_count_{0};
   int required_stopped_count_{3};
 
+  double standby_offset_rad_{0.0};
+  double standby_position_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};

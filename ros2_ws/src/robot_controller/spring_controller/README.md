@@ -15,11 +15,12 @@
 
 | 種別 | topic/service | 型 | 内容 |
 |---|---|---|---|
-| sub | `/emergency_stop` | `Bool` | trueの間は目標値の更新を停止 |
+| sub | `/system/emergency_stop` | `Bool` | trueの間は目標値の更新を停止 |
 | sub | `/spring/fire_request` | `Bool` | 立ち上がりごとに1周分を加算 |
-| sub | `/limit_switchs` | `UInt8` | ホーミング用リミットスイッチ |
+| sub | `/hardware/limit_switches` | `UInt8` | ホーミング用リミットスイッチ |
 | sub | `/edulite/state` | `ActuatorState` | 接続状態と原点設定状態 |
 | pub | `/edulite/target` | `ActuatorTarget` | logical ID 4の累積位置[rad] |
+| pub | `/spring/actuator_ready` | `Bool` | 待機位置到達・発射可能フラグ |
 | client | `/edulite/set_position` | `SetPosition` | リミット位置を0 radに設定 |
 
 ## 状態遷移
@@ -29,34 +30,38 @@
     │
     │ state.position_reference_set == false
     ▼
- HOMING ── limit ON / set_position(0)成功 ──→ READY
-    │                                         │
-    └──────── timeout → ERROR                 └ fire要求
-                                                  target += fire_increment_rad
+ HOMING ── limit ON / set_position(0)成功 ──→ MOVING_TO_STANDBY
+    │                                             │
+    └──────── timeout → ERROR                     │ 到達 & 静止
+                                                  ▼
+                                                READY ◄───────────────┐
+                                                  │                   │
+                                                  └ fire要求          │ 到達 & 静止
+                                                    target += fire_increment
+                                                    ▼                 │
+                                                  FIRING ─────────────┘
 ```
 
 ### HOMING
-
 EduLiteドライバは未原点中も`position_reference_set=false`を配信する。
-上位ノードは`command_period_ms`ごとに次の差分を累積目標へ加える。
+上位ノードは`command_period_ms`ごとに負方向へゆっくり進む。リミット検出後、
+上位ノードが`/edulite/set_position`を呼び、現在位置と累積目標を0 radへリセットする。
 
-```text
--homing_velocity_rad_s * command_period_ms / 1000
-```
-
-したがってホーミング指令は負方向へゆっくり進む。リミット検出後、
-上位ノードが`/edulite/set_position`を呼び、現在位置と累積目標を0 radへ戻す。
+### MOVING_TO_STANDBY
+0点設定後、目標位置を`standby_offset_rad`（正方向）に設定して待機位置へ逆回転移動する。
+目標位置到達かつモーター静止を確認すると`READY`へ遷移する。
 
 ### READY
-
-発射要求のfalse→true立ち上がりごとに次だけを実行する。
+発射待機状態。`/spring/actuator_ready`に`true`を配信する。
+発射要求のfalse→true立ち上がりごとに次を実行し、`FIRING`状態へ移行する。
 
 ```text
 target_position_rad += fire_increment_rad
 ```
 
-`fire_increment_rad`は必ず負値とする。装填・発射タイマーや逆方向への復帰処理はない。
-リミットスイッチは通常発射中には使用しない。
+### FIRING
+1周分（`fire_increment_rad`）回転して発射動作を行い、元の待機オフセット位置の位相へ戻る。
+回転完了（目標位置到達かつ静止）を検知すると再び`READY`状態へ戻る。
 
 ## 再接続と非常停止
 
@@ -70,9 +75,13 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 
 | parameter | 内容 |
 |---|---|
-| `fire_increment_rad` | 発射要求1回で加算する負角度[rad] |
+| `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
+| `standby_position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
+| `fire_increment_rad` | 発射要求1回で加算する回転角度[rad] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
 | `homing_timeout_sec` | ホーミングのタイムアウト[s] |
+| `zeroing_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
+| `zeroing_required_stable_feedback_count` | 静止判定に必要な連続回数 |
 | `command_period_ms` | 位置目標の更新・再送周期[ms] |
 | `limit_switch_bit_offset` | リミットスイッチbyte内の使用bit |
 

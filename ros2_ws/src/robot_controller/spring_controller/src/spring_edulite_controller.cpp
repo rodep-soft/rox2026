@@ -10,6 +10,9 @@
 SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
+  standby_offset_rad_ = declare_parameter<double>("standby_offset_rad", 0.0);
+  standby_position_tolerance_rad_ =
+    declare_parameter<double>("standby_position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ = declare_parameter<double>("fire_increment_rad", -6.283185307);
   homing_velocity_rad_s_ = declare_parameter<double>("homing_velocity_rad_s", 0.5);
@@ -57,12 +60,11 @@ SpringEduliteController::SpringEduliteController()
   position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     target_topic, command_qos);
 
-  // 装填されているかどうかのみを見るtopic
+  // 装填・待機完了しているかどうかを見るtopic
   actuator_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/actuator_ready", command_qos);
 
-  // spring_controller -> hardware_driver: 原点検出後の現在位置を0
-  // radに設定する。
+  // spring_controller -> hardware_driver: 原点検出後の現在位置を0 radに設定する。
   set_position_client_ =
     create_client<actuator_msgs::srv::SetPosition>(set_position_service);
 
@@ -87,12 +89,15 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
     return;
   }
 
-  // 1回転 (-2π) を要求し、回転完了・リミット判定待ちへ移行
+  // 1回転を加算して発射し、回転完了後に待機位置へ戻る
   target_position_rad_ += fire_increment_rad_;
-  state_ = State::WAITING_REARM_STOP;
+  state_ = State::FIRING;
   stopped_count_ = 0;
   publish_target(target_position_rad_);
-  RCLCPP_INFO(get_logger(), "Spring firing: commanded 1 turn. Waiting for limit re-arm.");
+  RCLCPP_INFO(
+    get_logger(),
+    "Spring firing: commanded rotation (target: %.3f rad). Waiting to return to standby.",
+    target_position_rad_);
 }
 
 void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -115,7 +120,7 @@ void SpringEduliteController::actuator_state_callback(
   const bool actuator_state_is_ready =
     msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   std_msgs::msg::Bool ready_msg;
-  ready_msg.data = actuator_state_is_ready;
+  ready_msg.data = (actuator_state_is_ready && state_ == State::READY);
   actuator_ready_pub_->publish(ready_msg);
 
   if (!actuator_state_is_ready) {
@@ -124,21 +129,37 @@ void SpringEduliteController::actuator_state_callback(
         get_logger(),
         "Spring EduLite disconnected. Clearing target and homing state.");
     }
+    actuator_ready_ = false;
+    position_reference_set_ = false;
+    state_ = State::UNINITIALIZED;
     return;
   }
+  actuator_ready_ = true;
+  position_reference_set_ = msg->position_reference_set;
 
   // 初回接続時 or 位置参照失われた場合
   if (state_ == State::UNINITIALIZED || !msg->position_reference_set) {
     if (state_ != State::HOMING && state_ != State::WAITING_FOR_STOP) {
-      RCLCPP_WARN(get_logger(), "Position reference lost. Starting HOMING.");
-      start_homing();
+      if (!msg->position_reference_set) {
+        RCLCPP_WARN(get_logger(), "Position reference lost. Starting HOMING.");
+        start_homing();
+      } else {
+        if (std::fabs(standby_offset_rad_) > 1e-4) {
+          target_position_rad_ = standby_offset_rad_;
+          state_ = State::MOVING_TO_STANDBY;
+          stopped_count_ = 0;
+          publish_target(target_position_rad_);
+        } else {
+          target_position_rad_ = 0.0;
+          state_ = State::READY;
+          publish_target(0.0);
+        }
+      }
     }
   }
 
-  // リミットスイッチ検知後の静止検出（HOMING中または発射完了後）
-  const bool is_waiting_for_stop =
-    (state_ == State::WAITING_FOR_STOP || state_ == State::WAITING_REARM_STOP);
-  if (is_waiting_for_stop && limit_switch_active_ && !zero_service_pending_) {
+  // リミットスイッチ検知後の静止検出（HOMING中）
+  if (state_ == State::WAITING_FOR_STOP && limit_switch_active_ && !zero_service_pending_) {
     if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
       ++stopped_count_;
     } else {
@@ -147,6 +168,36 @@ void SpringEduliteController::actuator_state_callback(
 
     if (stopped_count_ >= required_stopped_count_) {
       request_zero_reference();
+    }
+  }
+
+  // 待機位置への移動完了判定 (MOVING_TO_STANDBY) または 発射回転完了判定 (FIRING)
+  if (state_ == State::MOVING_TO_STANDBY || state_ == State::FIRING) {
+    const bool pos_reached =
+      std::fabs(msg->position - target_position_rad_) <= standby_position_tolerance_rad_;
+    const bool vel_stopped =
+      std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_;
+
+    if (pos_reached && vel_stopped) {
+      ++stopped_count_;
+    } else {
+      stopped_count_ = 0;
+    }
+
+    if (stopped_count_ >= required_stopped_count_) {
+      if (state_ == State::MOVING_TO_STANDBY) {
+        RCLCPP_INFO(
+          get_logger(),
+          "Reached standby position (%.3f rad). Spring is READY.",
+          target_position_rad_);
+      } else {
+        RCLCPP_INFO(
+          get_logger(),
+          "Spring fire complete (reached %.3f rad). Ready for next fire.",
+          target_position_rad_);
+      }
+      state_ = State::READY;
+      stopped_count_ = 0;
     }
   }
 }
@@ -204,10 +255,21 @@ void SpringEduliteController::request_zero_reference()
       zero_service_pending_ = false;
       const auto response = future.get();
       if (response->success) {
-        target_position_rad_ = 0.0;
-        state_ = State::READY;
-        publish_target(0.0);
         RCLCPP_INFO(get_logger(), "Spring position successfully zeroed to 0.0 rad.");
+        if (std::fabs(standby_offset_rad_) > 1e-4) {
+          target_position_rad_ = standby_offset_rad_;
+          state_ = State::MOVING_TO_STANDBY;
+          stopped_count_ = 0;
+          publish_target(target_position_rad_);
+          RCLCPP_INFO(
+            get_logger(),
+            "Moving to standby position: %.3f rad.",
+            target_position_rad_);
+        } else {
+          target_position_rad_ = 0.0;
+          state_ = State::READY;
+          publish_target(0.0);
+        }
       } else {
         state_ = State::ERROR;
         RCLCPP_ERROR(get_logger(), "Failed to zero spring position: %s", response->message.c_str());
