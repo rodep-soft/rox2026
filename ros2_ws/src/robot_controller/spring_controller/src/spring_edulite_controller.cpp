@@ -13,11 +13,14 @@ SpringEduliteController::SpringEduliteController()
   auto declare_double_parameter = [this](const std::string & name, double default_value) -> double {
     rcl_interfaces::msg::ParameterDescriptor desc;
     desc.dynamic_typing = true;
-    const auto param = declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
-    if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-      return param.as_double();
-    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
-      return static_cast<double>(param.as_int());
+    declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
+    rclcpp::Parameter param;
+    if (get_parameter(name, param)) {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        return param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        return static_cast<double>(param.as_int());
+      }
     }
     return default_value;
   };
