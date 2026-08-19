@@ -23,7 +23,7 @@
     dribbling_accel_factor: 1.2       # DRIBBLE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 200             # DRIBBLE姿勢 (ボール保持中) の回転数
+    dribble_on_rpm: 340             # DRIBBLE姿勢 (ボール保持中) の回転数
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
     spring_fire_dribble_rpm: 0    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
