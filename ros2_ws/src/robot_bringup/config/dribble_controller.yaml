@@ -1,11 +1,11 @@
 /dribble_controller_node:
   ros__parameters:
+    test_mode: false              # テストモード (true: ベルトが既に回転しているとみなして即座にFEED動作)
+    
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
-    enable_receive_state: true    # RECEIVE状態の有無 (true: ボール未保持時にRECEIVE姿勢 / false: 常にDRIBBLE姿勢)
-    receive_position_rad: -0.36     # RECEIVE姿勢 (捕球迎える姿勢)
-    dribble_position_rad: 0.31    # DRIBBLE姿勢
-    open_position_rad: -1.02      # OPEN姿勢
+    dribble_position_rad: -0.86   # DRIBBLE姿勢
+    open_position_rad: -1.27      # OPEN姿勢 (ボールを出すときの姿勢)
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.5        # FEED姿勢(発射機構に押し込む姿勢)
     
@@ -15,23 +15,20 @@
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 9.0   # DRIBBLE -> OPEN (最大速度6.0 rad/s)
-    opening_accel_factor: 2.0         # OPEN 動作で最高速度に達するまでの遅さ倍率 (大きいほどTop speedまでゆったり加速)
-    feeding_max_velocity_rad_s: 11.0  # OPEN -> FEED
-    returning_max_velocity_rad_s: 6.0 # FEED -> RECEIVE
-    dribbling_max_velocity_rad_s: 2.5 # RECEIVE -> DRIBBLE (捕球後にボールを落とさず滑らかに保持姿勢へ移行)
-    dribbling_accel_factor: 3.0       # DRIBBLE 遷移の加速緩やかさ倍率
-    receiving_max_velocity_rad_s: 1.5 # DRIBBLE -> RECEIVE (ボール喪失後などに滑らかに迎える姿勢へ移行)
-    receiving_accel_factor: 1.5       # RECEIVE 遷移の加速緩やかさ倍率
+    opening_max_velocity_rad_s: 9.0   # OPEN 動作最大速度
+    opening_accel_factor: 2.0         # OPEN 動作で最高速度に達するまでの遅さ倍率
+    feeding_max_velocity_rad_s: 11.0  # DRIBBLE -> FEED
+    returning_max_velocity_rad_s: 6.0 # FEED -> DRIBBLE
+    dribbling_max_velocity_rad_s: 1.0 # 保持姿勢遷移
+    dribbling_accel_factor: 1.5       # DRIBBLE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 1620            # DRIBBLE姿勢 (ボール保持中) の回転数
-    dribble_receive_rpm: 400        # RECEIVE姿勢 (捕球待ち) の回転数 (ボールのはじき防止・緩やか捕球)
+    dribble_on_rpm: 400             # DRIBBLE姿勢 (ボール保持中) の回転数
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
-    spring_fire_dribble_rpm: 400    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
-    shot_cycle_opening_rpm: 1700    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
-    shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
+    spring_fire_dribble_rpm: 600    # ばね発射時の減速着地RPM
+    shot_cycle_opening_rpm: 1700    # 真下に下がるまでの高回転数
+    shot_cycle_feeding_rpm: 200     # FEED 押し込み完了時の回転数
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値

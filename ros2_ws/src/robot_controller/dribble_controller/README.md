@@ -8,9 +8,9 @@
 |---|---|---|
 | sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
 | sub | `/dribble/command_reverse` | ローラー逆転ON/OFF |
-| sub | `/dribble/position_mode` | `DRIBBLE`、`OPEN`、`FEED`、`RECEIVE`姿勢 |
-| sub | `/dribble/command_position` | `DRIBBLE`、`OPEN`、`FEED`姿勢 |
-| sub | `/dribble/shot_cycle_request` | `OPEN → FEED → RECEIVE`自動動作 |
+| sub | `/dribble/position_mode` | `DRIBBLE`、`OPEN`、`FEED` 姿勢 |
+| sub | `/dribble/command_position` | `DRIBBLE`、`OPEN`、`FEED` 姿勢 |
+| sub | `/dribble/shot_cycle_request` | `FEED → DRIBBLE` 自動射出動作 |
 | sub | `/belt/command_mode` | beltの現在モード把握（0=STOP、1〜4=LEVEL） |
 | sub | `/system/emergency_stop` | ローラー停止、安全姿勢復帰 |
 | pub | `/vesc/target` | ローラー目標RPM |
@@ -18,9 +18,14 @@
 | pub | `/belt/command_mode` | shot cycle時のbelt自動ON/OFF |
 | pub | `/dribble/shot_cycle_state` | サイクル進行フェーズ（LED通知用） |
 
+## 各姿勢（Position Mode）の役割
+- `DRIBBLE`：通常ドリブル・ボール保持姿勢（角度: `-0.86 rad`、回転: `400 RPM`）。
+- `OPEN`：ボール排出用姿勢（角度: `-1.27 rad`、回転: `0 RPM`）。
+- `FEED`：ベルト射出押し込み姿勢（角度: `0.5 rad`）。
+
 ## shot cycleの動作
 
-`/shot_cycle/request`にtrueが届くと、次の手順でボールを射出する。
+`/shot_cycle/request`にtrueが届くと、OPEN状態を経由せずに直接射出角度(FEED)へ移行してボールを射出する。
 
 ### beltがSTOPの場合（自動spin-up）
 
@@ -33,13 +38,10 @@ belt を LEVEL_{shot_cycle_belt_spinup_level} に自動ON
     ▼  belt_spinup_delay_sec 秒待機（スピンアップ）
     │
     ▼
-RECEIVE/DRIBBLE → OPEN（アーム開く）
-    │  open_duration_sec 保持
-    ▼
-OPEN → FEED（押し込み射出）
+DRIBBLE → FEED（直接押し込み射出）
     │  feed_duration_sec 保持
     ▼
-FEED → RECEIVE（アーム迎える姿勢へ復帰）
+FEED → DRIBBLE（アーム復帰）
     │
     ▼
 belt を自動STOP
@@ -51,7 +53,7 @@ belt を自動STOP
 [ボタン押下]
     │
     ▼
-RECEIVE/DRIBBLE → OPEN → FEED → RECEIVE（belt はそのまま）
+DRIBBLE → FEED → DRIBBLE（belt はそのまま）
 ```
 
 手動でアーム位置を変更すると shot cycle は中断される。
@@ -59,8 +61,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 
 ## 実行中に変更できるparameter
 
+- `test_mode`（テストモード：trueの場合、beltが既に正常回転しているとみなして即座にFEED動作を実行、デフォルト false）
 - `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
-- `dribble_receive_rpm`（RECEIVE姿勢・捕球待ちのRPM、デフォルト 500 RPM）
 - `dribble_reverse_rpm`（逆回転時の一定RPM）
 - `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]、デフォルト 2.0s）
 - `ball_detection_threshold_a`（ボール検知閾値[A]、デフォルト1.7）
@@ -68,17 +70,14 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数、デフォルト0.3）
 - `shot_cycle_belt_spinup_level`（1〜4、shot cycle時にbeltをONするレベル）
 - `belt_spinup_delay_sec`（beltがSTOPからONになった後の待機時間[s]）
-- `enable_receive_state`（RECEIVE状態の有無：false の場合は常に DRIBBLE 姿勢を使用）
-- `receive_position_rad`、`dribble_position_rad`、`open_position_rad`、`feed_position_rad`
+- `dribble_position_rad`、`open_position_rad`、`feed_position_rad`
 - `open_duration_sec`、`feed_duration_sec`
 - `opening_max_velocity_rad_s`
 - `feeding_max_velocity_rad_s`
 - `returning_max_velocity_rad_s`
 - `dribbling_max_velocity_rad_s`
-- `receiving_max_velocity_rad_s`（DRIBBLE -> RECEIVE の移動最大角速度[rad/s]）
 - `opening_accel_factor`
 - `dribbling_accel_factor`
-- `receiving_accel_factor`（RECEIVE 遷移の加速緩やかさ倍率）
 
 更新値はまとめて検証される。位置は有限値、保持時間とRPMは0以上、区間速度は正の
 有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は、現在の

@@ -46,10 +46,9 @@ private:
     double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
-  bool enable_receive_state_{true};
-  double receive_position_rad_{0.0};
-  double dribble_position_rad_{0.35};
-  double open_position_rad_{-1.0};
+  bool test_mode_{false};
+  double dribble_position_rad_{-0.86};
+  double open_position_rad_{-1.27};
   double bottom_position_rad_{0.0};
   double feed_position_rad_{1.3};
   double open_duration_sec_{0.3};
@@ -58,15 +57,12 @@ private:
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
   double dribbling_max_velocity_rad_s_{1.0};
-  double receiving_max_velocity_rad_s_{1.0};
   double opening_accel_factor_{1.8};
   double dribbling_accel_factor_{1.5};
-  double receiving_accel_factor_{1.5};
   double ball_detection_threshold_a_{1.7};
   double ball_lost_threshold_a_{1.0};
   double current_lpf_alpha_{0.3};
-  int dribble_on_rpm_{800};
-  int dribble_receive_rpm_{500};
+  int dribble_on_rpm_{400};
   int dribble_reverse_rpm_{800};
   double dribble_reverse_ramp_sec_{2.0};
   int spring_fire_dribble_rpm_{600};
@@ -81,7 +77,7 @@ private:
   uint16_t under_belt_logical_id_{11};
 
   // ── 状態変数 ────────────────────────────────────────
-  uint8_t position_mode_{robot_msgs::msg::ArmPosition::RECEIVE};
+  uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_{false};
   bool dribble_reverse_enabled_{false};
   bool reverse_transition_active_{false};
@@ -96,10 +92,10 @@ private:
   int manual_transition_start_rpm_{0};
 
   bool shot_cycle_active_{false};
-  uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::OPENING};
+  uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};
   rclcpp::Time shot_cycle_start_time_;
   double shot_cycle_start_position_rad_{0.0};
-  double last_position_command_rad_{0.0};
+  double last_position_command_rad_{-0.86};
   double current_arm_position_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
