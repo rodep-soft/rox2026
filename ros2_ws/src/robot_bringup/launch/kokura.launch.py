@@ -108,16 +108,7 @@ def generate_launch_description():
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-            # --- 4. libbno055-linux: BNO055 Publisher (/bno055/imu) ＆ Heading Controller (/imu/data購読) ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_publisher_node",
-                name="bno055_publisher_node",
-                parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
-                remappings=[("/imu/data", "/bno055/imu")],
-                output="screen",
-            ),
-            # --- 4.1 IMU MUX (Dual IMU: STM32 CANを最優先メイン、BNO055をバックアップに設定) ---
+            # --- 4. STM32 CAN IMU 中継 (/stm32/imu -> /imu/data) ＆ Heading Controller ---
             Node(
                 package="robot_controller",
                 executable="imu_mux_node",
@@ -125,7 +116,7 @@ def generate_launch_description():
                 parameters=[
                     {
                         "primary_imu_topic": "/stm32/imu",
-                        "secondary_imu_topic": "/bno055/imu",
+                        "secondary_imu_topic": "/stm32/imu",
                         "output_imu_topic": "/imu/data",
                         "timeout_ms": 100,
                     }
@@ -190,32 +181,6 @@ def generate_launch_description():
                     }.items()
                 ),
                 condition=IfCondition(LaunchConfiguration("enable_webcam")),
-            ),
-            # base_link -> imu_link 静的 TF (RDK BNO055: 後方-190mm, 右-20mm, 地上高+225mm)
-            Node(
-                package="tf2_ros",
-                executable="static_transform_publisher",
-                name="base_to_imu_tf",
-                arguments=[
-                    "--x",
-                    "-0.190",
-                    "--y",
-                    "-0.020",
-                    "--z",
-                    "0.225",
-                    "--roll",
-                    "0.0",
-                    "--pitch",
-                    "0.0",
-                    "--yaw",
-                    "0.0",
-                    "--frame-id",
-                    "base_link",
-                    "--child-frame-id",
-                    "imu_link",
-                ],
-                output="screen",
-                respawn=False,
             ),
             # base_link -> stm32_imu_link 静的 TF (STM32 IMU: 後方-195mm, 右-65mm, 地上高+225mm)
             Node(

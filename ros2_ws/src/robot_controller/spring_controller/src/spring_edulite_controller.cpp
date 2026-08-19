@@ -11,19 +11,19 @@ SpringEduliteController::SpringEduliteController()
 : Node("spring_controller_node")
 {
   auto declare_double_parameter = [this](const std::string & name, double default_value) -> double {
-    rcl_interfaces::msg::ParameterDescriptor desc;
-    desc.dynamic_typing = true;
-    declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
-    rclcpp::Parameter param;
-    if (get_parameter(name, param)) {
-      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        return param.as_double();
-      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
-        return static_cast<double>(param.as_int());
+      rcl_interfaces::msg::ParameterDescriptor desc;
+      desc.dynamic_typing = true;
+      declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
+      rclcpp::Parameter param;
+      if (get_parameter(name, param)) {
+        if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+          return param.as_double();
+        } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+          return static_cast<double>(param.as_int());
+        }
       }
-    }
-    return default_value;
-  };
+      return default_value;
+    };
 
   standby_offset_rad_ = declare_double_parameter("standby_offset_rad", 0.0);
   standby_position_tolerance_rad_ =
@@ -87,7 +87,10 @@ SpringEduliteController::SpringEduliteController()
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&SpringEduliteController::control_timer_callback, this));
 
-  RCLCPP_INFO(get_logger(), "SpringEduliteController initialized. Waiting for actuator state.");
+  RCLCPP_INFO(
+    get_logger(),
+    "SpringEduliteController initialized. Parameters: standby_offset_rad=%.3f rad, fire_increment_rad=%.3f rad, homing_vel=%.3f rad/s.",
+    standby_offset_rad_, fire_increment_rad_, homing_velocity_rad_s_);
 }
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
