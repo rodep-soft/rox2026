@@ -250,9 +250,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
-  const auto recv_rpm_update =
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", 900));
-  ASSERT_TRUE(recv_rpm_update.successful);
   const auto rev_rpm_update =
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", 750));
   ASSERT_TRUE(rev_rpm_update.successful);
@@ -261,8 +258,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   ASSERT_TRUE(ramp_sec_update.successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_receive_rpm", -1)).successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", -1)).successful);
   EXPECT_FALSE(
@@ -322,15 +317,15 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   executor.add_node(dribble_node);
   executor.add_node(test_node);
 
-  // 状態0: 初期姿勢 RECEIVE (0.0 rad)
+  // 状態0: 初期姿勢 DRIBBLE (-0.86 rad)
   auto start = std::chrono::steady_clock::now();
-  while (std::abs(last_position_rad - 0.0f) > 0.01f &&
+  while (std::abs(last_position_rad - (-0.86f)) > 0.01f &&
     std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
   {
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  EXPECT_NEAR(last_position_rad, 0.0f, 0.01f);
+  EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
 
   const auto position_update = dribble_node->set_parameters_atomically(
   {
