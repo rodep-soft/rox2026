@@ -30,6 +30,10 @@ SpringEduliteController::SpringEduliteController()
     declare_double_parameter("standby_position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ = declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ = declare_double_parameter("fire_increment_rad", -6.283185307);
+  slow_fire_target_rad_ = declare_double_parameter("slow_fire_target_rad", 13.5);
+  slow_fire_velocity_rad_s_ = declare_double_parameter("slow_fire_velocity_rad_s", 12.0);
+  slow_fire_return_velocity_rad_s_ =
+    declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
   homing_velocity_rad_s_ = declare_double_parameter("homing_velocity_rad_s", 0.5);
   homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
   zeroing_velocity_threshold_rad_s_ = declare_double_parameter(
@@ -59,6 +63,10 @@ SpringEduliteController::SpringEduliteController()
   fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos,
     std::bind(&SpringEduliteController::fire_request_callback, this, std::placeholders::_1));
+
+  slow_fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/spring/slow_fire_request", command_qos,
+    std::bind(&SpringEduliteController::slow_fire_request_callback, this, std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos,
@@ -92,8 +100,8 @@ SpringEduliteController::SpringEduliteController()
 
   RCLCPP_INFO(
     get_logger(),
-    "SpringEduliteController initialized. Parameters: standby_offset_rad=%.3f rad, fire_increment_rad=%.3f rad, homing_vel=%.3f rad/s.",
-    standby_offset_rad_, fire_increment_rad_, homing_velocity_rad_s_);
+    "SpringEduliteController initialized. Parameters: standby_offset_rad=%.3f rad, slow_fire_target_rad=%.3f rad, fire_increment_rad=%.3f rad.",
+    standby_offset_rad_, slow_fire_target_rad_, fire_increment_rad_);
 }
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -121,8 +129,49 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
     target_position_rad_);
 }
 
+void SpringEduliteController::slow_fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  const bool rising_edge = msg->data && !slow_fire_request_active_;
+  slow_fire_request_active_ = msg->data;
+
+  if (!rising_edge) {return;}
+
+  if (emergency_stop_active_ || state_ != State::READY) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Slow fire request rejected: emergency stop active or state is not READY.");
+    return;
+  }
+
+  // 13.5 rad を超えないように絶対的なハード安全リミット（13.5 rad上限）を適用
+  constexpr double HARD_MAX_SLOW_FIRE_RAD = 13.5;
+  const double safe_stroke = std::clamp(slow_fire_target_rad_, 0.0, HARD_MAX_SLOW_FIRE_RAD);
+
+  slow_fire_base_rad_ = target_position_rad_;
+  slow_fire_peak_rad_ = slow_fire_base_rad_ + safe_stroke;
+  state_ = State::SLOW_FIRING_EXTENDING;
+  stopped_count_ = 0;
+  slow_fire_phase_start_time_ = now();
+
+  RCLCPP_INFO(
+    get_logger(),
+    "Spring slow fire started: Base=%.3f rad -> Peak=%.3f rad (stroke: +%.3f rad, vel: %.2f rad/s).",
+    slow_fire_base_rad_, slow_fire_peak_rad_, safe_stroke, slow_fire_velocity_rad_s_);
+}
+
 void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (msg->data && !emergency_stop_active_) {
+    if (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING) {
+      state_ = State::READY;
+      target_position_rad_ = slow_fire_base_rad_;
+      publish_target(target_position_rad_);
+      RCLCPP_WARN(
+        get_logger(),
+        "Emergency stop activated during slow fire: safely reset target to base %.3f rad",
+        slow_fire_base_rad_);
+    }
+  }
   emergency_stop_active_ = msg->data;
 }
 
@@ -221,6 +270,65 @@ void SpringEduliteController::actuator_state_callback(
       stopped_count_ = 0;
     }
   }
+
+  // ゆっくり射出: 前進完了判定 (SLOW_FIRING_EXTENDING -> SLOW_FIRING_RETURNING)
+  if (state_ == State::SLOW_FIRING_EXTENDING) {
+    const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
+    const double expected_duration_sec =
+      (slow_fire_velocity_rad_s_ > 0.0) ? (slow_fire_target_rad_ / slow_fire_velocity_rad_s_) : 1.0;
+
+    const bool pos_reached =
+      (msg->position >= slow_fire_peak_rad_ - standby_position_tolerance_rad_) ||
+      (target_position_rad_ >= slow_fire_peak_rad_ &&
+      std::fabs(msg->position - slow_fire_peak_rad_) <= standby_position_tolerance_rad_);
+    const bool timeout_reached = elapsed_sec >= (expected_duration_sec + 0.3);
+
+    if ((pos_reached && target_position_rad_ >= slow_fire_peak_rad_) || timeout_reached) {
+      ++stopped_count_;
+    } else {
+      stopped_count_ = 0;
+    }
+
+    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
+      RCLCPP_INFO(
+        get_logger(),
+        "Reached slow fire peak (target: %.3f rad, feedback: %.3f rad). Returning to base (%.3f rad).",
+        slow_fire_peak_rad_, msg->position, slow_fire_base_rad_);
+      state_ = State::SLOW_FIRING_RETURNING;
+      stopped_count_ = 0;
+      slow_fire_phase_start_time_ = now();
+    }
+  }
+
+  // ゆっくり射出: 待機位置への復帰完了判定 (SLOW_FIRING_RETURNING -> READY)
+  if (state_ == State::SLOW_FIRING_RETURNING) {
+    const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
+    const double expected_duration_sec =
+      (slow_fire_return_velocity_rad_s_ > 0.0) ? (slow_fire_target_rad_ / slow_fire_return_velocity_rad_s_) : 1.0;
+
+    const bool pos_reached =
+      std::fabs(msg->position - slow_fire_base_rad_) <= standby_position_tolerance_rad_;
+    const bool vel_stopped =
+      std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_;
+    const bool timeout_reached = elapsed_sec >= (expected_duration_sec + 0.5);
+
+    if ((pos_reached && vel_stopped && target_position_rad_ <= slow_fire_base_rad_ + 1e-4) || timeout_reached) {
+      ++stopped_count_;
+    } else {
+      stopped_count_ = 0;
+    }
+
+    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
+      target_position_rad_ = slow_fire_base_rad_;
+      publish_target(target_position_rad_);
+      RCLCPP_INFO(
+        get_logger(),
+        "Spring slow fire complete (returned to %.3f rad). Ready for next action.",
+        target_position_rad_);
+      state_ = State::READY;
+      stopped_count_ = 0;
+    }
+  }
 }
 
 void SpringEduliteController::control_timer_callback()
@@ -255,6 +363,20 @@ void SpringEduliteController::control_timer_callback()
       target_position_rad_ -= homing_velocity_rad_s_ * period_sec;
       publish_target(target_position_rad_);
     }
+  } else if (state_ == State::SLOW_FIRING_EXTENDING) {
+    const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
+    target_position_rad_ += slow_fire_velocity_rad_s_ * period_sec;
+    if (target_position_rad_ >= slow_fire_peak_rad_) {
+      target_position_rad_ = slow_fire_peak_rad_;
+    }
+    publish_target(target_position_rad_);
+  } else if (state_ == State::SLOW_FIRING_RETURNING) {
+    const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
+    target_position_rad_ -= slow_fire_return_velocity_rad_s_ * period_sec;
+    if (target_position_rad_ <= slow_fire_base_rad_) {
+      target_position_rad_ = slow_fire_base_rad_;
+    }
+    publish_target(target_position_rad_);
   } else {
     publish_target(target_position_rad_);
   }
@@ -354,6 +476,18 @@ rcl_interfaces::msg::SetParametersResult SpringEduliteController::parameters_cal
     } else if (name == "fire_increment_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         fire_increment_rad_ = param.as_double();
+      }
+    } else if (name == "slow_fire_target_rad") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        slow_fire_target_rad_ = std::clamp(param.as_double(), 0.0, 13.5);
+      }
+    } else if (name == "slow_fire_velocity_rad_s") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        slow_fire_velocity_rad_s_ = param.as_double();
+      }
+    } else if (name == "slow_fire_return_velocity_rad_s") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        slow_fire_return_velocity_rad_s_ = param.as_double();
       }
     } else if (name == "homing_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {

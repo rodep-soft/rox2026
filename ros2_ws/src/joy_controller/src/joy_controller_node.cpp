@@ -35,9 +35,12 @@ JoyControllerNode::JoyControllerNode()
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
+  slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
   spring_arm_restore_delay_ms_ = declare_parameter<int>("spring_arm_restore_delay_ms", 600);
+  slow_fire_arm_restore_delay_ms_ =
+    declare_parameter<int>("slow_fire_arm_restore_delay_ms", 6000);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -89,6 +92,9 @@ JoyControllerNode::JoyControllerNode()
 
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
+
+  slow_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/spring/slow_fire_request", command_qos);
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
     "/belt/command_mode", command_qos);
@@ -170,13 +176,15 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
       if (val < 0 && name != "joy_timeout_ms" && name != "dribble_reverse_button" &&
-        name != "slow_turn_button")
+        name != "slow_turn_button" && name != "slow_fire_button")
       {
         result.successful = false;
         result.reason = name + " must be non-negative";
         return result;
       }
-      if (val < -1 && (name == "dribble_reverse_button" || name == "slow_turn_button")) {
+      if (val < -1 && (name == "dribble_reverse_button" || name == "slow_turn_button" ||
+        name == "slow_fire_button"))
+      {
         result.successful = false;
         result.reason = name + " must be >= -1";
         return result;
@@ -185,6 +193,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         joy_timeout_ms_ = val;
       } else if (name == "spring_arm_restore_delay_ms") {
         spring_arm_restore_delay_ms_ = val;
+      } else if (name == "slow_fire_arm_restore_delay_ms") {
+        slow_fire_arm_restore_delay_ms_ = val;
       } else if (name == "ps_button") {
         ps_button_ = val;
       } else if (name == "home_button") {home_button_ = val;} else if (name == "circle_button") {
@@ -199,6 +209,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         heading_hold_toggle_button_ = val;
       } else if (name == "slow_turn_button") {
         slow_turn_button_ = val;
+      } else if (name == "slow_fire_button") {
+        slow_fire_button_ = val;
       } else if (name == "left_trigger_axis") {
         left_trigger_axis_ = val;
       } else if (name == "right_trigger_axis") {
@@ -402,7 +414,9 @@ void JoyControllerNode::loop_callback()
 
   bool should_publish_spring_fire = false;
 
-  if (spring_fire_input_triggered && !spring_fire_pending_) {
+  if (spring_fire_input_triggered && !spring_fire_pending_ && !slow_fire_pending_ &&
+    !spring_arm_restore_pending_ && !slow_fire_arm_restore_pending_)
+  {
     // 1) アームを OPEN 姿勢へ開く
     publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
 
@@ -435,6 +449,43 @@ void JoyControllerNode::loop_callback()
   spring_fire_msg.data = should_publish_spring_fire;
   spring_fire_pub_->publish(spring_fire_msg);
 
+  // 8b. L1 (slow_fire_button_) 押下でスプリングゆっくり射出シーケンスを開始 (ドリブル回転なし)
+  const bool slow_fire_input_triggered = (slow_fire_button_ >= 0) &&
+    is_button_just_pressed(joy_msg_, slow_fire_button_);
+  bool should_publish_slow_fire = false;
+
+  if (slow_fire_input_triggered && !slow_fire_pending_ && !spring_fire_pending_ &&
+    !slow_fire_arm_restore_pending_ && !spring_arm_restore_pending_)
+  {
+    // 1) アームを OPEN 姿勢へ開く (ドリブルローラーは回転させない)
+    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+
+    RCLCPP_INFO(
+      get_logger(),
+      "Spring slow fire sequence started (L1): Opening arm (OPEN) without dribble rotation...");
+
+    // 2) 展開開始待機モードにセット
+    slow_fire_pending_ = true;
+    slow_fire_pending_start_time_ = std::chrono::steady_clock::now();
+  }
+
+  if (slow_fire_pending_) {
+    const auto now_tp = std::chrono::steady_clock::now();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - slow_fire_pending_start_time_).count();
+    if (elapsed_ms >= spring_fire_decel_delay_ms_) {
+      should_publish_slow_fire = true;
+      slow_fire_pending_ = false;
+      slow_fire_arm_restore_pending_ = true;
+      slow_fire_released_time_ = now_tp;
+      RCLCPP_INFO(get_logger(), "Arm opened -> Spring SLOW FIRE released!");
+    }
+  }
+
+  std_msgs::msg::Bool slow_fire_msg;
+  slow_fire_msg.data = should_publish_slow_fire;
+  slow_fire_pub_->publish(slow_fire_msg);
+
   // ばねの再充填・準備完了(is_ready_rising)、または発射後一定時間経過でアームをDRIBBLEへ自動復帰
   if (spring_arm_restore_pending_) {
     const auto now_tp = std::chrono::steady_clock::now();
@@ -447,6 +498,18 @@ void JoyControllerNode::loop_callback()
       RCLCPP_INFO(
         get_logger(),
         "Spring shot complete -> Arm automatically restored to DRIBBLE (Dribble: %s)",
+        dribble_enabled_ ? "ON" : "OFF");
+    }
+  } else if (slow_fire_arm_restore_pending_) {
+    const auto now_tp = std::chrono::steady_clock::now();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - slow_fire_released_time_).count();
+    if (is_ready_rising || elapsed_ms >= slow_fire_arm_restore_delay_ms_) {
+      slow_fire_arm_restore_pending_ = false;
+      publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
+      RCLCPP_INFO(
+        get_logger(),
+        "Spring slow fire complete -> Arm automatically restored to DRIBBLE (Dribble: %s)",
         dribble_enabled_ ? "ON" : "OFF");
     }
   } else if (is_ready_rising || should_publish_spring_fire) {
