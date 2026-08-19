@@ -107,6 +107,7 @@ private:
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool slow_fire_pending_{false};
+  std::chrono::steady_clock::time_point slow_fire_pending_start_time_{};
   bool slow_fire_arm_restore_pending_{false};
   int slow_fire_arm_restore_delay_ms_{6000};
   std::chrono::steady_clock::time_point slow_fire_released_time_{};
