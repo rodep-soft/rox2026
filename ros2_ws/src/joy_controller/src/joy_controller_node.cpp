@@ -36,6 +36,7 @@ JoyControllerNode::JoyControllerNode()
   heading_hold_toggle_button_ = declare_parameter<int>("heading_hold_toggle_button", 8);
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
+  slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -54,6 +55,7 @@ JoyControllerNode::JoyControllerNode()
     !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
     !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0 ||
     !std::isfinite(slow_turn_scale_) || slow_turn_scale_ < 0.0 ||
+    !std::isfinite(slow_linear_scale_) || slow_linear_scale_ < 0.0 ||
     !std::isfinite(acceleration_x_m_s2_) || acceleration_x_m_s2_ <= 0.0 ||
     !std::isfinite(acceleration_y_m_s2_) || acceleration_y_m_s2_ <= 0.0 ||
     !std::isfinite(acceleration_yaw_rad_s2_) || acceleration_yaw_rad_s2_ <= 0.0 ||
@@ -234,6 +236,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         axis_on_threshold_ = val;
       } else if (name == "slow_turn_scale" || name == "slow_turn_ratio") {
         slow_turn_scale_ = val;
+      } else if (name == "slow_linear_scale" || name == "slow_linear_ratio") {
+        slow_linear_scale_ = val;
       }
     }
   }
@@ -467,15 +471,16 @@ void JoyControllerNode::loop_callback()
       }
     }
 
+    double target_vx = apply_axis_deadzone(raw_vx) * max_vel_x_m_s_;
+    double target_vy = apply_axis_deadzone(raw_vy) * max_vel_y_m_s_;
     double target_yaw = apply_axis_deadzone(raw_wz) * max_vel_z_rad_s_;
     if (is_slow_turn_active) {
+      target_vx *= slow_linear_scale_;
+      target_vy *= slow_linear_scale_;
       target_yaw *= slow_turn_scale_;
     }
 
-    publish_limited_velocity(
-      apply_axis_deadzone(raw_vx) * max_vel_x_m_s_,
-      apply_axis_deadzone(raw_vy) * max_vel_y_m_s_,
-      target_yaw);
+    publish_limited_velocity(target_vx, target_vy, target_yaw);
   }
 
   last_joy_msg_ = joy_msg_;
