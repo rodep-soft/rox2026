@@ -87,6 +87,9 @@ SpringEduliteController::SpringEduliteController()
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&SpringEduliteController::control_timer_callback, this));
 
+  params_callback_handle_ = add_on_set_parameters_callback(
+    std::bind(&SpringEduliteController::parameters_callback, this, std::placeholders::_1));
+
   RCLCPP_INFO(
     get_logger(),
     "SpringEduliteController initialized. Parameters: standby_offset_rad=%.3f rad, fire_increment_rad=%.3f rad, homing_vel=%.3f rad/s.",
@@ -309,4 +312,67 @@ void SpringEduliteController::publish_target(double target_rad)
   cmd.logical_id = logical_id_;
   cmd.target = static_cast<float>(target_rad);
   position_command_pub_->publish(cmd);
+}
+
+rcl_interfaces::msg::SetParametersResult SpringEduliteController::parameters_callback(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+
+  for (const auto & param : parameters) {
+    const auto & name = param.get_name();
+    if (name == "standby_offset_rad") {
+      double new_standby = 0.0;
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        new_standby = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        new_standby = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "standby_offset_rad must be a number";
+        return result;
+      }
+      standby_offset_rad_ = new_standby;
+      RCLCPP_INFO(get_logger(), "Updated standby_offset_rad to %.3f rad", standby_offset_rad_);
+
+      // READY または MOVING_TO_STANDBY 状態であれば、即座に新しい待機位置へ移動
+      if (state_ == State::READY || state_ == State::MOVING_TO_STANDBY) {
+        target_position_rad_ = standby_offset_rad_;
+        stopped_count_ = 0;
+        state_ = State::MOVING_TO_STANDBY;
+        publish_target(target_position_rad_);
+        RCLCPP_INFO(
+          get_logger(),
+          "Applying new standby position: %.3f rad.",
+          target_position_rad_);
+      }
+    } else if (name == "standby_position_tolerance_rad") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        standby_position_tolerance_rad_ = param.as_double();
+      }
+    } else if (name == "fire_increment_rad") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        fire_increment_rad_ = param.as_double();
+      }
+    } else if (name == "homing_velocity_rad_s") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        homing_velocity_rad_s_ = param.as_double();
+      }
+    } else if (name == "homing_timeout_sec") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        homing_timeout_sec_ = param.as_double();
+      }
+    } else if (name == "zeroing_velocity_threshold_rad_s") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        zeroing_velocity_threshold_rad_s_ = param.as_double();
+      }
+    } else if (name == "zeroing_required_stable_feedback_count") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        required_stopped_count_ = static_cast<int>(param.as_int());
+      }
+    }
+  }
+
+  return result;
 }

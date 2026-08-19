@@ -60,8 +60,12 @@ private:
   double target_position_rad_{0.0};
   uint16_t logical_id_{4};
 
+  rcl_interfaces::msg::SetParametersResult parameters_callback(
+    const std::vector<rclcpp::Parameter> & parameters);
+
   rclcpp::Time homing_start_time_;
 
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
