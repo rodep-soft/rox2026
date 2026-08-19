@@ -284,14 +284,10 @@ void JoyControllerNode::loop_callback()
   if (is_r2_active) {
     // R2 + DPAD 左右で手動アーム位置変更 (左: DRIBBLE, 右: OPEN)
     if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) { // DPAD 右 (-1.0)
-      robot_msgs::msg::ArmPosition arm_msg;
-      arm_msg.position = robot_msgs::msg::ArmPosition::OPEN;
-      arm_position_mode_pub_->publish(arm_msg);
+      publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
       RCLCPP_INFO(get_logger(), "Manual arm position -> OPEN");
     } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) { // DPAD 左 (+1.0)
-      robot_msgs::msg::ArmPosition arm_msg;
-      arm_msg.position = robot_msgs::msg::ArmPosition::DRIBBLE;
-      arm_position_mode_pub_->publish(arm_msg);
+      publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
       RCLCPP_INFO(get_logger(), "Manual arm position -> DRIBBLE");
     }
   } else {
@@ -398,13 +394,16 @@ void JoyControllerNode::loop_callback()
   bool should_publish_spring_fire = false;
 
   if (spring_fire_input_triggered && !spring_fire_pending_) {
-    // 1) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
+    // 1) アームを OPEN 姿勢へ開く
+    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+
+    // 2) ドリブル減速通知 (300 RPM 案内回転へ滑らか減速)
     publish_spring_decel(true);
     RCLCPP_INFO(
       get_logger(),
-      "Spring fire sequence started: smoothly decelerating dribble roller to 300 RPM...");
+      "Spring fire sequence started: Opening arm (OPEN) and decelerating dribble roller to 300 RPM...");
 
-    // 2) 減速完了待機モードにセット
+    // 3) 減速完了待機モードにセット
     spring_fire_pending_ = true;
     spring_fire_pending_start_time_ = std::chrono::steady_clock::now();
   }
@@ -526,6 +525,13 @@ void JoyControllerNode::publish_belt_mode(uint8_t mode)
   robot_msgs::msg::BeltMode msg;
   msg.mode = mode;
   belt_mode_pub_->publish(msg);
+}
+
+void JoyControllerNode::publish_arm_position(uint8_t position)
+{
+  robot_msgs::msg::ArmPosition msg;
+  msg.position = position;
+  arm_position_mode_pub_->publish(msg);
 }
 
 void JoyControllerNode::publish_dribble_enabled(bool enabled)

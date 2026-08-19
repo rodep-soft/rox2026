@@ -32,6 +32,7 @@ private:
     const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
+  void publish_arm_position(uint8_t position);
   void publish_dribble_enabled(bool enabled);
   void publish_dribble_reverse(bool reversed);
   void publish_spring_decel(bool active);
