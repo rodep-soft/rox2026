@@ -46,6 +46,7 @@ private:
     double start_rad, double target_rad, double max_vel_rad_s, double accel_factor = 1.0) const;
 
   // ── パラメータ ──────────────────────────────────────
+  bool test_mode_{false};
   double dribble_position_rad_{-0.86};
   double open_position_rad_{-1.27};
   double bottom_position_rad_{0.0};

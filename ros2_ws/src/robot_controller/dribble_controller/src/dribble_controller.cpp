@@ -96,6 +96,7 @@ DribbleControllerNode::DribbleControllerNode()
 
 void DribbleControllerNode::load_parameters()
 {
+  test_mode_ = declare_parameter<bool>("test_mode", false);
   dribble_position_rad_ = declare_parameter<double>("dribble_position_rad", -0.86);
   open_position_rad_ = declare_parameter<double>("open_position_rad", -1.27);
   bottom_position_rad_ = declare_parameter<double>("bottom_position_rad", 0.0);
@@ -222,7 +223,7 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
   shot_cycle_start_time_ = now();
   shot_cycle_start_position_rad_ = last_position_command_rad_;
 
-  if (current_belt_mode_ == robot_msgs::msg::BeltMode::STOP) {
+  if (!test_mode_ && current_belt_mode_ == robot_msgs::msg::BeltMode::STOP) {
     belt_auto_started_ = true;
     robot_msgs::msg::BeltMode belt_msg;
     belt_msg.mode = shot_cycle_belt_spinup_level_;
@@ -236,6 +237,11 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
     belt_auto_started_ = false;
     shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
     position_mode_ = robot_msgs::msg::ArmPosition::FEED;
+    if (test_mode_) {
+      RCLCPP_INFO(
+        get_logger(),
+        "[TEST MODE] Assuming belt is already running properly -> Instant FEED");
+    }
   }
 }
 
@@ -361,7 +367,12 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       return result;
     }
 
-    if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+    if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
+      if (name == "test_mode") {
+        test_mode_ = param.as_bool();
+        RCLCPP_INFO(get_logger(), "test_mode parameter updated: %s", test_mode_ ? "true" : "false");
+      }
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
       if (val < 0) {
         result.successful = false; result.reason = name + " must be non-negative"; return result;
