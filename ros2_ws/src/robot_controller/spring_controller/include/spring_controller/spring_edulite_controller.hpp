@@ -65,12 +65,15 @@ private:
   double homing_timeout_sec_{30.0};
   double zeroing_velocity_threshold_rad_s_{0.05};
   double target_position_rad_{0.0};
+  double slow_fire_base_rad_{0.0};
+  double slow_fire_peak_rad_{0.0};
   uint16_t logical_id_{4};
 
   rcl_interfaces::msg::SetParametersResult parameters_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
   rclcpp::Time homing_start_time_;
+  rclcpp::Time slow_fire_phase_start_time_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
