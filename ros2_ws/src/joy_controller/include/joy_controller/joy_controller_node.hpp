@@ -101,6 +101,9 @@ private:
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{150};
   std::chrono::steady_clock::time_point spring_fire_pending_start_time_{};
+  bool spring_arm_restore_pending_{false};
+  int spring_arm_restore_delay_ms_{600};
+  std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
