@@ -50,7 +50,7 @@ ros2_ws/.vscode/
 fix.md
 
 # External vcs repositories (Do not commit to git)
-ros2_ws/src/libbno055-linux/
+# ros2_ws/src/libbno055-linux/
 
 
 # kamei氏のdirを入れないものとする
