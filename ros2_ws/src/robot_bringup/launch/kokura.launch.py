@@ -47,14 +47,14 @@ def generate_launch_description():
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
             # --- 4. libbno055-linux: BNO055 Publisher (/bno055/imu) ＆ Heading Controller (/imu/data購読) ---
-            Node(
-                package="libbno055_linux",
-                executable="bno055_publisher_node",
-                name="bno055_publisher_node",
-                parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
-                remappings=[("/imu/data", "/bno055/imu")],
-                output="screen",
-            ),
+#             Node(
+#                 package="libbno055_linux",
+#                 executable="bno055_publisher_node",
+#                 name="bno055_publisher_node",
+#                 parameters=[os.path.join(bno055_share, "config", "bno055_params.yaml")],
+#                 remappings=[("/imu/data", "/bno055/imu")],
+#                 output="screen",
+#             ),
             # --- 4.1 IMU MUX (Dual IMU: STM32 CANを最優先メイン、BNO055をバックアップに設定) ---
             Node(
                 package="robot_controller",
