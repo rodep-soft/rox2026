@@ -37,6 +37,7 @@ JoyControllerNode::JoyControllerNode()
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
+  spring_arm_restore_delay_ms_ = declare_parameter<int>("spring_arm_restore_delay_ms", 600);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -180,7 +181,9 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         result.reason = name + " must be >= -1";
         return result;
       }
-      if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "ps_button") {
+      if (name == "joy_timeout_ms") {joy_timeout_ms_ = val;} else if (name == "spring_arm_restore_delay_ms") {
+        spring_arm_restore_delay_ms_ = val;
+      } else if (name == "ps_button") {
         ps_button_ = val;
       } else if (name == "home_button") {home_button_ = val;} else if (name == "circle_button") {
         circle_button_ = val;
@@ -420,6 +423,8 @@ void JoyControllerNode::loop_callback()
     if (elapsed_ms >= spring_fire_decel_delay_ms_) {
       should_publish_spring_fire = true;
       spring_fire_pending_ = false;
+      spring_arm_restore_pending_ = true;
+      spring_fire_released_time_ = now_tp;
       RCLCPP_INFO(get_logger(), "Dribble decel complete -> Spring FIRE released!");
     }
   }
@@ -428,8 +433,21 @@ void JoyControllerNode::loop_callback()
   spring_fire_msg.data = should_publish_spring_fire;
   spring_fire_pub_->publish(spring_fire_msg);
 
-  // ばねの再充填・準備完了(is_ready_rising)で減速モードを解除
-  if (is_ready_rising || should_publish_spring_fire) {
+  // ばねの再充填・準備完了(is_ready_rising)、または発射後一定時間経過でアームをDRIBBLEへ自動復帰
+  if (spring_arm_restore_pending_) {
+    const auto now_tp = std::chrono::steady_clock::now();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - spring_fire_released_time_).count();
+    if (is_ready_rising || elapsed_ms >= spring_arm_restore_delay_ms_) {
+      spring_arm_restore_pending_ = false;
+      publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
+      publish_spring_decel(false);
+      RCLCPP_INFO(
+        get_logger(),
+        "Spring shot complete -> Arm automatically restored to DRIBBLE (Dribble: %s)",
+        dribble_enabled_ ? "ON" : "OFF");
+    }
+  } else if (is_ready_rising || should_publish_spring_fire) {
     publish_spring_decel(false);
   }
 
