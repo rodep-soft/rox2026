@@ -15,9 +15,9 @@ SpringEduliteController::SpringEduliteController()
     desc.dynamic_typing = true;
     const auto param = declare_parameter(name, rclcpp::ParameterValue(default_value), desc);
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-      return param.get_value<double>();
+      return param.as_double();
     } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
-      return static_cast<double>(param.get_value<int64_t>());
+      return static_cast<double>(param.as_int());
     }
     return default_value;
   };
