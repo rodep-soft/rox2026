@@ -59,7 +59,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 
 ## 実行中に変更できるparameter
 
-- `dribble_on_rpm`
+- `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
+- `dribble_receive_rpm`（RECEIVE姿勢・捕球待ちのRPM、デフォルト 500 RPM）
 - `dribble_reverse_rpm`（逆回転時の一定RPM）
 - `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]、デフォルト 2.0s）
 - `ball_detection_threshold_a`（ボール検知閾値[A]、デフォルト1.7）
