@@ -12,6 +12,7 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
+    spring_arm_restore_delay_ms: 600  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5

@@ -23,7 +23,7 @@
       current_limit: 11.0    # [ A ] 電流制限値
       acceleration: 150.0    # [ rad/s^2 ] 加速度制限値
       speed_limit: 50.0      # [ rad/s ] 速度制限値
-      current_feedback_enabled: false # 電流値のフィードバックを有効にするかどうか(別フレームから取得のため必要の場合のみ)
+      current_feedback_enabled: true # 電流値のフィードバックを有効にするかどうか(別フレームから取得のため必要の場合のみ)
       command_period_ms: 10  # 目標値の配信周期
 
     front_right:
@@ -33,7 +33,7 @@
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
-      current_feedback_enabled: false
+      current_feedback_enabled: true
       command_period_ms: 10
 
     rear_left:
@@ -43,7 +43,7 @@
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
-      current_feedback_enabled: false
+      current_feedback_enabled: true
       command_period_ms: 10
 
     rear_right:
@@ -53,7 +53,7 @@
       current_limit: 11.0
       acceleration: 150.0
       speed_limit: 50.0
-      current_feedback_enabled: false
+      current_feedback_enabled: true
       command_period_ms: 10
 
     spring:

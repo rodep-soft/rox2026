@@ -32,6 +32,7 @@ private:
     const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
+  void publish_arm_position(uint8_t position);
   void publish_dribble_enabled(bool enabled);
   void publish_dribble_reverse(bool reversed);
   void publish_spring_decel(bool active);
@@ -101,6 +102,9 @@ private:
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{150};
   std::chrono::steady_clock::time_point spring_fire_pending_start_time_{};
+  bool spring_arm_restore_pending_{false};
+  int spring_arm_restore_delay_ms_{600};
+  std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};

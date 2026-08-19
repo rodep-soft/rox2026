@@ -58,9 +58,9 @@ private:
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
   double returning_max_velocity_rad_s_{4.0};
-  double dribbling_max_velocity_rad_s_{1.0};
-  double opening_accel_factor_{1.8};
-  double dribbling_accel_factor_{1.5};
+  double dribbling_max_velocity_rad_s_{3.0};
+  double opening_accel_factor_{1.2};
+  double dribbling_accel_factor_{1.2};
   double ball_detection_threshold_a_{1.7};
   double ball_lost_threshold_a_{1.0};
   double current_lpf_alpha_{0.3};
@@ -95,6 +95,7 @@ private:
   int reverse_transition_start_rpm_{0};
   bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
+  bool arm_state_received_{false};
 
   // 運動補正用の一時変数
   double cmd_vel_vx_{0.0};

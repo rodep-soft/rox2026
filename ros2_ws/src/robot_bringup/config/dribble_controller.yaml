@@ -4,7 +4,7 @@
     
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
-    dribble_position_rad: -0.86   # DRIBBLE姿勢
+    dribble_position_rad: -0.93   # DRIBBLE姿勢
     open_position_rad: -1.27      # OPEN姿勢 (ボールを出すときの姿勢)
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.5        # FEED姿勢(発射機構に押し込む姿勢)
@@ -15,20 +15,20 @@
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 9.0   # OPEN 動作最大速度
-    opening_accel_factor: 2.0         # OPEN 動作で最高速度に達するまでの遅さ倍率
+    opening_max_velocity_rad_s: 4.0   # OPEN 動作最大速度 (約0.27sで滑らかかつキビキビ開く)
+    opening_accel_factor: 1.2         # OPEN 動作で最高速度に達するまでの遅さ倍率
     feeding_max_velocity_rad_s: 11.0  # DRIBBLE -> FEED
     returning_max_velocity_rad_s: 6.0 # FEED -> DRIBBLE
-    dribbling_max_velocity_rad_s: 1.0 # 保持姿勢遷移
-    dribbling_accel_factor: 1.5       # DRIBBLE 遷移の加速緩やかさ倍率
+    dribbling_max_velocity_rad_s: 3.0 # DRIBBLE 保持姿勢遷移 (約0.36sでスムーズに閉じる)
+    dribbling_accel_factor: 1.2       # DRIBBLE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 400             # DRIBBLE姿勢 (ボール保持中) の回転数
+    dribble_on_rpm: 340             # DRIBBLE姿勢 (ボール保持中) の回転数
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
-    spring_fire_dribble_rpm: 600    # ばね発射時の減速着地RPM
-    shot_cycle_opening_rpm: 1700    # 真下に下がるまでの高回転数
-    shot_cycle_feeding_rpm: 200     # FEED 押し込み完了時の回転数
+    spring_fire_dribble_rpm: 0    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
+    shot_cycle_opening_rpm: 1700    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
+    shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
@@ -45,10 +45,11 @@
     # ── 高速移動時のボール保持安定化 (運動補正) ──
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # 監視する足回り速度指令トピック
     enable_motion_compensation: true          # 運動補正の有効化
-    backward_velocity_boost_rpm_per_mps: 120.0  # 後退速度 1.0 m/s あたりのRPM上乗せ量 (400 -> 520 RPM)
-    acceleration_boost_rpm_per_mps2: 50.0      # 急減速 1.0 m/s^2 あたりのRPM上乗せ量
-    max_boost_rpm: 300                        # 最大上乗せRPM制限 (通常400 + 300 = 最大700 RPM)
-    backward_arm_clamp_rad: 0.012             # 後退・急減速時のアーム押し込み補正量 [rad] (約0.7度)
+
+    backward_velocity_boost_rpm_per_mps: 120.0  # 後退速度 1.0 m/s あたりのRPM上乗せ量 (400 -> 650 RPM)
+    acceleration_boost_rpm_per_mps2: 50.0     # 急減速 1.0 m/s^2 あたりのRPM上乗せ量
+    max_boost_rpm: 100                        # 最大上乗せRPM制限 (通常400 + 600 = 最大1000 RPM)
+    backward_arm_clamp_rad: 0.025             # 後退・急減速時のアーム押し込み補正量 [rad] (約1.4度)
 
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
