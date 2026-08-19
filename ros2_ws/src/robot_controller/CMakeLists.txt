@@ -62,6 +62,7 @@ add_controller(
   dribble_controller
   dribble_controller.cpp
   actuator_msgs
+  geometry_msgs
   rclcpp
   rcl_interfaces
   std_msgs

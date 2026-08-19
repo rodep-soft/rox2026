@@ -61,6 +61,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 
 ## 実行中に変更できるparameter
 
+- `test_mode`（テストモード：trueの場合、beltが既に正常回転しているとみなして即座にFEED動作を実行、デフォルト false）
 - `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
 - `dribble_reverse_rpm`（逆回転時の一定RPM）
 - `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]、デフォルト 2.0s）

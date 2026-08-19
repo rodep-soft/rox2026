@@ -76,6 +76,7 @@ private:
   int heading_hold_toggle_button_{8};
   int slow_turn_button_{7};
   double slow_turn_scale_{0.5};
+  double slow_linear_scale_{0.5};
   int left_trigger_axis_{3};
   int right_trigger_axis_{4};
   int left_stick_x_axis_{0};
