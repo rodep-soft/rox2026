@@ -63,7 +63,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **DPAD 上 / 下** *(R2非押下時)* | **射出ベルト速度レベル 変更** (`STOP` ↔ `LEVEL_1` 〜 `LEVEL_4`) |
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
-| **L2 + R2 同時押し** | **キッカー（ばね）発射** (150ms ドリブル減速後に発射) |
+| **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms ドリブル減速後に発射) |
 | **R2 + DPAD 右** | **【手動アーム操作】 OPEN** (アームを開く) |
 | **R2 + DPAD 左** | **【手動アーム操作】 DRIBBLE** (アームをドリブル位置に戻す) |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
@@ -120,7 +120,8 @@ SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続け
 |---|---|---|
 | `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
-| `state_publish_period_ms` | `int` | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
+| `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
+| `dribble_enable_button` | int | dribble ON/OFFのbutton index |
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
 | `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |

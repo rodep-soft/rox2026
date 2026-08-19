@@ -110,9 +110,9 @@ void DribbleControllerNode::load_parameters()
   opening_max_velocity_rad_s_ = declare_parameter<double>("opening_max_velocity_rad_s", 4.0);
   feeding_max_velocity_rad_s_ = declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
   returning_max_velocity_rad_s_ = declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
-  dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 1.0);
-  opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.8);
-  dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.5);
+  dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 3.0);
+  opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.2);
+  dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.2);
   ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 1.7);
   ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
   current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
@@ -274,7 +274,12 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
     } else {
       RCLCPP_INFO(
         get_logger(),
-        "Emergency stop released in dribble controller");
+        "Emergency stop released in dribble controller -> Smoothly resuming to DRIBBLE");
+      manual_transition_active_ = true;
+      manual_transition_start_time_ = now();
+      manual_transition_start_position_rad_ = last_position_command_rad_;
+      manual_transition_start_rpm_ = 0;
+      position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
     }
   }
   emergency_stop_active_ = msg->data;
@@ -296,6 +301,19 @@ void DribbleControllerNode::actuator_state_callback(
 {
   if (msg->logical_id == position_logical_id_) {
     current_arm_position_rad_ = msg->position;
+    if (!arm_state_received_) {
+      arm_state_received_ = true;
+      last_position_command_rad_ = msg->position;
+      manual_transition_active_ = true;
+      manual_transition_start_time_ = now();
+      manual_transition_start_position_rad_ = msg->position;
+      manual_transition_start_rpm_ = 0;
+      position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+      RCLCPP_INFO(
+        get_logger(),
+        "Arm initial position received: %.3f rad -> smoothly approaching DRIBBLE (%.3f rad)",
+        msg->position, dribble_position_rad_);
+    }
   }
 }
 
@@ -618,10 +636,26 @@ void DribbleControllerNode::control_timer_callback()
 
   if (emergency_stop_active_) {
     shot_cycle_active_ = false;
-    manual_transition_active_ = false;
     actuator_msgs::msg::ActuatorTarget position_command;
     position_command.logical_id = position_logical_id_;
-    const double estop_target_rad = dribble_position_rad_;
+
+    double estop_target_rad = dribble_position_rad_;
+    if (manual_transition_active_) {
+      const double elapsed_sec = (now() - manual_transition_start_time_).seconds();
+      const double move_duration_sec = transition_duration_sec(
+        manual_transition_start_position_rad_, dribble_position_rad_,
+        dribbling_max_velocity_rad_s_, dribbling_accel_factor_);
+      estop_target_rad = interpolated_position_rad(
+        manual_transition_start_position_rad_, dribble_position_rad_, elapsed_sec,
+        dribbling_max_velocity_rad_s_, dribbling_accel_factor_);
+      if (elapsed_sec >= move_duration_sec) {
+        manual_transition_active_ = false;
+        estop_target_rad = dribble_position_rad_;
+      }
+    } else if (!arm_state_received_) {
+      estop_target_rad = last_position_command_rad_;
+    }
+
     position_command.target = static_cast<float>(estop_target_rad);
     last_position_command_rad_ = estop_target_rad;
     position_command_pub_->publish(position_command);

@@ -15,12 +15,12 @@
     feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_velocity_rad_s: 9.0   # OPEN 動作最大速度
-    opening_accel_factor: 2.0         # OPEN 動作で最高速度に達するまでの遅さ倍率
+    opening_max_velocity_rad_s: 4.0   # OPEN 動作最大速度 (約0.27sで滑らかかつキビキビ開く)
+    opening_accel_factor: 1.2         # OPEN 動作で最高速度に達するまでの遅さ倍率
     feeding_max_velocity_rad_s: 11.0  # DRIBBLE -> FEED
     returning_max_velocity_rad_s: 6.0 # FEED -> DRIBBLE
-    dribbling_max_velocity_rad_s: 1.0 # 保持姿勢遷移
-    dribbling_accel_factor: 1.5       # DRIBBLE 遷移の加速緩やかさ倍率
+    dribbling_max_velocity_rad_s: 3.0 # DRIBBLE 保持姿勢遷移 (約0.36sでスムーズに閉じる)
+    dribbling_accel_factor: 1.2       # DRIBBLE 遷移の加速緩やかさ倍率
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 200             # DRIBBLE姿勢 (ボール保持中) の回転数
