@@ -87,7 +87,10 @@ SpringEduliteController::SpringEduliteController()
     std::chrono::milliseconds(command_period_ms_),
     std::bind(&SpringEduliteController::control_timer_callback, this));
 
-  RCLCPP_INFO(get_logger(), "SpringEduliteController initialized. Waiting for actuator state.");
+  RCLCPP_INFO(
+    get_logger(),
+    "SpringEduliteController initialized. Parameters: standby_offset_rad=%.3f rad, fire_increment_rad=%.3f rad, homing_vel=%.3f rad/s.",
+    standby_offset_rad_, fire_increment_rad_, homing_velocity_rad_s_);
 }
 
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
