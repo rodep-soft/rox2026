@@ -177,13 +177,11 @@ def print_super_report(raw_data: List[float], source_name: str, lpf_alpha: float
     held_std = math.sqrt(sum((x - held_mean) ** 2 for x in held_group) / len(held_group)) if held_group else 0.0
     held_min = min(held_group) if held_group else 0.0
 
+    # 推奨閾値の算出 (ヒステリシスを考慮)
     t_detect = max(idle_max + 0.5, best_thresh + 0.25 * (held_mean - best_thresh))
     t_lost = min(best_thresh - 0.25 * (best_thresh - idle_mean), idle_mean + 1.5 * idle_std)
     if t_lost >= t_detect - 0.5:
         t_lost = t_detect - 1.0
-
-    t_detect = round(t_detect, 2)
-    t_lost = round(t_lost, 2)
 
     if separability >= 0.70:
         quality_str = "⭐⭐⭐⭐⭐ [極めて明瞭 (二峰性・完全分離)]"
@@ -194,22 +192,29 @@ def print_super_report(raw_data: List[float], source_name: str, lpf_alpha: float
     else:
         quality_str = "⚠️ [単峰性・負荷差小 (要確認)]"
 
-    print("=" * 68)
-    print(f" 🚀 最強 ドリブル電流・ボール検知 統計解析レポート")
+    print("=" * 72)
+    print(f" 🚀 最強 ドリブル電流・ボール検知 統計解析レポート (高精度・無丸め版)")
     print(f" ソース: {source_name}")
-    print("=" * 68)
+    print("=" * 72)
     print(f" 総サンプル数       : {len(raw_data):,} 点 (LPF係数 α={lpf_alpha})")
-    print(f" 分離品質 (スコア)  : {separability:.3f} ➔ {quality_str}")
-    print("-" * 68)
-    print(f" 🌀 空転時 (No Ball): 平均 {idle_mean:.2f} A | 標準偏差 ±{idle_std:.2f} A | 実効上限: {idle_max:.2f} A")
-    print(f" ⚽ 保持時 (Has Ball): 平均 {held_mean:.2f} A | 標準偏差 ±{held_std:.2f} A | 実効下限: {held_min:.2f} A")
-    print(f" ⚖️ 大津の最適境界  : {best_thresh:.2f} A")
-    print("-" * 68)
+    print(f" 分離品質 (スコア)  : {separability:.6f} ➔ {quality_str}")
+    print("-" * 72)
+    print(f" 🌀 空転時 (No Ball): 平均 {idle_mean:.6f} A | 標準偏差 ±{idle_std:.6f} A | 実効上限: {idle_max:.6f} A")
+    print(f" ⚽ 保持時 (Has Ball): 平均 {held_mean:.6f} A | 標準偏差 ±{held_std:.6f} A | 実効下限: {held_min:.6f} A")
+    print(f" ⚖️ 大津の最適境界  : {best_thresh:.6f} A")
+    print("-" * 72)
     print(f" 🎯 推奨 YAML パラメータ (dribble_controller.yaml):")
-    print(f"    ball_detection_threshold_a: {t_detect:<6} # 検知 (BALL DETECTED) [A]")
-    print(f"    ball_lost_threshold_a:      {t_lost:<6} # 解除 (BALL LOST)     [A]")
-    print(f"    current_lpf_alpha:          {lpf_alpha:<6} # 一次LPF係数")
-    print("=" * 68)
+    print(f"    ball_detection_threshold_a: {t_detect:.4f} # 検知 (BALL DETECTED) [A]")
+    print(f"    ball_lost_threshold_a:      {t_lost:.4f} # 解除 (BALL LOST)     [A]")
+    print(f"    current_lpf_alpha:          {lpf_alpha} # 一次LPF係数")
+    print("=" * 72)
+
+    # 境界付近の生データ（実数値の確認用）
+    near_boundary = sorted([x for x in focus_data if abs(x - best_thresh) < 0.5])[:10]
+    print(f" 🔬 境界付近の実測データ例 (15桁 float64 生値):")
+    for v in near_boundary:
+        print(f"    {v:.12f} A")
+    print("-" * 72)
 
     num_hist_bins = 24
     hist_min = min(focus_data)
@@ -236,19 +241,19 @@ def print_super_report(raw_data: List[float], source_name: str, lpf_alpha: float
 
         markers = []
         if b_low <= t_lost <= b_high:
-            markers.append(f"◄─ T_lost ({t_lost}A)")
+            markers.append(f"◄─ T_lost ({t_lost:.2f}A)")
         if b_low <= best_thresh <= b_high:
             markers.append(f"◄─ Otsu ({best_thresh:.2f}A)")
         if b_low <= t_detect <= b_high:
-            markers.append(f"◄─ T_detect ({t_detect}A)")
+            markers.append(f"◄─ T_detect ({t_detect:.2f}A)")
 
         marker_str = " ".join(markers)
         print(f" [{b_low:4.1f}A - {b_high:4.1f}A] {bar:<38} ({c:5d}) {marker_str}")
 
     print("\n💡 【即時反映コマンド (Runtime)】")
-    print(f"  ros2 param set /dribble_controller_node ball_detection_threshold_a {t_detect}")
-    print(f"  ros2 param set /dribble_controller_node ball_lost_threshold_a {t_lost}")
-    print("=" * 68)
+    print(f"  ros2 param set /dribble_controller_node ball_detection_threshold_a {t_detect:.2f}")
+    print(f"  ros2 param set /dribble_controller_node ball_lost_threshold_a {t_lost:.2f}")
+    print("=" * 72)
 
 
 def main():

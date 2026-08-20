@@ -163,16 +163,33 @@ void Game1AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   }
 }
 
-geometry_msgs::msg::Twist Game1AutoNode::compute_pure_pursuit(const Waypoint & target)
+geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoint & target)
 {
   geometry_msgs::msg::Twist cmd;
-  // EKF 自己位置 (current_x, current_y, current_yaw) から見た目標位置への差分
-  const double dx = target.x - current_x_;
-  const double dy = target.y - current_y_;
-  const double yaw_err = std::remainder(target.yaw - current_yaw_, 2.0 * M_PI);
 
-  cmd.linear.x = std::clamp(kp_linear_ * dx, -max_linear_vel_, max_linear_vel_);
-  cmd.linear.y = std::clamp(kp_linear_ * dy, -max_linear_vel_, max_linear_vel_);
+  // 1. ワールド座標系（フィールド基準）での位置誤差と距離
+  const double dx_world = target.x - current_x_;
+  const double dy_world = target.y - current_y_;
+  const double dist = std::hypot(dx_world, dy_world);
+
+  if (dist > 1e-4) {
+    // 2. ベクトル比例減速プロファイル（目標に近づくほど滑らかに減速しオーバーシュートを防止）
+    const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
+
+    // ワールド座標系での速度ベクトル
+    const double vx_world = target_speed * (dx_world / dist);
+    const double vy_world = target_speed * (dy_world / dist);
+
+    // 3. フィールド座標系 ➔ ロボット車体座標系への回転変換 (Field-Oriented -> Body-Centric)
+    const double cos_yaw = std::cos(current_yaw_);
+    const double sin_yaw = std::sin(current_yaw_);
+
+    cmd.linear.x = cos_yaw * vx_world + sin_yaw * vy_world;
+    cmd.linear.y = -sin_yaw * vx_world + cos_yaw * vy_world;
+  }
+
+  // 4. 独立した姿勢角（Heading）制御
+  const double yaw_err = std::remainder(target.yaw - current_yaw_, 2.0 * M_PI);
   cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
   return cmd;
@@ -204,8 +221,8 @@ void Game1AutoNode::control_loop()
 
   switch (state_) {
     case Game1State::NAV_TO_GATE: {
-        // 1. ゲート射出位置へ移動
-        cmd = compute_pure_pursuit(wp_gate_);
+        // 1. ゲート射出位置へ全方位追従移動
+        cmd = compute_holonomic_pursuit(wp_gate_);
         // 位置差分 pos_tolerance 以下 ＆ 角度差分 yaw_tolerance (ゲート方向向いた) 以下で射出許可 (タイムアウト5秒)
         if (is_aligned_to_target(wp_gate_) || elapsed > 5.0) {
           RCLCPP_INFO(
@@ -229,7 +246,7 @@ void Game1AutoNode::control_loop()
 
     case Game1State::NAV_AROUND_GATE: {
         // 3. ロボットはゲートの横を通って向こう側へ回り込む
-        cmd = compute_pure_pursuit(wp_around_gate_);
+        cmd = compute_holonomic_pursuit(wp_around_gate_);
         if ((now() - state_start_time_).seconds() > 3.0) {
           RCLCPP_INFO(
             get_logger(),
@@ -248,17 +265,19 @@ void Game1AutoNode::control_loop()
         const bool is_recent_detection = ball_detected_ &&
           (now() - last_ball_detection_time_).seconds() < 1.0;
         if (is_recent_detection) {
-          // カメラでボールを発見：リアルタイム相対座標に向かって追従
-          cmd.linear.x =
-            std::clamp(kp_linear_ * detected_ball_x_, -max_linear_vel_, max_linear_vel_);
-          cmd.linear.y =
-            std::clamp(kp_linear_ * detected_ball_y_, -max_linear_vel_, max_linear_vel_);
-          cmd.angular.z = std::clamp(
-            -kp_angular_ * detected_ball_y_, -max_angular_vel_,
-            max_angular_vel_);
+          // カメラ座標系（ロボット基準）：detected_ball_x_ が前方距離、detected_ball_y_ が横オフセット
+          const double ball_dist = std::hypot(detected_ball_x_, detected_ball_y_);
+          if (ball_dist > 1e-3) {
+            const double ball_speed = std::min(max_linear_vel_, kp_linear_ * ball_dist);
+            cmd.linear.x = ball_speed * (detected_ball_x_ / ball_dist);
+            cmd.linear.y = ball_speed * (detected_ball_y_ / ball_dist);
+          }
+          // 正面をボールに向ける旋回制御
+          const double ball_heading_err = std::atan2(detected_ball_y_, detected_ball_x_);
+          cmd.angular.z = std::clamp(kp_angular_ * ball_heading_err, -max_angular_vel_, max_angular_vel_);
         } else {
-          // ボール未検出：予想ターゲット位置へ向かって走行
-          cmd = compute_pure_pursuit(wp_ball_);
+          // ボール未検出：予想ターゲット位置へ向かってホロノミック追従走行
+          cmd = compute_holonomic_pursuit(wp_ball_);
         }
 
         if ((now() - state_start_time_).seconds() > 4.0) {
@@ -271,7 +290,7 @@ void Game1AutoNode::control_loop()
 
     case Game1State::NAV_TO_PASS_AREA: {
         // 5. ボール保持のままパスエリア射出位置へ移動
-        cmd = compute_pure_pursuit(wp_pass_area_);
+        cmd = compute_holonomic_pursuit(wp_pass_area_);
         dribble_enabled = true;
         arm_pos = robot_msgs::msg::ArmPosition::OPEN; // 射出前にアームを開く
 
@@ -297,7 +316,7 @@ void Game1AutoNode::control_loop()
 
     case Game1State::NAV_TO_START: {
         // 6. スタート位置へ自動復帰
-        cmd = compute_pure_pursuit(wp_start_);
+        cmd = compute_holonomic_pursuit(wp_start_);
         if ((now() - state_start_time_).seconds() > 4.0) {
           RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED!");
           state_ = Game1State::COMPLETED;
@@ -306,7 +325,7 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::TEST_SINGLE_WP: {
-        cmd = compute_pure_pursuit(wp_test_);
+        cmd = compute_holonomic_pursuit(wp_test_);
         if (is_aligned_to_target(wp_test_) || elapsed > 15.0) {
           RCLCPP_INFO(get_logger(), "Test Single Waypoint Movement COMPLETED!");
           state_ = Game1State::COMPLETED;
