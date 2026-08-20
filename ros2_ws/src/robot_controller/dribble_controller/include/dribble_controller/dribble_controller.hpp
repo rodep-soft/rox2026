@@ -131,7 +131,7 @@ private:
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{12};  // 連続12回(約240ms)の判定で発進・停止時のスパイクを除外
-  int ball_lost_debounce_count_{5};        // 連続5回(約100ms)で素早く解除
+  int ball_lost_debounce_count_{12};       // 連続12回(約240ms)の判定で停止時のバウンド誤解除を防止
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr position_mode_sub_;
