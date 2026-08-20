@@ -62,8 +62,8 @@ private:
     uint8_t arm_position,
     bool spring_fire);
 
-  // Pure Pursuit 車体制御計算
-  geometry_msgs::msg::Twist compute_pure_pursuit(const Waypoint & target);
+  // メカナム特化型 全方位ホロノミック追従制御 (Field-Oriented to Body-Frame)
+  geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target);
   bool is_aligned_to_target(const Waypoint & target);
 
   // Subscriptions & Publishers
