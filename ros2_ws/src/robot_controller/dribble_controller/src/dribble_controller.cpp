@@ -113,9 +113,13 @@ void DribbleControllerNode::load_parameters()
   dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 3.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.2);
   dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.2);
-  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 1.7);
-  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 1.0);
-  current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.3);
+  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 4.8);
+  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 3.2);
+  current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.07);
+  ball_detection_debounce_count_ =
+    declare_parameter<int>("ball_detection_debounce_count", 12);
+  ball_lost_debounce_count_ =
+    declare_parameter<int>("ball_lost_debounce_count", 5);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 400);
   dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
   dribble_reverse_ramp_sec_ = declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);
@@ -354,7 +358,7 @@ void DribbleControllerNode::vesc_state_callback(
     } else if (filtered_roller_current_a_ <= ball_lost_threshold_a_) {
       ball_lost_counter_++;
       ball_detected_counter_ = 0;
-      if (ball_lost_counter_ >= ball_detection_debounce_count_) {
+      if (ball_lost_counter_ >= ball_lost_debounce_count_) {
         has_ball_ = false;
       }
     } else {
@@ -451,6 +455,16 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
         shot_cycle_belt_spinup_level_ = static_cast<uint8_t>(val);
       } else if (name == "max_boost_rpm") {
         max_boost_rpm_ = val;
+      } else if (name == "ball_detection_debounce_count") {
+        if (val < 1) {
+          result.successful = false; result.reason = name + " must be >= 1"; return result;
+        }
+        ball_detection_debounce_count_ = val;
+      } else if (name == "ball_lost_debounce_count") {
+        if (val < 1) {
+          result.successful = false; result.reason = name + " must be >= 1"; return result;
+        }
+        ball_lost_debounce_count_ = val;
       }
     } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
       const double val = param.as_double();

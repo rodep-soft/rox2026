@@ -35,6 +35,8 @@
     ball_detection_threshold_a: 4.2 # 1.7A 以上でボール保持(BALL DETECTED)と判定
     ball_lost_threshold_a: 2.8      # 1.1A 以下でボール喪失(BALL LOST)と判定
     current_lpf_alpha: 0.07          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
+    ball_detection_debounce_count: 12  # 連続12回(約240ms)の継続判定で発進・停止スパイクの誤検知を完全排除
+    ball_lost_debounce_count: 5        # 連続5回(約100ms)で素早く解除
     
     # [ms] 指令再送周期
     command_period_ms: 10
