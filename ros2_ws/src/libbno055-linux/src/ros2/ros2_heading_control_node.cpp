@@ -250,6 +250,9 @@ private:
         latest_command_ = message;
         last_command_time_ = this->now();
         cmd_vel_timeout_logged_ = false;
+
+        // イベント駆動: 指令受信時に即座に補正計算を実行（タイマー遅延をゼロ化）
+        control();
     }
 
     void receive_imu(const sensor_msgs::msg::Imu& message) {
@@ -294,6 +297,9 @@ private:
         current_yaw_rad_ = new_yaw_rad;
         current_angular_velocity_z_rad_s_ = -message.angular_velocity.z;
         last_imu_time_ = now_time;
+
+        // イベント駆動: IMUパケット受信と同時に1ミリ秒の遅延もなく即時PID補正・出力
+        control();
     }
 
     void reset_heading_hold() {
