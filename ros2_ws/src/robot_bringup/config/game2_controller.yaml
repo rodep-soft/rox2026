@@ -1,32 +1,51 @@
 game2_auto_node:
   ros__parameters:
     base_frame: "base_link"
+    cmd_vel_topic: "/mecanum/cmd_vel_heading"
     target_distance: 4.0
-    # ── 📐 カメラ物理位置 (base_link 車体中心から見たカメラ位置) ──
-    camera_offset_x: 0.265  # [m] 前方オフセット (実測値: 265mm)
-    camera_offset_y: 0.035  # [m] 左カメラオフセット (実測値: 35mm)
-    camera_offset_z: 0.193  # [m] 上方オフセット (実測値: 193mm)
-    camera_fov_h: 1.83      # [rad] 水平画角 (約105度)
 
-    kp_yaw: 2.2
-    kd_yaw: 0.10
-    max_angular_z: 0.8
+    # ── 📐 カメラ物理・光学パラメータ ──
+    camera_offset_x: 0.265  # [m] 前方オフセット (実測値: 265mm)
+    camera_offset_y: 0.035  # [m] 左カメラオフセット (実測値: 35mm: 射出口より35mm左)
+    camera_offset_z: 0.193  # [m] 上方オフセット (実測値: 193mm)
+    camera_image_width: 1920.0
+    camera_image_height: 1080.0
+    camera_fx: 800.0        # [px] 水平焦点距離
+    camera_fy: 800.0        # [px] 垂直焦点距離
+    camera_cx: 960.0        # [px] 光学主点X
+    camera_cy: 540.0        # [px] 光学主点Y
+
+    # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
+    kp_yaw: 2.2             # 比例ゲイン (視覚誤差)
+    kd_yaw: 0.10            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)
+    min_angular_z: 0.12     # [rad/s] 静止摩擦補償最小角速度
+    max_angular_z: 0.80     # [rad/s] 最大旋回角速度
+    max_angular_accel: 4.0  # [rad/s^2] 旋回加減速度リミッター (スリップ防止)
     yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.85度)
-    dist_tolerance: 0.03
+    dist_tolerance: 0.05    # [m] 距離誤差許容値
 
     # ── 🧪 テストモード切替 ──
     # true: ドリブル・ベルト・ばねを動かさず、車体の角度合わせ（旋回）だけをテスト
     # false: ボール保持検知・ベルト昇降・ばね射出を含む本番フル自動射出
-    test_alignment_only: true
+    test_alignment_only: false
 
-    # ── 射出パラメータ ──
-    rpm_bottom: 3000.0
-    rpm_middle: 4500.0
-    rpm_top: 6000.0
-    shoot_hold_duration: 0.8
-    ball_settle_duration: 0.3
+    # ── 🚀 射出・ボール制御パラメータ ──
+    rpm_bottom: 3000.0      # 下段パネル射出回転数 [RPM]
+    rpm_middle: 4500.0      # 中段パネル射出回転数 [RPM]
+    rpm_top: 6000.0         # 上段パネル射出回転数 [RPM]
+    open_duration: 0.3      # [s] アームOPEN展開所要時間
+    shoot_hold_duration: 0.8 # [s] FEED押し込み保持時間
+    ball_settle_duration: 0.3 # [s] ボール吸着安定待ち時間
+    tag_lost_timeout: 0.5   # [s] AprilTag見失い判定タイムアウト
+    aligning_timeout: 10.0  # [s] 照準タイムアウト
+    shooting_timeout: 3.0   # [s] 射出タイムアウト
+    max_shots_per_panel: 1  # 1枚あたりの射出回数
+    require_ball_detected: true # true: ボール検知センサー必須, false: センサーなしでも照準完了で射出
+    auto_advance_rows: true # true: 段内のタグを射出完了したら自動で上段へ移行
 
-    # ── シュートパネル AprilTag ID ──
+    # ── 🏷️ シュートパネル AprilTag ID ──
+    # Row 0: 下段, Row 1: 中段, Row 2: 上段 (左から右の順)
     bottom_tags: [20, 21, 22]
     middle_tags: [17, 18, 19]
     top_tags: [14, 15, 16]
+
