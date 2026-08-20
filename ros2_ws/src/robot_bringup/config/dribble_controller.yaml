@@ -48,10 +48,10 @@
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # 監視する足回り速度指令トピック
     enable_motion_compensation: true          # 運動補正の有効化
 
-    backward_velocity_boost_rpm_per_mps: 120.0  # 後退速度 1.0 m/s あたりのRPM上乗せ量 (400 -> 650 RPM)
-    acceleration_boost_rpm_per_mps2: 50.0     # 急減速 1.0 m/s^2 あたりのRPM上乗せ量
-    max_boost_rpm: 100                        # 最大上乗せRPM制限 (通常400 + 600 = 最大1000 RPM)
-    backward_arm_clamp_rad: 0.025             # 後退・急減速時のアーム押し込み補正量 [rad] (約1.4度)
+    backward_velocity_boost_rpm_per_mps: 600.0  # 後退・高速移動 1.0 m/s あたりのRPM上乗せ量 (2.0m/s時に +1200 RPM)
+    acceleration_boost_rpm_per_mps2: 300.0     # 急減速 1.0 m/s^2 あたりのRPM上乗せ量 (停止時の慣性抜け防止)
+    max_boost_rpm: 2000                        # 最大上乗せRPM制限 (通常400 + 2000 = 最大2400 RPM)
+    backward_arm_clamp_rad: 0.08               # 後退・急減速時のアーム押し込み補正量 [rad] (約4.6度 強く挟み込む)
 
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
