@@ -17,7 +17,9 @@ import numpy as np
 
 def analyze_current_distribution(currents: np.ndarray, plot: bool = False):
     if len(currents) < 20:
-        print(f"[ERROR] サンプル数が少なすぎます ({len(currents)} 件)。最低でも20サンプル以上記録してください。")
+        print(
+            f"[ERROR] サンプル数が少なすぎます ({len(currents)} 件)。最低でも20サンプル以上記録してください。"
+        )
         return None
 
     # 外れ値除去 (0.0以下や極端な過電流)
@@ -61,7 +63,9 @@ def analyze_current_distribution(currents: np.ndarray, plot: bool = False):
     ball_class = valid_currents[valid_currents >= otsu_threshold]
 
     if len(empty_class) == 0 or len(ball_class) == 0:
-        print("[WARN] 1つのクラスしか検出されませんでした (空転のみ、または保持のみのデータ)。")
+        print(
+            "[WARN] 1つのクラスしか検出されませんでした (空転のみ、または保持のみのデータ)。"
+        )
         mu = np.mean(valid_currents)
         sigma = np.std(valid_currents)
         print(f"全体平均: {mu:.2f} A, 標準偏差: ±{sigma:.2f} A")
@@ -86,8 +90,12 @@ def analyze_current_distribution(currents: np.ndarray, plot: bool = False):
     print(" 📊 ドリブルローラー電流データ 統計解析レポート")
     print("============================================================")
     print(f" 総サンプル数     : {len(valid_currents):,} 点")
-    print(f" 🌀 空転時 (No Ball) : 平均 {mu_empty:.3f} A | 標準偏差 ±{sigma_empty:.3f} A (Max: {np.max(empty_class):.2f} A)")
-    print(f" ⚽ 保持時 (Has Ball): 平均 {mu_ball:.3f} A | 標準偏差 ±{sigma_ball:.3f} A (Min: {np.min(ball_class):.2f} A)")
+    print(
+        f" 🌀 空転時 (No Ball) : 平均 {mu_empty:.3f} A | 標準偏差 ±{sigma_empty:.3f} A (Max: {np.max(empty_class):.2f} A)"
+    )
+    print(
+        f" ⚽ 保持時 (Has Ball): 平均 {mu_ball:.3f} A | 標準偏差 ±{sigma_ball:.3f} A (Min: {np.min(ball_class):.2f} A)"
+    )
     print(f" ⚖️ 大津の判別境界  : {otsu_threshold:.3f} A")
     print("------------------------------------------------------------")
     print(" 🎯 推奨 YAML パラメータ (dribble_controller.yaml):")
@@ -112,29 +120,58 @@ def analyze_current_distribution(currents: np.ndarray, plot: bool = False):
     if plot:
         try:
             import matplotlib.pyplot as plt
+
             plt.figure(figsize=(10, 5))
-            plt.hist(empty_class, bins=50, alpha=0.6, color='blue', label=f'Empty (μ={mu_empty:.2f}A, σ={sigma_empty:.2f}A)')
-            plt.hist(ball_class, bins=50, alpha=0.6, color='red', label=f'Has Ball (μ={mu_ball:.2f}A, σ={sigma_ball:.2f}A)')
-            plt.axvline(t_lost, color='orange', linestyle='--', linewidth=2, label=f'T_lost = {t_lost:.2f}A')
-            plt.axvline(t_detect, color='green', linestyle='--', linewidth=2, label=f'T_detect = {t_detect:.2f}A')
-            plt.title('Dribble Roller Current Distribution & Optimal Thresholds')
-            plt.xlabel('Motor Current [A]')
-            plt.ylabel('Count')
+            plt.hist(
+                empty_class,
+                bins=50,
+                alpha=0.6,
+                color="blue",
+                label=f"Empty (μ={mu_empty:.2f}A, σ={sigma_empty:.2f}A)",
+            )
+            plt.hist(
+                ball_class,
+                bins=50,
+                alpha=0.6,
+                color="red",
+                label=f"Has Ball (μ={mu_ball:.2f}A, σ={sigma_ball:.2f}A)",
+            )
+            plt.axvline(
+                t_lost,
+                color="orange",
+                linestyle="--",
+                linewidth=2,
+                label=f"T_lost = {t_lost:.2f}A",
+            )
+            plt.axvline(
+                t_detect,
+                color="green",
+                linestyle="--",
+                linewidth=2,
+                label=f"T_detect = {t_detect:.2f}A",
+            )
+            plt.title("Dribble Roller Current Distribution & Optimal Thresholds")
+            plt.xlabel("Motor Current [A]")
+            plt.ylabel("Count")
             plt.legend()
             plt.grid(True, alpha=0.3)
-            plot_file = 'dribble_current_distribution.png'
+            plot_file = "dribble_current_distribution.png"
             plt.savefig(plot_file, dpi=150)
             print(f"\n[INFO] プロット画像を保存しました: {plot_file}")
             plt.close()
         except ImportError:
-            print("\n[INFO] matplotlib がインストールされていないため画像保存をスキップしました。")
+            print(
+                "\n[INFO] matplotlib がインストールされていないため画像保存をスキップしました。"
+            )
 
     return t_detect, t_lost
 
 
 def load_from_rosbag(bag_path: str, logical_id: int = 12):
     currents = []
-    print(f"[INFO] Loading rosbag from: {bag_path} (Filtering logical_id={logical_id})...")
+    print(
+        f"[INFO] Loading rosbag from: {bag_path} (Filtering logical_id={logical_id})..."
+    )
 
     # 1. rosbag2_py を利用して読み込み
     try:
@@ -144,8 +181,7 @@ def load_from_rosbag(bag_path: str, logical_id: int = 12):
 
         storage_options = StorageOptions(uri=bag_path)
         converter_options = ConverterOptions(
-            input_serialization_format='cdr',
-            output_serialization_format='cdr'
+            input_serialization_format="cdr", output_serialization_format="cdr"
         )
         reader = SequentialReader()
         reader.open(storage_options, converter_options)
@@ -168,7 +204,9 @@ def load_from_rosbag(bag_path: str, logical_id: int = 12):
                             currents.append(act.current_a)
 
     except Exception as e:
-        print(f"[WARN] rosbag2_pyでの読み込みに失敗しました ({e})。sqlite3 直接パースを試行します...")
+        print(
+            f"[WARN] rosbag2_pyでの読み込みに失敗しました ({e})。sqlite3 直接パースを試行します..."
+        )
         # 2. sqlite3 直接パースフォールバック
         import glob
         import sqlite3
@@ -187,11 +225,15 @@ def load_from_rosbag(bag_path: str, logical_id: int = 12):
             cursor = conn.cursor()
             try:
                 # topics テーブルから topic_id を特定
-                cursor.execute("SELECT id FROM topics WHERE name = '/vesc/state' OR name = '/vesc/state_array'")
+                cursor.execute(
+                    "SELECT id FROM topics WHERE name = '/vesc/state' OR name = '/vesc/state_array'"
+                )
                 topic_ids = [row[0] for row in cursor.fetchall()]
 
                 for tid in topic_ids:
-                    cursor.execute("SELECT data FROM messages WHERE topic_id = ?", (tid,))
+                    cursor.execute(
+                        "SELECT data FROM messages WHERE topic_id = ?", (tid,)
+                    )
                     for (blob,) in cursor.fetchall():
                         # CDR デシリアライズ: ActuatorState (header 4B, logical_id 2B, ... float current_a)
                         # 簡単なヒューリスティック抽出
@@ -202,7 +244,9 @@ def load_from_rosbag(bag_path: str, logical_id: int = 12):
                                 if lid == logical_id:
                                     # current_a は position(4B), velocity(4B), current_a(4B)
                                     if offset + 14 <= len(blob):
-                                        curr = struct.unpack_from("<f", blob, offset + 10)[0]
+                                        curr = struct.unpack_from(
+                                            "<f", blob, offset + 10
+                                        )[0]
                                         if 0.0 <= curr <= 30.0:
                                             currents.append(curr)
                                     break
@@ -213,10 +257,18 @@ def load_from_rosbag(bag_path: str, logical_id: int = 12):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Analyze Dribble Current Threshold from ROS 2 Bag")
-    parser.add_argument("bag_path", help="Path to ROS 2 bag folder or .db3 file (or CSV file)")
-    parser.add_argument("--id", type=int, default=12, help="Logical ID of Dribble Roller (default: 12)")
-    parser.add_argument("--plot", action="store_true", help="Save distribution plot image (matplotlib)")
+    parser = argparse.ArgumentParser(
+        description="Analyze Dribble Current Threshold from ROS 2 Bag"
+    )
+    parser.add_argument(
+        "bag_path", help="Path to ROS 2 bag folder or .db3 file (or CSV file)"
+    )
+    parser.add_argument(
+        "--id", type=int, default=12, help="Logical ID of Dribble Roller (default: 12)"
+    )
+    parser.add_argument(
+        "--plot", action="store_true", help="Save distribution plot image (matplotlib)"
+    )
     args = parser.parse_args()
 
     if args.bag_path.endswith(".csv"):

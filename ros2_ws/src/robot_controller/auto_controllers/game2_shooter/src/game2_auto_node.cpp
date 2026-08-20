@@ -187,7 +187,9 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       rpm_top_ = param.as_double();
     } else if (name == "test_alignment_only") {
       test_alignment_only_ = param.as_bool();
-      RCLCPP_INFO(get_logger(), "Param updated: test_alignment_only = %s", test_alignment_only_ ? "true" : "false");
+      RCLCPP_INFO(
+        get_logger(), "Param updated: test_alignment_only = %s",
+        test_alignment_only_ ? "true" : "false");
     } else if (name == "require_ball_detected") {
       require_ball_detected_ = param.as_bool();
     } else if (name == "enable_double_panel_midpoint_targeting") {
@@ -268,7 +270,9 @@ void Game2AutoNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr
     state_ = robot_msgs::msg::Game2State::STANDBY;
     reset_sequence();
     RCLCPP_WARN(get_logger(), "Emergency Stop Triggered! Game 2 Auto Sequence ABORTED.");
-    publish_all(geometry_msgs::msg::Twist{}, 0.0f, false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+    publish_all(
+      geometry_msgs::msg::Twist{}, 0.0f, false, false,
+      robot_msgs::msg::ArmPosition::DRIBBLE, false);
   }
 }
 
@@ -399,10 +403,12 @@ void Game2AutoNode::tag_detections_callback(
       target_valid_ = true;
 
       // 射出口と完全に一致する理論目標ピクセル (例: 960 + (35mm / 4m) * 800 = 967px)
-      const double aligned_target_pixel = camera_cx_ + (camera_offset_y_ / target_distance_) * camera_fx_;
+      const double aligned_target_pixel = camera_cx_ + (camera_offset_y_ / target_distance_) *
+        camera_fx_;
 
       RCLCPP_INFO_THROTTLE(
-        get_logger(), *get_clock(), 200,
+        get_logger(),
+        *get_clock(), 200,
         "📷 [VisualServo Track Tag #%d] HeadingErr: %+.2f deg | Pixel: %.1f px (TargetAligned: %.1f px)",
         best_id, best_heading_err * 180.0 / M_PI, best_pixel_x, aligned_target_pixel);
     }
@@ -478,7 +484,8 @@ void Game2AutoNode::select_target_and_aim()
           target_z_ = (p0->z + p1->z) * 0.5;
           targeted_pair = true;
           RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
+            get_logger(),
+            *get_clock(), 500,
             "💥 [Double Target Strategy] All 3 panels present in Row %d -> Targeting Midpoint of #%d & #%d",
             row, p0->tag_id, p1->tag_id);
         }
@@ -490,7 +497,8 @@ void Game2AutoNode::select_target_and_aim()
           target_z_ = (p0->z + p1->z) * 0.5;
           targeted_pair = true;
           RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
+            get_logger(),
+            *get_clock(), 500,
             "💥 [Double Target Strategy] Adjacent pair detected in Row %d -> Targeting Midpoint of #%d & #%d",
             row, p0->tag_id, p1->tag_id);
         }
@@ -502,7 +510,8 @@ void Game2AutoNode::select_target_and_aim()
           target_z_ = (p1->z + p2->z) * 0.5;
           targeted_pair = true;
           RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
+            get_logger(),
+            *get_clock(), 500,
             "💥 [Double Target Strategy] Adjacent pair detected in Row %d -> Targeting Midpoint of #%d & #%d",
             row, p1->tag_id, p2->tag_id);
         }
@@ -579,7 +588,9 @@ void Game2AutoNode::control_loop()
   // Check if all rows are completed
   if (active_row_ > 2) {
     state_ = robot_msgs::msg::Game2State::COMPLETED;
-    RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 3000, "🏆 Game 2: All target panels successfully cleared!");
+    RCLCPP_INFO_THROTTLE(
+      get_logger(),
+      *get_clock(), 3000, "🏆 Game 2: All target panels successfully cleared!");
     publish_all(
       geometry_msgs::msg::Twist{}, 0.0f,
       false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
@@ -800,4 +811,3 @@ void Game2AutoNode::publish_all(
 }
 
 }  // namespace robot_controller
-
