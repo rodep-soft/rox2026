@@ -17,8 +17,14 @@ __pycache__/
 *.mcap
 rosbag2_*/
 
-# debag file (.txt)
+# debag file (.txt, .log)
 *log*.txt
+*.log
+*.txt
+run_stereo.sh
+bags/
+plastic/
+n*/
 
 #about vscode setting
 .vacode/
