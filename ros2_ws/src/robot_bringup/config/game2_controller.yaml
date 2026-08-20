@@ -42,6 +42,7 @@ game2_auto_node:
     max_shots_per_panel: 1  # 1枚あたりの射出回数
     require_ball_detected: true # true: ボール検知センサー必須, false: センサーなしでも照準完了で射出
     auto_advance_rows: true # true: 段内のタグを射出完了したら自動で上段へ移行
+    enable_double_panel_midpoint_targeting: true # true: 2枚横連続時に中点を狙い1発2枚抜き (3枚残時は0&1中点->2直撃の2発全クリア)
 
     # ── 🏷️ シュートパネル AprilTag ID ──
     # Row 0: 下段, Row 1: 中段, Row 2: 上段 (左から右の順)

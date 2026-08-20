@@ -135,6 +135,7 @@ private:
   bool require_ball_detected_{true};
   bool test_alignment_only_{false};
   bool auto_advance_rows_{true};
+  bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
@@ -145,6 +146,7 @@ private:
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top
   int active_target_id_{-1};
+  std::vector<int> current_target_tag_ids_; // 狙っているタグIDリスト（中点狙い時は2個）
   double target_x_{0.0};
   double target_y_{0.0};
   double target_z_{0.0};

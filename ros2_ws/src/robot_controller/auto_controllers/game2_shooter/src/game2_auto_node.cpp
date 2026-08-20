@@ -121,6 +121,8 @@ void Game2AutoNode::load_parameters()
   require_ball_detected_ = declare_parameter<bool>("require_ball_detected", true);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
+  enable_double_panel_midpoint_targeting_ =
+    declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
 
   // AprilTag Panel Configuration (Row 0: Bottom, 1: Middle, 2: Top)
   const std::vector<int64_t> default_bottom = {20, 21, 22};
@@ -188,6 +190,11 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       RCLCPP_INFO(get_logger(), "Param updated: test_alignment_only = %s", test_alignment_only_ ? "true" : "false");
     } else if (name == "require_ball_detected") {
       require_ball_detected_ = param.as_bool();
+    } else if (name == "enable_double_panel_midpoint_targeting") {
+      enable_double_panel_midpoint_targeting_ = param.as_bool();
+      RCLCPP_INFO(
+        get_logger(), "Param updated: enable_double_panel_midpoint_targeting = %s",
+        enable_double_panel_midpoint_targeting_ ? "true" : "false");
     }
   }
 
@@ -216,6 +223,7 @@ void Game2AutoNode::reset_sequence()
   active_row_ = 0;
   active_target_id_ = -1;
   locked_target_id_ = -1;
+  current_target_tag_ids_.clear();
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
 
@@ -429,34 +437,90 @@ void Game2AutoNode::select_target_and_aim()
 
   // Search through rows starting from active_row_ (0: Bottom, 1: Middle, 2: Top)
   for (int row = active_row_; row <= 2; ++row) {
-    int best_id = -1;
-    double min_dist_sq = 1e9;
     bool has_unshot_tags_in_row = false;
 
-    // 1. Look for unshot, currently detected tags in this row
+    // Find unshot detected panels in this row by column (0: Left, 1: Center, 2: Right)
+    const PanelTagInfo * p0 = nullptr;
+    const PanelTagInfo * p1 = nullptr;
+    const PanelTagInfo * p2 = nullptr;
+    int unshot_detected_count = 0;
+
     for (const auto & [id, panel] : panel_grid_) {
       if (panel.row == row) {
         if (!panel.shot_completed) {
           has_unshot_tags_in_row = true;
           if (panel.detected) {
-            const double dist_sq = panel.x * panel.x + panel.y * panel.y;
-            if (dist_sq < min_dist_sq) {
-              min_dist_sq = dist_sq;
-              best_id = id;
+            unshot_detected_count++;
+            if (panel.col == 0) {
+              p0 = &panel;
+            } else if (panel.col == 1) {
+              p1 = &panel;
+            } else if (panel.col == 2) {
+              p2 = &panel;
             }
           }
         }
       }
     }
 
-    if (best_id != -1) {
+    if (unshot_detected_count > 0) {
       active_row_ = row;
-      active_target_id_ = best_id;
-      const auto & target = panel_grid_[best_id];
-      target_x_ = target.x;
-      target_y_ = target.y;
-      target_z_ = target.z;
-      target_heading_err_ = std::atan2(target.y, target.x);
+      current_target_tag_ids_.clear();
+
+      // ── 🎯 2枚横連続の中点狙い（ダブルノックダウン）アルゴリズム ──
+      bool targeted_pair = false;
+      if (enable_double_panel_midpoint_targeting_) {
+        // パターンA: 3枚全て(0, 1, 2)残っている場合 -> 0&1の中点を狙う (次弾で2を撃ち計2発で3枚全クリア)
+        if (p0 && p1 && p2) {
+          current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
+          target_x_ = (p0->x + p1->x) * 0.5;
+          target_y_ = (p0->y + p1->y) * 0.5;
+          target_z_ = (p0->z + p1->z) * 0.5;
+          targeted_pair = true;
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 500,
+            "💥 [Double Target Strategy] All 3 panels present in Row %d -> Targeting Midpoint of #%d & #%d",
+            row, p0->tag_id, p1->tag_id);
+        }
+        // パターンB: 0と1が連続で残っている場合 -> 0&1の中点
+        else if (p0 && p1) {
+          current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
+          target_x_ = (p0->x + p1->x) * 0.5;
+          target_y_ = (p0->y + p1->y) * 0.5;
+          target_z_ = (p0->z + p1->z) * 0.5;
+          targeted_pair = true;
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 500,
+            "💥 [Double Target Strategy] Adjacent pair detected in Row %d -> Targeting Midpoint of #%d & #%d",
+            row, p0->tag_id, p1->tag_id);
+        }
+        // パターンC: 1と2が連続で残っている場合 -> 1&2の中点
+        else if (p1 && p2) {
+          current_target_tag_ids_ = {p1->tag_id, p2->tag_id};
+          target_x_ = (p1->x + p2->x) * 0.5;
+          target_y_ = (p1->y + p2->y) * 0.5;
+          target_z_ = (p1->z + p2->z) * 0.5;
+          targeted_pair = true;
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 500,
+            "💥 [Double Target Strategy] Adjacent pair detected in Row %d -> Targeting Midpoint of #%d & #%d",
+            row, p1->tag_id, p2->tag_id);
+        }
+      }
+
+      // 連続ペアがない場合（単独1枚、または離れた0と2のみの場合）: 単体パネルを直撃狙い
+      if (!targeted_pair) {
+        const PanelTagInfo * single_target = p1 ? p1 : (p0 ? p0 : p2);
+        if (single_target) {
+          current_target_tag_ids_ = {single_target->tag_id};
+          target_x_ = single_target->x;
+          target_y_ = single_target->y;
+          target_z_ = single_target->z;
+        }
+      }
+
+      active_target_id_ = current_target_tag_ids_.empty() ? -1 : current_target_tag_ids_[0];
+      target_heading_err_ = std::atan2(target_y_, target_x_);
       target_valid_ = true;
 
       switch (row) {
@@ -643,16 +707,26 @@ void Game2AutoNode::control_loop()
         last_cmd_wz_ = 0.0;
 
         if (state_elapsed >= shoot_hold_duration_) {
-          RCLCPP_INFO(
-            get_logger(),
-            "✅ [Game2] Shot cycle complete! Marking Tag #%d shot. Returning arm to DRIBBLE.",
-            active_target_id_);
+          if (current_target_tag_ids_.size() >= 2) {
+            RCLCPP_INFO(
+              get_logger(),
+              "🎯 [Game2 SPLIT SHOT!] Midpoint shot complete for Tags #%d & #%d! Marking both panels shot.",
+              current_target_tag_ids_[0], current_target_tag_ids_[1]);
+          } else if (!current_target_tag_ids_.empty()) {
+            RCLCPP_INFO(
+              get_logger(),
+              "✅ [Game2] Single shot complete for Tag #%d! Marking panel shot.",
+              current_target_tag_ids_[0]);
+          }
 
-          // Mark current panel as shot
-          if (active_target_id_ != -1 && panel_grid_.find(active_target_id_) != panel_grid_.end()) {
-            panel_grid_[active_target_id_].shot_count++;
-            if (panel_grid_[active_target_id_].shot_count >= max_shots_per_panel_) {
-              panel_grid_[active_target_id_].shot_completed = true;
+          // Mark all targeted panels as shot
+          for (const int tid : current_target_tag_ids_) {
+            auto it = panel_grid_.find(tid);
+            if (it != panel_grid_.end()) {
+              it->second.shot_count++;
+              if (it->second.shot_count >= max_shots_per_panel_) {
+                it->second.shot_completed = true;
+              }
             }
           }
 
