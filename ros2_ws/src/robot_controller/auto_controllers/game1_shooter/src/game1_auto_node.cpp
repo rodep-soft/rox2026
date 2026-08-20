@@ -81,16 +81,8 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   odom_received_ = true;
-  raw_x_ = msg->pose.pose.position.x;
-  raw_y_ = msg->pose.pose.position.y;
-
-  // スタート時の位置・向きを原点 (0,0,0) とする相対座標系への回転変換
-  const double dx_raw = raw_x_ - start_x_;
-  const double dy_raw = raw_y_ - start_y_;
-  const double cos_offset = std::cos(-yaw_offset_);
-  const double sin_offset = std::sin(-yaw_offset_);
-  current_x_ = dx_raw * cos_offset - dy_raw * sin_offset;
-  current_y_ = dx_raw * sin_offset + dy_raw * cos_offset;
+  current_x_ = msg->pose.pose.position.x;
+  current_y_ = msg->pose.pose.position.y;
 
   // EKF 融合後の Orientation クォータニオンから Yaw を取得
   const double qx = msg->pose.pose.orientation.x;
@@ -117,12 +109,11 @@ void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     return;
   }
 
-  // スティック操作量（並進・旋回スティックのみ）を判定。L2/R2トリガー(axes[3], [4])等は除外
-  constexpr double deadzone = 0.20;
+  // ジョイスティックの各軸（スティック）の操作量を判定
+  constexpr double deadzone = 0.15;
   bool joystick_moved = false;
-  const std::vector<std::size_t> stick_indices = {0, 1, 2};  // Left Stick X/Y, Right Stick X
-  for (const auto idx : stick_indices) {
-    if (idx < msg->axes.size() && std::abs(msg->axes[idx]) > deadzone) {
+  for (const float axis_val : msg->axes) {
+    if (std::abs(axis_val) > deadzone) {
       joystick_moved = true;
       break;
     }
@@ -133,7 +124,7 @@ void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     state_ = Game1State::STANDBY;
     RCLCPP_WARN(
       get_logger(),
-      "Joystick stick movement detected! Manual Override: Pausing Game 1 Auto Sequence.");
+      "Joystick input detected! Emergency Manual Override: Stopping Game 1 Auto Sequence.");
   }
 }
 
@@ -143,17 +134,12 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = test_mode_ ? Game1State::TEST_SINGLE_WP : Game1State::NAV_TO_GATE;
     state_start_time_ = now();
-    // スタート時のEKF現在地および生角度をゼロ基準として記録
-    start_x_ = raw_x_;
-    start_y_ = raw_y_;
+    // スタート時のIMU/EKF生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
     yaw_offset_ = raw_yaw_;
-    current_x_ = 0.0;
-    current_y_ = 0.0;
     current_yaw_ = 0.0;
     RCLCPP_INFO(
-      get_logger(),
-      "Game 1 Auto Sequence STARTED (TestMode: %s). Origin zero-reset at Raw Pos (%.3f, %.3f, Yaw: %.3f rad).",
-      test_mode_ ? "ON" : "OFF", start_x_, start_y_, yaw_offset_);
+      get_logger(), "Game 1 Auto Sequence STARTED (TestMode: %s). EKF/IMU Zero-Reset (Offset: %.3f rad).",
+      test_mode_ ? "ON" : "OFF", yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -187,11 +173,8 @@ geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoin
   const double dist = std::hypot(dx_world, dy_world);
 
   if (dist > 1e-4) {
-    // 2. ベクトル減速プロファイル（目標到達直前まで静止摩擦に負けない最低速度 0.15m/s を確保）
-    double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
-    if (dist > pos_tolerance_) {
-      target_speed = std::max(0.15, target_speed);
-    }
+    // 2. ベクトル比例減速プロファイル（目標に近づくほど滑らかに減速しオーバーシュートを防止）
+    const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
 
     // ワールド座標系での速度ベクトル
     const double vx_world = target_speed * (dx_world / dist);

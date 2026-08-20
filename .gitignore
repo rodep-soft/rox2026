@@ -17,14 +17,8 @@ __pycache__/
 *.mcap
 rosbag2_*/
 
-# debag file (.txt, .log)
+# debag file (.txt)
 *log*.txt
-*.log
-*.txt
-run_stereo.sh
-bags/
-plastic/
-n*/
 
 #about vscode setting
 .vacode/
@@ -56,10 +50,8 @@ ros2_ws/.vscode/
 fix.md
 
 # External vcs repositories (Do not commit to git)
-# ros2_ws/src/libbno055-linux/
+ros2_ws/src/libbno055-linux/
 
 
 # kamei氏のdirを入れないものとする
 kamei/
-
-*solver.bin
