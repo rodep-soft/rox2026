@@ -311,6 +311,11 @@ private:
     void control() {
         const auto current_time = this->now();
         const double dt_s = (current_time - last_control_time_).seconds();
+
+        // 最小実行間隔 (3ms) のガード: マイクロ秒間隔の連続呼び出しによる dt_s ゼロ化・CPU浪費を防止
+        if (dt_s < 0.003 && last_control_time_.nanoseconds() != 0) {
+            return;
+        }
         last_control_time_ = current_time;
 
         if (last_command_time_.nanoseconds() == 0 ||
@@ -372,7 +377,7 @@ private:
         const double vel_magnitude = std::hypot(latest_command_.linear.x, latest_command_.linear.y);
         if (vel_magnitude < 1e-3 && std::abs(latest_command_.angular.z) < 1e-3) {
             target_yaw_rad_ = current_yaw_rad_;
-            target_yaw_initialized_ = true;
+            target_yaw_initialized_ = false;  // 発進時にその瞬間の向きを目標として新規ロックさせる
             integral_error_rad_s_ = 0.0;
             corrected_command_pub_->publish(latest_command_);
             last_correction_ = 0.0;
@@ -384,8 +389,8 @@ private:
             target_yaw_rad_ = current_yaw_rad_;
             target_yaw_initialized_ = true;
             integral_error_rad_s_ = 0.0;
-            RCLCPP_DEBUG(this->get_logger(), "[HeadingControl] Re-locked heading target to %+.1f°",
-                         target_yaw_rad_ * 180.0 / M_PI);
+            RCLCPP_INFO(this->get_logger(), "[HeadingControl] Re-locked heading target to %+.1f° on motion start",
+                        target_yaw_rad_ * 180.0 / M_PI);
         }
 
         const double safe_dt_s = dt_s > 0.0 && dt_s < 0.5 ? dt_s : static_cast<double>(control_period_ms_) / 1000.0;
