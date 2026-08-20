@@ -15,8 +15,8 @@ namespace edulite05_driver
 constexpr uint8_t HOST_ID = 0xFD;
 constexpr uint8_t TYPE_FEEDBACK = 0x02;
 constexpr uint8_t TYPE_ENABLE = 0x03;
-constexpr uint8_t TYPE_DISABLE = 0x04;
 constexpr uint8_t TYPE_READ = 0x11;
+constexpr uint8_t TYPE_FAULT = 0x15;
 constexpr uint8_t TYPE_WRITE = 0x12;
 constexpr uint8_t RESET_STATUS_MODE = 0x00;
 constexpr uint8_t RUN_STATUS_MODE = 0x02;
@@ -25,16 +25,15 @@ constexpr uint16_t SPEED_REFERENCE = 0x700A;
 constexpr uint16_t POSITION_REFERENCE = 0x7016;
 constexpr uint16_t SPEED_LIMIT = 0x7017;
 constexpr uint16_t CURRENT_LIMIT = 0x7018;
-constexpr uint16_t MECHANICAL_POSITION = 0x7019;
 constexpr uint16_t CURRENT_FEEDBACK = 0x701A;
 constexpr uint16_t ACCELERATION = 0x7022;
 constexpr uint16_t PP_SPEED = 0x7024;
 constexpr uint16_t PP_ACCELERATION = 0x7025;
 constexpr int MAX_INITIALIZATION_RETRIES = 10;
 constexpr auto WRITE_SETTLING_TIME = std::chrono::milliseconds(2);
-constexpr auto POSITION_RESUME_SETTLING_TIME = std::chrono::milliseconds(100);
 constexpr auto RESPONSE_TIMEOUT = std::chrono::milliseconds(100);
 constexpr auto ERROR_RETRY_PERIOD = std::chrono::milliseconds(200);
+constexpr uint32_t CURRENT_FEEDBACK_TIMEOUT_PERIODS = 3;
 constexpr float PI = 3.14159265358979323846f;
 
 enum class ControlMode : uint8_t
@@ -44,7 +43,15 @@ enum class ControlMode : uint8_t
   CYCLIC_SYNCHRONOUS_POSITION = 5
 };
 
-enum class PositionReferenceMode : uint8_t { SERVICE, YAML_OFFSET };
+enum class PositionReferenceSource : uint8_t { SET_POSITION_SERVICE, YAML_OFFSET };
+
+enum class PositionReferenceState : uint8_t
+{
+  NOT_REQUIRED,
+  UNAVAILABLE,
+  TEMPORARY,
+  ESTABLISHED
+};
 
 enum class MotorState : uint8_t { OFFLINE, INITIALIZING, READY, ERROR };
 
@@ -62,13 +69,12 @@ struct MotorConfig
   uint32_t feedback_timeout_ms = 500;
   bool current_feedback_enabled = false;
   uint32_t current_feedback_period_ms = 100;
-  PositionReferenceMode position_reference_mode =
-    PositionReferenceMode::SERVICE;
+  bool immediate_state_publish = true;
+  PositionReferenceSource position_reference_source =
+    PositionReferenceSource::SET_POSITION_SERVICE;
   float position_offset_rad = 0.0f;
   float minimum_position_rad = -1000.0f;
   float maximum_position_rad = 1000.0f;
-  bool allow_unreferenced_position_commands = false;
-  bool resume_position_on_startup = false;
 };
 
 struct MotorFeedback
@@ -84,6 +90,9 @@ struct MotorFeedback
 class Protocol
 {
 public:
+  using Clock = std::chrono::steady_clock;
+  using TimePoint = Clock::time_point;
+
   explicit Protocol(const MotorConfig & config);
 
   const std::string & name() const {return config_.name;}
@@ -91,9 +100,13 @@ public:
   uint8_t can_id() const {return config_.can_id;}
   ControlMode control_mode() const {return config_.control_mode;}
   MotorState state() const {return state_;}
-  bool position_reference_is_set() const {return position_reference_is_set_;}
+  bool position_reference_is_set() const
+  {
+    return position_reference_state_ == PositionReferenceState::ESTABLISHED;
+  }
   const MotorFeedback & feedback() const {return feedback_;}
   int initialization_retry_count() const {return initialization_retry_count_;}
+  bool immediate_state_publish() const {return config_.immediate_state_publish;}
   std::string initialization_diagnostic() const;
 
   /// @brief 目標値を設定
@@ -104,27 +117,22 @@ public:
 
   /// @brief 今回の呼び出しで初期化の際に送るフレームの取得
   /// @return 初期化フレーム
-  std::optional<can_msgs::msg::Frame> create_initialization_frame();
+  std::optional<can_msgs::msg::Frame> create_initialization_frame(TimePoint current_time);
   /// @brief CANフレームを受信
   /// @param msg 受信したCANフレーム
   /// @return 処理結果 true: 値を受信できた，false: 受信できなかった
   bool receive(const can_msgs::msg::Frame & message);
   /// @brief 目標値の送信が必要かどうか
   /// @return true: 送信が必要，false: 送信不要
-  std::optional<can_msgs::msg::Frame> create_target_frame();
-  std::optional<can_msgs::msg::Frame> create_current_feedback_frame();
-  void watchdog();
+  std::optional<can_msgs::msg::Frame> create_target_frame(TimePoint current_time);
+  std::optional<can_msgs::msg::Frame> create_current_feedback_frame(
+    TimePoint current_time);
+  void watchdog(TimePoint current_time);
 
 private:
-  using Clock = std::chrono::steady_clock;
-  using TimePoint = Clock::time_point;
 
   enum class InitializationStep
   {
-    DISABLE_FOR_POSITION_RESUME,
-    WAIT_BEFORE_POSITION_RESUME,
-    READ_CURRENT_MECHANICAL_POSITION,
-    WAIT_FOR_CURRENT_MECHANICAL_POSITION,
     WRITE_PARAMETER,
     WAIT_AFTER_WRITE,
     READ_PARAMETER,
@@ -135,14 +143,17 @@ private:
     ERROR
   };
 
+  enum class InitializationParameterType : uint8_t { UINT8, FLOAT };
+
   struct InitializationParameter
   {
     uint16_t index;
+    InitializationParameterType type;
     float value;
-    bool is_uint8;
   };
 
   bool uses_position_control() const;
+  bool position_command_is_allowed() const;
   /// @brief 初期化のリトライ
   void retry_initialization();
   /// @brief モータの初期化からやり直すことを指示
@@ -154,6 +165,9 @@ private:
   /// @brief パラメータ応答を処理
   /// @param msg 受信したCANフレーム
   bool process_parameter_response(const can_msgs::msg::Frame & message);
+  bool process_fault(const can_msgs::msg::Frame & message);
+  void enter_fault_state(uint32_t fault_code, TimePoint current_time);
+  void invalidate_stale_current(TimePoint current_time);
 
   static can_msgs::msg::Frame make_base_frame(uint8_t type, uint8_t motor_id);
   static can_msgs::msg::Frame
@@ -164,7 +178,6 @@ private:
     uint8_t motor_id,
     uint16_t index);
   static can_msgs::msg::Frame make_enable_frame(uint8_t motor_id);
-  static can_msgs::msg::Frame make_disable_frame(uint8_t motor_id);
 
   MotorConfig config_;
   MotorFeedback feedback_;
@@ -178,17 +191,19 @@ private:
   bool motor_enabled_ = false;
   int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
+  uint32_t detailed_fault_code_ = 0;
   float motor_position_rad_ = 0.0f;
   float last_wrapped_position_rad_ = 0.0f;
   bool motor_position_initialized_ = false;
   float logical_position_offset_rad_ = 0.0f;
-  bool position_reference_is_set_ = false;
-  bool unreferenced_origin_initialized_ = false;
+  PositionReferenceState position_reference_state_ =
+    PositionReferenceState::NOT_REQUIRED;
   TimePoint last_feedback_time_{};
   TimePoint last_request_time_{};
   TimePoint last_target_time_{};
   TimePoint last_command_time_{};
   TimePoint last_current_feedback_request_time_{};
+  TimePoint last_current_feedback_time_{};
   TimePoint error_time_{};
 };
 } // namespace edulite05_driver

@@ -1,5 +1,6 @@
 #include "spring_controller/spring_edulite_controller.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>
@@ -274,22 +275,27 @@ void SpringEduliteController::actuator_state_callback(
   // ゆっくり射出: 前進完了判定 (SLOW_FIRING_EXTENDING -> SLOW_FIRING_RETURNING)
   if (state_ == State::SLOW_FIRING_EXTENDING) {
     const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
+    const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
     const double expected_duration_sec =
-      (slow_fire_velocity_rad_s_ > 0.0) ? (slow_fire_target_rad_ / slow_fire_velocity_rad_s_) : 1.0;
+      (slow_fire_velocity_rad_s_ > 0.0) ?
+      (stroke_rad / slow_fire_velocity_rad_s_) : 1.0;
+
+    if (elapsed_sec >= expected_duration_sec + 0.3) {
+      enter_error_with_position_hold(
+        msg->position, "Slow fire extension timed out");
+      return;
+    }
 
     const bool pos_reached =
-      (msg->position >= slow_fire_peak_rad_ - standby_position_tolerance_rad_) ||
-      (target_position_rad_ >= slow_fire_peak_rad_ &&
-      std::fabs(msg->position - slow_fire_peak_rad_) <= standby_position_tolerance_rad_);
-    const bool timeout_reached = elapsed_sec >= (expected_duration_sec + 0.3);
-
-    if ((pos_reached && target_position_rad_ >= slow_fire_peak_rad_) || timeout_reached) {
+      msg->position >=
+      slow_fire_peak_rad_ - standby_position_tolerance_rad_;
+    if (pos_reached && target_position_rad_ >= slow_fire_peak_rad_) {
       ++stopped_count_;
     } else {
       stopped_count_ = 0;
     }
 
-    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
+    if (stopped_count_ >= required_stopped_count_) {
       RCLCPP_INFO(
         get_logger(),
         "Reached slow fire peak (target: %.3f rad, feedback: %.3f rad). Returning to base (%.3f rad).",
@@ -303,22 +309,32 @@ void SpringEduliteController::actuator_state_callback(
   // ゆっくり射出: 待機位置への復帰完了判定 (SLOW_FIRING_RETURNING -> READY)
   if (state_ == State::SLOW_FIRING_RETURNING) {
     const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
+    const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
     const double expected_duration_sec =
-      (slow_fire_return_velocity_rad_s_ > 0.0) ? (slow_fire_target_rad_ / slow_fire_return_velocity_rad_s_) : 1.0;
+      (slow_fire_return_velocity_rad_s_ > 0.0) ?
+      (stroke_rad / slow_fire_return_velocity_rad_s_) : 1.0;
+
+    if (elapsed_sec >= expected_duration_sec + 0.5) {
+      enter_error_with_position_hold(
+        msg->position, "Slow fire return timed out");
+      return;
+    }
 
     const bool pos_reached =
-      std::fabs(msg->position - slow_fire_base_rad_) <= standby_position_tolerance_rad_;
+      std::fabs(msg->position - slow_fire_base_rad_) <=
+      standby_position_tolerance_rad_;
     const bool vel_stopped =
       std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_;
-    const bool timeout_reached = elapsed_sec >= (expected_duration_sec + 0.5);
 
-    if ((pos_reached && vel_stopped && target_position_rad_ <= slow_fire_base_rad_ + 1e-4) || timeout_reached) {
+    if (pos_reached && vel_stopped &&
+      target_position_rad_ <= slow_fire_base_rad_ + 1e-4)
+    {
       ++stopped_count_;
     } else {
       stopped_count_ = 0;
     }
 
-    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
+    if (stopped_count_ >= required_stopped_count_) {
       target_position_rad_ = slow_fire_base_rad_;
       publish_target(target_position_rad_);
       RCLCPP_INFO(
@@ -333,7 +349,11 @@ void SpringEduliteController::actuator_state_callback(
 
 void SpringEduliteController::control_timer_callback()
 {
-  if (state_ == State::UNINITIALIZED || zero_service_pending_) {return;}
+  if (state_ == State::UNINITIALIZED || state_ == State::ERROR ||
+    zero_service_pending_)
+  {
+    return;
+  }
 
   if (emergency_stop_active_) {
     // 非常停止中はホーミングタイマーをリセットして待機
@@ -426,6 +446,18 @@ void SpringEduliteController::request_zero_reference()
         RCLCPP_ERROR(get_logger(), "Failed to zero spring position: %s", response->message.c_str());
       }
     });
+}
+
+void SpringEduliteController::enter_error_with_position_hold(
+  double current_position_rad, const char * reason)
+{
+  target_position_rad_ = current_position_rad;
+  stopped_count_ = 0;
+  state_ = State::ERROR;
+  publish_target(target_position_rad_);
+  RCLCPP_ERROR(
+    get_logger(), "%s. Holding current position at %.3f rad.",
+    reason, target_position_rad_);
 }
 
 void SpringEduliteController::publish_target(double target_rad)

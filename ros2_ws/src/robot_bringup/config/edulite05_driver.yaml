@@ -7,6 +7,8 @@
     state_topic: "/edulite/state"
     state_array_topic: "/edulite/state_array"
     set_position_service: "/edulite/set_position"
+    update_period_ms: 10
+    state_array_publish_period_ms: 100
 
     motors:
       - front_left
@@ -17,16 +19,19 @@
       - dribble
 
     front_left:
+      immediate_state_publish: true   # モータの状態をデータ受信後即時配信するかどうか
       logical_id: 0          # 倫理ID(足回り左前のモータ)
       can_id: 32             # CAN ID(足回り左前のモータ)         
       control_mode: velocity # 制御モード(velocity:速度制御, pp:位置制御, csp:位置制御+速度制限)
       current_limit: 11.0    # [ A ] 電流制限値
       acceleration: 150.0    # [ rad/s^2 ] 加速度制限値
       speed_limit: 50.0      # [ rad/s ] 速度制限値
-      current_feedback_enabled: true # 電流値のフィードバックを有効にするかどうか(別フレームから取得のため必要の場合のみ)
-      command_period_ms: 10  # 目標値の配信周期
+      current_feedback_enabled: true  #電流値フィードバックを取得するかどうか
+      current_feedback_period_ms: 100 #電流値のフィードバックを受け取る周期
+      command_period_ms: 10           # 目標値の配信周期
 
     front_right:
+      immediate_state_publish: true
       logical_id: 1
       can_id: 33
       control_mode: velocity
@@ -34,9 +39,11 @@
       acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: true
+      current_feedback_period_ms: 100
       command_period_ms: 10
 
     rear_left:
+      immediate_state_publish: true
       logical_id: 2
       can_id: 34
       control_mode: velocity
@@ -44,9 +51,11 @@
       acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: true
+      current_feedback_period_ms: 100
       command_period_ms: 10
 
     rear_right:
+      immediate_state_publish: true
       logical_id: 3
       can_id: 35
       control_mode: velocity
@@ -54,43 +63,40 @@
       acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: true
+      current_feedback_period_ms: 100
       command_period_ms: 10
 
     spring:
+      immediate_state_publish: true # 原点復帰用に即時配信
       logical_id: 4
       can_id: 40
       control_mode: pp
+      current_limit: 11.0
+      acceleration: 150.0
+      speed_limit: 33.0    # 最大速度は 33 rad/s
+
       position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
-      resume_position_on_startup: true # stateは未原点のまま、上位ノードのホーミング指令だけ許可する。
-      allow_unreferenced_position_commands: true #
       minimum_position_rad: -1000000.0 # 
       maximum_position_rad: 1000000.0  # 逆回転(正方向)の待機オフセットを許可
 
-      current_limit: 11.0
-      acceleration: 150.0
-      # 最大速度は 35 rad/s
-      speed_limit: 33.0
       current_feedback_enabled: false
       command_period_ms: 10
-      # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄する。
-      feedback_timeout_ms: 500
+      feedback_timeout_ms: 500     # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄
 
     dribble:
+      immediate_state_publish: true # 位置制御用に即時配信
       logical_id: 5
       can_id: 56
-      # 上位ノードが10 ms周期で滑らかな軌道を生成するため、
-      # 内部プロファイルを毎回再計画するPPではなくCSPを使用する。
+      # 上位ノードが10 ms周期で滑らかな軌道を生成するため
+      # 内部プロファイルを毎回再計画するPPではなくCSPを使用する
       control_mode: csp
+      current_limit: 11.0
+      speed_limit: 50.0
 
-      # この値は実機で測定して決める
-      position_reference_mode: yaml_offset
-      position_offset_rad: -0.01936626434326172
+      position_reference_mode: yaml_offset      # ゼロ点の取り方(yamlで指定した値を使って絶対位置制御をする)
+      position_offset_rad: -0.01936626434326172 # この値は実機で測定して決める
       minimum_position_rad: -1.57
       maximum_position_rad: 1.57
 
-      command_period_ms: 10
       current_feedback_enabled: false
-      current_feedback_period_ms: 100
-      current_limit: 11.0
-      speed_limit: 50.0
-      acceleration: 150.0
+      command_period_ms: 10
