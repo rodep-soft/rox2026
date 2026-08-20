@@ -30,9 +30,9 @@ game2_auto_node:
     test_alignment_only: false
 
     # ── 🚀 射出・ボール制御パラメータ ──
-    rpm_bottom: 3000.0      # 下段パネル射出回転数 [RPM]
-    rpm_middle: 4500.0      # 中段パネル射出回転数 [RPM]
-    rpm_top: 6000.0         # 上段パネル射出回転数 [RPM]
+    rpm_bottom: 2400.0      # 下段パネル射出回転数 [RPM] (推奨: 2200〜2600)
+    rpm_middle: 3300.0      # 中段パネル射出回転数 [RPM] (推奨: 3000〜3600)
+    rpm_top: 4200.0         # 上段パネル射出回転数 [RPM] (推奨: 3900〜4500, max 5600)
     open_duration: 0.3      # [s] アームOPEN展開所要時間
     shoot_hold_duration: 0.8 # [s] FEED押し込み保持時間
     ball_settle_duration: 0.3 # [s] ボール吸着安定待ち時間
