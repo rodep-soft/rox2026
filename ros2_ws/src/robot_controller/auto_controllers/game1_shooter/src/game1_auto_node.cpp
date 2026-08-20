@@ -109,11 +109,12 @@ void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     return;
   }
 
-  // ジョイスティックの各軸（スティック）の操作量を判定
-  constexpr double deadzone = 0.15;
+  // スティック操作量（並進・旋回スティックのみ）を判定。L2/R2トリガー(axes[3], [4])等は除外
+  constexpr double deadzone = 0.20;
   bool joystick_moved = false;
-  for (const float axis_val : msg->axes) {
-    if (std::abs(axis_val) > deadzone) {
+  const std::vector<std::size_t> stick_indices = {0, 1, 2};  // Left Stick X/Y, Right Stick X
+  for (const auto idx : stick_indices) {
+    if (idx < msg->axes.size() && std::abs(msg->axes[idx]) > deadzone) {
       joystick_moved = true;
       break;
     }
@@ -124,7 +125,7 @@ void Game1AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
     state_ = Game1State::STANDBY;
     RCLCPP_WARN(
       get_logger(),
-      "Joystick input detected! Emergency Manual Override: Stopping Game 1 Auto Sequence.");
+      "Joystick stick movement detected! Manual Override: Pausing Game 1 Auto Sequence.");
   }
 }
 
