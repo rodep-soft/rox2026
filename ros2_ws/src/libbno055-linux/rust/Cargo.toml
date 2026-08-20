@@ -1,6 +1,6 @@
 [package]
 name = "libbno055"
-version = "1.9.0"
+version = "1.10.0"
 edition = "2021"
 authors = ["lazytatzv <lazytatzv@users.noreply.github.com>"]
 description = "Safe and idiomatic Rust bindings for libbno055-linux C++17 IMU driver"

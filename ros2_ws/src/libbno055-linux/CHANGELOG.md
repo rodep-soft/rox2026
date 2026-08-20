@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-08-19
+
+### Added
+- **Turn Re-lock Delay in Heading Controller**: Added configurable `turn_relock_delay_sec` parameter (default 0.3s) to prevent snap-back oscillations and smoothly re-lock target heading after manual steering or teleop turns.
+- **Dynamic Heading Hold Toggle Topic**: Added `/heading_control/enable` topic (`std_msgs/msg/Bool`) to dynamically bypass or enable heading hold without node restarts.
+
+### Changed & Performance
+- **Subscriber-Aware Zero-Overhead Publishing**: Skipped ROS message construction, heap allocation, and serialization for `/bno055/imu`, `/bno055/mag`, `/bno055/temp`, and `/bno055/raw_sensor_data` when topics have zero subscribers, significantly reducing idle CPU usage.
+- **Generic Architecture for Heading Control**: Streamlined heading control nodes to subscribe to a single generic `imu_topic` without robot-specific dependencies.
+- **Reduced Status Log Noise**: Demoted periodic high-frequency heading controller runtime logs from INFO to DEBUG level.
+
+### Fixed
+- **Shockless Heading Re-locking**: Implemented smooth re-locking on IMU recovery or orientation discontinuity to prevent sudden steering torque jumps.
+- **CAN Bus Jitter Resilience**: Increased default `imu_timeout` to 250ms to prevent false-positive failsafe triggers under communication latency or jitter.
+- **I2C Clock Stretching & Error Handling**: Ensured immediate frame skipping on I2C communication errors instead of republishing stale frames, and enhanced zero-order hold handling during fast physical turns.
+- **Tuned Default Parameters**: Refined default deadband (0.05 rad/s) and PID parameters to filter out joystick zero-drift noise.
+
 ## [1.9.0] - 2026-07-30
 
 ### Added

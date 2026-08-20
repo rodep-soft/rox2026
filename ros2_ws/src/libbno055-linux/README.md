@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![ROS 2](https://img.shields.io/badge/ROS%202-Humble%20%7C%20Jazzy%20%7C%20Kilted%20%7C%20Lyrical-orange.svg)](https://docs.ros.org/)
-[![Version](https://img.shields.io/badge/version-1.9.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.10.0-green.svg)](CHANGELOG.md)
 
 A C++17 driver for the Bosch BNO055 9-axis IMU on Linux, with first-class ROS 2 integration.
 
@@ -129,7 +129,7 @@ sudo apt update
 sudo apt install ros-$ROS_DISTRO-libbno055-linux
 ```
 
-> The `apt` binary is updated periodically by ROS Buildfarm. For the latest release (v1.9.0), build from source.
+> The `apt` binary is updated periodically by ROS Buildfarm. For the latest release (v1.10.0), build from source.
 
 ### Option B: vcstool (recommended for team/production workspaces)
 
@@ -141,7 +141,7 @@ repositories:
   libbno055-linux:
     type: git
     url: https://github.com/lazytatzv/libbno055-linux.git
-    version: v1.9.0
+    version: v1.10.0
 ```
 
 Then import and build:
