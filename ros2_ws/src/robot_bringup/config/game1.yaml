@@ -1,6 +1,6 @@
 game1_auto_node:
   ros__parameters:
-    kp_linear: 1.0
+    kp_linear: 1.5
     kp_angular: 1.5
     max_linear_vel: 1.5
     max_angular_vel: 1.0

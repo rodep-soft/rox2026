@@ -112,6 +112,10 @@ private:
 
   // EKF Filtered Odometry Feedback (/odometry/filtered)
   bool odom_received_{false};
+  double raw_x_{0.0};
+  double raw_y_{0.0};
+  double start_x_{0.0};
+  double start_y_{0.0};
   double current_x_{0.0};
   double current_y_{0.0};
 

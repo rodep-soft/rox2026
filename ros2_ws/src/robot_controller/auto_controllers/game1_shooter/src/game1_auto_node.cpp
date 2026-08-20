@@ -81,8 +81,16 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   odom_received_ = true;
-  current_x_ = msg->pose.pose.position.x;
-  current_y_ = msg->pose.pose.position.y;
+  raw_x_ = msg->pose.pose.position.x;
+  raw_y_ = msg->pose.pose.position.y;
+
+  // スタート時の位置・向きを原点 (0,0,0) とする相対座標系への回転変換
+  const double dx_raw = raw_x_ - start_x_;
+  const double dy_raw = raw_y_ - start_y_;
+  const double cos_offset = std::cos(-yaw_offset_);
+  const double sin_offset = std::sin(-yaw_offset_);
+  current_x_ = dx_raw * cos_offset - dy_raw * sin_offset;
+  current_y_ = dx_raw * sin_offset + dy_raw * cos_offset;
 
   // EKF 融合後の Orientation クォータニオンから Yaw を取得
   const double qx = msg->pose.pose.orientation.x;
@@ -135,12 +143,17 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = test_mode_ ? Game1State::TEST_SINGLE_WP : Game1State::NAV_TO_GATE;
     state_start_time_ = now();
-    // スタート時のIMU/EKF生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
+    // スタート時のEKF現在地および生角度をゼロ基準として記録
+    start_x_ = raw_x_;
+    start_y_ = raw_y_;
     yaw_offset_ = raw_yaw_;
+    current_x_ = 0.0;
+    current_y_ = 0.0;
     current_yaw_ = 0.0;
     RCLCPP_INFO(
-      get_logger(), "Game 1 Auto Sequence STARTED (TestMode: %s). EKF/IMU Zero-Reset (Offset: %.3f rad).",
-      test_mode_ ? "ON" : "OFF", yaw_offset_);
+      get_logger(),
+      "Game 1 Auto Sequence STARTED (TestMode: %s). Origin zero-reset at Raw Pos (%.3f, %.3f, Yaw: %.3f rad).",
+      test_mode_ ? "ON" : "OFF", start_x_, start_y_, yaw_offset_);
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -174,8 +187,11 @@ geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoin
   const double dist = std::hypot(dx_world, dy_world);
 
   if (dist > 1e-4) {
-    // 2. ベクトル比例減速プロファイル（目標に近づくほど滑らかに減速しオーバーシュートを防止）
-    const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
+    // 2. ベクトル減速プロファイル（目標到達直前まで静止摩擦に負けない最低速度 0.15m/s を確保）
+    double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
+    if (dist > pos_tolerance_) {
+      target_speed = std::max(0.15, target_speed);
+    }
 
     // ワールド座標系での速度ベクトル
     const double vx_world = target_speed * (dx_world / dist);
