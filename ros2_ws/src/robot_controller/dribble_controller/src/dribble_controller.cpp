@@ -113,13 +113,13 @@ void DribbleControllerNode::load_parameters()
   dribbling_max_velocity_rad_s_ = declare_parameter<double>("dribbling_max_velocity_rad_s", 3.0);
   opening_accel_factor_ = declare_parameter<double>("opening_accel_factor", 1.2);
   dribbling_accel_factor_ = declare_parameter<double>("dribbling_accel_factor", 1.2);
-  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 4.8);
-  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 3.2);
+  ball_detection_threshold_a_ = declare_parameter<double>("ball_detection_threshold_a", 4.5);
+  ball_lost_threshold_a_ = declare_parameter<double>("ball_lost_threshold_a", 2.2);
   current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.07);
   ball_detection_debounce_count_ =
     declare_parameter<int>("ball_detection_debounce_count", 12);
   ball_lost_debounce_count_ =
-    declare_parameter<int>("ball_lost_debounce_count", 5);
+    declare_parameter<int>("ball_lost_debounce_count", 12);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 400);
   dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
   dribble_reverse_ramp_sec_ = declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);

@@ -33,10 +33,10 @@
     
     # [A] 電流値によるボール検知しきい値 (全実測rosbag統計解析に基づく最適値)
     ball_detection_threshold_a: 4.5    # 4.5A 以上でボール保持判定 (空転上限3.1Aをクリアしプラスチック球〜本番球を全検知)
-    ball_lost_threshold_a: 3.0         # 3.0A 以下でボール喪失判定 (空転定常1.3A~2.7Aで素早く解除)
+    ball_lost_threshold_a: 2.2         # 2.2A 以下でボール喪失判定 (停止時の一時的な接触圧低下による誤判定を完全防止)
     current_lpf_alpha: 0.07            # 電流値の一次ローパスフィルタ係数
     ball_detection_debounce_count: 12  # 連続12回(約240ms)の継続判定で発進・停止スパイクの誤検知を完全排除
-    ball_lost_debounce_count: 5        # 連続5回(約100ms)で素早く解除
+    ball_lost_debounce_count: 12       # 連続12回(約240ms)の継続判定で停止時のバウンドによる誤解除を完全防止
     
     # [ms] 指令再送周期
     command_period_ms: 10
