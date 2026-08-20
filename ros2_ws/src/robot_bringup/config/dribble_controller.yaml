@@ -31,10 +31,10 @@
     shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
-    # [A] 電流値によるボール検知しきい値
-    ball_detection_threshold_a: 6.4 # 1.7A 以上でボール保持(BALL DETECTED)と判定
-    ball_lost_threshold_a: 1.1      # 1.1A 以下でボール喪失(BALL LOST)と判定
-    current_lpf_alpha: 0.07          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
+    # [A] 電流値によるボール検知しきい値 (実測rosbag統計解析に基づく値)
+    ball_detection_threshold_a: 8.2 # 8.2A 以上でボール保持(BALL DETECTED)と判定 (空転Max: 8.10A, 保持Min: 8.20A, 平均11.95A)
+    ball_lost_threshold_a: 7.0      # 7.0A 以下でボール喪失(BALL LOST)と判定 (空転平均: 4.35A)
+    current_lpf_alpha: 0.07         # 電流値の一次ローパスフィルタ係数 (最新値の重み)
     
     # [ms] 指令再送周期
     command_period_ms: 10
