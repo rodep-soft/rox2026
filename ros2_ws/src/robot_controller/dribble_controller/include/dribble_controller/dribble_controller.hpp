@@ -130,7 +130,8 @@ private:
   bool roller_current_initialized_{false};
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
-  int ball_detection_debounce_count_{3};  // 連続3回(約600ms)の判定で確実化
+  int ball_detection_debounce_count_{12};  // 連続12回(約240ms)の判定で発進・停止時のスパイクを除外
+  int ball_lost_debounce_count_{5};        // 連続5回(約100ms)で素早く解除
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr position_mode_sub_;
