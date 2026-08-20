@@ -13,6 +13,9 @@
 
 VESCでは`target`と`state.velocity`の単位を機械RPMとして扱う。上位ノードはlogical IDだけを使用し、VESC CAN controller IDとERPM変換はhardware_driver内に閉じ込める。
 
+CAN受信購読にはContent Filterを適用し、設定されたVESCのStatus 1フレームだけを
+`vesc_node`のコールバックへ渡す。
+
 `state.current_a`にはStatus 1で受信したモーター電流[A]を格納する。回生時などは負の値になる。
 
 ## モーター別パラメーター
@@ -27,6 +30,13 @@ VESCでは`target`と`state.velocity`の単位を機械RPMとして扱う。上�
 | `rpm_slew_rate` | 1秒あたりの機械RPM変化量 |
 | `startup_current_a` | 始動時の電流指令 [A] |
 | `rpm_control_threshold_rpm` | 電流制御からRPM制御へ切り替える機械RPM |
+
+## 共通パラメーター
+
+| パラメーター | 内容 |
+|---|---|
+| `update_period_ms` | 各VESCへCAN指令を送信する周期 [ms] |
+| `state_array_publish_period_ms` | `/vesc/state_array`を配信する周期 [ms] |
 
 停止状態から回転を始める場合と回転方向を反転する場合は、`startup_current_a`による
 電流制御を行う。回転方向が指令と一致し、実回転数が
