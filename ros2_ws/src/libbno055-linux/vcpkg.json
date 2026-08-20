@@ -1,6 +1,6 @@
 {
   "name": "libbno055-linux",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "C++17 BNO055 library and ROS 2 nodes for Linux.",
   "homepage": "https://github.com/lazytatzv/libbno055-linux",
   "license": "MIT",

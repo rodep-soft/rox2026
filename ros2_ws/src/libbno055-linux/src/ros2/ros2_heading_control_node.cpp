@@ -250,6 +250,9 @@ private:
         latest_command_ = message;
         last_command_time_ = this->now();
         cmd_vel_timeout_logged_ = false;
+
+        // イベント駆動: 指令受信時に即座に補正計算を実行（タイマー遅延をゼロ化）
+        control();
     }
 
     void receive_imu(const sensor_msgs::msg::Imu& message) {
@@ -294,6 +297,9 @@ private:
         current_yaw_rad_ = new_yaw_rad;
         current_angular_velocity_z_rad_s_ = -message.angular_velocity.z;
         last_imu_time_ = now_time;
+
+        // イベント駆動: IMUパケット受信と同時に1ミリ秒の遅延もなく即時PID補正・出力
+        control();
     }
 
     void reset_heading_hold() {
@@ -305,6 +311,11 @@ private:
     void control() {
         const auto current_time = this->now();
         const double dt_s = (current_time - last_control_time_).seconds();
+
+        // 最小実行間隔 (3ms) のガード: マイクロ秒間隔の連続呼び出しによる dt_s ゼロ化・CPU浪費を防止
+        if (dt_s < 0.003 && last_control_time_.nanoseconds() != 0) {
+            return;
+        }
         last_control_time_ = current_time;
 
         if (last_command_time_.nanoseconds() == 0 ||
@@ -362,12 +373,25 @@ private:
             return;
         }
 
+        // 停止中判定:
+        // 並進・旋回の指令がゼロの場合は補正を休止し、現在の向きを目標角度として維持（ジリジリ旋回ドリフトを完全排除）
+        const double vel_magnitude = std::hypot(latest_command_.linear.x, latest_command_.linear.y);
+        if (vel_magnitude < 1e-3 && std::abs(latest_command_.angular.z) < 1e-3) {
+            target_yaw_rad_ = current_yaw_rad_;
+            target_yaw_initialized_ = false;  // 発進時にその瞬間の向きを目標として新規ロックさせる
+            integral_error_rad_s_ = 0.0;
+            corrected_command_pub_->publish(latest_command_);
+            last_correction_ = 0.0;
+            last_error_deg_ = 0.0;
+            return;
+        }
+
         if (!target_yaw_initialized_) {
             target_yaw_rad_ = current_yaw_rad_;
             target_yaw_initialized_ = true;
             integral_error_rad_s_ = 0.0;
-            RCLCPP_DEBUG(this->get_logger(), "[HeadingControl] Re-locked heading target to %+.1f°",
-                         target_yaw_rad_ * 180.0 / M_PI);
+            RCLCPP_INFO(this->get_logger(), "[HeadingControl] Re-locked heading target to %+.1f° on motion start",
+                        target_yaw_rad_ * 180.0 / M_PI);
         }
 
         const double safe_dt_s = dt_s > 0.0 && dt_s < 0.5 ? dt_s : static_cast<double>(control_period_ms_) / 1000.0;
@@ -392,15 +416,15 @@ private:
 
             // 2. 加速度適応 Kd (踏み込んだ瞬間の加速度から即座にジャイロ制動力をブースト)
             const double accel_mps2 = std::abs(vel_magnitude - last_linear_vel_magnitude_) / safe_dt_s;
-            const double accel_ratio = std::clamp(accel_mps2 / 3.0, 0.0, 1.0); // 3.0 m/s^2 を基準最大加速度とする
+            const double accel_ratio = std::clamp(accel_mps2 / 3.0, 0.0, 1.0);  // 3.0 m/s^2 を基準最大加速度とする
             effective_kd = kd_ * (1.0 + kd_accel_scale_ * accel_ratio);
 
             last_linear_vel_magnitude_ = vel_magnitude;
         }
 
-        const double correction_rad_s =
-            std::clamp(effective_kp * heading_error_rad + ki_ * integral_error_rad_s_ - effective_kd * current_angular_velocity_z_rad_s_,
-                       -max_correction_rad_s_, max_correction_rad_s_);
+        const double correction_rad_s = std::clamp(effective_kp * heading_error_rad + ki_ * integral_error_rad_s_ -
+                                                       effective_kd * current_angular_velocity_z_rad_s_,
+                                                   -max_correction_rad_s_, max_correction_rad_s_);
 
         auto corrected_command = latest_command_;
         corrected_command.angular.z = correction_rad_s;

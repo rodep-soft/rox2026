@@ -3,7 +3,7 @@ from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 
 class LibBNO055LinuxConan(ConanFile):
     name = "libbno055-linux"
-    version = "1.9.0"
+    version = "1.10.0"
     license = "MIT"
     author = "lazytatzv"
     url = "https://github.com/lazytatzv/libbno055-linux"

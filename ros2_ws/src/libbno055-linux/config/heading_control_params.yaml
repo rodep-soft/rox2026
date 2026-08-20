@@ -23,16 +23,16 @@ bno055_heading_control_node:
     deadband_deg: 0.0                  # Deadband 0.0度（ズレ始めを一切待たずに1ミリ秒目から即時補正開始）
     cutoff_freq_hz: 50.0               # LPF遮断周波数を20Hz->50Hzに拡大（フィルタによる位相遅延を解消）
     max_slew_rate: 0.0                 # Max change rate of output (rad/s^2)
-    angular_deadband: 0.08             # Turning threshold (rad/s) to disengage heading lock
-    turn_relock_delay: 0.10            # 旋回後の再ロック遅延を0.2s->0.1sに短縮
+    angular_deadband: 0.15             # 手動旋回判定しきい値 (スティック中心の微小ドリフトによる補正解除を防止)
+    turn_relock_delay: 0.08            # 旋回後の再ロック遅延を0.08sに極小化
 
     # --------------------------------------------------------------------------
     # 3. 最強適応ゲインスケジューリング (Velocity & Acceleration Adaptive Gain Scheduling)
     # --------------------------------------------------------------------------
     enable_adaptive_gains: true        # 車速・加速度に応じたゲイン自動適応の有効化
     max_translation_speed: 2.5         # [m/s] 基準最高速度
-    kp_speed_scale: 1.0                # 車速適応倍率 (最高速時に Kp: 5.0 -> 10.0 へ動的ブースト)
-    kd_accel_scale: 1.5                # 加速度適応倍率 (急加速の瞬間に Kd: 0.15 -> 0.38 へ瞬時ブーストし首振りを相殺)
+    kp_speed_scale: 1.0                # 車速適応倍率 (最高速時に Kp: 8.0 -> 16.0 へ動的ブースト)
+    kd_accel_scale: 2.0                # 加速度適応倍率 (急加速の瞬間に Kd: 0.25 -> 0.75 へ瞬間ブースト)
     yaw_axis: "z"                      # Axis corresponding to physical Yaw rotation ("z", "x", or "y")
 
     # --------------------------------------------------------------------------

@@ -1,3 +1,9 @@
+libbno055-linux (1.10.0-1) jammy; urgency=medium
+
+  * Release version 1.10.0: Turn re-lock delay, dynamic enable topic, subscriber-aware optimizations, and jitter resilience.
+
+ -- Tatsuki Yano <lazytatzv@users.noreply.github.com>  Wed, 19 Aug 2026 21:55:00 +0900
+
 libbno055-linux (1.5.6-1) jammy; urgency=medium
 
   * Setup automated PyPI publishing via CI and include headers in sdist
