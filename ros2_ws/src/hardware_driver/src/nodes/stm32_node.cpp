@@ -17,15 +17,6 @@
 
 namespace stm32_driver
 {
-namespace
-{
-
-constexpr char CAN_PUB_TOPIC[] = "/socketcan_bridge/tx";
-constexpr char CAN_SUB_TOPIC[] = "/socketcan_bridge/rx";
-
-
-}  // namespace
-
 class Stm32Node : public rclcpp::Node
 {
 public:
@@ -33,6 +24,10 @@ public:
   : Node("stm32_driver_node", options),
     last_heartbeat_from_stm32_(std::chrono::steady_clock::now())
   {
+    const auto can_tx_topic =
+      declare_parameter<std::string>("can_tx_topic", "/socketcan_bridge/tx");
+    const auto can_rx_topic =
+      declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
     const auto limit_switches_topic = declare_parameter<std::string>(
       "limit_switches_topic",
       "/hardware/limit_switches");
@@ -40,14 +35,18 @@ public:
       "led_command_topic",
       "/hardware/led_cmd");
     const auto imu_topic = declare_parameter<std::string>("imu_topic", "/imu/data");
-    imu_frame_id_ = declare_parameter<std::string>("imu_frame_id", "imu_link");
+    const auto imu_frame_id = declare_parameter<std::string>("imu_frame_id", "imu_link");
     const auto keep_alive_period_ms = declare_parameter<int64_t>("keep_alive_period_ms", 100);
     const auto timeout_ms = declare_parameter<int64_t>("timeout_ms", 500);
+    const auto imu_component_timeout_ms =
+      declare_parameter<int64_t>("imu_component_timeout_ms", 100);
 
     heartbeat_timeout_ = std::chrono::milliseconds(timeout_ms);
+    imu_component_timeout_ = std::chrono::milliseconds(imu_component_timeout_ms);
+    initialize_imu_message(imu_frame_id);
 
-    auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
-    auto can_qos_sub = rclcpp::SensorDataQoS();
+    const auto can_qos_pub = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
+    const auto can_qos_sub = rclcpp::SensorDataQoS();
 
     rclcpp::SubscriptionOptions can_sub_options;
     can_sub_options.content_filter_options.filter_expression =
@@ -59,9 +58,9 @@ public:
       std::to_string(protocol::ANGULAR_VELOCITY),
       std::to_string(protocol::LINEAR_ACCELERATION)};
 
-    can_pub_ = create_publisher<can_msgs::msg::Frame>(CAN_PUB_TOPIC, can_qos_pub);
+    can_pub_ = create_publisher<can_msgs::msg::Frame>(can_tx_topic, can_qos_pub);
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-      CAN_SUB_TOPIC,
+      can_rx_topic,
       can_qos_sub,
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
       can_sub_options);
@@ -81,68 +80,91 @@ public:
   }
 
 private:
-  /// @brief CANフレームをIDに応じてデコードする
-  /// @param frame 受信したCANフレーム
+  /// @brief Content Filterを通過したCANフレームをID別に処理する
   void can_callback(const can_msgs::msg::Frame::SharedPtr frame)
   {
     if (!protocol::is_standard_data_frame(*frame)) {
       return;
     }
 
-    if (protocol::is_heartbeat_response(*frame)) {
-      last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-      if (heartbeat_timed_out_) {
-        RCLCPP_INFO(this->get_logger(), "The STM32 heartbeat has been restored.");
-        heartbeat_timed_out_ = false;
+    switch (frame->id) {
+      case protocol::HEARTBEAT_FROM_STM: {
+        if (!protocol::is_heartbeat_response(*frame)) {
+          break;
+        }
+        last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
+        if (heartbeat_timed_out_) {
+          RCLCPP_INFO(get_logger(), "The STM32 heartbeat has been restored.");
+          heartbeat_timed_out_ = false;
+        }
+        break;
       }
-      return;
-    }
 
-    int16_t x = 0;
-    int16_t y = 0;
-    int16_t z = 0;
-    int16_t w = 0;
-    if (protocol::decode_quaternion(*frame, x, y, z, w)) {
-      update_orientation(x, y, z, w);
-      publish_imu();
-      return;
-    }
+      case protocol::QUATERNION: {
+        int16_t x = 0;
+        int16_t y = 0;
+        int16_t z = 0;
+        int16_t w = 0;
+        if (protocol::decode_quaternion(*frame, x, y, z, w) &&
+          update_orientation(x, y, z, w))
+        {
+          publish_imu();
+        }
+        break;
+      }
 
-    if (protocol::decode_angular_velocity(*frame, x, y, z)) {
-      imu_.angular_velocity.x = static_cast<double>(x) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-      imu_.angular_velocity.y = static_cast<double>(y) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-      imu_.angular_velocity.z = static_cast<double>(z) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-      angular_velocity_received_ = true;
-      publish_imu();
-      return;
-    }
+      case protocol::ANGULAR_VELOCITY: {
+        int16_t x = 0;
+        int16_t y = 0;
+        int16_t z = 0;
+        if (protocol::decode_angular_velocity(*frame, x, y, z)) {
+          imu_.angular_velocity.x =
+            static_cast<double>(x) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+          imu_.angular_velocity.y =
+            static_cast<double>(y) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+          imu_.angular_velocity.z =
+            static_cast<double>(z) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+          angular_velocity_received_ = true;
+          last_angular_velocity_time_ = std::chrono::steady_clock::now();
+        }
+        break;
+      }
 
-    if (protocol::decode_linear_acceleration(*frame, x, y, z)) {
-      imu_.linear_acceleration.x =
-        static_cast<double>(x) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-      imu_.linear_acceleration.y =
-        static_cast<double>(y) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-      imu_.linear_acceleration.z =
-        static_cast<double>(z) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-      linear_acceleration_received_ = true;
-      publish_imu();
-      return;
-    }
+      case protocol::LINEAR_ACCELERATION: {
+        int16_t x = 0;
+        int16_t y = 0;
+        int16_t z = 0;
+        if (protocol::decode_linear_acceleration(*frame, x, y, z)) {
+          imu_.linear_acceleration.x =
+            static_cast<double>(x) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+          imu_.linear_acceleration.y =
+            static_cast<double>(y) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+          imu_.linear_acceleration.z =
+            static_cast<double>(z) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+          linear_acceleration_received_ = true;
+          last_linear_acceleration_time_ = std::chrono::steady_clock::now();
+        }
+        break;
+      }
 
-    uint8_t limit_state = 0;
-    if (protocol::decode_limit_switch(*frame, limit_state)) {
-      std_msgs::msg::UInt8 output;
-      output.data = limit_state;
-      limit_sw_pub_->publish(output);
+      case protocol::LIMIT_SWITCH_STATE: {
+        uint8_t limit_state = 0;
+        if (protocol::decode_limit_switch(*frame, limit_state)) {
+          std_msgs::msg::UInt8 output;
+          output.data = limit_state;
+          limit_sw_pub_->publish(output);
+        }
+        break;
+      }
+
+      default:
+        break;
     }
   }
 
-  /// @brief スケールを掛けたクォータニオンを最新のIMUメッセージへ反映する
-  /// @param x X成分
-  /// @param y Y成分
-  /// @param z Z成分
-  /// @param w W成分
-  void update_orientation(int16_t x, int16_t y, int16_t z, int16_t w)
+  /// @brief スケールを掛けて正規化したQuaternionをIMUメッセージへ反映する
+  /// @return 有効なQuaternionならtrue
+  bool update_orientation(int16_t x, int16_t y, int16_t z, int16_t w)
   {
     const auto qx = static_cast<double>(x) * protocol::QUATERNION_SCALE_INV;
     const auto qy = static_cast<double>(y) * protocol::QUATERNION_SCALE_INV;
@@ -151,27 +173,23 @@ private:
     const auto norm = std::sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
 
     if (!std::isfinite(norm) || norm <= 0.0) {
-      RCLCPP_WARN(get_logger(), "received an invalid quaternion");
-      return;
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 2000, "received an invalid quaternion");
+      return false;
     }
 
-    imu_.orientation.x = qx / norm;
-    imu_.orientation.y = qy / norm;
-    imu_.orientation.z = qz / norm;
-    imu_.orientation.w = qw / norm;
-    orientation_received_ = true;
+    const auto inverse_norm = 1.0 / norm;
+    imu_.orientation.x = qx * inverse_norm;
+    imu_.orientation.y = qy * inverse_norm;
+    imu_.orientation.z = qz * inverse_norm;
+    imu_.orientation.w = qw * inverse_norm;
+    return true;
   }
 
-  /// @brief 受信済みの最新値をIMUメッセージとして送信する
-  void publish_imu()
+  /// @brief 実行中に変化しないIMUフィールドを初期化する
+  void initialize_imu_message(const std::string & frame_id)
   {
-    // 有効な姿勢が得られるまでは不正なゼロクォータニオンをpublishしない。
-    if (!orientation_received_) {
-      return;
-    }
-
-    imu_.header.stamp = now();
-    imu_.header.frame_id = imu_frame_id_;
+    imu_.header.frame_id = frame_id;
 
     // --- sensor_msgs/Imu covariance の規約 ---
     // 各 covariance は 3x3 行列 (row-major, 9要素)。
@@ -188,36 +206,32 @@ private:
     //   linear_acceleration:
     //     ノイズ密度 ≈ 150 μg/√Hz @ 100Hz → σ² ≈ (150e-6 * 9.8)² * 100 ≈ 2e-6 m²/s⁴
 
-    // orientation covariance (roll=x, pitch=y, yaw=z)
-    if (orientation_received_) {
-      imu_.orientation_covariance[0] = 7.6e-5;  // roll  σ² [rad²]
-      imu_.orientation_covariance[4] = 7.6e-5;  // pitch σ² [rad²]
-      imu_.orientation_covariance[8] = 3.0e-4;  // yaw   σ² [rad²] (磁気コンパス由来)
-    } else {
-      imu_.orientation_covariance[0] = -1.0;    // 無効
-    }
-
-    // angular_velocity covariance
-    if (angular_velocity_received_) {
-      imu_.angular_velocity_covariance[0] = 6.0e-7;  // wx σ² [rad²/s²]
-      imu_.angular_velocity_covariance[4] = 6.0e-7;  // wy σ²
-      imu_.angular_velocity_covariance[8] = 6.0e-7;  // wz σ²
-    } else {
-      imu_.angular_velocity_covariance[0] = -1.0;    // 無効
-    }
-
-    // linear_acceleration covariance
-    if (linear_acceleration_received_) {
-      imu_.linear_acceleration_covariance[0] = 2.0e-6;  // ax σ² [m²/s⁴]
-      imu_.linear_acceleration_covariance[4] = 2.0e-6;  // ay σ²
-      imu_.linear_acceleration_covariance[8] = 2.0e-6;  // az σ²
-    } else {
-      imu_.linear_acceleration_covariance[0] = -1.0;    // 無効
-    }
-
-    imu_pub_->publish(imu_);
+    // BNO055 NDOFモードの実測ノイズ特性に基づく分散値。
+    imu_.orientation_covariance[0] = 7.6e-5;  // roll  σ² [rad²]
+    imu_.orientation_covariance[4] = 7.6e-5;  // pitch σ² [rad²]
+    imu_.orientation_covariance[8] = 3.0e-4;  // yaw   σ² [rad²] (磁気コンパス由来)
+    imu_.angular_velocity_covariance[0] = 6.0e-7; // wx σ² [rad²/s²]
+    imu_.angular_velocity_covariance[4] = 6.0e-7; // wy σ²
+    imu_.angular_velocity_covariance[8] = 6.0e-7; // wz σ²
+    imu_.linear_acceleration_covariance[0] = 2.0e-6;  // ax σ² [m²/s⁴]
+    imu_.linear_acceleration_covariance[4] = 2.0e-6;  // ay σ²
+    imu_.linear_acceleration_covariance[8] = 2.0e-6;  // az σ²
   }
 
+  /// @brief Quaternion受信時に最新の角速度・加速度と合わせてIMUを送信する
+  void publish_imu()
+  {
+    const auto current_time = std::chrono::steady_clock::now();
+    const bool angular_velocity_valid = angular_velocity_received_ &&
+      current_time - last_angular_velocity_time_ <= imu_component_timeout_;
+    const bool linear_acceleration_valid = linear_acceleration_received_ &&
+      current_time - last_linear_acceleration_time_ <= imu_component_timeout_;
+
+    imu_.angular_velocity_covariance[0] = angular_velocity_valid ? 6.0e-7 : -1.0;
+    imu_.linear_acceleration_covariance[0] = linear_acceleration_valid ? 2.0e-6 : -1.0;
+    imu_.header.stamp = now();
+    imu_pub_->publish(imu_);
+  }
 
   /// @brief LEDコマンドをSTM32へ送信する
   /// @param msg LEDコマンド
@@ -245,11 +259,12 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;
 
-  std::string imu_frame_id_;
   sensor_msgs::msg::Imu imu_;
-  bool orientation_received_{false};
   bool angular_velocity_received_{false};
   bool linear_acceleration_received_{false};
+  std::chrono::steady_clock::time_point last_angular_velocity_time_{};
+  std::chrono::steady_clock::time_point last_linear_acceleration_time_{};
+  std::chrono::milliseconds imu_component_timeout_{0};
   std::chrono::steady_clock::time_point last_heartbeat_from_stm32_;
   std::chrono::milliseconds heartbeat_timeout_{0};
   bool heartbeat_timed_out_{false};
@@ -260,9 +275,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<stm32_driver::Stm32Node>();
-  rclcpp::spin(node);
-  node.reset();
+  rclcpp::spin(std::make_shared<stm32_driver::Stm32Node>());
   rclcpp::shutdown();
   return 0;
 }
