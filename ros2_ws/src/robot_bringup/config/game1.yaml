@@ -1,10 +1,10 @@
 game1_auto_node:
   ros__parameters:
-    kp_linear: 1.5
-    kp_angular: 1.5
-    max_linear_vel: 1.5
-    max_angular_vel: 1.0
-    pos_tolerance: 0.08
+    kp_linear: 3.0
+    kp_angular: 2.5
+    max_linear_vel: 2.5
+    max_angular_vel: 2.0
+    pos_tolerance: 0.05
     yaw_tolerance: 0.05
 
     # ── テストモード設定 (単一WP移動テスト) ──
