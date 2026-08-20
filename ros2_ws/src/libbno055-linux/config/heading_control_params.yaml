@@ -14,13 +14,13 @@ bno055_heading_control_node:
     # --------------------------------------------------------------------------
     # 2. Control Gains (Proven PID Architecture matching heading_hold_node)
     # --------------------------------------------------------------------------
-    kp: 4.0                            # Proportional Gain (Restoring force)
+    kp: 6.0                            # Proportional Gain (Restoring force - 高速加速時の強い姿勢復元力)
     ki: 0.0                            # Integral Gain (Set to 0.0 to eliminate overshoot drift)
-    kd: 0.05                           # Derivative Gain (Direct Gyro-Z braking)
+    kd: 0.12                           # Derivative Gain (Direct Gyro-Z braking - 急加速時の首振りを強力ダンピング)
     kff: 0.0                           # Feedforward Gain
     max_i_term: 0.5                    # Anti-windup integral saturation limit (+-0.5)
-    max_output: 1.5                    # Maximum angular velocity correction limit (rad/s)
-    deadband_deg: 0.5                  # Deadband (0.5 degrees) to completely eliminate jitter/creeping
+    max_output: 3.0                    # Maximum angular velocity correction limit (rad/s - 高速時の強力な補正リミット)
+    deadband_deg: 0.3                  # Deadband (0.3 degrees) to completely eliminate jitter/creeping
     cutoff_freq_hz: 20.0               # 1st-Order Low-Pass Filter cutoff frequency (Hz)
     max_slew_rate: 0.0                 # Max change rate of output (rad/s^2)
     angular_deadband: 0.08             # Turning threshold (rad/s) to disengage heading lock
