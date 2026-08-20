@@ -1,0 +1,201 @@
+[INFO] [launch]: All log files can be found below /home/sunrise/.ros/log/2026-08-21-03-17-58-444869-rdk-rox-8473
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [socket_can_receiver_node_exe-1]: process started with pid [8484]
+[INFO] [socket_can_sender_node_exe-2]: process started with pid [8486]
+[INFO] [stm32_node-3]: process started with pid [8488]
+[INFO] [edulite05_node-4]: process started with pid [8490]
+[INFO] [vesc_node-5]: process started with pid [8492]
+[INFO] [joy_node-6]: process started with pid [8494]
+[INFO] [joy_controller_node-7]: process started with pid [8496]
+[INFO] [foxglove_bridge-8]: process started with pid [8498]
+[INFO] [belt_controller_node-9]: process started with pid [8500]
+[INFO] [dribble_controller_node-10]: process started with pid [8510]
+[INFO] [spring_controller_node-11]: process started with pid [8520]
+[INFO] [led_controller_node-12]: process started with pid [8528]
+[INFO] [imu_mux_node-13]: process started with pid [8538]
+[INFO] [bno055_heading_control_node-14]: process started with pid [8547]
+[INFO] [mecanum_controller_node-15]: process started with pid [8562]
+[INFO] [mecanum_odometry_node-16]: process started with pid [8570]
+[INFO] [ekf_node-17]: process started with pid [8578]
+[INFO] [static_transform_publisher-18]: process started with pid [8657]
+[stm32_node-3] [INFO] [1787253479.707189456] [stm32_driver_node]: stm32_driver_node started
+[edulite05_node-4] [INFO] [1787253479.889448664] [edulite05_driver]: front_left: logical=0 CAN=0x20 control_mode=velocity position_reference=service
+[imu_mux_node-13] [INFO] [1787253479.955664554] [imu_mux_node]: IMU Mux online: Primary=/stm32/imu Secondary=/stm32/imu -> Output=/imu/data (Timeout=100 ms)
+[socket_can_sender_node_exe-2] [INFO] [1787253479.998210295] [socket_can_sender]: interface: can0
+[socket_can_sender_node_exe-2] [INFO] [1787253479.998670797] [socket_can_sender]: can fd enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1787253479.998757130] [socket_can_sender]: frame loopback enabled: false
+[socket_can_sender_node_exe-2] [INFO] [1787253479.998801547] [socket_can_sender]: timeout(s): 0.050000
+[edulite05_node-4] [INFO] [1787253480.009518868] [edulite05_driver]: front_right: logical=1 CAN=0x21 control_mode=velocity position_reference=service
+[belt_controller_node-9] [INFO] [1787253480.067056609] [belt_controller_node]: BeltControllerNode initialized. Monitoring topic: /belt/status
+[bno055_heading_control_node-14] [INFO] [1787253480.089209795] [bno055_heading_control_node]: BNO055 Heading Control online: input=/drive/cmd_vel output=/mecanum/cmd_vel_heading imu=/imu/data (Kp=4.00, Kd=0.050)
+[bno055_heading_control_node-14] [INFO] [1787253480.099844032] [bno055_heading_control_node]: cmd_vel idle / timed out; publishing zero velocity
+[spring_controller_node-11] [INFO] [1787253480.172751024] [spring_controller_node]: SpringEduliteController initialized. Parameters: standby_offset_rad=0.000 rad, slow_fire_target_rad=13.500 rad, fire_increment_rad=-43.982 rad.
+[static_transform_publisher-18] [INFO] [1787253480.183885638] [base_to_stm32_imu_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-18] translation: ('-0.195000', '-0.065000', '0.225000')
+[static_transform_publisher-18] rotation: ('0.000000', '0.000000', '-0.572048', '0.820220')
+[static_transform_publisher-18] from 'base_link' to 'stm32_imu_link'
+[edulite05_node-4] [INFO] [1787253480.221760742] [edulite05_driver]: rear_left: logical=2 CAN=0x22 control_mode=velocity position_reference=service
+[mecanum_odometry_node-16] [INFO] [1787253480.222853995] [mecanum_odometry_node]: MecanumOdometryNode initialized with ROS 2 best practices.
+[mecanum_odometry_node-16] [WARN] [1787253480.243024175] [mecanum_odometry_node]: Wheel feedback is incomplete, not ready, or stale; integration is paused
+[dribble_controller_node-10] [WARN] [1787253480.252464617] [dribble_controller_node]: Emergency stop activated in dribble controller
+[socket_can_receiver_node_exe-1] [INFO] [1787253480.258579426] [socket_can_receiver]: interface: can0
+[socket_can_receiver_node_exe-1] [INFO] [1787253480.258988344] [socket_can_receiver]: use bus time: 0
+[socket_can_receiver_node_exe-1] [INFO] [1787253480.259068969] [socket_can_receiver]: can fd enabled: false
+[socket_can_receiver_node_exe-1] [INFO] [1787253480.259110552] [socket_can_receiver]: interval(s): 0.005000
+[edulite05_node-4] [INFO] [1787253480.282007740] [edulite05_driver]: rear_right: logical=3 CAN=0x23 control_mode=velocity position_reference=service
+[socket_can_receiver_node_exe-1] [INFO] [1787253480.283489577] [socket_can_receiver]: applied filters: 0:0
+[edulite05_node-4] [INFO] [1787253480.330356206] [edulite05_driver]: spring: logical=4 CAN=0x28 control_mode=pp position_reference=service
+[edulite05_node-4] [INFO] [1787253480.337419767] [edulite05_driver]: dribble: logical=5 CAN=0x38 control_mode=csp position_reference=yaml_offset
+[imu_mux_node-13] [INFO] [1787253480.498909751] [imu_mux_node]: [IMU MUX] Switched to PRIMARY source: /stm32/imu
+[stm32_node-3] [WARN] [1787253480.507665692] [stm32_driver_node]: STM32 heartbeat timed out
+[stm32_node-3] [INFO] [1787253480.535727477] [stm32_driver_node]: The STM32 heartbeat has been restored.
+[foxglove_bridge-8] [INFO] [1787253480.627289770] [foxglove_bridge]: Starting foxglove_bridge (humble, 3.4.3@)
+[foxglove_bridge-8] [2026-08-20T19:18:00Z INFO  foxglove::websocket::server] Started server on 0.0.0.0:8765
+[foxglove_bridge-8] [INFO] [1787253480.637787924] [foxglove_bridge]: Server listening on port 8765
+[foxglove_bridge-8] [INFO] [1787253480.649809498] [foxglove_bridge]: Advertising new channel 2 for topic "/spring/slow_fire_request"
+[foxglove_bridge-8] [INFO] [1787253480.650125958] [foxglove_bridge]: Advertising new channel 3 for topic "/spring/actuator_ready"
+[foxglove_bridge-8] [INFO] [1787253480.664288705] [foxglove_bridge]: Advertising new channel 4 for topic "/rosout"
+[foxglove_bridge-8] [INFO] [1787253480.669840928] [foxglove_bridge]: Advertising new channel 5 for topic "/parameter_events"
+[foxglove_bridge-8] [INFO] [1787253480.670026137] [foxglove_bridge]: Advertising new channel 6 for topic "/spring/fire_request"
+[foxglove_bridge-8] [INFO] [1787253480.672084643] [foxglove_bridge]: Advertising new channel 7 for topic "/drive/cmd_vel"
+[foxglove_bridge-8] [INFO] [1787253480.672280935] [foxglove_bridge]: Advertising new channel 8 for topic "/dribble/spring_decel"
+[foxglove_bridge-8] [INFO] [1787253480.672404727] [foxglove_bridge]: Advertising new channel 9 for topic "/dribble/shot_cycle_request"
+[foxglove_bridge-8] [INFO] [1787253480.672497269] [foxglove_bridge]: Advertising new channel 10 for topic "/dribble/command_reverse"
+[foxglove_bridge-8] [INFO] [1787253480.674283524] [foxglove_bridge]: Advertising new channel 11 for topic "/joy"
+[foxglove_bridge-8] [INFO] [1787253480.675179151] [foxglove_bridge]: Advertising new channel 12 for topic "/dribble/command_position"
+[foxglove_bridge-8] [INFO] [1787253480.676742655] [foxglove_bridge]: Advertising new channel 13 for topic "/dribble/command_opening_rpm"
+[foxglove_bridge-8] [INFO] [1787253480.676951698] [foxglove_bridge]: Advertising new channel 14 for topic "/dribble/command_enabled"
+[foxglove_bridge-8] [INFO] [1787253480.677081698] [foxglove_bridge]: Advertising new channel 15 for topic "/system/emergency_stop"
+[foxglove_bridge-8] [INFO] [1787253480.677875450] [foxglove_bridge]: Advertising new channel 16 for topic "/belt/command_mode"
+[joy_node-6] [INFO] [1787253480.794989021] [joy_node]: No haptic (rumble) available, skipping initialization
+[edulite05_node-4] [WARN] [1787253480.804152671] [edulite05_driver]: front_left initialization incomplete: step=write register=0x7005 retry=1
+[joy_node-6] [INFO] [1787253480.818369127] [joy_node]: Opened joystick: DualSense Wireless Controller.  deadzone: 0.050000
+[dribble_controller_node-10] [INFO] [1787253481.230460590] [dribble_controller_node]: Arm initial position received: -0.910 rad -> smoothly approaching DRIBBLE (-0.910 rad)
+[spring_controller_node-11] [WARN] [1787253481.875958819] [spring_controller_node]: Position reference lost. Starting HOMING.
+[foxglove_bridge-8] [INFO] [1787253482.142493883] [foxglove_bridge]: Advertising new channel 17 for topic "/vesc/target"
+[foxglove_bridge-8] [INFO] [1787253482.143959221] [foxglove_bridge]: Advertising new channel 18 for topic "/vesc/state_array"
+[foxglove_bridge-8] [INFO] [1787253482.144805140] [foxglove_bridge]: Advertising new channel 19 for topic "/vesc/state"
+[foxglove_bridge-8] [INFO] [1787253482.147870815] [foxglove_bridge]: Advertising new channel 20 for topic "/tf"
+[foxglove_bridge-8] [INFO] [1787253482.149003860] [foxglove_bridge]: Advertising new channel 21 for topic "/stm32/imu"
+[foxglove_bridge-8] [INFO] [1787253482.149996446] [foxglove_bridge]: Advertising new channel 22 for topic "/socketcan_bridge/rx"
+[foxglove_bridge-8] [INFO] [1787253482.151029740] [foxglove_bridge]: Advertising new channel 23 for topic "/socket_can_sender/transition_event"
+[foxglove_bridge-8] [INFO] [1787253482.151227907] [foxglove_bridge]: Advertising new channel 24 for topic "/socket_can_receiver/transition_event"
+[foxglove_bridge-8] [INFO] [1787253482.154442458] [foxglove_bridge]: Advertising new channel 25 for topic "/set_pose"
+[foxglove_bridge-8] [INFO] [1787253482.154646792] [foxglove_bridge]: Advertising new channel 26 for topic "/mecanum/cmd_vel_heading"
+[foxglove_bridge-8] [INFO] [1787253482.154743917] [foxglove_bridge]: Advertising new channel 27 for topic "/imu/data"
+[foxglove_bridge-8] [INFO] [1787253482.154819834] [foxglove_bridge]: Advertising new channel 28 for topic "/heading_control/enable"
+[foxglove_bridge-8] [INFO] [1787253482.155960462] [foxglove_bridge]: Advertising new channel 29 for topic "/hardware/led_cmd"
+[foxglove_bridge-8] [INFO] [1787253482.157583841] [foxglove_bridge]: Advertising new channel 30 for topic "/edulite/target_array"
+[foxglove_bridge-8] [INFO] [1787253482.157770675] [foxglove_bridge]: Advertising new channel 31 for topic "/edulite/target"
+[foxglove_bridge-8] [INFO] [1787253482.158389385] [foxglove_bridge]: Advertising new channel 32 for topic "/game2/state"
+[foxglove_bridge-8] [INFO] [1787253482.158494552] [foxglove_bridge]: Advertising new channel 33 for topic "/edulite/state_array"
+[foxglove_bridge-8] [INFO] [1787253482.158570011] [foxglove_bridge]: Advertising new channel 34 for topic "/edulite/state"
+[foxglove_bridge-8] [INFO] [1787253482.158640094] [foxglove_bridge]: Advertising new channel 35 for topic "/drive/reversed"
+[foxglove_bridge-8] [INFO] [1787253482.158720095] [foxglove_bridge]: Advertising new channel 36 for topic "/socketcan_bridge/tx"
+[foxglove_bridge-8] [INFO] [1787253482.158801970] [foxglove_bridge]: Advertising new channel 37 for topic "/tf_static"
+[foxglove_bridge-8] [INFO] [1787253482.159500055] [foxglove_bridge]: Advertising new channel 38 for topic "/dribble/shot_cycle_state"
+[foxglove_bridge-8] [INFO] [1787253482.160817059] [foxglove_bridge]: Advertising new channel 39 for topic "/hardware/limit_switches"
+[foxglove_bridge-8] [INFO] [1787253482.163416857] [foxglove_bridge]: Advertising new channel 40 for topic "/wheel/odometry"
+[foxglove_bridge-8] [INFO] [1787253482.163641025] [foxglove_bridge]: Advertising new channel 41 for topic "/odometry/filtered"
+[foxglove_bridge-8] [INFO] [1787253482.163774900] [foxglove_bridge]: Advertising new channel 42 for topic "/dribble/ball_detected"
+[foxglove_bridge-8] [INFO] [1787253482.164643944] [foxglove_bridge]: Advertising new channel 43 for topic "/belt/command_rpm"
+[foxglove_bridge-8] [INFO] [1787253482.166759033] [foxglove_bridge]: Advertising new channel 44 for topic "/diagnostics"
+[foxglove_bridge-8] [INFO] [1787253482.166977951] [foxglove_bridge]: Advertising new channel 45 for topic "/apriltag/pose"
+[spring_controller_node-11] [WARN] [1787253482.714306244] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[foxglove_bridge-8] [INFO] [1787253483.336651327] [foxglove_bridge]: Advertising new channel 46 for topic "/vesc/target_array"
+[foxglove_bridge-8] [INFO] [1787253483.337945247] [foxglove_bridge]: Advertising new channel 47 for topic "/joy/set_feedback"
+[foxglove_bridge-8] [INFO] [1787253483.339010416] [foxglove_bridge]: Advertising new channel 48 for topic "/belt/status"
+[foxglove_bridge-8] [INFO] [1787253483.339221292] [foxglove_bridge]: Advertising new channel 49 for topic "/game2/command_start"
+[spring_controller_node-11] [WARN] [1787253483.420607974] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253484.145741964] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253486.395521435] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253486.935199668] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253487.895520891] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253488.435841585] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253489.393885471] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253489.934221707] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253490.895211102] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253491.435086630] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253492.394404022] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253492.933464215] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253493.895112698] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253494.436136106] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253495.394923916] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253495.935375823] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253496.893661800] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253497.434462084] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253498.393957440] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253498.934015140] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253499.894309792] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253500.434801494] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253501.394318978] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253501.935141848] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253502.894631293] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253503.435423872] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253504.394442608] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253504.935810773] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253505.895129679] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253506.435798967] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253507.395461125] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253507.933406366] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253508.895027030] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253509.436344531] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253510.394703230] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253510.934623186] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253511.893852847] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253512.473361247] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253513.394027261] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253513.937779854] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253514.895208388] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253515.435538848] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253516.395801683] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253516.935562225] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253517.894000015] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253518.435101270] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253519.395469775] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253519.972656214] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253520.894936657] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253521.435003619] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[spring_controller_node-11] [WARN] [1787253522.394295124] [spring_controller_node]: Position reference lost. Starting HOMING.
+[spring_controller_node-11] [WARN] [1787253522.935527423] [spring_controller_node]: Spring EduLite disconnected. Clearing target and homing state.
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[mecanum_odometry_node-16] [INFO] [1787253523.531493126] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[bno055_heading_control_node-14] [INFO] [1787253523.531492584] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[static_transform_publisher-18] [INFO] [1787253523.531566251] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[ekf_node-17] [INFO] [1787253523.531513292] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[edulite05_node-4] [INFO] [1787253523.531762918] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[mecanum_controller_node-15] [INFO] [1787253523.531913460] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1787253523.532155794] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[led_controller_node-12] [INFO] [1787253523.532313920] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[dribble_controller_node-10] [INFO] [1787253523.532367545] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[vesc_node-5] [INFO] [1787253523.532383253] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[joy_node-6] [INFO] [1787253523.532539795] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[foxglove_bridge-8] [INFO] [1787253523.540581818] [foxglove_bridge]: Shutting down foxglove_bridge
+[foxglove_bridge-8] [2026-08-20T19:18:43Z INFO  foxglove::websocket::server] Shutting down
+[foxglove_bridge-8] [2026-08-20T19:18:43Z INFO  foxglove::websocket::server] Shutdown complete
+[foxglove_bridge-8] [INFO] [1787253523.541754738] [foxglove_bridge]: Shutdown complete
+[joy_controller_node-7] [INFO] [1787253523.532995463] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[imu_mux_node-13] [INFO] [1787253523.532077169] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[socket_can_receiver_node_exe-1] [INFO] [1787253523.535672137] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[belt_controller_node-9] [INFO] [1787253523.535623512] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[spring_controller_node-11] [INFO] [1787253523.531966419] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[stm32_node-3] [INFO] [1787253523.537242725] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[socket_can_sender_node_exe-2] [INFO] [1787253523.542734490] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [mecanum_controller_node-15]: process has finished cleanly [pid 8562]
+[INFO] [static_transform_publisher-18]: process has finished cleanly [pid 8657]
+[INFO] [edulite05_node-4]: process has finished cleanly [pid 8490]
+[INFO] [joy_controller_node-7]: process has finished cleanly [pid 8496]
+[INFO] [imu_mux_node-13]: process has finished cleanly [pid 8538]
+[INFO] [stm32_node-3]: process has finished cleanly [pid 8488]
+[INFO] [bno055_heading_control_node-14]: process has finished cleanly [pid 8547]
+[INFO] [mecanum_odometry_node-16]: process has finished cleanly [pid 8570]
+[INFO] [belt_controller_node-9]: process has finished cleanly [pid 8500]
+[INFO] [led_controller_node-12]: process has finished cleanly [pid 8528]
+[INFO] [joy_node-6]: process has finished cleanly [pid 8494]
+[INFO] [vesc_node-5]: process has finished cleanly [pid 8492]
+[INFO] [dribble_controller_node-10]: process has finished cleanly [pid 8510]
+[INFO] [socket_can_sender_node_exe-2]: process has finished cleanly [pid 8486]
+[INFO] [socket_can_receiver_node_exe-1]: process has finished cleanly [pid 8484]
+[INFO] [spring_controller_node-11]: process has finished cleanly [pid 8520]
+[INFO] [ekf_node-17]: process has finished cleanly [pid 8578]
+[INFO] [foxglove_bridge-8]: process has finished cleanly [pid 8498]
