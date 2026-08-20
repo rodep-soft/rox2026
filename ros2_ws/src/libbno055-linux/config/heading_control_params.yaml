@@ -15,7 +15,7 @@ bno055_heading_control_node:
     # 2. Control Gains (Base PID Architecture)
     # --------------------------------------------------------------------------
     kp: 5.0                            # Base Proportional Gain (低速時・静止時の安定ベース復元力)
-    ki: 0.0                            # Integral Gain (Set to 0.0 to eliminate overshoot drift)
+    ki: 0.8                            # Integral Gain (定常偏差をゼロにし、元の目標角度へ完全に引き戻す)
     kd: 0.15                           # Base Derivative Gain (低速時・静止時のジャイロ制動力)
     kff: 0.0                           # Feedforward Gain
     max_i_term: 0.5                    # Anti-windup integral saturation limit (+-0.5)
