@@ -56,8 +56,8 @@
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 100.0
-    linear_y_acceleration_limit: 100.0
+    linear_x_acceleration_limit: 50.0
+    linear_y_acceleration_limit: 50.0
     angular_z_acceleration_limit: 100.0
 
     # スティック入力の減速の加速度制限
