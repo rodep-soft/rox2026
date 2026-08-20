@@ -1,4 +1,0 @@
-Checks: '-*,bugprone-*,modernize-*,performance-*,readability-*,-readability-braces-around-statements,-readability-implicit-bool-conversion,-modernize-use-trailing-return-type'
-WarningsAsErrors: 'bugprone-*,performance-*'
-HeaderFilterRegex: 'include/libbno055-linux/.*'
-FormatStyle: file
