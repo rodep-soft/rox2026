@@ -35,11 +35,8 @@ sed -i "s/<version>${OLD_VER}<\/version>/<version>${NEW_VER}<\/version>/" packag
 # 3. setup.py
 sed -i "s/version=\"${OLD_VER}\"/version=\"${NEW_VER}\"/" setup.py
 
-# 4. rust/Cargo.toml & rust/Cargo.lock
+# 4. rust/Cargo.toml
 sed -i "s/version = \"${OLD_VER}\"/version = \"${NEW_VER}\"/" rust/Cargo.toml
-if [ -f rust/Cargo.lock ]; then
-    sed -i "s/version = \"${OLD_VER}\"/version = \"${NEW_VER}\"/" rust/Cargo.lock
-fi
 
 # 5. conanfile.py
 sed -i "s/version = \"${OLD_VER}\"/version = \"${NEW_VER}\"/" conanfile.py
@@ -50,7 +47,6 @@ sed -i "s/\"version\": \"${OLD_VER}\"/\"version\": \"${NEW_VER}\"/" vcpkg.json
 # 7. README.md
 sed -i "s/version-${OLD_VER}-green/version-${NEW_VER}-green/" README.md
 sed -i "s/version (v${OLD_VER})/version (v${NEW_VER})/" README.md
-sed -i "s/release (v${OLD_VER})/release (v${NEW_VER})/" README.md
 sed -i "s/version: v${OLD_VER}/version: v${NEW_VER}/" README.md
 
 echo "All version fields updated to $NEW_VER."
