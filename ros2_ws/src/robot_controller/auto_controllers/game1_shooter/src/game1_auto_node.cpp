@@ -275,7 +275,9 @@ void Game1AutoNode::control_loop()
           }
           // 正面をボールに向ける旋回制御
           const double ball_heading_err = std::atan2(detected_ball_y_, detected_ball_x_);
-          cmd.angular.z = std::clamp(kp_angular_ * ball_heading_err, -max_angular_vel_, max_angular_vel_);
+          cmd.angular.z = std::clamp(
+            kp_angular_ * ball_heading_err, -max_angular_vel_,
+            max_angular_vel_);
         } else {
           // ボール未検出：予想ターゲット位置へ向かってホロノミック追従走行
           cmd = compute_holonomic_pursuit(wp_ball_);
