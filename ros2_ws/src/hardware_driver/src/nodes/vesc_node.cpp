@@ -106,11 +106,23 @@ public:
 
     const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
     const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
+    rclcpp::SubscriptionOptions can_subscription_options;
+    for (std::size_t index = 0; index < motors_.size(); ++index) {
+      if (!can_subscription_options.content_filter_options.filter_expression.empty()) {
+        can_subscription_options.content_filter_options.filter_expression += " OR ";
+      }
+      can_subscription_options.content_filter_options.filter_expression +=
+        "id = %" + std::to_string(index);
+      can_subscription_options.content_filter_options.expression_parameters.push_back(
+        std::to_string(
+          (protocol::STATUS_1_ID << 8) | motors_[index].config.controller_id));
+    }
 
     can_publisher_ = create_publisher<can_msgs::msg::Frame>(can_tx_topic, can_tx_qos);
     can_subscription_ = create_subscription<can_msgs::msg::Frame>(
       can_rx_topic, can_rx_qos,
-      std::bind(&Node::can_callback, this, std::placeholders::_1));
+      std::bind(&Node::can_callback, this, std::placeholders::_1),
+      can_subscription_options);
     target_subscription_ = create_subscription<actuator_msgs::msg::ActuatorTarget>(
       target_topic, 10, std::bind(&Node::target_callback, this, std::placeholders::_1));
     target_array_subscription_ =
