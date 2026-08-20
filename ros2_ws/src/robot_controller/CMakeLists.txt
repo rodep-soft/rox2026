@@ -73,6 +73,7 @@ add_controller(
   game2_auto_node.cpp
   geometry_msgs
   rclcpp
+  rcl_interfaces
   sensor_msgs
   std_msgs
   robot_msgs
