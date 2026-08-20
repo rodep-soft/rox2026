@@ -1,0 +1,6773 @@
+header:
+  stamp:
+    sec: 17296
+    nanosec: 745937955
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17296
+    nanosec: 845909956
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17296
+    nanosec: 945850706
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 45754622
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 145710456
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 245637872
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 445513622
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 545457331
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 763343784
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 801314665
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 841204470
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 881714984
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 923046960
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17297
+    nanosec: 645404123
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719965
+    nanosec: 984846299
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 136568656
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 178879760
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 237947047
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 247097871
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 290774230
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 339849191
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 366450199
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 442140544
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 450041696
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 484850900
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 526121584
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 564720175
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 649589760
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 686392387
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 725825440
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 844960476
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 884974614
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 925090669
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17298
+    nanosec: 344976706
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17298
+    nanosec: 544852748
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719966
+    nanosec: 967525565
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17298
+    nanosec: 644793081
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17298
+    nanosec: 744736081
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 97449347
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17298
+    nanosec: 844679581
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 120697927
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 165420498
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 44554957
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 144607790
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 173827902
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 207682936
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 285225162
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 325147258
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 364982146
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 405145076
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 446013800
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 485263352
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 344378373
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 524784614
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 444320415
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 565304795
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 622161950
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 544258457
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 647233411
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 685844336
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 728615151
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 644200957
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 765058360
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 744153624
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 807298380
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 849092650
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 889057663
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 935051113
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719967
+    nanosec: 968843105
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17299
+    nanosec: 944019165
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 10162122
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 43960832
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 91593278
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 128755698
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 176475321
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 208939433
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 249158405
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 288909876
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 329935934
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 368984652
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 408725373
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 448883178
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 528667453
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 608744521
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 649185703
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 689002798
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 143897457
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 728550352
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 243839874
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 768876116
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 343775957
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 443718957
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 543659791
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 809951424
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 643596499
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 888802488
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 743559749
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719968
+    nanosec: 928649542
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 9141653
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 49101875
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 88631969
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17300
+    nanosec: 943427041
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 128618566
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 43385166
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 143303583
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 248894897
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 243241916
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 289247870
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 329286716
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 369045687
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 410912748
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 449086755
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 443123374
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 489109268
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 529611324
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 598373353
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 610211311
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 649164654
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 694853311
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 543060833
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 732789526
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 643010583
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 775212672
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 742947416
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 816531565
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 859607797
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 892567910
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 842884625
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719969
+    nanosec: 972658478
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17301
+    nanosec: 942822166
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 22029815
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 57199395
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 102041675
+  frame_id: ''
+detections:
+- family: tag16h5
+  id: 16
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 2.8510849475860596
+  centre:
+    x: 612.1256300782647
+    y: 206.47394947607694
+  corners:
+  - x: 595.620483398437
+    y: 200.8079528808594
+  - x: 608.7126464843749
+    y: 208.87107849121097
+  - x: 616.2234497070314
+    y: 207.88067626953125
+  - x: 620.7572021484374
+    y: 200.41151428222653
+  homography:
+  - 317.7601718977928
+  - -57.434011357940676
+  - 612.1256300782647
+  - 109.74507939263862
+  - -16.849617882325134
+  - 206.47394947607694
+  - 0.5177421770598252
+  - -0.08446853693263287
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 132581072
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 42761291
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 173394213
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 212836766
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 242644750
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 292703875
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 332483053
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 342581291
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 374830408
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 442539625
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 452585593
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 492421772
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 532301285
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 573227968
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 542464500
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 622115220
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 652849909
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 694326511
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 736427281
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 774216161
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 742338500
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 812425251
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 852551765
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 893200863
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 842285000
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 935271884
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17302
+    nanosec: 942221292
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719970
+    nanosec: 972560554
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 52920706
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 92544635
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 142104375
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 133493693
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 172570161
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 212841050
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 242049625
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 253038022
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 292997368
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 334957763
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 341982584
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 372531268
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 452792253
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 441921792
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 536684667
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 576598430
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 541862084
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 616232859
+  frame_id: ''
+detections:
+- family: tag16h5
+  id: 8
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 33.36848068237305
+  centre:
+    x: -920.6497448085454
+    y: 217.03432390699183
+  corners:
+  - x: 674.5170898437495
+    y: 390.2944946289063
+  - x: 283.9785766601562
+    y: 365.977294921875
+  - x: 349.78704833984364
+    y: 355.0237121582032
+  - x: 238.9027862548828
+    y: 360.4040222167969
+  homography:
+  - -4666.305405047617
+  - -9023.463186615221
+  - -920.6497448085454
+  - -7887.642167668559
+  - -11158.563861179171
+  - 217.03432390699183
+  - -21.8122220100987
+  - -30.636793997739137
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 703158117
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 641806875
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 739418575
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 741747625
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 777670207
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 816429549
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 856826564
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 897258453
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17303
+    nanosec: 941624042
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 936238754
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719971
+    nanosec: 976951437
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 18252371
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 56457378
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 101903909
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 136284486
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 176839501
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 216513347
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 258807159
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 296669915
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 336592928
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 416383286
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 41559334
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 456385716
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 537361870
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 577751301
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 141544542
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 617931732
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 241444709
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 657181117
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 341382709
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 696553920
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 441533251
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 541311751
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 736426474
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 816941460
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 856817931
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 896230400
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719972
+    nanosec: 977033179
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 18623489
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 641203501
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 97506053
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 841095334
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17304
+    nanosec: 941034043
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 136668480
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 40970001
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 176835452
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 140919709
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 216478380
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 257158979
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 297112617
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 240863460
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 338222009
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 377793520
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 340785668
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 420327667
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 460126846
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 500110984
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 550555950
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 540664793
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 580565928
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 629947557
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 640614751
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 660405204
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 701371304
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 747267879
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 783385962
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 740543793
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 820381964
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 840486793
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 861025063
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 901409910
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 943715598
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17305
+    nanosec: 940424627
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719973
+    nanosec: 980188307
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 60319584
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 40363585
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 100077346
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 142137074
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 140302585
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 181954754
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 220199094
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 262013613
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 300349120
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 340841843
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 340186918
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 381336775
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 420265534
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 459968879
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 500555436
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 540488157
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 580375003
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 620003140
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 660399821
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 702043548
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 741876144
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 780375318
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 860142594
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 900191732
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 942129376
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719974
+    nanosec: 980411300
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 19948062
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 61562747
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 104848396
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 140564561
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 180596449
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 220138336
+  frame_id: ''
+detections:
+- family: tag16h5
+  id: 17
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 1.0703997611999512
+  centre:
+    x: 174.97582476390843
+    y: 187.4505461723224
+  corners:
+  - x: 167.1716156005859
+    y: 192.11390686035156
+  - x: 184.28645324707037
+    y: 192.83500671386722
+  - x: 183.79676818847656
+    y: 182.1796417236328
+  - x: 169.52769470214838
+    y: 184.29981994628906
+  homography:
+  - -20.66908937957484
+  - -18.2496865675885
+  - 174.97582476390843
+  - -30.74726473107898
+  - -14.334911657323408
+  - 187.4505461723224
+  - -0.16143264192059886
+  - -0.10027625518246033
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 264153071
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 440131627
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 304326001
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 540062627
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 346527480
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 387759581
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 640084252
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 424689791
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 739949294
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 464248970
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 839896544
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 504596234
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 544968081
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 584259550
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17306
+    nanosec: 939824544
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 626666905
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 39764169
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 664207451
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 139707127
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 705354301
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 744076393
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 339621127
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 787365709
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 439525877
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 539463919
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 824398087
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 639425086
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 863951599
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 903877611
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17307
+    nanosec: 839284794
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 944240042
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719975
+    nanosec: 984097638
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 24030859
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 63945747
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 39164878
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 103974052
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 145397278
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 184425663
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 139112128
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 223847590
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 264632606
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 308300215
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 345435593
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 239062836
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 384468603
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 424097240
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 339002878
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 464098669
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 504640434
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 543977486
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 584272334
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 438927628
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 623914721
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 664474111
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 704892708
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 538876544
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 744098969
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 638812336
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 784419566
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 824095870
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 738748253
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 864094341
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 904566481
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 838690253
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 946377500
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719976
+    nanosec: 986144054
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 24659228
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 71595015
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 105187423
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17308
+    nanosec: 938630211
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 148219030
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 188706919
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 38565920
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 227809012
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 138512628
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 268838737
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 238448961
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 308273290
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 348844513
+  frame_id: ''
+detections:
+- family: tag16h5
+  id: 16
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 0.4291948676109314
+  centre:
+    x: 237.4677332529949
+    y: 68.53096683820709
+  corners:
+  - x: 230.83264160156253
+    y: 76.11046600341801
+  - x: 240.31317138671875
+    y: 79.65117645263672
+  - x: 240.8947296142578
+    y: 64.61618804931639
+  - x: 235.15579223632812
+    y: 59.49570846557618
+  homography:
+  - 29.109035463036275
+  - -51.122422012767366
+  - 237.4677332529949
+  - 9.783807853419306
+  - -6.90299111055519
+  - 68.53096683820709
+  - 0.10769326112269528
+  - -0.2111367159279728
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 401377820
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 338393295
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 428219370
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 468348467
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 509884611
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 547886825
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 588310756
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 627893851
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 667778572
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 708162628
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 748099016
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 787690777
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 827733624
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 869707102
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 438332962
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 907913234
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 538275545
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 947816788
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719977
+    nanosec: 989361973
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 638212962
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 35221590
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 738149253
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 69671417
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 108934261
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 148537814
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 187891241
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 227659129
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 267915809
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17309
+    nanosec: 938031837
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 310649915
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 37974462
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 347811210
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 388350558
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 436888892
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 137914504
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 469610922
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 508724807
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 552088831
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 588064039
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 237847879
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 636806082
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 669456403
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 337804629
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 711066463
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 748539634
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 787989020
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 827852241
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 868464673
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 908315268
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 947844363
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719978
+    nanosec: 993895189
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 437729379
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 637607504
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 35064747
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 737550504
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 72633460
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 837488962
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 111814970
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 154254825
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17310
+    nanosec: 937439504
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 191935413
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 232098135
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 275404118
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 315441006
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 352666426
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 237251962
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 391641686
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 431576449
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 471754504
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 512145101
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 337192671
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 558194844
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 595868349
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 437143296
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 631903390
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 672313821
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 715402219
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 751666219
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 537074588
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 791447815
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 831674995
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 637013629
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 871986051
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 914566281
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 955873966
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719979
+    nanosec: 992082340
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 36284410
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 73083287
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17311
+    nanosec: 936831504
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 112134880
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 151444307
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 193033617
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 36772796
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 231989585
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 272117723
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 136713546
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 311702485
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 352292041
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 391395676
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 432621068
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 472297372
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 236651921
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 512321593
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 552992067
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 592117702
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 336592213
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 631661755
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 436557963
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 672180228
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 711968990
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 536556380
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 752484547
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 791676515
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 837606840
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 636493171
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 875963306
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 736359713
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 916070361
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 955634706
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719980
+    nanosec: 995680594
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17312
+    nanosec: 836298880
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 35529857
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 76159330
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 115563174
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 155530229
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 197490874
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 36177713
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 237589179
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 275547268
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 136121880
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 315329113
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 236051213
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 355393668
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 395535057
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 336001672
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 435645278
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 475724000
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 435932338
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 515489846
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 557480824
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 595351829
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 636265470
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 675949816
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 719021756
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 756209134
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 535900547
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 797780944
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 835749034
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 635818172
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 878880432
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 735751089
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 915467767
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 835696089
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 955631155
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719981
+    nanosec: 995488251
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17313
+    nanosec: 935635797
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 41429201
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 75596694
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 115904583
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 162292035
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 195761192
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 135512214
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 246917494
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 275998094
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 235452880
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 315623481
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 358368253
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 395274214
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 435599728
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 476297826
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 515387461
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 555470641
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 595639488
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 635569501
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 675601722
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 435334464
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 719374915
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 535280506
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 759247969
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 800161194
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 841731504
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 879514467
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 921641488
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 635213339
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719982
+    nanosec: 960429038
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 333926
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 40048979
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 79582282
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 119415961
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 159807601
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 201157702
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 242265760
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 279951182
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 319507652
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 359760332
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 399513052
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 441296322
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 481878878
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 519265382
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 559594896
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 607632645
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 647755117
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 680098479
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 720774661
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 759401252
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 800222810
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 839322653
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 880106502
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 735154339
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 835097506
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 920623433
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17314
+    nanosec: 935038422
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 959187400
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 34981506
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 135024798
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 20
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 150.7001953125
+  centre:
+    x: 297.45118361727714
+    y: 189.71454416837597
+  corners:
+  - x: 302.98443603515625
+    y: 184.54356384277347
+  - x: 291.9966735839844
+    y: 184.10006713867188
+  - x: 292.2257385253906
+    y: 194.59786987304685
+  - x: 302.7729187011719
+    y: 195.1923522949219
+  homography:
+  - -2.9585317220747807
+  - -6.0936919060650325
+  - 297.45118361727714
+  - 1.2840002397963708
+  - -9.166788432869083
+  - 189.71454416837597
+  - 0.008144507356185283
+  - -0.020465584684527763
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719983
+    nanosec: 999794831
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 234858756
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 39698927
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 334797839
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 79398064
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 120224288
+  frame_id: ''
+detections: []
+---
+A message was lost!!!
+	total count change:1
+	total count: 1---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 534708381
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 178114196
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 634663089
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 734556715
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 228515870
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 834502756
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 171.2357177734375
+  centre:
+    x: 249.6557597441373
+    y: 189.0208488613656
+  corners:
+  - x: 254.9658050537109
+    y: 184.0940093994141
+  - x: 244.2884063720703
+    y: 184.18623352050784
+  - x: 244.4957427978516
+    y: 193.80848693847653
+  - x: 254.92610168457034
+    y: 193.76808166503906
+  homography:
+  - -4.625867425800891
+  - -2.9692963260092715
+  - 249.6557597441373
+  - 0.5252270001895174
+  - -7.039545479385424
+  - 189.0208488613656
+  - 0.0026048401267626635
+  - -0.01172443123969515
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 288132242
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17315
+    nanosec: 934438881
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 174.38558959960938
+  centre:
+    x: 249.50305109797372
+    y: 189.02986196173592
+  corners:
+  - x: 254.93997192382815
+    y: 184.13664245605466
+  - x: 243.98062133789062
+    y: 184.11962890625
+  - x: 244.16302490234372
+    y: 193.83587646484378
+  - x: 254.79054260253903
+    y: 193.731201171875
+  homography:
+  - -6.984889102505036
+  - -3.840112263230481
+  - 249.50305109797372
+  - -1.181517251796293
+  - -7.730293924639852
+  - 189.02986196173592
+  - -0.006371330246345703
+  - -0.015362246693393552
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 301514872
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 321186148
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 34378548
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 179.20416259765625
+  centre:
+    x: 249.4533086651419
+    y: 188.99556015199792
+  corners:
+  - x: 254.82188415527347
+    y: 184.0953521728516
+  - x: 243.99519348144528
+    y: 184.14390563964844
+  - x: 244.13595581054688
+    y: 193.84901428222656
+  - x: 254.79084777832034
+    y: 193.74003601074222
+  homography:
+  - -6.165189766460202
+  - -2.018094345980956
+  - 249.4533086651419
+  - -0.5628424387257663
+  - -6.345505252315377
+  - 188.99556015199792
+  - -0.0031877395039818734
+  - -0.007981205629159802
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 382680527
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 479996863
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 514581232
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 522381884
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 560389515
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 569467254
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 604366083
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 643075967
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 683111855
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 723224118
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 763413048
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 803399145
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 843311116
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 882985669
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 923093099
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719984
+    nanosec: 963163196
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 3595793
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 43075888
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 83830112
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 124293210
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 164837225
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 334198881
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 178.45237731933594
+  centre:
+    x: 249.4618477931681
+    y: 189.00091711640698
+  corners:
+  - x: 254.82684326171884
+    y: 184.1217041015625
+  - x: 243.99830627441415
+    y: 184.1198425292969
+  - x: 244.12911987304685
+    y: 193.85078430175787
+  - x: 254.7873992919921
+    y: 193.7587127685547
+  homography:
+  - -6.59029245434445
+  - -1.9939313210936693
+  - 249.4618477931681
+  - -0.9006728257851361
+  - -6.3352522291739035
+  - 189.00091711640698
+  - -0.004886734828919192
+  - -0.007903035331101886
+  - 1.0
+---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 434141590
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 177.18148803710938
+  centre:
+    x: 249.49852958690434
+    y: 189.03229051236275
+  corners:
+  - x: 254.97489929199222
+    y: 184.1377105712891
+  - x: 243.98994445800778
+    y: 184.1198425292969
+  - x: 244.15348815917966
+    y: 193.80949401855466
+  - x: 254.87854003906247
+    y: 193.83007812499997
+  homography:
+  - -5.385834675000751
+  - -3.0038316734690516
+  - 249.49852958690434
+  - 0.021348830201390435
+  - -7.107920101996626
+  - 189.03229051236275
+  - 0.00016388471665033523
+  - -0.011972081263328532
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 203143232
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 534077798
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 174.04891967773438
+  centre:
+    x: 249.5519957548721
+    y: 189.0416137624933
+  corners:
+  - x: 254.98185729980472
+    y: 184.1305847167969
+  - x: 244.02032470703122
+    y: 184.11915588378903
+  - x: 244.27981567382812
+    y: 193.81002807617185
+  - x: 254.93115234375006
+    y: 193.82835388183594
+  homography:
+  - -5.307834345202906
+  - -3.634817889199383
+  - 249.5519957548721
+  - 0.0639214693312913
+  - -7.560046019281799
+  - 189.0416137624933
+  - 0.00037775369205553174
+  - -0.014356020423142834
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 249465725
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 634016423
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 283097132
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 322915686
+  frame_id: ''
+detections: []
+---
+A message was lost!!!
+	total count change:1
+	total count: 2---
+header:
+  stamp:
+    sec: 17316
+    nanosec: 933837423
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 151.6521453857422
+  centre:
+    x: 273.46806999922916
+    y: 236.70334654801331
+  corners:
+  - x: 279.03594970703125
+    y: 232.04951477050784
+  - x: 268.1107788085938
+    y: 231.9351043701172
+  - x: 268.32562255859375
+    y: 241.00158691406244
+  - x: 278.8306579589844
+    y: 241.47630310058594
+  homography:
+  - 0.14554166622815534
+  - -5.370357399448835
+  - 273.46806999922916
+  - 4.608794344454851
+  - -9.262435724954884
+  - 236.70334654801331
+  - 0.0201078972940935
+  - -0.019613790126886757
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 370494726
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 33775632
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 150.2091064453125
+  centre:
+    x: 273.3478494013022
+    y: 236.71458327505664
+  corners:
+  - x: 278.93359375000006
+    y: 231.9848327636719
+  - x: 267.97583007812506
+    y: 231.97378540039062
+  - x: 268.28961181640625
+    y: 240.9976654052734
+  - x: 278.78253173828125
+    y: 241.51068115234375
+  homography:
+  - 2.209908259759232
+  - -6.028060948431687
+  - 273.3478494013022
+  - 6.41551640517605
+  - -9.811206681487619
+  - 236.71458327505664
+  - 0.027678844515697312
+  - -0.021880311737380347
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 424408703
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 446443821
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 483936783
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 523275669
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 133715299
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 139.9272918701172
+  centre:
+    x: 273.2710917498572
+    y: 236.73348546816368
+  corners:
+  - x: 278.6866149902344
+    y: 232.00309753417963
+  - x: 267.77368164062506
+    y: 231.9618988037109
+  - x: 268.3458557128906
+    y: 241.0356140136719
+  - x: 278.7504577636718
+    y: 241.48941040039062
+  homography:
+  - 0.9301391934606618
+  - -6.867727166179634
+  - 273.2710917498572
+  - 5.288736399584452
+  - -10.441631982823338
+  - 236.73348546816368
+  - 0.022884616451797554
+  - -0.024528459344758106
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 562974723
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 603263153
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 233660924
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 643434917
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 333596799
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 683344180
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 723333401
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 763517873
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 433539715
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 22
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 175.82080078125
+  centre:
+    x: 249.61615378916377
+    y: 189.0372001546934
+  corners:
+  - x: 254.96755981445312
+    y: 184.0996398925781
+  - x: 244.2312164306641
+    y: 184.17910766601565
+  - x: 244.425277709961
+    y: 193.826644897461
+  - x: 254.92956542968747
+    y: 193.83076477050778
+  homography:
+  - -4.243370186842611
+  - -2.7744184750633285
+  - 249.61615378916377
+  - 0.8257182243599179
+  - -6.915172945956954
+  - 189.0372001546934
+  - 0.00427078502748587
+  - -0.0109564631617952
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 803130426
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 847250162
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 533478924
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 883176119
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 633426174
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 925356181
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719985
+    nanosec: 962976894
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 3183949
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 43084170
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 84375854
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 124812244
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 163781878
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 203031222
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 243407486
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 283128790
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 324043806
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17317
+    nanosec: 933256382
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 363396067
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 33176091
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 403010953
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 133151299
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 447900608
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 233064216
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 493184056
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 532391774
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 568796817
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 606881865
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 647123629
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 687169267
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 726856445
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 768124921
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 807395973
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 847923613
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 886861580
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 929885604
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719986
+    nanosec: 967084815
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 7005453
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 47666885
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 92086746
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 128359205
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 333000466
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 167257089
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 432941174
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 207089976
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 532877758
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 246974322
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 287190419
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 632822966
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 327062390
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 732769383
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 832707591
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 367407654
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17318
+    nanosec: 932643008
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 407207583
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 447407972
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 488129904
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 527028496
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 32587758
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 567629636
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 618586020
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 132524966
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 648461374
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 687973218
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 739024519
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 769733958
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 808685593
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 847684977
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 886811195
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 927322794
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719987
+    nanosec: 967929850
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 25532841
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 49288339
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 87365012
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 127144441
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 167219204
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 206843424
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 247319397
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 291470633
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 330793102
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 371253074
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 410532168
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 460433715
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 501007397
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 531188251
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 572469143
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 610921776
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 650807455
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 692907559
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 730941690
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 232464508
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 770960495
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 532282466
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 816344526
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 632225508
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 853180445
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 732183925
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 890679407
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 832100341
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 150.91693115234375
+  centre:
+    x: 273.3453999118586
+    y: 236.7277421739995
+  corners:
+  - x: 278.7399291992187
+    y: 231.97985839843747
+  - x: 267.8862609863281
+    y: 231.9416046142578
+  - x: 268.4613342285157
+    y: 241.02635192871097
+  - x: 278.8320617675782
+    y: 241.5380096435547
+  homography:
+  - 1.831462331907176
+  - -6.617008250666913
+  - 273.3453999118586
+  - 6.032861034490112
+  - -10.235787487129443
+  - 236.7277421739995
+  - 0.026088627100788533
+  - -0.02357415321813901
+  - 1.0
+---
+header:
+  stamp:
+    sec: 17319
+    nanosec: 932051633
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 151.26290893554688
+  centre:
+    x: 273.44319534646513
+    y: 236.65912733312544
+  corners:
+  - x: 278.97772216796875
+    y: 232.02261352539062
+  - x: 268.121337890625
+    y: 231.94062805175776
+  - x: 268.2600402832031
+    y: 241.00128173828125
+  - x: 278.8461608886718
+    y: 241.44953918457034
+  homography:
+  - 0.15870727550935748
+  - -3.45285680233917
+  - 273.44319534646513
+  - 4.639400332830719
+  - -7.603813743002178
+  - 236.65912733312544
+  - 0.02017347797381928
+  - -0.012610827626917618
+  - 1.0
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 31981175
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 931856008
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 131918842
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 20
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 159.0210723876953
+  centre:
+    x: 297.32906614234184
+    y: 189.61110505159448
+  corners:
+  - x: 303.01483154296875
+    y: 184.22085571289062
+  - x: 292.0237426757813
+    y: 184.0094909667969
+  - x: 292.2324829101563
+    y: 194.4427947998047
+  - x: 302.7506713867188
+    y: 195.3354949951172
+  homography:
+  - 4.366101640903537
+  - -6.5058368129970745
+  - 297.32906614234184
+  - 5.924874802103234
+  - -9.531793916765992
+  - 189.61110505159448
+  - 0.03274169348069658
+  - -0.021901519098089507
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719988
+    nanosec: 971067518
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 231867133
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 20
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 135.095703125
+  centre:
+    x: 297.2154289765367
+    y: 189.6238896776443
+  corners:
+  - x: 302.95446777343744
+    y: 184.20989990234375
+  - x: 291.97882080078125
+    y: 184.01812744140628
+  - x: 292.26058959960943
+    y: 194.29809570312503
+  - x: 302.7624816894532
+    y: 195.56198120117188
+  homography:
+  - 9.823051770110169
+  - -6.654051607465532
+  - 297.2154289765367
+  - 9.307114426027624
+  - -9.615285891140388
+  - 189.6238896776443
+  - 0.05106001943633446
+  - -0.022271601443046785
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 10669321
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 331948592
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 431743300
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 51749755
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 531725592
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 91435433
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 731564967
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 20
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 141.24977111816406
+  centre:
+    x: 298.7367828320134
+    y: 189.66853912416312
+  corners:
+  - x: 304.12890625
+    y: 184.2916717529297
+  - x: 293.2364196777345
+    y: 184.04795837402344
+  - x: 293.34811401367193
+    y: 195.04196166992188
+  - x: 303.56961059570307
+    y: 194.60699462890622
+  homography:
+  - -14.869211802239079
+  - -9.574543523780905
+  - 298.7367828320134
+  - -6.037178764911487
+  - -11.473100603561619
+  - 189.66853912416312
+  - -0.03214032459530944
+  - -0.032460764834713524
+  - 1.0
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 831503550
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 132327574
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17320
+    nanosec: 931439425
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 184517462
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 210742719
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 250581565
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 131327634
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 293398296
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 331213177
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 371381815
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 412106081
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 331200426
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 15
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 148.69778442382812
+  centre:
+    x: 277.4910720831813
+    y: 236.55684128207105
+  corners:
+  - x: 282.5440979003906
+    y: 232.1271514892578
+  - x: 272.2109985351562
+    y: 231.95219421386716
+  - x: 272.35552978515625
+    y: 241.0588684082031
+  - x: 282.9199523925782
+    y: 241.291259765625
+  homography:
+  - -4.419441621051419
+  - 2.9218885359129554
+  - 277.4910720831813
+  - 0.584082001897059
+  - -1.9656266761978998
+  - 236.55684128207105
+  - 0.002898308960040717
+  - 0.010997237080499125
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 437870711
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 471635327
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 431146051
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 507958078
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 534887379
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 598522348
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 531080467
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 666842626
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 631028301
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 699601280
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 799177249
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 830545440
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 862706801
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 730959426
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 927640650
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 958712507
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719989
+    nanosec: 995454925
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 58832769
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 90638670
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 159056531
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 222743334
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17321
+    nanosec: 930843509
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 287332140
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 30787468
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 323402390
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 130721801
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 356309336
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 386956359
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 451091705
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 230670801
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 483004148
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 330605009
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 518734313
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 552006511
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 430566593
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 582633659
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 649399264
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 683380006
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 530487801
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 747147809
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 812677577
+  frame_id: ''
+detections:
+- family: tag16h5
+  id: 19
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 2.6481289863586426
+  centre:
+    x: 619.5434801075688
+    y: 72.30366928782173
+  corners:
+  - x: 608.9716796874998
+    y: 85.21332550048824
+  - x: 624.9595947265624
+    y: 77.22352600097655
+  - x: 624.9605102539064
+    y: 65.68871307373048
+  - x: 608.3505859375002
+    y: 62.13633728027345
+  homography:
+  - 214.84324787721823
+  - 7.94007106537553
+  - 619.5434801075688
+  - 23.170969603292924
+  - 8.60800263746238
+  - 72.30366928782173
+  - 0.33510410861680845
+  - 0.012705903674793323
+  - 1.0
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 630445676
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 846852028
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 878977097
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 730366510
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719990
+    nanosec: 911250667
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 6672079
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 43984708
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 830308635
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 74856314
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17322
+    nanosec: 930244093
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 138793243
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 210378865
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 239073214
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 270747281
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 302611100
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 230071718
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 346999586
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 330003010
+  frame_id: camera_optical_frame
+detections:
+- family: tag16h5
+  id: 20
+  hamming: 0
+  goodness: 0.0
+  decision_margin: 149.10130310058594
+  centre:
+    x: 299.30191388517295
+    y: 189.6536658641141
+  corners:
+  - x: 304.9366760253907
+    y: 184.38166809082028
+  - x: 294.0204162597656
+    y: 184.09855651855466
+  - x: 294.1625671386718
+    y: 194.46214294433594
+  - x: 304.77343749999994
+    y: 195.40864562988278
+  homography:
+  - 4.150618979823605
+  - -4.236226142343867
+  - 299.30191388517295
+  - 5.7242487179339046
+  - -8.025992374761955
+  - 189.6536658641141
+  - 0.031826949610702156
+  - -0.014155079986871301
+  - 1.0
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 436374977
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 467538543
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 498606234
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 429942302
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 568087098
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 598367661
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 529891885
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 662960009
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 763647189
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 629826718
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 729766260
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 795911759
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 895127934
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 960075658
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17323
+    nanosec: 829704218
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719991
+    nanosec: 995724531
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 32173574
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 91363528
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 122740719
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 29613010
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 154324328
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 218583841
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 254499382
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 286282116
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 129526385
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 350730964
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 229467635
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 382847283
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 482451293
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 547604184
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 579621003
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 614701874
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 646837610
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 684790449
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 710451287
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 743035608
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 329409552
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 779046649
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 429350052
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 812094721
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 629228385
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 729165635
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 842793119
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17324
+    nanosec: 829112094
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 906712922
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719992
+    nanosec: 975198700
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 6935601
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 38692169
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 70970447
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 102160929
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 138596180
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 171452627
+  frame_id: ''
+detections: []
+---
+header:
+  stamp:
+    sec: 17325
+    nanosec: 28992052
+  frame_id: camera_optical_frame
+detections: []
+---
+header:
+  stamp:
+    sec: 1786719993
+    nanosec: 204507741
+  frame_id: ''
+detections: []
+---
