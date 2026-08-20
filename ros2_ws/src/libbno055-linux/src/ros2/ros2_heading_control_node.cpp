@@ -147,7 +147,7 @@ private:
 
         rotation_input_deadband_rad_s_ = this->declare_parameter("angular_deadband", 0.08);
         turn_relock_delay_ms_ = static_cast<int>(this->declare_parameter("turn_relock_delay", 0.2) * 1000.0);
-        max_correction_rad_s_ = this->declare_parameter("max_output", 1.5);
+        max_correction_rad_s_ = this->declare_parameter("max_output", 3.5);
         control_period_ms_ = 10;
         command_timeout_ms_ = static_cast<int>(this->declare_parameter("cmd_vel_timeout", 0.5) * 1000.0);
         imu_timeout_ms_ = static_cast<int>(this->declare_parameter("imu_timeout", 0.25) * 1000.0);
@@ -158,6 +158,12 @@ private:
             this->declare_parameter<std::string>("cmd_vel_out_topic", "/mecanum/cmd_vel_heading");
         this->declare_parameter<bool>("enable_diagnostics", true);
         yaw_axis_ = this->declare_parameter<std::string>("yaw_axis", "z");
+
+        // 最強適応ゲインスケジューリング パラメータ
+        enable_adaptive_gains_ = this->declare_parameter<bool>("enable_adaptive_gains", true);
+        max_translation_speed_ = this->declare_parameter<double>("max_translation_speed", 2.5);
+        kp_speed_scale_ = this->declare_parameter<double>("kp_speed_scale", 1.0);
+        kd_accel_scale_ = this->declare_parameter<double>("kd_accel_scale", 1.5);
     }
 
     rcl_interfaces::msg::SetParametersResult update_parameters(const std::vector<rclcpp::Parameter>& parameters) {
@@ -173,6 +179,10 @@ private:
         double next_rotation_deadband = rotation_input_deadband_rad_s_;
         int next_turn_relock_delay_ms = turn_relock_delay_ms_;
         double next_max_correction = max_correction_rad_s_;
+        bool next_enable_adaptive = enable_adaptive_gains_;
+        double next_max_speed = max_translation_speed_;
+        double next_kp_speed_scale = kp_speed_scale_;
+        double next_kd_accel_scale = kd_accel_scale_;
 
         for (const auto& parameter : parameters) {
             const auto& name = parameter.get_name();
@@ -192,6 +202,14 @@ private:
                 next_turn_relock_delay_ms = static_cast<int>(parameter.as_double() * 1000.0);
             } else if (name == "max_output") {
                 next_max_correction = parameter.as_double();
+            } else if (name == "enable_adaptive_gains") {
+                next_enable_adaptive = parameter.as_bool();
+            } else if (name == "max_translation_speed") {
+                next_max_speed = parameter.as_double();
+            } else if (name == "kp_speed_scale") {
+                next_kp_speed_scale = parameter.as_double();
+            } else if (name == "kd_accel_scale") {
+                next_kd_accel_scale = parameter.as_double();
             }
         }
 
@@ -199,7 +217,9 @@ private:
             !std::isfinite(next_integral_limit) || !std::isfinite(next_heading_deadband) ||
             !std::isfinite(next_rotation_deadband) || !std::isfinite(next_max_correction) || next_kp < 0.0 ||
             next_ki < 0.0 || next_kd < 0.0 || next_integral_limit < 0.0 || next_heading_deadband < 0.0 ||
-            next_rotation_deadband < 0.0 || next_turn_relock_delay_ms < 0 || next_max_correction <= 0.0) {
+            next_rotation_deadband < 0.0 || next_turn_relock_delay_ms < 0 || next_max_correction <= 0.0 ||
+            !std::isfinite(next_max_speed) || next_max_speed <= 0.0 || !std::isfinite(next_kp_speed_scale) ||
+            !std::isfinite(next_kd_accel_scale)) {
             result.reason = "PID gains and limits must be finite and non-negative";
             return result;
         }
@@ -212,6 +232,10 @@ private:
         rotation_input_deadband_rad_s_ = next_rotation_deadband;
         turn_relock_delay_ms_ = next_turn_relock_delay_ms;
         max_correction_rad_s_ = next_max_correction;
+        enable_adaptive_gains_ = next_enable_adaptive;
+        max_translation_speed_ = next_max_speed;
+        kp_speed_scale_ = next_kp_speed_scale;
+        kd_accel_scale_ = next_kd_accel_scale;
         result.successful = true;
         result.reason = "success";
         RCLCPP_INFO(this->get_logger(), "Heading-hold parameters dynamically updated");
@@ -355,9 +379,27 @@ private:
         integral_error_rad_s_ = std::clamp(integral_error_rad_s_ + heading_error_rad * safe_dt_s,
                                            -integral_limit_rad_s_, integral_limit_rad_s_);
 
-        // 100% exactly matching heading_hold_node.cpp line 274
+        // ── 最強適応ゲインスケジューリング (Velocity & Acceleration Adaptive Gain Scheduling) ──
+        double effective_kp = kp_;
+        double effective_kd = kd_;
+
+        if (enable_adaptive_gains_) {
+            const double vel_magnitude = std::hypot(latest_command_.linear.x, latest_command_.linear.y);
+            const double speed_ratio = std::clamp(vel_magnitude / std::max(0.1, max_translation_speed_), 0.0, 1.0);
+
+            // 1. 車速適応 Kp (車速が上がるほど復元剛性を高める)
+            effective_kp = kp_ * (1.0 + kp_speed_scale_ * speed_ratio);
+
+            // 2. 加速度適応 Kd (踏み込んだ瞬間の加速度から即座にジャイロ制動力をブースト)
+            const double accel_mps2 = std::abs(vel_magnitude - last_linear_vel_magnitude_) / safe_dt_s;
+            const double accel_ratio = std::clamp(accel_mps2 / 3.0, 0.0, 1.0); // 3.0 m/s^2 を基準最大加速度とする
+            effective_kd = kd_ * (1.0 + kd_accel_scale_ * accel_ratio);
+
+            last_linear_vel_magnitude_ = vel_magnitude;
+        }
+
         const double correction_rad_s =
-            std::clamp(kp_ * heading_error_rad + ki_ * integral_error_rad_s_ - kd_ * current_angular_velocity_z_rad_s_,
+            std::clamp(effective_kp * heading_error_rad + ki_ * integral_error_rad_s_ - effective_kd * current_angular_velocity_z_rad_s_,
                        -max_correction_rad_s_, max_correction_rad_s_);
 
         auto corrected_command = latest_command_;
@@ -371,10 +413,11 @@ private:
         const double target_yaw_deg = target_yaw_rad_ * 180.0 / M_PI;
 
         RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
-                              "[HeadingControl] LOCKED | In(Vx=%.2f, Vy=%.2f) | Yaw: curr=%+.1f° -> target=%+.1f° "
-                              "(err=%+.2f°) | GyroZ=%+.2f | Out: Wz=%+.3f rad/s",
-                              latest_command_.linear.x, latest_command_.linear.y, curr_yaw_deg, target_yaw_deg,
-                              last_error_deg_, current_angular_velocity_z_rad_s_, correction_rad_s);
+                              "[HeadingControl] LOCKED | In(Vx=%.2f, Vy=%.2f) | Effective: Kp=%.2f, Kd=%.3f | "
+                              "Yaw: curr=%+.1f° -> target=%+.1f° (err=%+.2f°) | GyroZ=%+.2f | Out: Wz=%+.3f rad/s",
+                              latest_command_.linear.x, latest_command_.linear.y, effective_kp, effective_kd,
+                              curr_yaw_deg, target_yaw_deg, last_error_deg_, current_angular_velocity_z_rad_s_,
+                              correction_rad_s);
     }
 
     void publish_diagnostics() {
@@ -465,6 +508,13 @@ private:
     std::string imu_topic_;
     std::string corrected_cmd_vel_topic_;
     std::string yaw_axis_;
+
+    // 最強適応ゲイン 変数
+    bool enable_adaptive_gains_{true};
+    double max_translation_speed_{2.5};
+    double kp_speed_scale_{1.0};
+    double kd_accel_scale_{1.5};
+    double last_linear_vel_magnitude_{0.0};
 };
 
 }  // namespace bno055_ros2
