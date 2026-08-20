@@ -131,10 +131,19 @@ class TestGame1WpMoveNode(Node):
             self.timer.cancel()
             return
 
-        # P制御指令値計算（メカナム向け P制御）
+        # ホロノミック全方位制御指令値計算（Field-Oriented -> Body-Centric）
         cmd = Twist()
-        cmd.linear.x = max(min(self.kp_linear * dx, self.max_linear_vel), -self.max_linear_vel)
-        cmd.linear.y = max(min(self.kp_linear * dy, self.max_linear_vel), -self.max_linear_vel)
+        if dist_err > 1e-4:
+            target_speed = min(self.max_linear_vel, self.kp_linear * dist_err)
+            vx_world = target_speed * (dx / dist_err)
+            vy_world = target_speed * (dy / dist_err)
+
+            # 現在のYaw角を使って車体座標系へ回転変換
+            cos_curr = math.cos(self.current_yaw)
+            sin_curr = math.sin(self.current_yaw)
+            cmd.linear.x = cos_curr * vx_world + sin_curr * vy_world
+            cmd.linear.y = -sin_curr * vx_world + cos_curr * vy_world
+
         cmd.angular.z = max(min(self.kp_angular * yaw_err, self.max_angular_vel), -self.max_angular_vel)
 
         self.cmd_vel_pub.publish(cmd)

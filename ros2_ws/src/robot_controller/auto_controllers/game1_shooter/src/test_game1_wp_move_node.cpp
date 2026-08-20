@@ -123,8 +123,18 @@ private:
     }
 
     geometry_msgs::msg::Twist cmd;
-    cmd.linear.x = std::clamp(kp_linear_ * dx, -max_linear_vel_, max_linear_vel_);
-    cmd.linear.y = std::clamp(kp_linear_ * dy, -max_linear_vel_, max_linear_vel_);
+    if (dist_err > 1e-4) {
+      const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist_err);
+      const double vx_world = target_speed * (dx / dist_err);
+      const double vy_world = target_speed * (dy / dist_err);
+
+      // ワールド座標系 ➔ ロボット車体座標系への回転変換 (Field-Oriented -> Body-Centric)
+      const double cos_yaw = std::cos(current_yaw_);
+      const double sin_yaw = std::sin(current_yaw_);
+
+      cmd.linear.x = cos_yaw * vx_world + sin_yaw * vy_world;
+      cmd.linear.y = -sin_yaw * vx_world + cos_yaw * vy_world;
+    }
     cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
     cmd_vel_pub_->publish(cmd);

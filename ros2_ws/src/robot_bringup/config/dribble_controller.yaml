@@ -4,7 +4,7 @@
     
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
-    dribble_position_rad: -0.93   # DRIBBLE姿勢
+    dribble_position_rad: -0.91   # DRIBBLE姿勢
     open_position_rad: -1.27      # OPEN姿勢 (ボールを出すときの姿勢)
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.5        # FEED姿勢(発射機構に押し込む姿勢)
@@ -32,9 +32,11 @@
     shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
-    ball_detection_threshold_a: 6.4 # 1.7A 以上でボール保持(BALL DETECTED)と判定
-    ball_lost_threshold_a: 1.1      # 1.1A 以下でボール喪失(BALL LOST)と判定
+    ball_detection_threshold_a: 4.2 # 1.7A 以上でボール保持(BALL DETECTED)と判定
+    ball_lost_threshold_a: 2.8      # 1.1A 以下でボール喪失(BALL LOST)と判定
     current_lpf_alpha: 0.07          # 電流値の一次ローパスフィルタ係数 (最新値の重み)
+    ball_detection_debounce_count: 12  # 連続12回(約240ms)の継続判定で発進・停止スパイクの誤検知を完全排除
+    ball_lost_debounce_count: 12       # 連続12回(約240ms)の継続判定で停止時のバウンドによる誤解除を完全防止
     
     # [ms] 指令再送周期
     command_period_ms: 10
