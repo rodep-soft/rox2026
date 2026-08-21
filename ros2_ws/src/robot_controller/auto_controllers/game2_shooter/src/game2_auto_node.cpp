@@ -119,6 +119,7 @@ void Game2AutoNode::load_parameters()
   shooting_timeout_ = declare_parameter<double>("shooting_timeout", 3.0);
   result_wait_duration_ = declare_parameter<double>("result_wait_duration", 1.0);
   max_shots_per_panel_ = declare_parameter<int>("max_shots_per_panel", 1);
+  max_total_balls_ = declare_parameter<int>("max_total_balls", 15);
   require_ball_detected_ = declare_parameter<bool>("require_ball_detected", true);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
@@ -170,6 +171,8 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       shooting_timeout_ = param.as_double();
     } else if (name == "result_wait_duration") {
       result_wait_duration_ = param.as_double();
+    } else if (name == "max_total_balls") {
+      max_total_balls_ = param.as_int();
     } else if (name == "min_angular_z") {
       min_angular_z_ = param.as_double();
     } else if (name == "max_angular_z") {
@@ -233,6 +236,7 @@ void Game2AutoNode::reset_sequence()
   current_target_tag_ids_.clear();
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
+  total_shots_fired_ = 0;
 
   for (auto & [id, panel] : panel_grid_) {
     panel.shot_completed = false;
@@ -590,12 +594,14 @@ void Game2AutoNode::control_loop()
   update_panel_states();
   select_target_and_aim();
 
-  // Check if all rows are completed
-  if (active_row_ > 2) {
+  // Check if all rows are completed or all balls fired
+  if (active_row_ > 2 || total_shots_fired_ >= max_total_balls_) {
     state_ = robot_msgs::msg::Game2State::COMPLETED;
     RCLCPP_INFO_THROTTLE(
       get_logger(),
-      *get_clock(), 3000, "🏆 Game 2: All target panels successfully cleared!");
+      *get_clock(), 3000,
+      "🏆 Game 2: Sequence FINISHED! (Total shots: %d/%d, Cleared Rows: %d/3)",
+      total_shots_fired_, max_total_balls_, std::min(active_row_, 3));
     publish_all(
       geometry_msgs::msg::Twist{}, 0.0f,
       false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
@@ -723,15 +729,18 @@ void Game2AutoNode::control_loop()
         last_cmd_wz_ = 0.0;
 
         if (state_elapsed >= shoot_hold_duration_) {
+          total_shots_fired_++;
           if (current_target_tag_ids_.size() >= 2) {
             RCLCPP_INFO(
               get_logger(),
-              "🚀 [Game2 SPLIT SHOT!] Midpoint shot triggered for Tags #%d & #%d. Waiting for impact...",
+              "🚀 [Game2 SPLIT SHOT!] Shot #%d/%d triggered for Tags #%d & #%d. Waiting for impact...",
+              total_shots_fired_, max_total_balls_,
               current_target_tag_ids_[0], current_target_tag_ids_[1]);
           } else if (!current_target_tag_ids_.empty()) {
             RCLCPP_INFO(
               get_logger(),
-              "🚀 [Game2] Single shot triggered for Tag #%d. Waiting for impact...",
+              "🚀 [Game2] Shot #%d/%d triggered for Tag #%d. Waiting for impact...",
+              total_shots_fired_, max_total_balls_,
               current_target_tag_ids_[0]);
           }
 

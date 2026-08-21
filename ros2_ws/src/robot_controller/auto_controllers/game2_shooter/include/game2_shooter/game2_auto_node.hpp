@@ -133,6 +133,7 @@ private:
   double shooting_timeout_{3.0};
   double result_wait_duration_{1.0}; // [s] 射出後の飛翔・倒れ確認判定待ち時間
   int max_shots_per_panel_{1};
+  int max_total_balls_{15}; // 最大所持球数
   bool require_ball_detected_{true};
   bool test_alignment_only_{false};
   bool auto_advance_rows_{true};
@@ -143,6 +144,7 @@ private:
   bool is_enabled_{false};
   bool emergency_stop_active_{false};
   bool ball_detected_{false};
+  int total_shots_fired_{0}; // 累計射出球数
   rclcpp::Time ball_detected_time_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top
