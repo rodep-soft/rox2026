@@ -342,14 +342,7 @@ void DribbleControllerNode::actuator_state_callback(
   bool became_ready = false;
   if (!arm_actuator_ready_) {
     constexpr int required_stable_feedback_count = 5;
-    constexpr double startup_position_stability_rad = 0.05;
-    const bool position_is_stable =
-      arm_ready_stable_count_ == 0 ||
-      std::fabs(msg->position - arm_ready_candidate_position_rad_) <=
-      startup_position_stability_rad;
-
-    arm_ready_candidate_position_rad_ = msg->position;
-    arm_ready_stable_count_ = position_is_stable ? arm_ready_stable_count_ + 1 : 1;
+    ++arm_ready_stable_count_;
     if (arm_ready_stable_count_ < required_stable_feedback_count) {
       return;
     }

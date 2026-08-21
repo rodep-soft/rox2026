@@ -98,7 +98,6 @@ private:
   bool arm_state_received_{false};
   bool arm_actuator_ready_{false};
   int arm_ready_stable_count_{0};
-  double arm_ready_candidate_position_rad_{0.0};
   double emergency_hold_position_rad_{0.0};
 
   // 運動補正用の一時変数
