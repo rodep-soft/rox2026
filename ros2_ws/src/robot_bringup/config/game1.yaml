@@ -8,7 +8,7 @@ game1_auto_node:
     yaw_tolerance: 0.05
 
     # ── テストモード設定 (単一WP移動テスト) ──
-    test_mode: false
+    test_mode: true
     wp_test_x: 1.0
     wp_test_y: 0.0
     wp_test_yaw: 0.0

@@ -311,14 +311,8 @@ void SpringEduliteController::actuator_state_callback(
     const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
     const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
     const double expected_duration_sec =
-      (slow_fire_return_velocity_rad_s_ > 0.0) ?
-      (stroke_rad / slow_fire_return_velocity_rad_s_) : 1.0;
-
-    if (elapsed_sec >= expected_duration_sec + 0.5) {
-      enter_error_with_position_hold(
-        msg->position, "Slow fire return timed out");
-      return;
-    }
+      (slow_fire_return_velocity_rad_s_ >
+      0.0) ? (slow_fire_target_rad_ / slow_fire_return_velocity_rad_s_) : 1.0;
 
     const bool pos_reached =
       std::fabs(msg->position - slow_fire_base_rad_) <=
@@ -326,8 +320,8 @@ void SpringEduliteController::actuator_state_callback(
     const bool vel_stopped =
       std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_;
 
-    if (pos_reached && vel_stopped &&
-      target_position_rad_ <= slow_fire_base_rad_ + 1e-4)
+    if ((pos_reached && vel_stopped && target_position_rad_ <= slow_fire_base_rad_ + 1e-4) ||
+      timeout_reached)
     {
       ++stopped_count_;
     } else {
