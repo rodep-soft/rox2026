@@ -607,15 +607,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
   return result;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// タイマーコールバック（ステートマシン進行 + publish）
-// ────────────────────────────────────────────────────────────────────────────
-
-void DribbleControllerNode::control_timer_callback()
+void DribbleControllerNode::update_motion_compensation()
 {
-  publish_shot_cycle_state();
-
-  // 運動補正計算 (後退・急減速時の慣性力対策)
   if (enable_motion_compensation_ && !emergency_stop_active_) {
     const auto current_time = now();
     const double cmd_vel_age = (last_cmd_vel_time_.nanoseconds() > 0) ?
@@ -648,7 +641,10 @@ void DribbleControllerNode::control_timer_callback()
     current_motion_boost_rpm_ = 0;
     current_motion_arm_clamp_rad_ = 0.0;
   }
+}
 
+void DribbleControllerNode::update_and_publish_roller_command()
+{
   const int target_rpm = roller_target_rpm();
   if (emergency_stop_active_) {
     current_filtered_roller_rpm_ = 0;
@@ -669,17 +665,8 @@ void DribbleControllerNode::control_timer_callback()
     !spring_decel_active_)
   {
     const double mode_target_rad = target_position_rad();
-    double max_vel_rad_s = returning_max_velocity_rad_s_;
-    double accel_factor = 1.0;
-    if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
-      max_vel_rad_s = opening_max_velocity_rad_s_;
-      accel_factor = opening_accel_factor_;
-    } else if (position_mode_ == robot_msgs::msg::ArmPosition::FEED) {
-      max_vel_rad_s = feeding_max_velocity_rad_s_;
-    } else if (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
-      max_vel_rad_s = dribbling_max_velocity_rad_s_;
-      accel_factor = dribbling_accel_factor_;
-    }
+    const double max_vel_rad_s = manual_transition_max_velocity_rad_s();
+    const double accel_factor = manual_transition_accel_factor();
 
     const double elapsed_sec = (now() - manual_transition_start_time_).seconds();
     const double move_duration_sec = transition_duration_sec(
@@ -708,59 +695,70 @@ void DribbleControllerNode::control_timer_callback()
     }
   }
 
+  // Publish every control tick so the actuator driver can transmit CAN targets periodically,
+  // even when the requested RPM has not changed.
   actuator_msgs::msg::ActuatorTarget roller_command;
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
+}
+
+double DribbleControllerNode::update_manual_position_command(double position_command_rad)
+{
+  if (!manual_transition_active_ || shot_cycle_active_) {
+    return position_command_rad;
+  }
+
+  const double mode_target_rad = target_position_rad();
+  const double max_vel_rad_s = manual_transition_max_velocity_rad_s();
+  const double accel_factor = manual_transition_accel_factor();
+  const double elapsed_sec = (now() - manual_transition_start_time_).seconds();
+  const double move_duration_sec = transition_duration_sec(
+    manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s, accel_factor);
+
+  position_command_rad = interpolated_position_rad(
+    manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
+    max_vel_rad_s, accel_factor);
+  if (elapsed_sec >= move_duration_sec) {
+    manual_transition_active_ = false;
+    position_command_rad = mode_target_rad;
+  }
+  return position_command_rad;
+}
+void DribbleControllerNode::publish_position_command(double position_rad)
+{
+  // Duplicate values are intentional: CAN targets must continue at a fixed interval.
+  actuator_msgs::msg::ActuatorTarget position_command;
+  position_command.logical_id = position_logical_id_;
+  position_command.target = static_cast<float>(position_rad);
+  last_position_command_rad_ = position_rad;
+  position_command_pub_->publish(position_command);
+}
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// タイマーコールバック（ステートマシン進行 + publish）
+// ────────────────────────────────────────────────────────────────────────────
+
+void DribbleControllerNode::control_timer_callback()
+{
+  publish_shot_cycle_state();
+  update_motion_compensation();
+  update_and_publish_roller_command();
+
   if (!arm_actuator_ready_ || startup_waiting_for_emergency_release_) {
     return;
   }
 
-
   if (emergency_stop_active_) {
-    actuator_msgs::msg::ActuatorTarget position_command;
-    position_command.logical_id = position_logical_id_;
-    position_command.target = static_cast<float>(emergency_hold_position_rad_);
-    last_position_command_rad_ = emergency_hold_position_rad_;
-    position_command_pub_->publish(position_command);
+    publish_position_command(emergency_hold_position_rad_);
     return;
   }
 
   double position_command_rad = target_position_rad();
-
-  if (manual_transition_active_ && !shot_cycle_active_) {
-    const double mode_target_rad = target_position_rad();
-    double max_vel_rad_s = returning_max_velocity_rad_s_;
-    double accel_factor = 1.0;
-    if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
-      max_vel_rad_s = opening_max_velocity_rad_s_;
-      accel_factor = opening_accel_factor_;
-    } else if (position_mode_ == robot_msgs::msg::ArmPosition::FEED) {
-      max_vel_rad_s = feeding_max_velocity_rad_s_;
-    } else if (position_mode_ == robot_msgs::msg::ArmPosition::DRIBBLE) {
-      max_vel_rad_s = dribbling_max_velocity_rad_s_;
-      accel_factor = dribbling_accel_factor_;
-    }
-
-    const double elapsed_sec =
-      (now() - manual_transition_start_time_).seconds();
-    const double move_duration_sec = transition_duration_sec(
-      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s, accel_factor);
-    position_command_rad = interpolated_position_rad(
-      manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
-      max_vel_rad_s, accel_factor);
-    if (elapsed_sec >= move_duration_sec) {
-      manual_transition_active_ = false;
-      position_command_rad = mode_target_rad;
-    }
-  }
+  position_command_rad = update_manual_position_command(position_command_rad);
 
   if (shot_cycle_active_) {
-    if (belt_auto_started_) {
-      robot_msgs::msg::BeltMode belt_msg;
-      belt_msg.mode = shot_cycle_belt_spinup_level_;
-      belt_mode_pub_->publish(belt_msg);
-    }
     if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::BELT_SPINUP) {
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       if (elapsed_sec >= belt_spinup_delay_sec_) {
@@ -848,11 +846,7 @@ void DribbleControllerNode::control_timer_callback()
     }
   }
 
-  actuator_msgs::msg::ActuatorTarget position_command;
-  position_command.logical_id = position_logical_id_;
-  position_command.target = static_cast<float>(position_command_rad);
-  last_position_command_rad_ = position_command_rad;
-  position_command_pub_->publish(position_command);
+  publish_position_command(position_command_rad);
 }
 
 int DribbleControllerNode::roller_target_rpm() const
@@ -917,9 +911,16 @@ int DribbleControllerNode::roller_target_rpm() const
 
 void DribbleControllerNode::publish_shot_cycle_state()
 {
+  const uint8_t current_state =
+    shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
+  if (current_state == last_published_shot_cycle_state_) {
+    return;
+  }
+
   robot_msgs::msg::ShotCycleState state;
-  state.state = shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
+  state.state = current_state;
   shot_cycle_state_pub_->publish(state);
+  last_published_shot_cycle_state_ = current_state;
 }
 
 double DribbleControllerNode::target_position_rad() const
@@ -937,6 +938,32 @@ double DribbleControllerNode::target_position_rad() const
         return dribble_position_rad_ + current_motion_arm_clamp_rad_;
       }
       return dribble_position_rad_;
+  }
+}
+
+double DribbleControllerNode::manual_transition_max_velocity_rad_s() const
+{
+  switch (position_mode_) {
+    case robot_msgs::msg::ArmPosition::OPEN:
+      return opening_max_velocity_rad_s_;
+    case robot_msgs::msg::ArmPosition::FEED:
+      return feeding_max_velocity_rad_s_;
+    case robot_msgs::msg::ArmPosition::DRIBBLE:
+      return dribbling_max_velocity_rad_s_;
+    default:
+      return returning_max_velocity_rad_s_;
+  }
+}
+
+double DribbleControllerNode::manual_transition_accel_factor() const
+{
+  switch (position_mode_) {
+    case robot_msgs::msg::ArmPosition::OPEN:
+      return opening_accel_factor_;
+    case robot_msgs::msg::ArmPosition::DRIBBLE:
+      return dribbling_accel_factor_;
+    default:
+      return 1.0;
   }
 }
 
