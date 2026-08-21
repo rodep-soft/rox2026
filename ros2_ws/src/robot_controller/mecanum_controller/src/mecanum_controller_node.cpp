@@ -162,13 +162,13 @@ void MecanumControllerNode::publish_wheel_commands()
   // 逆運動学で4輪速度へ変換
   const double rotation_radius_m = (robot_length_m_ + robot_width_m_) / 2.0;
   std::array<double, 4> wheel_vels_rad_s;
-  wheel_vels_rad_s[FRONT_LEFT] = -(vel_x_m_s - vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+  wheel_vels_rad_s[FRONT_LEFT] = -(-vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
     wheel_radius_m_;
-  wheel_vels_rad_s[FRONT_RIGHT] = (vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+  wheel_vels_rad_s[FRONT_RIGHT] = (+vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
     wheel_radius_m_;
-  wheel_vels_rad_s[REAR_LEFT] = -(vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
+  wheel_vels_rad_s[REAR_LEFT] = -(+vel_x_m_s + vel_y_m_s + rotation_radius_m * angular_vel_rad_s) /
     wheel_radius_m_;
-  wheel_vels_rad_s[REAR_RIGHT] = (vel_x_m_s - vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
+  wheel_vels_rad_s[REAR_RIGHT] = (-vel_x_m_s + vel_y_m_s - rotation_radius_m * angular_vel_rad_s) /
     wheel_radius_m_;
 
   // 上限超過時は全輪を同率で縮小する
