@@ -7,7 +7,7 @@
     qos_depth: 3
 
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 0.0
+    standby_offset_rad: 4.0
 
     # [rad] 待機位置・目標位置到達判定の許容誤差
     standby_position_tolerance_rad: 0.05
