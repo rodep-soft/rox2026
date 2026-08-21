@@ -334,12 +334,32 @@ void DribbleControllerNode::actuator_state_callback(
       RCLCPP_WARN(get_logger(), "Dribble EduLite disconnected; pausing position commands");
     }
     arm_actuator_ready_ = false;
+    arm_ready_stable_count_ = 0;
     return;
   }
 
-  const bool reconnected = arm_state_received_ && !arm_actuator_ready_;
-  arm_actuator_ready_ = true;
   current_arm_position_rad_ = msg->position;
+  bool became_ready = false;
+  if (!arm_actuator_ready_) {
+    constexpr int required_stable_feedback_count = 5;
+    constexpr double startup_position_stability_rad = 0.05;
+    const bool position_is_stable =
+      arm_ready_stable_count_ == 0 ||
+      std::fabs(msg->position - arm_ready_candidate_position_rad_) <=
+      startup_position_stability_rad;
+
+    arm_ready_candidate_position_rad_ = msg->position;
+    arm_ready_stable_count_ = position_is_stable ? arm_ready_stable_count_ + 1 : 1;
+    if (arm_ready_stable_count_ < required_stable_feedback_count) {
+      return;
+    }
+
+    arm_actuator_ready_ = true;
+    arm_ready_stable_count_ = 0;
+    became_ready = true;
+  }
+
+  const bool reconnected = arm_state_received_ && became_ready;
 
   if (!arm_state_received_) {
     arm_state_received_ = true;
