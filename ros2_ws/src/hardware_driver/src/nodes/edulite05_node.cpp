@@ -336,21 +336,27 @@ void Node::state_timer_callback()
 
     const auto state = motor.state();
     const auto retry_count = motor.initialization_retry_count();
-    const bool diagnostic_changed =
-      state != last_diagnostic_states_[index] ||
-      retry_count != last_diagnostic_retry_counts_[index];
+    const bool state_changed = state != last_diagnostic_states_[index];
+    const bool retry_started =
+      retry_count > 0 && last_diagnostic_retry_counts_[index] <= 0;
 
-    if (state != MotorState::READY && diagnostic_changed) {
+    // 一時的な応答待ちでリトライ回数が増えるたびにWARNを出さない。
+    // WARNはリトライ開始時と、初期化がERRORへ遷移した時だけ通知する。
+    if (state == MotorState::ERROR && state_changed) {
       const auto diagnostic = motor.initialization_diagnostic();
-      if (retry_count > 0 || state == MotorState::ERROR) {
-        RCLCPP_WARN(
-          get_logger(), "%s initialization incomplete: %s",
-          motor.name().c_str(), diagnostic.c_str());
-      } else {
-        RCLCPP_DEBUG(
-          get_logger(), "%s initializing: %s",
-          motor.name().c_str(), diagnostic.c_str());
-      }
+      RCLCPP_WARN(
+        get_logger(), "%s initialization failed: %s",
+        motor.name().c_str(), diagnostic.c_str());
+    } else if (state != MotorState::READY && retry_started) {
+      const auto diagnostic = motor.initialization_diagnostic();
+      RCLCPP_WARN(
+        get_logger(), "%s initialization retry started: %s",
+        motor.name().c_str(), diagnostic.c_str());
+    } else if (state != MotorState::READY && state_changed) {
+      const auto diagnostic = motor.initialization_diagnostic();
+      RCLCPP_DEBUG(
+        get_logger(), "%s initializing: %s",
+        motor.name().c_str(), diagnostic.c_str());
     }
 
     last_diagnostic_states_[index] = state;
