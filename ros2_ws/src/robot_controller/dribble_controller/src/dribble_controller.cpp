@@ -535,7 +535,14 @@ void DribbleControllerNode::control_timer_callback()
   update_motion_compensation();
   update_and_publish_roller_command();
 
-  if (!arm_actuator_ready_ || startup_waiting_for_emergency_release_) {
+  if (!arm_actuator_ready_) {
+    return;
+  }
+
+  if (startup_waiting_for_emergency_release_) {
+    // Keep the arm at the first measured position until the initial emergency-stop release.
+    // Periodic targets keep the EduLite in READY without moving toward RECEIVE prematurely.
+    publish_position_command(emergency_hold_position_rad_);
     return;
   }
 

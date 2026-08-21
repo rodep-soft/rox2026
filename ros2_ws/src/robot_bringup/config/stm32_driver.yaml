@@ -2,7 +2,7 @@
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
     can_rx_topic: "/socketcan_bridge/rx"
-    imu_topic: /stm32/imu
+    imu_topic: /imu/data
     imu_frame_id: stm32_imu_link
     led_command_topic: "/hardware/led_cmd"
     limit_switches_topic: "/hardware/limit_switches"
