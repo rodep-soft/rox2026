@@ -117,6 +117,7 @@ void Game2AutoNode::load_parameters()
   tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 0.5);
   aligning_timeout_ = declare_parameter<double>("aligning_timeout", 10.0);
   shooting_timeout_ = declare_parameter<double>("shooting_timeout", 3.0);
+  result_wait_duration_ = declare_parameter<double>("result_wait_duration", 1.0);
   max_shots_per_panel_ = declare_parameter<int>("max_shots_per_panel", 1);
   require_ball_detected_ = declare_parameter<bool>("require_ball_detected", true);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
@@ -165,6 +166,10 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
     } else if (name == "kd_yaw") {
       kd_yaw_ = param.as_double();
       RCLCPP_INFO(get_logger(), "Param updated: kd_yaw = %.3f", kd_yaw_);
+    } else if (name == "shooting_timeout") {
+      shooting_timeout_ = param.as_double();
+    } else if (name == "result_wait_duration") {
+      result_wait_duration_ = param.as_double();
     } else if (name == "min_angular_z") {
       min_angular_z_ = param.as_double();
     } else if (name == "max_angular_z") {
@@ -721,23 +726,20 @@ void Game2AutoNode::control_loop()
           if (current_target_tag_ids_.size() >= 2) {
             RCLCPP_INFO(
               get_logger(),
-              "🎯 [Game2 SPLIT SHOT!] Midpoint shot complete for Tags #%d & #%d! Marking both panels shot.",
+              "🚀 [Game2 SPLIT SHOT!] Midpoint shot triggered for Tags #%d & #%d. Waiting for impact...",
               current_target_tag_ids_[0], current_target_tag_ids_[1]);
           } else if (!current_target_tag_ids_.empty()) {
             RCLCPP_INFO(
               get_logger(),
-              "✅ [Game2] Single shot complete for Tag #%d! Marking panel shot.",
+              "🚀 [Game2] Single shot triggered for Tag #%d. Waiting for impact...",
               current_target_tag_ids_[0]);
           }
 
-          // Mark all targeted panels as shot
+          // Increment shot attempts for targeted panels
           for (const int tid : current_target_tag_ids_) {
             auto it = panel_grid_.find(tid);
             if (it != panel_grid_.end()) {
               it->second.shot_count++;
-              if (it->second.shot_count >= max_shots_per_panel_) {
-                it->second.shot_completed = true;
-              }
             }
           }
 
@@ -753,8 +755,34 @@ void Game2AutoNode::control_loop()
         cmd.angular.z = 0.0;
         last_cmd_wz_ = 0.0;
 
-        if (state_elapsed >= 0.8) {
-          // Return to ALIGNING to acquire next target
+        // ── 👁️ 着弾・ノックダウン（AprilTag消失）視覚判定 ──
+        if (state_elapsed >= result_wait_duration_) {
+          bool any_knockdown = false;
+          bool any_remaining = false;
+
+          for (const int tid : current_target_tag_ids_) {
+            auto it = panel_grid_.find(tid);
+            if (it != panel_grid_.end()) {
+              // タグが見えなくなっていれば（消失 = 倒れた）ノックダウン成功！
+              if (!it->second.detected) {
+                it->second.shot_completed = true;
+                any_knockdown = true;
+                RCLCPP_INFO(
+                  get_logger(),
+                  "💥 [Game2 KNOCKDOWN CONFIRMED!] Tag #%d vanished (panel fell down). Marked as completed! (Shot attempts: %d)",
+                  tid, it->second.shot_count);
+              } else {
+                // まだタグが見えている（倒れなかった or ミス）
+                any_remaining = true;
+                RCLCPP_WARN(
+                  get_logger(),
+                  "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry (Shot attempts: %d)",
+                  tid, it->second.shot_count);
+              }
+            }
+          }
+
+          // 状態をリセットして次の照準・射出へ
           state_ = robot_msgs::msg::Game2State::ALIGNING;
           state_start_time_ = current_time;
         }

@@ -131,6 +131,7 @@ private:
   double tag_lost_timeout_{0.5};
   double aligning_timeout_{10.0};
   double shooting_timeout_{3.0};
+  double result_wait_duration_{1.0}; // [s] 射出後の飛翔・倒れ確認判定待ち時間
   int max_shots_per_panel_{1};
   bool require_ball_detected_{true};
   bool test_alignment_only_{false};
