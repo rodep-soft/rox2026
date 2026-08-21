@@ -91,3 +91,21 @@ TEST(MecanumOdometryTest, DetectsSlipFromImuDiscrepancy)
   EXPECT_DOUBLE_EQ(s.y, 1.0);  // Y は影響なし
   EXPECT_DOUBLE_EQ(s.yaw, 1.0);
 }
+
+// メディアンフィルタのトゲ除去＆中央値出力テスト
+TEST(MecanumOdometryTest, MedianFilterRejectsSpikeNoise)
+{
+  mecanum_odometry::MedianFilter<3> filter;
+
+  // 正常な値: 1.0, 1.1
+  EXPECT_DOUBLE_EQ(filter.update(1.0), 1.0);
+  EXPECT_DOUBLE_EQ(filter.update(1.1), 1.05); // 2個の平均/中央値
+
+  // 突然の巨大スパイクノイズ (100.0) が混入
+  // バッファ: [1.0, 1.1, 100.0] -> 中央値は 1.1 (100.0を完全に無視！)
+  EXPECT_DOUBLE_EQ(filter.update(100.0), 1.1);
+
+  // 次の正常な値 (1.2)
+  // バッファ: [1.2, 1.1, 100.0] -> ソート後 [1.1, 1.2, 100.0] -> 中央値は 1.2
+  EXPECT_DOUBLE_EQ(filter.update(1.2), 1.2);
+}

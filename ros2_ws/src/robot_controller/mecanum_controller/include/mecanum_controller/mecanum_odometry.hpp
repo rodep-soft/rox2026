@@ -17,6 +17,42 @@ enum WheelIndex : std::size_t
   WHEEL_COUNT = 4
 };
 
+/// @brief 遅延ゼロでトゲ・外れ値スパイクノイズを除去する汎用メディアンフィルタ (奇数バッファ N=3 or 5)
+template <std::size_t N = 3>
+class MedianFilter
+{
+  static_assert(N % 2 == 1, "MedianFilter buffer size N must be odd (e.g. 3 or 5)");
+
+public:
+  constexpr MedianFilter() = default;
+
+  double update(const double val)
+  {
+    buffer_[head_] = val;
+    head_ = (head_ + 1) % N;
+    if (count_ < N) {
+      ++count_;
+    }
+
+    std::array<double, N> sorted = buffer_;
+    const auto valid_end = sorted.begin() + count_;
+    std::sort(sorted.begin(), valid_end);
+    return sorted[count_ / 2];
+  }
+
+  void reset()
+  {
+    buffer_.fill(0.0);
+    head_ = 0;
+    count_ = 0;
+  }
+
+private:
+  std::array<double, N> buffer_{};
+  std::size_t head_{0};
+  std::size_t count_{0};
+};
+
 struct BodyVelocity
 {
   double x_m_s{0.0};
