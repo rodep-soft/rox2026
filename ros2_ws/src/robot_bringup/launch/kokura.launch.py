@@ -185,13 +185,13 @@ def generate_launch_description():
                 ),
                 condition=IfCondition(LaunchConfiguration("enable_vision")),
             ),
-            # --- 8. USB Webカメラ (V4L2) ---
+            # --- 8. USB Webカメラ (V4L2 + AprilTag) ---
             include(
                 "webcam_launch.py",
                 launch_arguments=list(
                     {
                         "video_device": LaunchConfiguration("video_device"),
-                        "enable_apriltag": "false",
+                        "enable_apriltag": "true",
                     }.items()
                 ),
                 condition=IfCondition(LaunchConfiguration("enable_webcam")),
