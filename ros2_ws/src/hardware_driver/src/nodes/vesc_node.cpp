@@ -71,6 +71,8 @@ public:
       "state_array_topic",
       "/vesc/state_array");
     const auto update_period_ms = declare_parameter<int64_t>("update_period_ms", 20);
+    const auto state_array_publish_period_ms = declare_parameter<int64_t>(
+      "state_array_publish_period_ms", 100);
     const auto motor_names = declare_parameter<std::vector<std::string>>(
       "motors", std::vector<std::string>{});
 
@@ -85,28 +87,14 @@ public:
         500);
       const auto max_rpm = declare_parameter<double>(prefix + "max_rpm", 5600.0);
       const auto rpm_slew_rate = declare_parameter<double>(prefix + "rpm_slew_rate", 4000.0);
-      const auto startup_current_a =
-        declare_parameter<double>(prefix + "startup_current_a", 5.0);
-      const auto rpm_control_threshold_rpm =
-        declare_parameter<double>(prefix + "rpm_control_threshold_rpm", 1000.0);
+      const auto startup_current_a = declare_parameter<double>(prefix + "startup_current_a", 5.0);
+      const auto rpm_control_threshold_rpm = declare_parameter<double>(
+        prefix + "rpm_control_threshold_rpm", 1000.0);
       if (logical_id < 0 || logical_id > 65535) {
         throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
       }
       if (controller_id < 0 || controller_id > 255) {
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
-      }
-      if (max_rpm <= 0.0) {
-        throw std::runtime_error(name + ": max_rpm must be positive");
-      }
-      if (rpm_slew_rate <= 0.0) {
-        throw std::runtime_error(name + ": rpm_slew_rate must be positive");
-      }
-      if (startup_current_a <= 0.0) {
-        throw std::runtime_error(name + ": startup_current_a must be positive");
-      }
-      if (rpm_control_threshold_rpm <= 0.0 || rpm_control_threshold_rpm > max_rpm) {
-        throw std::runtime_error(
-                name + ": rpm_control_threshold_rpm must be in (0, max_rpm]");
       }
 
       motors_.emplace_back(
@@ -123,11 +111,23 @@ public:
 
     const auto can_tx_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
     const auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
+    rclcpp::SubscriptionOptions can_subscription_options;
+    for (std::size_t index = 0; index < motors_.size(); ++index) {
+      if (!can_subscription_options.content_filter_options.filter_expression.empty()) {
+        can_subscription_options.content_filter_options.filter_expression += " OR ";
+      }
+      can_subscription_options.content_filter_options.filter_expression +=
+        "id = %" + std::to_string(index);
+      can_subscription_options.content_filter_options.expression_parameters.push_back(
+        std::to_string(
+          (protocol::STATUS_1_ID << 8) | motors_[index].config.controller_id));
+    }
 
     can_publisher_ = create_publisher<can_msgs::msg::Frame>(can_tx_topic, can_tx_qos);
     can_subscription_ = create_subscription<can_msgs::msg::Frame>(
       can_rx_topic, can_rx_qos,
-      std::bind(&Node::can_callback, this, std::placeholders::_1));
+      std::bind(&Node::can_callback, this, std::placeholders::_1),
+      can_subscription_options);
     target_subscription_ = create_subscription<actuator_msgs::msg::ActuatorTarget>(
       target_topic, 10, std::bind(&Node::target_callback, this, std::placeholders::_1));
     target_array_subscription_ =
@@ -137,8 +137,13 @@ public:
     state_publisher_ = create_publisher<actuator_msgs::msg::ActuatorState>(state_topic, 10);
     state_array_publisher_ =
       create_publisher<actuator_msgs::msg::ActuatorStateArray>(state_array_topic, 10);
-    timer_ = create_wall_timer(
-      std::chrono::milliseconds(update_period_ms), std::bind(&Node::timer_callback, this));
+    state_array_message_.actuators.reserve(motors_.size());
+    command_timer_ = create_wall_timer(
+      std::chrono::milliseconds(update_period_ms),
+      std::bind(&Node::command_timer_callback, this));
+    state_timer_ = create_wall_timer(
+      std::chrono::milliseconds(state_array_publish_period_ms),
+      std::bind(&Node::state_timer_callback, this));
   }
 
 private:
@@ -172,8 +177,11 @@ private:
   /// @return 接続されている場合はtrue、それ以外はfalse
   bool is_connected(const Motor & motor, std::chrono::steady_clock::time_point now) const
   {
-    return motor.feedback_received &&
-           now - motor.last_feedback_time <= motor.config.feedback_timeout;
+    if (!motor.feedback_received) {
+      return false;
+    }
+    const auto feedback_age = now - motor.last_feedback_time;
+    return feedback_age <= motor.config.feedback_timeout;
   }
 
   /// @brief モーターの状態メッセージを作成
@@ -196,6 +204,9 @@ private:
     return message;
   }
 
+  /// @brief 目標回転速度を設定する
+  /// @param motor　設定するモータ
+  /// @param target_rpm 目標回転速度
   void set_target(Motor & motor, float target_rpm)
   {
     const auto previous_target_rpm = motor.target_rpm;
@@ -211,15 +222,17 @@ private:
     motor.command_received = true;
   }
 
+  /// @brief モータへ電流もしくは速度の指令を送る関数
+  /// @param motor
+  /// @param now 現在時刻
   void publish_motor_command(Motor & motor, std::chrono::steady_clock::time_point now)
   {
     if (!motor.command_received) {
       return;
     }
-
-    const auto command_timed_out = now - motor.last_command_time > motor.config.command_timeout;
+    const bool command_timed_out = now - motor.last_command_time > motor.config.command_timeout;
     const auto desired_rpm = command_timed_out ? 0.0 : motor.target_rpm;
-    if (desired_rpm == 0.0) {
+    if (desired_rpm == 0.0) {//タイムアウトもしくは回転させない場合は電流値をゼロとして指令を送る
       motor.rpm_control_active = false;
       motor.rpm_command = 0.0;
       can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, 0.0));
@@ -279,6 +292,7 @@ private:
     motor->measured_current_a = status.current_a;
     motor->last_feedback_time = std::chrono::steady_clock::now();
     motor->feedback_received = true;
+
     state_publisher_->publish(make_state(*motor, motor->last_feedback_time));
   }
 
@@ -303,20 +317,27 @@ private:
     }
   }
 
-  /// @brief 一定周期で送受信がされるように調整するコールバック関数
-  void timer_callback()
+  /// @brief 一定周期で各VESCへ指令を送信する
+  void command_timer_callback()
   {
     const auto now = std::chrono::steady_clock::now();
-    actuator_msgs::msg::ActuatorStateArray state_array;
-    state_array.header.stamp = this->now();
-    state_array.actuators.reserve(motors_.size());
-
     for (auto & motor : motors_) {
       publish_motor_command(motor, now);
       motor.last_ramp_update_time = now;
-      state_array.actuators.push_back(make_state(motor, now));
     }
-    state_array_publisher_->publish(state_array);
+  }
+
+  /// @brief 一定周期で全VESCの状態を配信する
+  void state_timer_callback()
+  {
+    const auto now = std::chrono::steady_clock::now();
+    state_array_message_.header.stamp = this->now();
+    state_array_message_.actuators.clear();
+
+    for (const auto & motor : motors_) {
+      state_array_message_.actuators.push_back(make_state(motor, now));
+    }
+    state_array_publisher_->publish(state_array_message_);
   }
 
   std::vector<Motor> motors_;
@@ -329,8 +350,10 @@ private:
 
   rclcpp::Publisher<actuator_msgs::msg::ActuatorState>::SharedPtr state_publisher_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_array_publisher_;
+  actuator_msgs::msg::ActuatorStateArray state_array_message_;
 
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr command_timer_;
+  rclcpp::TimerBase::SharedPtr state_timer_;
 };
 }  // namespace vesc_driver
 

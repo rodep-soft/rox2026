@@ -16,7 +16,8 @@
 | 種別 | topic/service | 型 | 内容 |
 |---|---|---|---|
 | sub | `/system/emergency_stop` | `Bool` | trueの間は目標値の更新を停止 |
-| sub | `/spring/fire_request` | `Bool` | 立ち上がりごとに1周分を加算 |
+| sub | `/spring/fire_request` | `Bool` | 立ち上がりごとに通常発射 |
+| sub | `/spring/slow_fire_request` | `Bool` | 立ち上がりごとに低速発射 |
 | sub | `/hardware/limit_switches` | `UInt8` | ホーミング用リミットスイッチ |
 | sub | `/edulite/state` | `ActuatorState` | 接続状態と原点設定状態 |
 | pub | `/edulite/target` | `ActuatorTarget` | logical ID 4の累積位置[rad] |
@@ -63,6 +64,9 @@ target_position_rad += fire_increment_rad
 1周分（`fire_increment_rad`）回転して発射動作を行い、元の待機オフセット位置の位相へ戻る。
 回転完了（目標位置到達かつ静止）を検知すると再び`READY`状態へ戻る。
 
+### SLOW_FIRING_EXTENDING / SLOW_FIRING_RETURNING
+低速発射では、指定速度で待機位置から押し出し位置まで進み、その後、指定した復帰速度で待機位置へ戻る。各区間は位置到達を連続して確認した場合だけ次の状態へ進む。想定時間を超えた場合は、現在のフィードバック位置をPP保持目標として送信し、`ERROR`へ遷移する。タイムアウトを正常完了として`READY`には戻さない。
+
 ## 再接続と非常停止
 
 EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ破棄する。
@@ -78,6 +82,9 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 | `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
 | `standby_position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
 | `fire_increment_rad` | 発射要求1回で加算する回転角度[rad] |
+| `slow_fire_target_rad` | 低速発射の押し出し量[rad] |
+| `slow_fire_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
+| `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
 | `homing_timeout_sec` | ホーミングのタイムアウト[s] |
 | `zeroing_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |

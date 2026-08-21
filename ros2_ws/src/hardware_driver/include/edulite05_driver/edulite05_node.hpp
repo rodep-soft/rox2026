@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -66,6 +67,7 @@ private:
 
   std::vector<Protocol> motors_;
   std::size_t initialization_motor_index_ = 0;
+  std::size_t current_feedback_motor_index_ = 0;
 
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_frame_publisher_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_frame_subscription_;
@@ -76,10 +78,16 @@ private:
 
   rclcpp::Publisher<actuator_msgs::msg::ActuatorState>::SharedPtr state_publisher_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_array_publisher_;
+  actuator_msgs::msg::ActuatorStateArray state_array_message_;
   rclcpp::Service<actuator_msgs::srv::SetPosition>::SharedPtr set_position_service_;
 
   rclcpp::TimerBase::SharedPtr command_timer_;
   rclcpp::TimerBase::SharedPtr state_timer_;
+
+  std::chrono::milliseconds update_period_{10};
+  std::chrono::milliseconds state_array_publish_period_{50};
+  std::vector<MotorState> last_diagnostic_states_;
+  std::vector<int> last_diagnostic_retry_counts_;
 
   std::string can_tx_topic_;
   std::string can_rx_topic_;

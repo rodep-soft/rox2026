@@ -19,6 +19,16 @@ uint16_t read_big_endian_uint16(
          static_cast<uint16_t>(data[index + 1]);
 }
 
+uint32_t read_little_endian_uint32(
+  const std::array<uint8_t, 8> & data,
+  std::size_t index)
+{
+  return static_cast<uint32_t>(data[index]) |
+         (static_cast<uint32_t>(data[index + 1]) << 8) |
+         (static_cast<uint32_t>(data[index + 2]) << 16) |
+         (static_cast<uint32_t>(data[index + 3]) << 24);
+}
+
 float decode_uint16(uint16_t value, float minimum, float maximum)
 {
   return minimum + static_cast<float>(value) * (maximum - minimum) / 65535.0f;
@@ -28,36 +38,36 @@ float decode_uint16(uint16_t value, float minimum, float maximum)
 Protocol::Protocol(const MotorConfig & config)
 : config_(config)
 {
-  if (config_.resume_position_on_startup) {
-    initialization_step_ = InitializationStep::DISABLE_FOR_POSITION_RESUME;
+  if (uses_position_control()) {
+    position_reference_state_ = PositionReferenceState::UNAVAILABLE;
   }
   // 最初に必ずrun_mode
   initialization_parameters_.push_back(
-    {RUN_MODE, static_cast<float>(static_cast<uint8_t>(config_.control_mode)),
-      true});
+    {RUN_MODE, InitializationParameterType::UINT8,
+      static_cast<float>(static_cast<uint8_t>(config_.control_mode))});
 
   switch (config_.control_mode) {
     case ControlMode::VELOCITY:
       initialization_parameters_.push_back(
-        {SPEED_REFERENCE, 0.0f, false});
+        {SPEED_REFERENCE, InitializationParameterType::FLOAT, 0.0f});
       initialization_parameters_.push_back(
-        {CURRENT_LIMIT, config_.current_limit, false});
+        {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       initialization_parameters_.push_back(
-        {ACCELERATION, config_.acceleration, false});
+        {ACCELERATION, InitializationParameterType::FLOAT, config_.acceleration});
       break;
     case ControlMode::CYCLIC_SYNCHRONOUS_POSITION:
       initialization_parameters_.push_back(
-        {SPEED_LIMIT, config_.speed_limit, false});
+        {SPEED_LIMIT, InitializationParameterType::FLOAT, config_.speed_limit});
       initialization_parameters_.push_back(
-        {CURRENT_LIMIT, config_.current_limit, false});
+        {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       break;
     case ControlMode::PROFILE_POSITION:
       initialization_parameters_.push_back(
-        {PP_SPEED, config_.speed_limit, false});
+        {PP_SPEED, InitializationParameterType::FLOAT, config_.speed_limit});
       initialization_parameters_.push_back(
-        {PP_ACCELERATION, config_.acceleration, false});
+        {PP_ACCELERATION, InitializationParameterType::FLOAT, config_.acceleration});
       initialization_parameters_.push_back(
-        {CURRENT_LIMIT, config_.current_limit, false});
+        {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       break;
   }
 }
@@ -66,18 +76,6 @@ std::string Protocol::initialization_diagnostic() const
 {
   const char * step_name = "unknown";
   switch (initialization_step_) {
-    case InitializationStep::DISABLE_FOR_POSITION_RESUME:
-      step_name = "disable_for_position_resume";
-      break;
-    case InitializationStep::WAIT_BEFORE_POSITION_RESUME:
-      step_name = "wait_before_position_resume";
-      break;
-    case InitializationStep::READ_CURRENT_MECHANICAL_POSITION:
-      step_name = "read_current_mechanical_position";
-      break;
-    case InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION:
-      step_name = "wait_for_current_mechanical_position";
-      break;
     case InitializationStep::WRITE_PARAMETER:
       step_name = "write";
       break;
@@ -89,6 +87,24 @@ std::string Protocol::initialization_diagnostic() const
       break;
     case InitializationStep::WAIT_FOR_READ:
       step_name = "wait_for_read";
+      break;
+    case InitializationStep::READ_STARTUP_POSITION:
+      step_name = "read_startup_position";
+      break;
+    case InitializationStep::WAIT_FOR_STARTUP_POSITION:
+      step_name = "wait_for_startup_position";
+      break;
+    case InitializationStep::WRITE_STARTUP_HOLD:
+      step_name = "write_startup_hold";
+      break;
+    case InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE:
+      step_name = "wait_after_startup_hold_write";
+      break;
+    case InitializationStep::READ_STARTUP_HOLD:
+      step_name = "read_startup_hold";
+      break;
+    case InitializationStep::WAIT_FOR_STARTUP_HOLD:
+      step_name = "wait_for_startup_hold";
       break;
     case InitializationStep::ENABLE:
       step_name = "enable";
@@ -105,13 +121,18 @@ std::string Protocol::initialization_diagnostic() const
   }
   std::ostringstream stream;
   stream << "step=" << step_name;
-  if (initialization_step_ ==
-    InitializationStep::READ_CURRENT_MECHANICAL_POSITION ||
-    initialization_step_ ==
-    InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION)
+  if (initialization_step_ == InitializationStep::READ_STARTUP_POSITION ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_POSITION)
   {
     stream << " register=0x" << std::hex << std::uppercase
            << MECHANICAL_POSITION;
+  } else if (initialization_step_ == InitializationStep::WRITE_STARTUP_HOLD ||
+    initialization_step_ == InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE ||
+    initialization_step_ == InitializationStep::READ_STARTUP_HOLD ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD)
+  {
+    stream << " register=0x" << std::hex << std::uppercase
+           << POSITION_REFERENCE;
   } else if (initialization_parameter_index_ <
     initialization_parameters_.size())
   {
@@ -147,12 +168,9 @@ bool Protocol::set_current_position(float current_position_rad)
     return false;
   }
 
-  // Only update the driver's coordinate conversion. Do not transmit anything
-  // to the actuator until the upper controller supplies its next target.
   logical_position_offset_rad_ = current_position_rad - motor_position_rad_;
   feedback_.position = current_position_rad;
-  position_reference_is_set_ = true;
-  unreferenced_origin_initialized_ = true;
+  position_reference_state_ = PositionReferenceState::ESTABLISHED;
   has_target_ = false;
   return true;
 }
@@ -163,91 +181,128 @@ bool Protocol::uses_position_control() const
          config_.control_mode == ControlMode::CYCLIC_SYNCHRONOUS_POSITION;
 }
 
-std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame()
+bool Protocol::position_command_is_allowed() const
 {
-  const auto current_time = Clock::now();
+  return !uses_position_control() ||
+         position_reference_state_ == PositionReferenceState::TEMPORARY ||
+         position_reference_state_ == PositionReferenceState::ESTABLISHED;
+}
 
-  switch (initialization_step_) {
-    case InitializationStep::DISABLE_FOR_POSITION_RESUME:
-      state_ = MotorState::INITIALIZING;
-      last_request_time_ = current_time;
-      initialization_step_ = InitializationStep::WAIT_BEFORE_POSITION_RESUME;
-      return make_disable_frame(config_.can_id);
-    case InitializationStep::WAIT_BEFORE_POSITION_RESUME:
-      if (current_time - last_request_time_ >= POSITION_RESUME_SETTLING_TIME) {
-        initialization_step_ =
-          InitializationStep::READ_CURRENT_MECHANICAL_POSITION;
-      }
-      break;
-    case InitializationStep::READ_CURRENT_MECHANICAL_POSITION:
-      last_request_time_ = current_time;
-      initialization_step_ =
-        InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION;
-      return make_read_parameter_frame(config_.can_id, MECHANICAL_POSITION);
-    case InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION:
-      if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
-        retry_initialization();
-      }
-      break;
-    case InitializationStep::WRITE_PARAMETER: {
-        state_ = MotorState::INITIALIZING;
-        const auto & parameter =
-          initialization_parameters_[initialization_parameter_index_];
-        last_request_time_ = current_time;
-        initialization_step_ = InitializationStep::WAIT_AFTER_WRITE;
+std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame(
+  TimePoint current_time)
+{
+  // 待機完了やタイムアウト処理だけで呼び出しを終えずに送信が必要な状態まで同じ呼び出し内で進め，送信フレームは必ず最大1つ
+  while (true) {
+    switch (initialization_step_) {
+      case InitializationStep::WRITE_PARAMETER: {
+          state_ = MotorState::INITIALIZING;
+          const auto & parameter =
+            initialization_parameters_[initialization_parameter_index_];
+          last_request_time_ = current_time;
+          initialization_step_ = InitializationStep::WAIT_AFTER_WRITE;
 
-        if (parameter.is_uint8) {
-          return make_write_uint8_frame(
-            config_.can_id, parameter.index,
-            static_cast<uint8_t>(parameter.value));
+          if (parameter.type == InitializationParameterType::UINT8) {
+            return make_write_uint8_frame(
+              config_.can_id, parameter.index,
+              static_cast<uint8_t>(parameter.value));
+          }
+          return make_write_float_frame(
+            config_.can_id, parameter.index, parameter.value);
         }
-        return make_write_float_frame(
-          config_.can_id, parameter.index,
-          parameter.value);
-      }
-    case InitializationStep::WAIT_AFTER_WRITE:
-      // これで帰ってきた応答そのものを設定成功判定には使わずに，type17
-      // Readbackで確認
-      if (current_time - last_request_time_ >= WRITE_SETTLING_TIME) {
+
+      case InitializationStep::WAIT_AFTER_WRITE:
+        // 書込み応答そのものではなく，settling後のType 17 Readbackで確認
+        if (current_time - last_request_time_ < WRITE_SETTLING_TIME) {
+          return std::nullopt;
+        }
         initialization_step_ = InitializationStep::READ_PARAMETER;
-      }
-      break;
-    case InitializationStep::READ_PARAMETER: {
-        const auto & parameter =
-          initialization_parameters_[initialization_parameter_index_];
+        continue;
+
+      case InitializationStep::READ_PARAMETER: {
+          const auto & parameter =
+            initialization_parameters_[initialization_parameter_index_];
+          last_request_time_ = current_time;
+          initialization_step_ = InitializationStep::WAIT_FOR_READ;
+          return make_read_parameter_frame(config_.can_id, parameter.index);
+        }
+
+      case InitializationStep::WAIT_FOR_READ:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
+        retry_initialization();
+        continue;
+
+      case InitializationStep::READ_STARTUP_POSITION:
         last_request_time_ = current_time;
-        initialization_step_ = InitializationStep::WAIT_FOR_READ;
-        return make_read_parameter_frame(config_.can_id, parameter.index);
-      }
-    case InitializationStep::WAIT_FOR_READ:
-      if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
+        initialization_step_ =
+          InitializationStep::WAIT_FOR_STARTUP_POSITION;
+        return make_read_parameter_frame(config_.can_id, MECHANICAL_POSITION);
+
+      case InitializationStep::WAIT_FOR_STARTUP_POSITION:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
         retry_initialization();
-      }
-      break;
-    case InitializationStep::ENABLE:
-      last_request_time_ = current_time;
-      initialization_step_ = InitializationStep::WAIT_FOR_ENABLE;
-      return make_enable_frame(config_.can_id);
-    case InitializationStep::WAIT_FOR_ENABLE:
-      if (current_time - last_request_time_ > RESPONSE_TIMEOUT) {
+        continue;
+
+      case InitializationStep::WRITE_STARTUP_HOLD:
+        last_request_time_ = current_time;
+        initialization_step_ =
+          InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE;
+        return make_write_float_frame(
+          config_.can_id, POSITION_REFERENCE, startup_hold_position_rad_);
+
+      case InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE:
+        if (current_time - last_request_time_ < WRITE_SETTLING_TIME) {
+          return std::nullopt;
+        }
+        initialization_step_ = InitializationStep::READ_STARTUP_HOLD;
+        continue;
+
+      case InitializationStep::READ_STARTUP_HOLD:
+        last_request_time_ = current_time;
+        initialization_step_ = InitializationStep::WAIT_FOR_STARTUP_HOLD;
+        return make_read_parameter_frame(config_.can_id, POSITION_REFERENCE);
+
+      case InitializationStep::WAIT_FOR_STARTUP_HOLD:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
         retry_initialization();
-      }
-      break;
-    case InitializationStep::READY:
-      break;
-    case InitializationStep::ERROR:
-      // 電源再投入などでもROSノードを再起動しなくて済むように自動再試行
-      if (current_time - error_time_ > ERROR_RETRY_PERIOD) {
+        continue;
+
+      case InitializationStep::ENABLE:
+        last_request_time_ = current_time;
+        initialization_step_ = InitializationStep::WAIT_FOR_ENABLE;
+        return make_enable_frame(config_.can_id);
+
+      case InitializationStep::WAIT_FOR_ENABLE:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
+        retry_initialization();
+        continue;
+
+      case InitializationStep::READY:
+        return std::nullopt;
+
+      case InitializationStep::ERROR:
+        // fault継続中はprocess_feedback()がerror_time_を更新
+        if (current_time - error_time_ <= ERROR_RETRY_PERIOD) {
+          return std::nullopt;
+        }
         restart_initialization(true);
-      }
-      break;
+        continue;
+    }
   }
-  return std::nullopt;
 }
 
 bool Protocol::receive(const can_msgs::msg::Frame & message)
 {
-  if (!message.is_extended || message.dlc < 8) {
+  if (!message.is_extended || message.is_rtr || message.is_error ||
+    message.dlc != 8)
+  {
     return false;
   }
   const auto type = static_cast<uint8_t>((message.id >> 24) & 0x1F);
@@ -262,6 +317,9 @@ bool Protocol::receive(const can_msgs::msg::Frame & message)
   if (type == TYPE_READ) {
     return process_parameter_response(message);
   }
+  if (type == TYPE_FAULT) {
+    return process_fault(message);
+  }
   return false;
 }
 
@@ -269,8 +327,9 @@ bool Protocol::receive(const can_msgs::msg::Frame & message)
 /// @param message
 void Protocol::process_feedback(const can_msgs::msg::Frame & message)
 {
+  const auto current_time = Clock::now();
   feedback_connected_ = true;
-  last_feedback_time_ = Clock::now();
+  last_feedback_time_ = current_time;
   const auto wrapped_position = decode_uint16(
     read_big_endian_uint16(message.data, 0), -4.0f * PI, 4.0f * PI);
   if (!motor_position_initialized_) {
@@ -290,21 +349,21 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     last_wrapped_position_rad_ = wrapped_position;
   }
 
-  // PositionReferenceMode::YAML_OFFSETの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
-  if (uses_position_control() && !position_reference_is_set_ &&
-    config_.position_reference_mode == PositionReferenceMode::YAML_OFFSET)
+  if (uses_position_control() &&
+    position_reference_state_ == PositionReferenceState::UNAVAILABLE)
   {
-    logical_position_offset_rad_ = config_.position_offset_rad;
-    position_reference_is_set_ = true;
-  }
-
-  // PositionReferenceMode::SERVICEの場合は，初期化時に設定されたオフセットを使って絶対位置を計算する
-  if (uses_position_control() && !position_reference_is_set_ &&
-    config_.allow_unreferenced_position_commands &&
-    !unreferenced_origin_initialized_)
-  {
-    logical_position_offset_rad_ = -motor_position_rad_;
-    unreferenced_origin_initialized_ = true;
+    if (config_.position_reference_source ==
+      PositionReferenceSource::YAML_OFFSET)
+    {
+      // YAMLの固定オフセットは，そのまま正式な位置基準として使用
+      logical_position_offset_rad_ = config_.position_offset_rad;
+      position_reference_state_ = PositionReferenceState::ESTABLISHED;
+    } else {
+      // serviceで原点を確定するまでは，最初の位置を一時原点として
+      // ホーミング用の位置指令だけを許可
+      logical_position_offset_rad_ = -motor_position_rad_;
+      position_reference_state_ = PositionReferenceState::TEMPORARY;
+    }
   }
 
   feedback_.position = motor_position_rad_ + logical_position_offset_rad_;
@@ -315,10 +374,20 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
   feedback_.temperature =
     static_cast<float>(read_big_endian_uint16(message.data, 6)) / 10.0f;
 
-  // Type2 ID bit21~16
-  feedback_.fault_code = static_cast<uint32_t>((message.id >> 16) & 0x3F);
+  // Type 2は6bitの故障要約のため，Type 21の詳細値があれば継続して保持
+  const auto summary_fault_code =
+    static_cast<uint32_t>((message.id >> 16) & 0x3F);
   // bit23~22
   const auto mode_status = static_cast<uint8_t>((message.id >> 22) & 0x03);
+
+  if (summary_fault_code != 0U) {
+    const auto fault_code = detailed_fault_code_ != 0U ?
+      detailed_fault_code_ : summary_fault_code;
+    enter_fault_state(fault_code, current_time);
+    return;
+  }
+  detailed_fault_code_ = 0;
+  feedback_.fault_code = 0;
 
   // Enable完了確認
 
@@ -338,9 +407,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     return;
   }
 
-  // PP/CSPは新しい位置指令が届くまで非RUNを返すため、RUN statusを
-  // 再接続判定に使用しない。位置制御モーターの電源再投入はwatchdogの
-  // feedback timeoutで検出する。
+  // PP/CSPは新しい位置指令が届くまで非RUNを返すため，RUN statusを再接続判定に使用しない
+  // 位置制御モーターの電源再投入はwatchdogのfeedback timeoutで検出
   if (initialization_step_ == InitializationStep::READY) {
     if (uses_position_control()) {
       return;
@@ -349,8 +417,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
       consecutive_non_run_feedback_count_ = 0;
     } else {
       ++consecutive_non_run_feedback_count_;
-      // PPモードはREADY直後に一時的な非RUN状態を返すことがある。
-      // 上位ノードが最初の位置指令を送る前に再初期化しないようデバウンスする。
+      // PPモードはREADY直後に一時的な非RUN状態を返すことがある
+      // 上位ノードが最初の位置指令を送る前に再初期化しないようデバウンス
       constexpr int non_run_feedback_restart_threshold = 20;
       if (consecutive_non_run_feedback_count_ >=
         non_run_feedback_restart_threshold)
@@ -363,18 +431,30 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
 
 bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
 {
-  feedback_connected_ = true;
-  last_feedback_time_ = Clock::now();
   const auto destination = static_cast<uint8_t>(message.id & 0xFF);
   const auto status = static_cast<uint8_t>((message.id >> 16) & 0xFF);
   if (destination != HOST_ID) {
     return false;
   }
+
+  feedback_connected_ = true;
+  last_feedback_time_ = Clock::now();
   const auto index = static_cast<uint16_t>(message.data[0]) |
     (static_cast<uint16_t>(message.data[1]) << 8);
-  if (initialization_step_ ==
-    InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION)
+  if (initialization_step_ == InitializationStep::READY &&
+    config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
+    status == RESET_STATUS_MODE)
   {
+    float value = 0.0f;
+    std::memcpy(&value, message.data.data() + 4, sizeof(float));
+    if (std::isfinite(value)) {
+      feedback_.current_a = value;
+      last_current_feedback_time_ = Clock::now();
+      return true;
+    }
+    return false;
+  }
+  if (initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_POSITION) {
     if (index != MECHANICAL_POSITION) {
       return false;
     }
@@ -384,30 +464,30 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
       retry_initialization();
       return false;
     }
-    constexpr float feedback_position_period = 8.0f * PI;
-    motor_position_rad_ = current_position;
-    last_wrapped_position_rad_ =
-      std::remainder(current_position, feedback_position_period);
-    motor_position_initialized_ = true;
-    logical_position_offset_rad_ = -current_position;
-    feedback_.position = 0.0f;
-    unreferenced_origin_initialized_ = true;
-    initialization_retry_count_ = 0;
-    initialization_step_ = InitializationStep::WRITE_PARAMETER;
+
+    startup_hold_position_rad_ = current_position;
+    initialization_step_ = InitializationStep::WRITE_STARTUP_HOLD;
     return true;
   }
-  if (initialization_step_ == InitializationStep::READY &&
-    config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
-    status == RESET_STATUS_MODE)
-  {
-    float value = 0.0f;
-    std::memcpy(&value, message.data.data() + 4, sizeof(float));
-    if (std::isfinite(value)) {
-      feedback_.current_a = value;
-      return true;
+
+  if (initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD) {
+    if (index != POSITION_REFERENCE) {
+      return false;
     }
-    return false;
+    float hold_position = 0.0f;
+    std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
+    if (status != RESET_STATUS_MODE || !std::isfinite(hold_position) ||
+      std::fabs(hold_position - startup_hold_position_rad_) >= 0.001f)
+    {
+      retry_initialization();
+      return false;
+    }
+
+    initialization_retry_count_ = 0;
+    initialization_step_ = InitializationStep::ENABLE;
+    return true;
   }
+
   if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
     return false;
   }
@@ -425,7 +505,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
   }
 
   bool values_match = false;
-  if (expected.is_uint8) {
+  if (expected.type == InitializationParameterType::UINT8) {
     values_match = message.data[4] == static_cast<uint8_t>(expected.value);
   } else {
     float value = 0.0f;
@@ -447,21 +527,71 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
       initialization_step_ = InitializationStep::ENABLE;
     }
   } else if (!motor_enabled_) {
-    initialization_step_ = InitializationStep::ENABLE;
+    if (uses_position_control() && expected.index == RUN_MODE) {
+      initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
+    } else {
+      initialization_step_ = InitializationStep::ENABLE;
+    }
   } else {
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
-  // 初期化状態が進んだことをNodeへ通知し、特に最終readbackで
-  // READYになったstateを個別topicへ即時publishさせる。
+  // 初期化状態が進んだことをNodeへ通知し，特に最終readbackでREADYになったstateを個別topicへ即時publish
   return true;
 }
 
-std::optional<can_msgs::msg::Frame> Protocol::create_current_feedback_frame()
+bool Protocol::process_fault(const can_msgs::msg::Frame & message)
+{
+  const auto fault_code = read_little_endian_uint32(message.data, 0);
+  if (fault_code == 0U) {
+    return false;
+  }
+
+  const auto current_time = Clock::now();
+  feedback_connected_ = true;
+  last_feedback_time_ = current_time;
+  detailed_fault_code_ = fault_code;
+  enter_fault_state(fault_code, current_time);
+  return true;
+}
+
+void Protocol::enter_fault_state(uint32_t fault_code, TimePoint current_time)
+{
+  feedback_.fault_code = fault_code;
+  feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
+  last_current_feedback_time_ = TimePoint{};
+  state_ = MotorState::ERROR;
+  motor_enabled_ = false;
+  has_target_ = false;
+  target_value_ = 0.0f;
+  initialization_step_ = InitializationStep::ERROR;
+  // faultが継続する間はType 2フィードバックによって更新される
+  error_time_ = current_time;
+}
+
+void Protocol::invalidate_stale_current(TimePoint current_time)
+{
+  if (!config_.current_feedback_enabled ||
+    last_current_feedback_time_ == TimePoint{})
+  {
+    return;
+  }
+  const auto timeout =
+    std::chrono::milliseconds(config_.current_feedback_period_ms) *
+    CURRENT_FEEDBACK_TIMEOUT_PERIODS;
+  if (current_time - last_current_feedback_time_ <= timeout) {
+    return;
+  }
+
+  feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
+  last_current_feedback_time_ = TimePoint{};
+}
+
+std::optional<can_msgs::msg::Frame> Protocol::create_current_feedback_frame(
+  TimePoint current_time)
 {
   if (!config_.current_feedback_enabled || state_ != MotorState::READY) {
     return std::nullopt;
   }
-  const auto current_time = Clock::now();
   const auto period =
     std::chrono::milliseconds(config_.current_feedback_period_ms);
   if (last_current_feedback_request_time_ != TimePoint{} &&
@@ -486,9 +616,10 @@ void Protocol::retry_initialization()
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     initialization_step_ = InitializationStep::ENABLE;
   } else if (initialization_step_ ==
-    InitializationStep::WAIT_FOR_CURRENT_MECHANICAL_POSITION)
+    InitializationStep::WAIT_FOR_STARTUP_POSITION ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD)
   {
-    initialization_step_ = InitializationStep::READ_CURRENT_MECHANICAL_POSITION;
+    initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
   } else {
     // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
@@ -502,12 +633,12 @@ void Protocol::restart_initialization(bool clear_target)
   consecutive_non_run_feedback_count_ = 0;
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
-  initialization_step_ = config_.resume_position_on_startup ?
-    InitializationStep::DISABLE_FOR_POSITION_RESUME :
-    InitializationStep::WRITE_PARAMETER;
+  detailed_fault_code_ = 0;
+  initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
+  last_current_feedback_time_ = TimePoint{};
   if (uses_position_control()) {
-    position_reference_is_set_ = false;
-    unreferenced_origin_initialized_ = false;
+    position_reference_state_ = PositionReferenceState::UNAVAILABLE;
     motor_position_rad_ = 0.0f;
     last_wrapped_position_rad_ = 0.0f;
     motor_position_initialized_ = false;
@@ -518,13 +649,12 @@ void Protocol::restart_initialization(bool clear_target)
   }
 }
 
-std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
+std::optional<can_msgs::msg::Frame> Protocol::create_target_frame(
+  TimePoint current_time)
 {
   if (state_ != MotorState::READY || !has_target_) {
     return std::nullopt;
   }
-
-  const auto current_time = Clock::now();
   const auto command_period =
     std::chrono::milliseconds(config_.command_period_ms);
   if (last_command_time_ != TimePoint{} &&
@@ -532,10 +662,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
   {
     return std::nullopt;
   }
-  if (uses_position_control() && !position_reference_is_set_ &&
-    !(config_.allow_unreferenced_position_commands &&
-    unreferenced_origin_initialized_))
-  {
+  if (!position_command_is_allowed()) {
     return std::nullopt;
   }
 
@@ -556,7 +683,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
       velocity_target);
   }
 
-  // PP / CSPは指令が途絶えても最後の位置を保持する
+  // PP / CSPは指令が途絶えても最後の位置を保持
   const auto absolute_position_target =
     std::clamp(
     target_value_, config_.minimum_position_rad,
@@ -568,19 +695,20 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame()
     motor_position_target);
 }
 
-void Protocol::watchdog()
+void Protocol::watchdog(TimePoint current_time)
 {
+  invalidate_stale_current(current_time);
+
   if (state_ != MotorState::READY || !feedback_connected_) {
     return;
   }
-  if (Clock::now() - last_feedback_time_ <=
+  if (current_time - last_feedback_time_ <=
     std::chrono::milliseconds(config_.feedback_timeout_ms))
   {
     return;
   }
   feedback_connected_ = false;
-  // 再接続後に古いtargetで突然動かないように
-  // targetも破棄
+  // 再接続後に古いtargetで突然動かないようにtargetも破棄
   restart_initialization(true);
 }
 
@@ -634,9 +762,5 @@ can_msgs::msg::Frame Protocol::make_enable_frame(uint8_t motor_id)
   return make_base_frame(TYPE_ENABLE, motor_id);
 }
 
-can_msgs::msg::Frame Protocol::make_disable_frame(uint8_t motor_id)
-{
-  return make_base_frame(TYPE_DISABLE, motor_id);
-}
 
 } // namespace edulite05_driver

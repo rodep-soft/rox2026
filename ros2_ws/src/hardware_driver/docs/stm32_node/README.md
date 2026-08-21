@@ -12,6 +12,9 @@ STM32とのheartbeat、LED指令、limit switch受信を担当する。belt・dr
 
 ## 通信
 
+CANの送受信トピックは`can_tx_topic`と`can_rx_topic`で設定する。既定値はそれぞれ
+`/socketcan_bridge/tx`と`/socketcan_bridge/rx`である。
+
 | 方向 | CAN ID | DLC | 内容 |
 |---|---:|---:|---|
 | RDK→STM32 | `0x101` | 0 | heartbeat |
@@ -27,9 +30,10 @@ the status flags. The ROS topic type is `std_msgs/msg/UInt16` (little endian).
 
 standard data frameだけを受け、上記受信ID以外は早期returnする。
 
-IMUの各CANフレームは最新値として保持し、姿勢を一度受信した後は受信のたびに
-`sensor_msgs/msg/Imu`として`/imu/data`へpublishする。角速度はrad/sへ変換する。
-角速度または並進加速度が未受信の場合、対応する`covariance[0]`は`-1`とする。
+IMUの各CANフレームは最新値として保持し、100 Hzのquaternion受信を契機に、
+最新の角速度・並進加速度と合わせて`sensor_msgs/msg/Imu`を`/imu/data`へpublishする。
+角速度または並進加速度が未受信、もしくは`imu_component_timeout_ms`を超えて
+更新されていない場合は、対応する`covariance[0]`を`-1`として無効であることを示す。
 
 ## limit switch
 

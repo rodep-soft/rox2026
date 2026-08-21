@@ -39,6 +39,8 @@ private:
 
   void start_homing();
   void request_zero_reference();
+  void enter_error_with_position_hold(
+    double current_position_rad, const char * reason);
   void publish_target(double target_rad);
 
   State state_{State::UNINITIALIZED};
