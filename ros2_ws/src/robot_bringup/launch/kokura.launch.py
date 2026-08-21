@@ -25,7 +25,7 @@ def generate_launch_description():
     mecanum_parameter_file = os.path.join(
         bringup_share, "config", "mecanum_controller.yaml"
     )
-    odometry_parameter_file = os.path.join(bringup_share, "config", "sensors.yaml")
+    odometry_parameter_file = os.path.join(bringup_share, "config", "odometry.yaml")
 
     return LaunchDescription(
         [

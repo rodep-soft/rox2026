@@ -20,7 +20,7 @@ def generate_launch_description():
     odometry_parameter_file = os.path.join(
         bringup_share,
         "config",
-        "sensors.yaml",
+        "odometry.yaml",
     )
 
     return LaunchDescription(
