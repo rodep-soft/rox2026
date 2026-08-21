@@ -193,7 +193,7 @@ void DribbleControllerNode::load_parameters()
 void DribbleControllerNode::position_mode_callback(
   const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  if (msg->position > robot_msgs::msg::ArmPosition::FEED) {return;}
+  if (msg->position > robot_msgs::msg::ArmPosition::FEED || emergency_stop_active_) {return;}
 
   const uint8_t target_mode = msg->position;
 
@@ -214,6 +214,8 @@ void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::
 
 void DribbleControllerNode::dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (emergency_stop_active_) {return;}
+
   if (msg->data != dribble_reverse_enabled_) {
     dribble_reverse_enabled_ = msg->data;
     reverse_transition_active_ = true;
@@ -266,27 +268,46 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
 
 void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data != emergency_stop_active_) {
-    if (msg->data) {
-      shot_cycle_active_ = false;
-      manual_transition_active_ = false;
-      reverse_transition_active_ = false;
-      current_filtered_roller_rpm_ = 0;
-      RCLCPP_WARN(
-        get_logger(),
-        "Emergency stop activated in dribble controller");
-    } else {
-      RCLCPP_INFO(
-        get_logger(),
-        "Emergency stop released in dribble controller -> Smoothly resuming to DRIBBLE");
-      manual_transition_active_ = true;
-      manual_transition_start_time_ = now();
-      manual_transition_start_position_rad_ = last_position_command_rad_;
-      manual_transition_start_rpm_ = 0;
-      position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-    }
+  if (msg->data == emergency_stop_active_) {
+    return;
   }
+
   emergency_stop_active_ = msg->data;
+
+  if (emergency_stop_active_) {
+    emergency_hold_position_rad_ =
+      arm_state_received_ ? current_arm_position_rad_ : last_position_command_rad_;
+    last_position_command_rad_ = emergency_hold_position_rad_;
+    current_filtered_roller_rpm_ = 0;
+    RCLCPP_WARN(
+      get_logger(), "Emergency stop activated: holding dribble arm at %.3f rad",
+      emergency_hold_position_rad_);
+  } else {
+    const double resume_position_rad =
+      arm_state_received_ ? current_arm_position_rad_ : emergency_hold_position_rad_;
+
+    // Preserve the pre-stop mode and shot-cycle phase. Restart interpolation from the measured
+    // position so that releasing emergency stop cannot apply a discontinuous target.
+    if (shot_cycle_active_) {
+      shot_cycle_start_position_rad_ = resume_position_rad;
+      shot_cycle_start_time_ = now();
+    } else {
+      manual_transition_active_ = true;
+      manual_transition_start_position_rad_ = resume_position_rad;
+      manual_transition_start_time_ = now();
+      manual_transition_start_rpm_ = 0;
+    }
+    if (dribble_reverse_enabled_) {
+      reverse_transition_active_ = true;
+      reverse_transition_start_time_ = now();
+      reverse_transition_start_rpm_ = 0;
+    }
+    last_position_command_rad_ = resume_position_rad;
+    RCLCPP_INFO(
+      get_logger(),
+      "Emergency stop released: resuming dribble operation from %.3f rad",
+      resume_position_rad);
+  }
   control_timer_callback();
 }
 
@@ -650,29 +671,10 @@ void DribbleControllerNode::control_timer_callback()
   roller_command_pub_->publish(roller_command);
 
   if (emergency_stop_active_) {
-    shot_cycle_active_ = false;
     actuator_msgs::msg::ActuatorTarget position_command;
     position_command.logical_id = position_logical_id_;
-
-    double estop_target_rad = dribble_position_rad_;
-    if (manual_transition_active_) {
-      const double elapsed_sec = (now() - manual_transition_start_time_).seconds();
-      const double move_duration_sec = transition_duration_sec(
-        manual_transition_start_position_rad_, dribble_position_rad_,
-        dribbling_max_velocity_rad_s_, dribbling_accel_factor_);
-      estop_target_rad = interpolated_position_rad(
-        manual_transition_start_position_rad_, dribble_position_rad_, elapsed_sec,
-        dribbling_max_velocity_rad_s_, dribbling_accel_factor_);
-      if (elapsed_sec >= move_duration_sec) {
-        manual_transition_active_ = false;
-        estop_target_rad = dribble_position_rad_;
-      }
-    } else if (!arm_state_received_) {
-      estop_target_rad = last_position_command_rad_;
-    }
-
-    position_command.target = static_cast<float>(estop_target_rad);
-    last_position_command_rad_ = estop_target_rad;
+    position_command.target = static_cast<float>(emergency_hold_position_rad_);
+    last_position_command_rad_ = emergency_hold_position_rad_;
     position_command_pub_->publish(position_command);
     return;
   }

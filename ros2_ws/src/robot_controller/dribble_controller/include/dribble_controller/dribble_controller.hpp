@@ -96,6 +96,7 @@ private:
   bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
   bool arm_state_received_{false};
+  double emergency_hold_position_rad_{0.0};
 
   // 運動補正用の一時変数
   double cmd_vel_vx_{0.0};

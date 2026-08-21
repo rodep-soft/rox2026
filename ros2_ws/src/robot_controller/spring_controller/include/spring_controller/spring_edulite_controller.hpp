@@ -51,6 +51,7 @@ private:
   bool actuator_ready_{false};
   bool position_reference_set_{false};
   bool zero_service_pending_{false};
+  bool actuator_position_received_{false};
 
   int limit_switch_bit_offset_{0};
   int command_period_ms_{10};
@@ -69,6 +70,7 @@ private:
   double target_position_rad_{0.0};
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
+  double actuator_position_rad_{0.0};
   uint16_t logical_id_{4};
 
   rcl_interfaces::msg::SetParametersResult parameters_callback(
