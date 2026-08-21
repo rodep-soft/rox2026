@@ -70,7 +70,9 @@ private:
     std::string field_side = declare_parameter<std::string>("field_side", "left");
     const double mirror = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
     if (mirror < 0.0) {
-      RCLCPP_INFO(get_logger(), "🔄 [Localizer] RIGHT/BLUE Field Side! Auto-mirroring Tag Y positions and Yaw orientations.");
+      RCLCPP_INFO(
+        get_logger(),
+        "🔄 [Localizer] RIGHT/BLUE Field Side! Auto-mirroring Tag Y positions and Yaw orientations.");
     }
 
     const auto active_ids = declare_parameter<std::vector<int64_t>>("active_tag_ids", {0, 1, 2, 3});

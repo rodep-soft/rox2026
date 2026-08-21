@@ -398,7 +398,8 @@ void Game2AutoNode::tag_detections_callback(
       for (size_t i = 0; i < row_detected.size(); ++i) {
         for (size_t j = i + 1; j < row_detected.size(); ++j) {
           const double delta_col = std::abs(row_detected[i]->col - row_detected[j]->col);
-          const double delta_pixel_x = std::abs(row_detected[i]->pixel_x - row_detected[j]->pixel_x);
+          const double delta_pixel_x =
+            std::abs(row_detected[i]->pixel_x - row_detected[j]->pixel_x);
           if (delta_col > 0 && delta_pixel_x > 10.0) {
             const double real_dx = delta_col * tag_pitch_x_; // [m]
             const double z_est = (camera_fx_ * real_dx) / delta_pixel_x;

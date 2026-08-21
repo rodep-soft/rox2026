@@ -120,9 +120,22 @@ ament_target_dependencies(
 
 add_executable(apriltag_localizer_node auto_controllers/game1_shooter/src/apriltag_localizer_node.cpp)
 ament_target_dependencies(
-  apriltag_localizer_node apriltag_msgs geometry_msgs rclcpp sensor_msgs tf2 tf2_geometry_msgs)
+  apriltag_localizer_node
+  apriltag_msgs
+  geometry_msgs
+  rclcpp
+  sensor_msgs
+  tf2
+  tf2_geometry_msgs)
 
-list(APPEND controller_nodes mecanum_odometry_node heading_hold_node imu_mux_node test_game1_wp_move_node apriltag_localizer_node)
+list(
+  APPEND
+  controller_nodes
+  mecanum_odometry_node
+  heading_hold_node
+  imu_mux_node
+  test_game1_wp_move_node
+  apriltag_localizer_node)
 
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 

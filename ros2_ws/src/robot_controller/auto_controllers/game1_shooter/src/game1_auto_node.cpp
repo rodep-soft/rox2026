@@ -26,7 +26,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   std::string field_side = declare_parameter<std::string>("field_side", "left");
   const double mirror = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
   if (mirror < 0.0) {
-    RCLCPP_INFO(get_logger(), "🔄 [Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
+    RCLCPP_INFO(
+      get_logger(),
+      "🔄 [Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
   } else {
     RCLCPP_INFO(get_logger(), "🚩 [Game 1] LEFT/RED Field Side selected (Standard orientation).");
   }
