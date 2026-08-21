@@ -41,6 +41,9 @@ debug:
 can-check:
 	python3 ros2_ws/src/robot_bringup/scripts/can_health_check.py
 
+bench-cpu:
+	python3 ros2_ws/src/robot_bringup/scripts/cpu_benchmark.py $(sec)
+
 # ── 🚀 ロボット本番起動ショートカット ──
 launch-robot:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup robot.launch.py
