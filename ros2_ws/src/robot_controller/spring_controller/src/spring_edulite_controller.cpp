@@ -173,27 +173,21 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
     return;
   }
 
+  const auto current_time = now();
   if (emergency_stop_active_) {
-    // Only slow fire is paused. Normal firing keeps its original target and continues.
-    if (actuator_position_received_) {
-      target_position_rad_ = actuator_position_rad_;
-      publish_target(target_position_rad_);
-    }
+    slow_fire_pause_start_time_ = current_time;
     stopped_count_ = 0;
     RCLCPP_WARN(
-      get_logger(), "Emergency stop activated during slow fire: holding at %.3f rad",
+      get_logger(), "Emergency stop activated during slow fire: trajectory paused at %.3f rad",
       target_position_rad_);
     return;
   }
 
-  // Continue the interrupted slow-fire phase from the measured position.
-  if (actuator_position_received_) {
-    target_position_rad_ = actuator_position_rad_;
-  }
-  slow_fire_phase_start_time_ = now();
+  const auto paused_duration = current_time - slow_fire_pause_start_time_;
+  slow_fire_phase_start_time_ = slow_fire_phase_start_time_ + paused_duration;
   stopped_count_ = 0;
   RCLCPP_INFO(
-    get_logger(), "Emergency stop released: resuming slow fire from %.3f rad",
+    get_logger(), "Emergency stop released: resuming unchanged slow-fire trajectory at %.3f rad",
     target_position_rad_);
 }
 
@@ -224,6 +218,7 @@ void SpringEduliteController::actuator_state_callback(
     actuator_ready_ = false;
     position_reference_set_ = false;
     actuator_position_received_ = false;
+    homing_required_ = true;
     state_ = State::UNINITIALIZED;
     return;
   }
@@ -232,25 +227,10 @@ void SpringEduliteController::actuator_state_callback(
   actuator_position_rad_ = msg->position;
   actuator_position_received_ = true;
 
-  // 初回接続時 or 位置参照失われた場合
-  if (state_ == State::UNINITIALIZED || !msg->position_reference_set) {
-    if (state_ != State::HOMING && state_ != State::WAITING_FOR_STOP) {
-      if (!msg->position_reference_set) {
-        RCLCPP_WARN(get_logger(), "Position reference lost. Starting HOMING.");
-        start_homing();
-      } else {
-        if (std::fabs(standby_offset_rad_) > 1e-4) {
-          target_position_rad_ = standby_offset_rad_;
-          state_ = State::MOVING_TO_STANDBY;
-          stopped_count_ = 0;
-          publish_target(target_position_rad_);
-        } else {
-          target_position_rad_ = 0.0;
-          state_ = State::READY;
-          publish_target(0.0);
-        }
-      }
-    }
+  // Home exactly once for this motor connection. A power-cycle sets homing_required_ again.
+  if (state_ == State::UNINITIALIZED && homing_required_) {
+    RCLCPP_WARN(get_logger(), "Spring EduLite startup detected. Starting one-time HOMING.");
+    start_homing();
   }
   // Feedback remains useful for the release position, but state completion and timeout checks
   // must stay paused until emergency stop is released.
@@ -433,7 +413,7 @@ void SpringEduliteController::control_timer_callback()
 void SpringEduliteController::start_homing()
 {
   state_ = State::HOMING;
-  target_position_rad_ = 0.0;
+  target_position_rad_ = actuator_position_received_ ? actuator_position_rad_ : 0.0;
   stopped_count_ = 0;
   zero_service_pending_ = false;
   homing_start_time_ = now();
@@ -455,6 +435,7 @@ void SpringEduliteController::request_zero_reference()
       const auto response = future.get();
       if (response->success) {
         RCLCPP_INFO(get_logger(), "Spring position successfully zeroed to 0.0 rad.");
+        homing_required_ = false;
         if (std::fabs(standby_offset_rad_) > 1e-4) {
           target_position_rad_ = standby_offset_rad_;
           state_ = State::MOVING_TO_STANDBY;

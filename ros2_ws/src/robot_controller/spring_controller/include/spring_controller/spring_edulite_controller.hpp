@@ -52,6 +52,7 @@ private:
   bool position_reference_set_{false};
   bool zero_service_pending_{false};
   bool actuator_position_received_{false};
+  bool homing_required_{true};
 
   int limit_switch_bit_offset_{0};
   int command_period_ms_{10};
@@ -77,6 +78,7 @@ private:
     const std::vector<rclcpp::Parameter> & parameters);
 
   rclcpp::Time homing_start_time_;
+  rclcpp::Time slow_fire_pause_start_time_;
   rclcpp::Time slow_fire_phase_start_time_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
