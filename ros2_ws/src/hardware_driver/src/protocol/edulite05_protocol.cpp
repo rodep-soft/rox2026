@@ -148,6 +148,12 @@ void Protocol::set_target(float target)
   if (!std::isfinite(target)) {
     return;
   }
+  // A position target received during initialization could be applied immediately when the
+  // motor becomes READY, before the controller observes the new measured position. Discard it
+  // so a power-cycle cannot revive a stale absolute target and cause a position jump.
+  if (uses_position_control() && state_ != MotorState::READY) {
+    return;
+  }
   target_value_ = target;
   has_target_ = true;
   last_target_time_ = Clock::now();

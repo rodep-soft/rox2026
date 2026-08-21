@@ -167,35 +167,33 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
   }
 
   emergency_stop_active_ = msg->data;
+  const bool slow_fire_interrupted =
+    state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING;
+  if (!slow_fire_interrupted) {
+    return;
+  }
 
   if (emergency_stop_active_) {
-    // Preserve the interrupted state and hold the measured position. This prevents the old,
-    // advanced target from being applied when the hardware leaves emergency stop.
+    // Only slow fire is paused. Normal firing keeps its original target and continues.
     if (actuator_position_received_) {
       target_position_rad_ = actuator_position_rad_;
       publish_target(target_position_rad_);
     }
     stopped_count_ = 0;
     RCLCPP_WARN(
-      get_logger(), "Emergency stop activated: holding spring at %.3f rad",
+      get_logger(), "Emergency stop activated during slow fire: holding at %.3f rad",
       target_position_rad_);
     return;
   }
 
-  // Resume timed phases from the measured position. The control timer continues toward the
-  // original peak/base target using the configured velocity-limited increments.
+  // Continue the interrupted slow-fire phase from the measured position.
   if (actuator_position_received_) {
     target_position_rad_ = actuator_position_rad_;
   }
-  if (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING) {
-    slow_fire_phase_start_time_ = now();
-  }
-  if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
-    homing_start_time_ = now();
-  }
+  slow_fire_phase_start_time_ = now();
   stopped_count_ = 0;
   RCLCPP_INFO(
-    get_logger(), "Emergency stop released: resuming spring operation from %.3f rad",
+    get_logger(), "Emergency stop released: resuming slow fire from %.3f rad",
     target_position_rad_);
 }
 
@@ -225,6 +223,7 @@ void SpringEduliteController::actuator_state_callback(
     }
     actuator_ready_ = false;
     position_reference_set_ = false;
+    actuator_position_received_ = false;
     state_ = State::UNINITIALIZED;
     return;
   }
@@ -255,7 +254,9 @@ void SpringEduliteController::actuator_state_callback(
   }
   // Feedback remains useful for the release position, but state completion and timeout checks
   // must stay paused until emergency stop is released.
-  if (emergency_stop_active_) {
+  const bool slow_fire_paused = emergency_stop_active_ &&
+    (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
+  if (slow_fire_paused) {
     return;
   }
 
@@ -386,13 +387,9 @@ void SpringEduliteController::control_timer_callback()
     return;
   }
 
-  if (emergency_stop_active_) {
-    // 非常停止中はホーミングタイマーをリセットして待機
-    if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
-      homing_start_time_ = now();
-    }
-    return;
-  }
+  const bool slow_fire_paused = emergency_stop_active_ &&
+    (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
+  if (slow_fire_paused) {return;}
 
   // ホーミングタイムアウト判定（非常停止解除中のみカウント）
   if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {

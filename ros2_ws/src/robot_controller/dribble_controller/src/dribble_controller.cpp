@@ -324,21 +324,50 @@ void DribbleControllerNode::opening_rpm_callback(const std_msgs::msg::Int32::Sha
 void DribbleControllerNode::actuator_state_callback(
   const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
-  if (msg->logical_id == position_logical_id_) {
-    current_arm_position_rad_ = msg->position;
-    if (!arm_state_received_) {
-      arm_state_received_ = true;
-      last_position_command_rad_ = msg->position;
-      manual_transition_active_ = true;
-      manual_transition_start_time_ = now();
-      manual_transition_start_position_rad_ = msg->position;
-      manual_transition_start_rpm_ = 0;
-      position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-      RCLCPP_INFO(
-        get_logger(),
-        "Arm initial position received: %.3f rad -> smoothly approaching DRIBBLE (%.3f rad)",
-        msg->position, dribble_position_rad_);
+  if (msg->logical_id != position_logical_id_) {
+    return;
+  }
+
+  const bool ready = msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
+  if (!ready) {
+    if (arm_actuator_ready_) {
+      RCLCPP_WARN(get_logger(), "Dribble EduLite disconnected; pausing position commands");
     }
+    arm_actuator_ready_ = false;
+    return;
+  }
+
+  const bool reconnected = arm_state_received_ && !arm_actuator_ready_;
+  arm_actuator_ready_ = true;
+  current_arm_position_rad_ = msg->position;
+
+  if (!arm_state_received_) {
+    arm_state_received_ = true;
+    last_position_command_rad_ = msg->position;
+    manual_transition_active_ = true;
+    manual_transition_start_time_ = now();
+    manual_transition_start_position_rad_ = msg->position;
+    manual_transition_start_rpm_ = 0;
+    position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+    RCLCPP_INFO(
+      get_logger(),
+      "Arm initial position received: %.3f rad -> smoothly approaching DRIBBLE (%.3f rad)",
+      msg->position, dribble_position_rad_);
+  } else if (reconnected) {
+    last_position_command_rad_ = msg->position;
+    emergency_hold_position_rad_ = msg->position;
+    if (shot_cycle_active_) {
+      shot_cycle_start_position_rad_ = msg->position;
+      shot_cycle_start_time_ = now();
+    } else {
+      manual_transition_active_ = true;
+      manual_transition_start_position_rad_ = msg->position;
+      manual_transition_start_time_ = now();
+      manual_transition_start_rpm_ = current_filtered_roller_rpm_;
+    }
+    RCLCPP_INFO(
+      get_logger(), "Dribble EduLite reconnected at %.3f rad; resuming smoothly",
+      msg->position);
   }
 }
 
@@ -669,6 +698,10 @@ void DribbleControllerNode::control_timer_callback()
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
+  if (!arm_actuator_ready_) {
+    return;
+  }
+
 
   if (emergency_stop_active_) {
     actuator_msgs::msg::ActuatorTarget position_command;
