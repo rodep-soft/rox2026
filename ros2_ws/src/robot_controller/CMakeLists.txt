@@ -114,10 +114,6 @@ add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_g
 ament_target_dependencies(
   test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
 
-add_executable(imu_mux_node imu_mux/src/imu_mux_node.cpp)
-ament_target_dependencies(
-  imu_mux_node rclcpp sensor_msgs)
-
 add_executable(apriltag_localizer_node auto_controllers/game1_shooter/src/apriltag_localizer_node.cpp)
 ament_target_dependencies(
   apriltag_localizer_node
@@ -133,10 +129,8 @@ list(
   controller_nodes
   mecanum_odometry_node
   heading_hold_node
-  imu_mux_node
   test_game1_wp_move_node
   apriltag_localizer_node)
-
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories

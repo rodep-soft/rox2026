@@ -20,15 +20,8 @@ def generate_launch_description():
             **kwargs,
         )
 
-    # hardware (ドライバ類・VESC・CAN・BNO055 IMU等)
-    hardware_launch = include(
-        "hardware.launch.py",
-        launch_arguments=list(
-            {
-                "enable_imu": LaunchConfiguration("enable_imu"),
-            }.items()
-        ),
-    )
+    # hardware (CAN, STM32 IMU, VESC and EduLite drivers)
+    hardware_launch = include("hardware.launch.py")
 
     # 230AI ステレオビジョン機能（hobot_stereonet, AprilTag & YOLO）
     vision_launch = include(
@@ -69,18 +62,6 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
-    # BNO055 IMU ドライバノード (libbno055-linux)
-    bno055_launch = include(
-        "bno055.launch.py",
-        condition=IfCondition(LaunchConfiguration("enable_bno055")),
-        launch_arguments=list(
-            {
-                "imu_i2c_bus": LaunchConfiguration("imu_i2c_bus"),
-                "imu_i2c_address": LaunchConfiguration("imu_i2c_address"),
-            }.items()
-        ),
-    )
-
     # 拡張カルマンフィルタ (EKF) ノード
     ekf_launch = include(
         "ekf.launch.py",
@@ -99,11 +80,6 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "enable_imu",
-                default_value="true",
-                description="Enable BNO055 IMU & Heading PID Controller",
-            ),
             DeclareLaunchArgument(
                 "enable_vision",
                 default_value="false",
@@ -140,21 +116,6 @@ def generate_launch_description():
                 description="Enable Game2 tactical panel shooter node",
             ),
             DeclareLaunchArgument(
-                "enable_bno055",
-                default_value="false",
-                description="Enable BNO055 IMU driver node (libbno055-linux)",
-            ),
-            DeclareLaunchArgument(
-                "imu_i2c_bus",
-                default_value="/dev/i2c-1",
-                description="I2C bus device path for BNO055 IMU (e.g. /dev/i2c-1)",
-            ),
-            DeclareLaunchArgument(
-                "imu_i2c_address",
-                default_value="0x28",
-                description="I2C address for BNO055 IMU (0x28 or 0x29)",
-            ),
-            DeclareLaunchArgument(
                 "enable_ekf",
                 default_value="true",
                 description="Enable Extended Kalman Filter (robot_localization EKF)",
@@ -182,7 +143,6 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
-            bno055_launch,
             game1_shooter_launch,
             game2_shooter_launch,
             ekf_launch,

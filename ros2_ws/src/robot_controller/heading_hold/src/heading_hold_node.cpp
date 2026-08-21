@@ -71,6 +71,9 @@ private:
     heading_deadband_rad_ = declare_parameter("heading_deadband_rad", 0.02);
     rotation_input_deadband_rad_s_ =
       declare_parameter("rotation_input_deadband_rad_s", 0.02);
+    rotation_settle_velocity_rad_s_ =
+      declare_parameter("rotation_settle_velocity_rad_s", 0.08);
+    rotation_settle_duration_ms_ = declare_parameter("rotation_settle_duration_ms", 100);
     max_correction_rad_s_ = declare_parameter("max_correction_rad_s", 1.5);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
@@ -88,9 +91,10 @@ private:
     validate_non_negative("integral_limit", integral_limit_rad_s_);
     validate_non_negative("heading_deadband_rad", heading_deadband_rad_);
     validate_non_negative("rotation_input_deadband_rad_s", rotation_input_deadband_rad_s_);
+    validate_non_negative("rotation_settle_velocity_rad_s", rotation_settle_velocity_rad_s_);
     validate_positive("max_correction_rad_s", max_correction_rad_s_);
-    if (control_period_ms_ <= 0 || command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0 ||
-      command_qos_depth_ <= 0)
+    if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
+      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0 || command_qos_depth_ <= 0)
     {
       throw std::invalid_argument("period, timeout, and QoS parameters must be positive");
     }
@@ -125,6 +129,8 @@ private:
     double next_rotation_deadband = rotation_input_deadband_rad_s_;
     double next_max_correction = max_correction_rad_s_;
 
+    double next_settle_velocity = rotation_settle_velocity_rad_s_;
+    int next_settle_duration_ms = rotation_settle_duration_ms_;
     for (const auto & parameter : parameters) {
       const auto & name = parameter.get_name();
       if (name == "kp") {
@@ -141,6 +147,10 @@ private:
         next_rotation_deadband = parameter.as_double();
       } else if (name == "max_correction_rad_s") {
         next_max_correction = parameter.as_double();
+      } else if (name == "rotation_settle_velocity_rad_s") {
+        next_settle_velocity = parameter.as_double();
+      } else if (name == "rotation_settle_duration_ms") {
+        next_settle_duration_ms = parameter.as_int();
       } else {
         return result;
       }
@@ -148,9 +158,11 @@ private:
 
     if (!std::isfinite(next_kp) || !std::isfinite(next_ki) || !std::isfinite(next_kd) ||
       !std::isfinite(next_integral_limit) || !std::isfinite(next_heading_deadband) ||
-      !std::isfinite(next_rotation_deadband) || !std::isfinite(next_max_correction) ||
+      !std::isfinite(next_rotation_deadband) || !std::isfinite(next_settle_velocity) ||
+      !std::isfinite(next_max_correction) ||
       next_kp < 0.0 || next_ki < 0.0 || next_kd < 0.0 || next_integral_limit < 0.0 ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
+      next_settle_velocity < 0.0 || next_settle_duration_ms <= 0 ||
       next_max_correction <= 0.0)
     {
       result.reason = "PID gains and limits must be finite and non-negative";
@@ -163,6 +175,8 @@ private:
     integral_limit_rad_s_ = next_integral_limit;
     heading_deadband_rad_ = next_heading_deadband;
     rotation_input_deadband_rad_s_ = next_rotation_deadband;
+    rotation_settle_velocity_rad_s_ = next_settle_velocity;
+    rotation_settle_duration_ms_ = next_settle_duration_ms;
     max_correction_rad_s_ = next_max_correction;
     result.successful = true;
     result.reason = "success";
@@ -215,6 +229,8 @@ private:
   {
     target_yaw_initialized_ = false;
     integral_error_rad_s_ = 0.0;
+    rotation_state_ = RotationState::HOLDING;
+    settle_velocity_is_stable_ = false;
   }
 
   void control()
@@ -250,8 +266,47 @@ private:
       target_yaw_rad_ = current_yaw_rad_;
       target_yaw_initialized_ = true;
       integral_error_rad_s_ = 0.0;
+      rotation_state_ = RotationState::MANUAL_ROTATION;
       corrected_command_pub_->publish(latest_command_);
       return;
+    }
+
+    if (rotation_state_ == RotationState::MANUAL_ROTATION) {
+      rotation_state_ = RotationState::SETTLING;
+      settle_velocity_is_stable_ = false;
+    }
+
+    if (rotation_state_ == RotationState::SETTLING) {
+      target_yaw_rad_ = current_yaw_rad_;
+      target_yaw_initialized_ = true;
+      integral_error_rad_s_ = 0.0;
+
+      auto settling_command = latest_command_;
+      settling_command.angular.z = 0.0;
+      corrected_command_pub_->publish(settling_command);
+
+      if (std::abs(current_angular_velocity_z_rad_s_) >
+        rotation_settle_velocity_rad_s_)
+      {
+        settle_velocity_is_stable_ = false;
+        return;
+      }
+
+      if (!settle_velocity_is_stable_) {
+        settle_velocity_is_stable_ = true;
+        settle_stable_since_ = current_time;
+        return;
+      }
+
+      if ((current_time - settle_stable_since_).nanoseconds() <
+        rotation_settle_duration_ms_ * 1000000LL)
+      {
+        return;
+      }
+
+      rotation_state_ = RotationState::HOLDING;
+      settle_velocity_is_stable_ = false;
+      target_yaw_rad_ = current_yaw_rad_;
     }
 
     if (!target_yaw_initialized_) {
@@ -291,6 +346,8 @@ private:
   rclcpp::Time last_command_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_imu_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_control_time_{0, 0, RCL_ROS_TIME};
+
+  enum class RotationState {HOLDING, MANUAL_ROTATION, SETTLING};
   double current_yaw_rad_{0.0};
   double current_angular_velocity_z_rad_s_{0.0};
   double target_yaw_rad_{0.0};
@@ -304,6 +361,11 @@ private:
   double integral_limit_rad_s_{0.5};
   double heading_deadband_rad_{0.02};
   double rotation_input_deadband_rad_s_{0.02};
+  double rotation_settle_velocity_rad_s_{0.08};
+  int rotation_settle_duration_ms_{100};
+  RotationState rotation_state_{RotationState::HOLDING};
+  bool settle_velocity_is_stable_{false};
+  rclcpp::Time settle_stable_since_{0, 0, RCL_ROS_TIME};
   double max_correction_rad_s_{1.5};
   int control_period_ms_{20};
   int command_timeout_ms_{500};

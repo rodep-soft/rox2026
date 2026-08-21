@@ -1,5 +1,0 @@
-repositories:
-  libbno055-linux:
-    type: git
-    url: git@github.com:lazytatzv/libbno055-linux.git
-    version: main
