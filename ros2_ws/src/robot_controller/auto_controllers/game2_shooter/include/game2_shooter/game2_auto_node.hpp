@@ -122,6 +122,8 @@ private:
   // Tolerances & Timings
   double yaw_tolerance_{0.015}; // rad (~0.85 deg)
   double dist_tolerance_{0.05};
+  double tag_pitch_x_{0.40};    // [m] AprilTag横方向中心間ピッチ (実測値: 400mm)
+  double tag_pitch_y_{0.43};    // [m] AprilTag縦方向中心間ピッチ (実測値: 430mm)
   double rpm_bottom_{3000.0};
   double rpm_middle_{4500.0};
   double rpm_top_{6000.0};

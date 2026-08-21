@@ -15,6 +15,10 @@ game2_auto_node:
     camera_cx: 960.0        # [px] 光学主点X
     camera_cy: 540.0        # [px] 光学主点Y
 
+    # ── 📐 パネル物理配置パラメータ (Tag中心間ピッチ) ──
+    tag_pitch_x: 0.40       # [m] 横方向中心間ピッチ (実測値: 400mm)
+    tag_pitch_y: 0.43       # [m] 縦方向中心間ピッチ (実測値: 430mm)
+
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
     kp_yaw: 2.2             # 比例ゲイン (視覚誤差)
     kd_yaw: 0.10            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)

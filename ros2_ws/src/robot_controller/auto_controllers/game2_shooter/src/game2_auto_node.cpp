@@ -114,6 +114,8 @@ void Game2AutoNode::load_parameters()
   open_duration_ = declare_parameter<double>("open_duration", 0.3);
   shoot_hold_duration_ = declare_parameter<double>("shoot_hold_duration", 0.8);
   ball_settle_duration_ = declare_parameter<double>("ball_settle_duration", 0.3);
+  tag_pitch_x_ = declare_parameter<double>("tag_pitch_x", 0.40);
+  tag_pitch_y_ = declare_parameter<double>("tag_pitch_y", 0.43);
   tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 0.5);
   aligning_timeout_ = declare_parameter<double>("aligning_timeout", 10.0);
   shooting_timeout_ = declare_parameter<double>("shooting_timeout", 3.0);
@@ -189,6 +191,10 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       yaw_tolerance_ = param.as_double();
     } else if (name == "target_distance") {
       target_distance_ = param.as_double();
+    } else if (name == "tag_pitch_x") {
+      tag_pitch_x_ = param.as_double();
+    } else if (name == "tag_pitch_y") {
+      tag_pitch_y_ = param.as_double();
     } else if (name == "camera_fx") {
       camera_fx_ = param.as_double();
     } else if (name == "camera_offset_y") {
@@ -360,6 +366,7 @@ void Game2AutoNode::tag_detections_callback(
 {
   const auto current_time = now();
 
+  // 1. 各検出タグのピクセル座標を記録
   for (const auto & detection : msg->detections) {
     const int id = detection.id;
     auto it = panel_grid_.find(id);
@@ -368,17 +375,56 @@ void Game2AutoNode::tag_detections_callback(
       it->second.detected = true;
       it->second.pixel_x = static_cast<double>(detection.centre.x);
       it->second.pixel_y = static_cast<double>(detection.centre.y);
+    }
+  }
 
-      // ── 📐 厳密な3D幾何学座標変換 (カメラ光学座標系 -> ロボット旋回/射出口座標系) ──
-      // 1. カメラ光学系におけるターゲット相対位置 (X_cam: 前方深度, Y_cam: 左方距離)
-      const double z_cam = target_distance_;
-      const double y_cam_left = -(it->second.pixel_x - camera_cx_) * z_cam / camera_fx_;
+  // 2. 📐 既知のTag中心間距離（横0.40m, 縦0.43m）を用いたリアルタイム高精度実距離(Z)推定
+  double estimated_z = target_distance_; // デフォルト値 (4.0m)
+  double z_sum = 0.0;
+  int z_count = 0;
 
-      // 2. カメラオフセット (X: +265mm前方, Y: +35mm左方) を加算してロボット座標系へ変換
-      //    ロボット中心/射出口から見たターゲット位置 (x_robot, y_robot)
-      it->second.x = z_cam + camera_offset_x_;
-      it->second.y = y_cam_left + camera_offset_y_;
-      it->second.z = camera_offset_z_;
+  // 同一同一段内で2つ以上のTagが検出されている場合、横ピッチ(0.40m)からZ距離を三角測量
+  for (int r = 0; r <= 2; ++r) {
+    std::vector<const PanelTagInfo *> row_detected;
+    for (const auto & [id, panel] : panel_grid_) {
+      if (panel.row == r && panel.detected &&
+        (current_time - panel.last_seen).seconds() <= tag_lost_timeout_)
+      {
+        row_detected.push_back(&panel);
+      }
+    }
+
+    if (row_detected.size() >= 2) {
+      for (size_t i = 0; i < row_detected.size(); ++i) {
+        for (size_t j = i + 1; j < row_detected.size(); ++j) {
+          const double delta_col = std::abs(row_detected[i]->col - row_detected[j]->col);
+          const double delta_pixel_x = std::abs(row_detected[i]->pixel_x - row_detected[j]->pixel_x);
+          if (delta_col > 0 && delta_pixel_x > 10.0) {
+            const double real_dx = delta_col * tag_pitch_x_; // [m]
+            const double z_est = (camera_fx_ * real_dx) / delta_pixel_x;
+            // 妥当な距離範囲 (2.0m 〜 6.0m) の場合のみ採用
+            if (z_est >= 2.0 && z_est <= 6.0) {
+              z_sum += z_est;
+              z_count++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (z_count > 0) {
+    estimated_z = z_sum / static_cast<double>(z_count);
+  }
+
+  // 3. 各タグのロボット座標系 (x_robot, y_robot, z_robot) を精密計算
+  for (auto & [id, panel] : panel_grid_) {
+    if (panel.detected) {
+      const double z_cam = estimated_z;
+      const double y_cam_left = -(panel.pixel_x - camera_cx_) * z_cam / camera_fx_;
+      panel.x = z_cam + camera_offset_x_;
+      panel.y = y_cam_left + camera_offset_y_;
+      panel.z = camera_offset_z_;
     }
   }
 
