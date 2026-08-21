@@ -169,13 +169,16 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
   emergency_stop_active_ = msg->data;
   const bool slow_fire_interrupted =
     state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING;
+  if (!emergency_stop_active_ &&
+    (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP))
+  {
+    homing_start_time_ = now();
+  }
   if (!slow_fire_interrupted) {
     return;
   }
 
-  const auto current_time = now();
   if (emergency_stop_active_) {
-    slow_fire_pause_start_time_ = current_time;
     stopped_count_ = 0;
     RCLCPP_WARN(
       get_logger(), "Emergency stop activated during slow fire: trajectory paused at %.3f rad",
@@ -183,8 +186,7 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
     return;
   }
 
-  const auto paused_duration = current_time - slow_fire_pause_start_time_;
-  slow_fire_phase_start_time_ = slow_fire_phase_start_time_ + paused_duration;
+  slow_fire_phase_start_time_ = now();
   stopped_count_ = 0;
   RCLCPP_INFO(
     get_logger(), "Emergency stop released: resuming unchanged slow-fire trajectory at %.3f rad",
@@ -228,15 +230,16 @@ void SpringEduliteController::actuator_state_callback(
   actuator_position_received_ = true;
 
   // Home exactly once for this motor connection. A power-cycle sets homing_required_ again.
-  if (state_ == State::UNINITIALIZED && homing_required_) {
+  if (state_ == State::UNINITIALIZED && homing_required_ && !emergency_stop_active_) {
     RCLCPP_WARN(get_logger(), "Spring EduLite startup detected. Starting one-time HOMING.");
     start_homing();
   }
   // Feedback remains useful for the release position, but state completion and timeout checks
   // must stay paused until emergency stop is released.
-  const bool slow_fire_paused = emergency_stop_active_ &&
-    (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
-  if (slow_fire_paused) {
+  const bool emergency_motion_paused = emergency_stop_active_ &&
+    (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP ||
+    state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
+  if (emergency_motion_paused) {
     return;
   }
 
@@ -367,9 +370,10 @@ void SpringEduliteController::control_timer_callback()
     return;
   }
 
-  const bool slow_fire_paused = emergency_stop_active_ &&
-    (state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
-  if (slow_fire_paused) {return;}
+  const bool emergency_motion_paused = emergency_stop_active_ &&
+    (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP ||
+    state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
+  if (emergency_motion_paused) {return;}
 
   // ホーミングタイムアウト判定（非常停止解除中のみカウント）
   if (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {

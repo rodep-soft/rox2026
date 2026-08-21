@@ -78,7 +78,6 @@ private:
     const std::vector<rclcpp::Parameter> & parameters);
 
   rclcpp::Time homing_start_time_;
-  rclcpp::Time slow_fire_pause_start_time_;
   rclcpp::Time slow_fire_phase_start_time_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
