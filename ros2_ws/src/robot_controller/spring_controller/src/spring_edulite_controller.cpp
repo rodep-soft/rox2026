@@ -35,6 +35,8 @@ SpringEduliteController::SpringEduliteController()
   slow_fire_velocity_rad_s_ = declare_double_parameter("slow_fire_velocity_rad_s", 12.0);
   slow_fire_return_velocity_rad_s_ =
     declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
+  slow_fire_settle_timeout_sec_ =
+    declare_double_parameter("slow_fire_settle_timeout_sec", 3.0);
   homing_velocity_rad_s_ = declare_double_parameter("homing_velocity_rad_s", 0.5);
   homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
   zeroing_velocity_threshold_rad_s_ = declare_double_parameter(
@@ -295,7 +297,7 @@ void SpringEduliteController::actuator_state_callback(
       (slow_fire_velocity_rad_s_ > 0.0) ?
       (stroke_rad / slow_fire_velocity_rad_s_) : 1.0;
 
-    if (elapsed_sec >= expected_duration_sec + 0.3) {
+    if (elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_) {
       enter_error_with_position_hold(
         msg->position, "Slow fire extension timed out");
       return;
@@ -329,7 +331,7 @@ void SpringEduliteController::actuator_state_callback(
       (slow_fire_return_velocity_rad_s_ > 0.0) ?
       (stroke_rad / slow_fire_return_velocity_rad_s_) : 1.0;
 
-    if (elapsed_sec >= expected_duration_sec + 0.3) {
+    if (elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_) {
       enter_error_with_position_hold(
         msg->position, "Slow fire return timed out");
       return;

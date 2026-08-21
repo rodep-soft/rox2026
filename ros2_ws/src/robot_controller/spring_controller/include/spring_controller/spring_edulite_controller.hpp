@@ -64,6 +64,7 @@ private:
   double fire_increment_rad_{-6.283185307};
   double slow_fire_target_rad_{13.5};
   double slow_fire_velocity_rad_s_{12.0};
+  double slow_fire_settle_timeout_sec_{3.0};
   double slow_fire_return_velocity_rad_s_{6.0};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
