@@ -80,6 +80,22 @@ inline AxisCovarianceScale calculate_covariance_multipliers(
   };
 }
 
+/// @brief 車輪加速度とIMU実測加速度の不一致度(差分)に基づいて共分散スケールを計算する。
+/// 車輪が空転しているとき (wheel_accel >> imu_accel) に高感度でスリップを検知し共分散を膨張させる。
+inline AxisCovarianceScale calculate_imu_discrepancy_multipliers(
+  const BodyVelocity & wheel_accel, const BodyVelocity & imu_accel,
+  const double x_threshold_m_s2, const double y_threshold_m_s2, const double yaw_threshold_rad_s2,
+  const double maximum_multiplier)
+{
+  const BodyVelocity discrepancy{
+    std::abs(wheel_accel.x_m_s - imu_accel.x_m_s),
+    std::abs(wheel_accel.y_m_s - imu_accel.y_m_s),
+    std::abs(wheel_accel.yaw_rad_s - imu_accel.yaw_rad_s)
+  };
+  return calculate_covariance_multipliers(
+    discrepancy, x_threshold_m_s2, y_threshold_m_s2, yaw_threshold_rad_s2, maximum_multiplier);
+}
+
 /// @brief 後方互換用: 全軸を MAX 集約した単一スカラーを返す旧版。
 /// テストからのみ参照される。
 inline double calculate_covariance_multiplier(

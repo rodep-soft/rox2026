@@ -15,6 +15,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 #include "tf2/LinearMath/Quaternion.hpp"
 #include "tf2_ros/transform_broadcaster.hpp"
 
@@ -37,6 +38,10 @@ public:
       state_topic_, 10,
       [this](const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg) {receive_state(*msg);});
 
+    imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+      imu_topic_, rclcpp::SensorDataQoS(),
+      [this](const sensor_msgs::msg::Imu::SharedPtr msg) {receive_imu(*msg);});
+
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>(odom_topic_, 20);
 
     last_update_ = now();
@@ -44,7 +49,7 @@ public:
       std::chrono::duration<double, std::milli>(publish_period_ms_),
       [this]() {update();});
 
-    RCLCPP_INFO(get_logger(), "MecanumOdometryNode initialized with ROS 2 best practices.");
+    RCLCPP_INFO(get_logger(), "MecanumOdometryNode initialized with IMU-discrepancy slip fusion.");
   }
 
 private:
@@ -87,6 +92,7 @@ private:
     state_topic_ = declare_parameter<std::string>(
       "state_array_topic",
       "/hardware/actuator_state_array");
+    imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
     odom_topic_ = declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
     odom_frame_ = declare_parameter<std::string>("odom_frame", "odom");
     base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
@@ -181,6 +187,15 @@ private:
     return filtered_;
   }
 
+  void receive_imu(const sensor_msgs::msg::Imu & msg)
+  {
+    imu_accel_x_ = msg.linear_acceleration.x;
+    imu_accel_y_ = msg.linear_acceleration.y;
+    imu_angular_vel_z_ = msg.angular_velocity.z;
+    imu_stamp_ = msg.header.stamp;
+    imu_received_ = true;
+  }
+
   mecanum_odometry::AxisCovarianceScale covariance_multiplier(
     const mecanum_odometry::BodyVelocity & velocity, const double dt_s)
   {
@@ -189,13 +204,30 @@ private:
       previous_velocity_initialized_ = true;
       return {};  // x=y=yaw=1.0
     }
-    const mecanum_odometry::BodyVelocity acceleration{
+
+    const mecanum_odometry::BodyVelocity wheel_acceleration{
       (velocity.x_m_s - previous_velocity_.x_m_s) / dt_s,
       (velocity.y_m_s - previous_velocity_.y_m_s) / dt_s,
       (velocity.yaw_rad_s - previous_velocity_.yaw_rad_s) / dt_s};
     previous_velocity_ = velocity;
+
+    // IMUが受信できている場合は、車輪加速度とIMU実測加速度の不一致度(スリップ量)で共分散を計算
+    const double imu_age_s = (now() - imu_stamp_).seconds();
+    if (imu_received_ && imu_age_s >= 0.0 && imu_age_s < 0.2) {
+      const mecanum_odometry::BodyVelocity imu_accel{
+        imu_accel_x_,
+        imu_accel_y_,
+        wheel_acceleration.yaw_rad_s // yaw角加速度は車輪差分またはジャイロ微分
+      };
+      return mecanum_odometry::calculate_imu_discrepancy_multipliers(
+        wheel_acceleration, imu_accel,
+        accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_,
+        max_covariance_multiplier_);
+    }
+
+    // IMU未受信時は従来の車輪加速度によるフォールバック
     return mecanum_odometry::calculate_covariance_multipliers(
-      acceleration, accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_,
+      wheel_acceleration, accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_,
       max_covariance_multiplier_);
   }
 
@@ -345,6 +377,7 @@ private:
 
 
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr state_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -352,6 +385,11 @@ private:
   std::array<double, mecanum_odometry::WHEEL_COUNT> wheel_velocity_{};
   rclcpp::Time feedback_stamp_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_update_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time imu_stamp_{0, 0, RCL_ROS_TIME};
+  double imu_accel_x_{0.0};
+  double imu_accel_y_{0.0};
+  double imu_angular_vel_z_{0.0};
+  bool imu_received_{false};
   mecanum_odometry::BodyVelocity filtered_;
   mecanum_odometry::BodyVelocity previous_velocity_;
   bool feedback_valid_{false};

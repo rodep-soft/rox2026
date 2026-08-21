@@ -77,3 +77,17 @@ TEST(MecanumOdometryTest, PerAxisCovarianceInterpolatesLinearly)
   EXPECT_DOUBLE_EQ(s.y, 1.0);
   EXPECT_DOUBLE_EQ(s.yaw, 1.0);
 }
+
+// 車輪加速度 vs IMU実測加速度の不一致検知テスト
+TEST(MecanumOdometryTest, DetectsSlipFromImuDiscrepancy)
+{
+  // 車輪は 2.5 m/s^2 で空転、IMU は 0.5 m/s^2 のみ検知 (差分 2.0 m/s^2 > 閾値 1.0m/s^2)
+  const mecanum_odometry::BodyVelocity wheel_accel{2.5, 0.0, 0.0};
+  const mecanum_odometry::BodyVelocity imu_accel{0.5, 0.0, 0.0};
+
+  const auto s = mecanum_odometry::calculate_imu_discrepancy_multipliers(
+    wheel_accel, imu_accel, 1.0, 1.0, 2.0, 10.0);
+  EXPECT_DOUBLE_EQ(s.x, 10.0); // スリップ検知で最大膨張
+  EXPECT_DOUBLE_EQ(s.y, 1.0);  // Y は影響なし
+  EXPECT_DOUBLE_EQ(s.yaw, 1.0);
+}

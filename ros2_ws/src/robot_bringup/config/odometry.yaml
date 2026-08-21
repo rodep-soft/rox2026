@@ -7,6 +7,7 @@ mecanum_odometry_node:
     wheel_logical_ids: [0, 1, 2, 3]  # FL, FR, RL, RR
     state_array_topic: /edulite/state_array
     odometry_topic: /wheel/odometry
+    imu_topic: /imu/data
     odom_frame: odom
     base_frame: base_link
     publish_tf: false
