@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <limits>
 
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
@@ -35,12 +36,18 @@ private:
   void vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void control_timer_callback();
+  void update_motion_compensation();
+  void update_and_publish_roller_command();
+  double update_manual_position_command(double position_command_rad);
+  void publish_position_command(double position_rad);
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult parameter_callback(
     const std::vector<rclcpp::Parameter> & parameters);
 
   double target_position_rad() const;
+  double manual_transition_max_velocity_rad_s() const;
+  double manual_transition_accel_factor() const;
   double interpolated_position_rad(
     double start_rad, double target_rad, double elapsed_sec, double max_vel_rad_s,
     double accel_factor = 1.0) const;
@@ -96,6 +103,10 @@ private:
   bool spring_decel_active_{false};
   bool emergency_stop_active_{false};
   bool arm_state_received_{false};
+  bool arm_actuator_ready_{false};
+  bool startup_waiting_for_emergency_release_{true};
+  bool startup_emergency_seen_active_{false};
+  double emergency_hold_position_rad_{0.0};
 
   // 運動補正用の一時変数
   double cmd_vel_vx_{0.0};
@@ -112,6 +123,7 @@ private:
 
   bool shot_cycle_active_{false};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};
+  uint8_t last_published_shot_cycle_state_{0xFF};
   rclcpp::Time shot_cycle_start_time_;
   double shot_cycle_start_position_rad_{0.0};
   double last_position_command_rad_{-0.86};
@@ -119,8 +131,8 @@ private:
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
   float roller_measured_rpm_{0.0f};
-  float upper_belt_min_shot_rpm_{99999.0f};
-  float under_belt_min_shot_rpm_{99999.0f};
+  float upper_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
+  float under_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   int current_filtered_roller_rpm_{0};
