@@ -193,7 +193,7 @@ void DribbleControllerNode::load_parameters()
 void DribbleControllerNode::position_mode_callback(
   const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  if (msg->position > robot_msgs::msg::ArmPosition::FEED || emergency_stop_active_) {return;}
+  if (msg->position > robot_msgs::msg::ArmPosition::RECEIVE || emergency_stop_active_) {return;}
 
   const uint8_t target_mode = msg->position;
 
@@ -268,13 +268,17 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
 
 void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data == emergency_stop_active_) {
+  const bool initial_release =
+    startup_waiting_for_emergency_release_ &&
+    startup_emergency_seen_active_ && !msg->data;
+  if (msg->data == emergency_stop_active_ && !initial_release) {
     return;
   }
 
   emergency_stop_active_ = msg->data;
 
   if (emergency_stop_active_) {
+    startup_emergency_seen_active_ = true;
     emergency_hold_position_rad_ =
       arm_state_received_ ? current_arm_position_rad_ : last_position_command_rad_;
     last_position_command_rad_ = emergency_hold_position_rad_;
@@ -283,6 +287,13 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
       get_logger(), "Emergency stop activated: holding dribble arm at %.3f rad",
       emergency_hold_position_rad_);
   } else {
+    if (startup_waiting_for_emergency_release_) {
+      startup_waiting_for_emergency_release_ = false;
+      shot_cycle_active_ = false;
+      position_mode_ = robot_msgs::msg::ArmPosition::RECEIVE;
+      RCLCPP_INFO(get_logger(), "Initial emergency stop released: moving to RECEIVE posture");
+    }
+
     const double resume_position_rad =
       arm_state_received_ ? current_arm_position_rad_ : emergency_hold_position_rad_;
 
@@ -334,38 +345,28 @@ void DribbleControllerNode::actuator_state_callback(
       RCLCPP_WARN(get_logger(), "Dribble EduLite disconnected; pausing position commands");
     }
     arm_actuator_ready_ = false;
-    arm_ready_stable_count_ = 0;
     return;
   }
 
+  const bool reconnected = arm_state_received_ && !arm_actuator_ready_;
+  arm_actuator_ready_ = true;
   current_arm_position_rad_ = msg->position;
-  bool became_ready = false;
-  if (!arm_actuator_ready_) {
-    constexpr int required_stable_feedback_count = 5;
-    ++arm_ready_stable_count_;
-    if (arm_ready_stable_count_ < required_stable_feedback_count) {
-      return;
-    }
-
-    arm_actuator_ready_ = true;
-    arm_ready_stable_count_ = 0;
-    became_ready = true;
-  }
-
-  const bool reconnected = arm_state_received_ && became_ready;
 
   if (!arm_state_received_) {
     arm_state_received_ = true;
     last_position_command_rad_ = msg->position;
-    manual_transition_active_ = true;
-    manual_transition_start_time_ = now();
-    manual_transition_start_position_rad_ = msg->position;
-    manual_transition_start_rpm_ = 0;
-    position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+    emergency_hold_position_rad_ = msg->position;
+    position_mode_ = robot_msgs::msg::ArmPosition::RECEIVE;
+    if (!startup_waiting_for_emergency_release_) {
+      manual_transition_active_ = true;
+      manual_transition_start_time_ = now();
+      manual_transition_start_position_rad_ = msg->position;
+      manual_transition_start_rpm_ = 0;
+    }
     RCLCPP_INFO(
       get_logger(),
-      "Arm initial position received: %.3f rad -> smoothly approaching DRIBBLE (%.3f rad)",
-      msg->position, dribble_position_rad_);
+      "Arm initial position received: %.3f rad; waiting for emergency release: %s",
+      msg->position, startup_waiting_for_emergency_release_ ? "yes" : "no");
   } else if (reconnected) {
     last_position_command_rad_ = msg->position;
     emergency_hold_position_rad_ = msg->position;
@@ -711,7 +712,7 @@ void DribbleControllerNode::control_timer_callback()
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
-  if (!arm_actuator_ready_) {
+  if (!arm_actuator_ready_ || startup_waiting_for_emergency_release_) {
     return;
   }
 
@@ -928,6 +929,8 @@ double DribbleControllerNode::target_position_rad() const
       return open_position_rad_;
     case robot_msgs::msg::ArmPosition::FEED:
       return feed_position_rad_;
+    case robot_msgs::msg::ArmPosition::RECEIVE:
+      return dribble_position_rad_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
     default:
       if (enable_motion_compensation_ && current_motion_arm_clamp_rad_ > 0.0) {

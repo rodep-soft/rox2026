@@ -97,7 +97,8 @@ private:
   bool emergency_stop_active_{false};
   bool arm_state_received_{false};
   bool arm_actuator_ready_{false};
-  int arm_ready_stable_count_{0};
+  bool startup_waiting_for_emergency_release_{true};
+  bool startup_emergency_seen_active_{false};
   double emergency_hold_position_rad_{0.0};
 
   // 運動補正用の一時変数
