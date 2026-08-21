@@ -24,12 +24,6 @@ def generate_launch_description():
                 default_value="can0",
                 description="SocketCAN interface",
             ),
-            # Kept temporarily so older parent launch files remain compatible.
-            DeclareLaunchArgument(
-                "enable_imu",
-                default_value="true",
-                description="Deprecated: STM32 always publishes /imu/data",
-            ),
             include(
                 "hardware/ros2_socketcan.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
