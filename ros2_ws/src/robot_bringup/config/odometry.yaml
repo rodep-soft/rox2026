@@ -28,12 +28,14 @@ mecanum_odometry_node:
       maximum_covariance_multiplier: 40.0       # ★スリップ検知時の共分散膨張倍率 (10 -> 40に強化)
 
     # --- Covariance tuning (EKF入力前提) ---
-    # twist_covariance_xy/yaw: ホイール速度計測の不確かさ (observation noise)。
-    #   高速走行時のホイールスリップを考慮し、車輪オドメトリを過信させずIMUを優先させる設定。
-    pose_covariance_xy: 0.05
+    # twist_covariance_x / y / yaw: ホイール速度計測の不確かさ (observation noise)。
+    #   メカナムの物理特性に合わせ、前後(X)は高信頼、左右(Y)はローラ滑り考慮で不確かさを分離設定。
+    pose_covariance_x: 0.02
+    pose_covariance_y: 0.05
     pose_covariance_yaw: 0.10
-    twist_covariance_xy: 0.08       # ★ベース速度共分散 (0.03 -> 0.08)
-    twist_covariance_yaw: 0.15      # ★旋回角速度共分散 (0.06 -> 0.15: IMUジャイロを最優先)
+    twist_covariance_x: 0.03       # ★前後(X)ベース速度共分散 (グリップ良好)
+    twist_covariance_y: 0.10       # ★左右(Y)ベース速度共分散 (メカナムローラ滑り考慮)
+    twist_covariance_yaw: 0.15     # ★旋回角速度共分散 (IMUジャイロを最優先)
     odom_drift_rate: 0.03
 
 #can_imu_node:

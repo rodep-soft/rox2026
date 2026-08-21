@@ -27,9 +27,9 @@ public:
   {
     configure_parameters();
 
-    // pose_covariance_xy_ / yaw_ が確定してから pose_cov_* を初期化する
-    pose_cov_x_ = pose_covariance_xy_;
-    pose_cov_y_ = pose_covariance_xy_;
+    // pose_covariance_x_ / y_ / yaw_ が確定してから pose_cov_* を初期化する
+    pose_cov_x_ = pose_covariance_x_;
+    pose_cov_y_ = pose_covariance_y_;
     pose_cov_yaw_ = pose_covariance_yaw_;
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -81,13 +81,14 @@ private:
     max_covariance_multiplier_ = declare_parameter(
       "slip_compensation.maximum_covariance_multiplier", 10.0);
 
-    pose_covariance_xy_ = declare_parameter("pose_covariance_xy", 0.02);
-    pose_covariance_yaw_ = declare_parameter("pose_covariance_yaw", 0.05);
-    twist_covariance_xy_ = declare_parameter("twist_covariance_xy", 0.03);
-    twist_covariance_yaw_ = declare_parameter("twist_covariance_yaw", 0.06);
+    pose_covariance_x_ = declare_parameter("pose_covariance_x", 0.02);
+    pose_covariance_y_ = declare_parameter("pose_covariance_y", 0.05);
+    pose_covariance_yaw_ = declare_parameter("pose_covariance_yaw", 0.10);
+    twist_covariance_x_ = declare_parameter("twist_covariance_x", 0.03);
+    twist_covariance_y_ = declare_parameter("twist_covariance_y", 0.10);
+    twist_covariance_yaw_ = declare_parameter("twist_covariance_yaw", 0.15);
     // odom_drift_rate: pose covariance を毎ステップ増加させる比率 (twist covに対する倍率)。
-    // ホイールオドメトリの累積誤差モデル。0 にすると pose cov が固定になる。
-    odom_drift_rate_ = declare_parameter("odom_drift_rate", 0.02);
+    odom_drift_rate_ = declare_parameter("odom_drift_rate", 0.03);
 
     state_topic_ = declare_parameter<std::string>(
       "state_array_topic",
@@ -321,9 +322,9 @@ private:
     message.twist.twist.angular.z = velocity.yaw_rad_s;
 
     if (feedback_usable) {
-      // scale² を乗じて速度補正係数の影響を分散に反映する
-      message.twist.covariance[0] = twist_covariance_xy_ * scale_x_ * scale_x_ * slip_scale.x;
-      message.twist.covariance[7] = twist_covariance_xy_ * scale_y_ * scale_y_ * slip_scale.y;
+      // scale² を乗じて速度補正係数の影響を分散に反映する (XとYで完全独立)
+      message.twist.covariance[0] = twist_covariance_x_ * scale_x_ * scale_x_ * slip_scale.x;
+      message.twist.covariance[7] = twist_covariance_y_ * scale_y_ * scale_y_ * slip_scale.y;
       message.twist.covariance[35] = twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ *
         slip_scale.yaw;
     } else {
@@ -340,8 +341,8 @@ private:
     // 積分誤差を軸別に累積。twist covと同じ scale² 補正を適用する。
     // フィードバック無効時は積分を止めているので pose cov は増加しない。
     if (feedback_usable) {
-      pose_cov_x_ += twist_covariance_xy_ * scale_x_ * scale_x_ * slip_scale.x * odom_drift_rate_;
-      pose_cov_y_ += twist_covariance_xy_ * scale_y_ * scale_y_ * slip_scale.y * odom_drift_rate_;
+      pose_cov_x_ += twist_covariance_x_ * scale_x_ * scale_x_ * slip_scale.x * odom_drift_rate_;
+      pose_cov_y_ += twist_covariance_y_ * scale_y_ * scale_y_ * slip_scale.y * odom_drift_rate_;
       pose_cov_yaw_ += twist_covariance_yaw_ * scale_yaw_ * scale_yaw_ * slip_scale.yaw *
         odom_drift_rate_;
     }
@@ -402,7 +403,8 @@ private:
   bool slip_enabled_;
   double accel_threshold_x_, accel_threshold_y_, accel_threshold_yaw_;
   double max_covariance_multiplier_;
-  double pose_covariance_xy_, pose_covariance_yaw_, twist_covariance_xy_, twist_covariance_yaw_;
+  double pose_covariance_x_, pose_covariance_y_, pose_covariance_yaw_;
+  double twist_covariance_x_, twist_covariance_y_, twist_covariance_yaw_;
   double odom_drift_rate_;
   double position_x_m_{0.0}, position_y_m_{0.0}, yaw_rad_{0.0};
   // pose covariance の累積値。configure_parameters() 後に base 値で初期化。
