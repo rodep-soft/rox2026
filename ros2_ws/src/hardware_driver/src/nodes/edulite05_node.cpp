@@ -220,8 +220,7 @@ void Node::can_frame_callback(can_msgs::msg::Frame::SharedPtr message)
   }
   const auto motor_id = static_cast<uint8_t>((message->id >> 8) & 0xFF);
   auto * motor = find_motor_by_can_id(motor_id);
-  if (motor != nullptr && motor->receive(*message) && motor->immediate_state_publish())
-  {
+  if (motor != nullptr && motor->receive(*message) && motor->immediate_state_publish()) {
     state_publisher_->publish(make_state_message(*motor));
   }
 }

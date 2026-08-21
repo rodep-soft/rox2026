@@ -89,73 +89,73 @@ private:
 
     switch (frame->id) {
       case protocol::HEARTBEAT_FROM_STM: {
-        if (!protocol::is_heartbeat_response(*frame)) {
+          if (!protocol::is_heartbeat_response(*frame)) {
+            break;
+          }
+          last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
+          if (heartbeat_timed_out_) {
+            RCLCPP_INFO(get_logger(), "The STM32 heartbeat has been restored.");
+            heartbeat_timed_out_ = false;
+          }
           break;
         }
-        last_heartbeat_from_stm32_ = std::chrono::steady_clock::now();
-        if (heartbeat_timed_out_) {
-          RCLCPP_INFO(get_logger(), "The STM32 heartbeat has been restored.");
-          heartbeat_timed_out_ = false;
-        }
-        break;
-      }
 
       case protocol::QUATERNION: {
-        int16_t x = 0;
-        int16_t y = 0;
-        int16_t z = 0;
-        int16_t w = 0;
-        if (protocol::decode_quaternion(*frame, x, y, z, w) &&
-          update_orientation(x, y, z, w))
-        {
-          publish_imu();
+          int16_t x = 0;
+          int16_t y = 0;
+          int16_t z = 0;
+          int16_t w = 0;
+          if (protocol::decode_quaternion(*frame, x, y, z, w) &&
+            update_orientation(x, y, z, w))
+          {
+            publish_imu();
+          }
+          break;
         }
-        break;
-      }
 
       case protocol::ANGULAR_VELOCITY: {
-        int16_t x = 0;
-        int16_t y = 0;
-        int16_t z = 0;
-        if (protocol::decode_angular_velocity(*frame, x, y, z)) {
-          imu_.angular_velocity.x =
-            static_cast<double>(x) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-          imu_.angular_velocity.y =
-            static_cast<double>(y) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-          imu_.angular_velocity.z =
-            static_cast<double>(z) * protocol::ANGULAR_VELOCITY_SCALE_INV;
-          angular_velocity_received_ = true;
-          last_angular_velocity_time_ = std::chrono::steady_clock::now();
+          int16_t x = 0;
+          int16_t y = 0;
+          int16_t z = 0;
+          if (protocol::decode_angular_velocity(*frame, x, y, z)) {
+            imu_.angular_velocity.x =
+              static_cast<double>(x) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+            imu_.angular_velocity.y =
+              static_cast<double>(y) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+            imu_.angular_velocity.z =
+              static_cast<double>(z) * protocol::ANGULAR_VELOCITY_SCALE_INV;
+            angular_velocity_received_ = true;
+            last_angular_velocity_time_ = std::chrono::steady_clock::now();
+          }
+          break;
         }
-        break;
-      }
 
       case protocol::LINEAR_ACCELERATION: {
-        int16_t x = 0;
-        int16_t y = 0;
-        int16_t z = 0;
-        if (protocol::decode_linear_acceleration(*frame, x, y, z)) {
-          imu_.linear_acceleration.x =
-            static_cast<double>(x) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-          imu_.linear_acceleration.y =
-            static_cast<double>(y) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-          imu_.linear_acceleration.z =
-            static_cast<double>(z) * protocol::LINEAR_ACCELERATION_SCALE_INV;
-          linear_acceleration_received_ = true;
-          last_linear_acceleration_time_ = std::chrono::steady_clock::now();
+          int16_t x = 0;
+          int16_t y = 0;
+          int16_t z = 0;
+          if (protocol::decode_linear_acceleration(*frame, x, y, z)) {
+            imu_.linear_acceleration.x =
+              static_cast<double>(x) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+            imu_.linear_acceleration.y =
+              static_cast<double>(y) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+            imu_.linear_acceleration.z =
+              static_cast<double>(z) * protocol::LINEAR_ACCELERATION_SCALE_INV;
+            linear_acceleration_received_ = true;
+            last_linear_acceleration_time_ = std::chrono::steady_clock::now();
+          }
+          break;
         }
-        break;
-      }
 
       case protocol::LIMIT_SWITCH_STATE: {
-        uint8_t limit_state = 0;
-        if (protocol::decode_limit_switch(*frame, limit_state)) {
-          std_msgs::msg::UInt8 output;
-          output.data = limit_state;
-          limit_sw_pub_->publish(output);
+          uint8_t limit_state = 0;
+          if (protocol::decode_limit_switch(*frame, limit_state)) {
+            std_msgs::msg::UInt8 output;
+            output.data = limit_state;
+            limit_sw_pub_->publish(output);
+          }
+          break;
         }
-        break;
-      }
 
       default:
         break;

@@ -71,7 +71,8 @@ public:
       "state_array_topic",
       "/vesc/state_array");
     const auto update_period_ms = declare_parameter<int64_t>("update_period_ms", 20);
-    const auto state_array_publish_period_ms = declare_parameter<int64_t>("state_array_publish_period_ms", 100);
+    const auto state_array_publish_period_ms = declare_parameter<int64_t>(
+      "state_array_publish_period_ms", 100);
     const auto motor_names = declare_parameter<std::vector<std::string>>(
       "motors", std::vector<std::string>{});
 
@@ -79,12 +80,16 @@ public:
       const auto prefix = name + ".";
       const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
       const auto controller_id = declare_parameter<int64_t>(prefix + "controller_id", -1);
-      const auto command_timeout_ms = declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
-      const auto feedback_timeout_ms = declare_parameter<int64_t>(prefix + "feedback_timeout_ms", 500);
+      const auto command_timeout_ms =
+        declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
+      const auto feedback_timeout_ms = declare_parameter<int64_t>(
+        prefix + "feedback_timeout_ms",
+        500);
       const auto max_rpm = declare_parameter<double>(prefix + "max_rpm", 5600.0);
       const auto rpm_slew_rate = declare_parameter<double>(prefix + "rpm_slew_rate", 4000.0);
       const auto startup_current_a = declare_parameter<double>(prefix + "startup_current_a", 5.0);
-      const auto rpm_control_threshold_rpm = declare_parameter<double>(prefix + "rpm_control_threshold_rpm", 1000.0);
+      const auto rpm_control_threshold_rpm = declare_parameter<double>(
+        prefix + "rpm_control_threshold_rpm", 1000.0);
       if (logical_id < 0 || logical_id > 65535) {
         throw std::runtime_error(name + ": logical_id must be in [0, 65535]");
       }
@@ -183,7 +188,8 @@ private:
   /// @param motor モーター
   /// @param now 現在時刻
   /// @return 状態メッセージ
-  actuator_msgs::msg::ActuatorState make_state(const Motor & motor,
+  actuator_msgs::msg::ActuatorState make_state(
+    const Motor & motor,
     std::chrono::steady_clock::time_point now) const
   {
     actuator_msgs::msg::ActuatorState message;

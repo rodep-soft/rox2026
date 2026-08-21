@@ -131,7 +131,6 @@ public:
   void watchdog(TimePoint current_time);
 
 private:
-
   enum class InitializationStep
   {
     WRITE_PARAMETER,

@@ -578,8 +578,7 @@ void Protocol::invalidate_stale_current(TimePoint current_time)
   const auto timeout =
     std::chrono::milliseconds(config_.current_feedback_period_ms) *
     CURRENT_FEEDBACK_TIMEOUT_PERIODS;
-  if (current_time - last_current_feedback_time_ <= timeout)
-  {
+  if (current_time - last_current_feedback_time_ <= timeout) {
     return;
   }
 
