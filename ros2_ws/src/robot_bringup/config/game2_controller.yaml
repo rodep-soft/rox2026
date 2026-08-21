@@ -40,7 +40,8 @@ game2_auto_node:
     aligning_timeout: 10.0  # [s] 照準タイムアウト
     shooting_timeout: 3.0   # [s] 射出タイムアウト
     result_wait_duration: 1.0 # [s] 射出後の飛翔・着弾・倒れ確認判定待ち時間
-    max_total_balls: 15     # 最大所持球数 (15球撃ち切りで自動終了)
+    enable_ball_limit: true # true: 指定球数(max_total_balls)で停止, false: 球数制限なし
+    max_total_balls: 15     # 最大所持球数 (enable_ball_limit: true 時に有効)
     max_shots_per_panel: 1  # 1枚あたりの射出回数
     require_ball_detected: true # true: ボール検知センサー必須, false: センサーなしでも照準完了で射出
     auto_advance_rows: true # true: 段内のタグを射出完了したら自動で上段へ移行

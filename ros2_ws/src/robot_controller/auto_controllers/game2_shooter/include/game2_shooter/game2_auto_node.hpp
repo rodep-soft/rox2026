@@ -134,6 +134,7 @@ private:
   double result_wait_duration_{1.0}; // [s] 射出後の飛翔・倒れ確認判定待ち時間
   int max_shots_per_panel_{1};
   int max_total_balls_{15}; // 最大所持球数
+  bool enable_ball_limit_{true}; // true: max_total_balls球でシーケンス停止, false: 球数制限なし
   bool require_ball_detected_{true};
   bool test_alignment_only_{false};
   bool auto_advance_rows_{true};

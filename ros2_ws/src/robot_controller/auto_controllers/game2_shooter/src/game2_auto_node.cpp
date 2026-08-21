@@ -120,6 +120,7 @@ void Game2AutoNode::load_parameters()
   result_wait_duration_ = declare_parameter<double>("result_wait_duration", 1.0);
   max_shots_per_panel_ = declare_parameter<int>("max_shots_per_panel", 1);
   max_total_balls_ = declare_parameter<int>("max_total_balls", 15);
+  enable_ball_limit_ = declare_parameter<bool>("enable_ball_limit", true);
   require_ball_detected_ = declare_parameter<bool>("require_ball_detected", true);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
@@ -173,6 +174,11 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       result_wait_duration_ = param.as_double();
     } else if (name == "max_total_balls") {
       max_total_balls_ = param.as_int();
+    } else if (name == "enable_ball_limit") {
+      enable_ball_limit_ = param.as_bool();
+      RCLCPP_INFO(
+        get_logger(), "Param updated: enable_ball_limit = %s",
+        enable_ball_limit_ ? "true" : "false");
     } else if (name == "min_angular_z") {
       min_angular_z_ = param.as_double();
     } else if (name == "max_angular_z") {
@@ -594,14 +600,17 @@ void Game2AutoNode::control_loop()
   update_panel_states();
   select_target_and_aim();
 
-  // Check if all rows are completed or all balls fired
-  if (active_row_ > 2 || total_shots_fired_ >= max_total_balls_) {
+  // Check if all rows are completed or all balls fired (if limit is enabled)
+  const bool balls_exhausted = enable_ball_limit_ && (total_shots_fired_ >= max_total_balls_);
+  if (active_row_ > 2 || balls_exhausted) {
     state_ = robot_msgs::msg::Game2State::COMPLETED;
     RCLCPP_INFO_THROTTLE(
       get_logger(),
       *get_clock(), 3000,
-      "🏆 Game 2: Sequence FINISHED! (Total shots: %d/%d, Cleared Rows: %d/3)",
-      total_shots_fired_, max_total_balls_, std::min(active_row_, 3));
+      "🏆 Game 2: Sequence FINISHED! (Total shots: %d%s, Cleared Rows: %d/3)",
+      total_shots_fired_,
+      enable_ball_limit_ ? ("/" + std::to_string(max_total_balls_)).c_str() : " (No limit)",
+      std::min(active_row_, 3));
     publish_all(
       geometry_msgs::msg::Twist{}, 0.0f,
       false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
