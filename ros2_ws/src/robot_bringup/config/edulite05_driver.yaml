@@ -73,7 +73,7 @@
       control_mode: pp
       current_limit: 11.0
       acceleration: 150.0
-      speed_limit: 33.0    # 最大速度は 33 rad/s
+      speed_limit: 30.0    # 最大速度は 33 rad/s
 
       position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
       minimum_position_rad: -1000000.0 # 
