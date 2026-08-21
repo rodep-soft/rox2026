@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <limits>
 
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
@@ -130,8 +131,8 @@ private:
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
   float roller_measured_rpm_{0.0f};
-  float upper_belt_min_shot_rpm_{99999.0f};
-  float under_belt_min_shot_rpm_{99999.0f};
+  float upper_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
+  float under_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
 
   uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   int current_filtered_roller_rpm_{0};

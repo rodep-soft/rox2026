@@ -8,6 +8,15 @@
 #include <memory>
 #include <stdexcept>
 
+namespace
+{
+constexpr double kCmdVelTimeoutSec = 0.2;
+constexpr double kMaxBackwardVelocityMps = 1.5;
+constexpr double kMaxBackwardAccelerationMps2 = 3.0;
+constexpr int kMaxRollerRpmStepPerTick = 150;
+constexpr float kUnsetMinimumBeltRpm = std::numeric_limits<float>::infinity();
+}  // namespace
+
 DribbleControllerNode::DribbleControllerNode()
 : Node("dribble_controller_node")
 {
@@ -256,7 +265,9 @@ void DribbleControllerNode::actuator_state_callback(
   const bool ready = msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   if (!ready) {
     if (arm_actuator_ready_) {
-      RCLCPP_WARN(get_logger(), "Dribble EduLite disconnected; pausing position commands");
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 10000,
+        "Dribble EduLite disconnected; pausing position commands");
     }
     arm_actuator_ready_ = false;
     return;
@@ -293,9 +304,9 @@ void DribbleControllerNode::actuator_state_callback(
       manual_transition_start_time_ = now();
       manual_transition_start_rpm_ = current_filtered_roller_rpm_;
     }
-    RCLCPP_INFO(
-      get_logger(), "Dribble EduLite reconnected at %.3f rad; resuming smoothly",
-      msg->position);
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 10000,
+      "Dribble EduLite reconnected at %.3f rad; resuming smoothly", msg->position);
   }
 }
 
@@ -392,7 +403,7 @@ void DribbleControllerNode::update_motion_compensation()
 
     double vx = 0.0;
     double ax = 0.0;
-    if (cmd_vel_age < 0.2) {
+    if (cmd_vel_age < kCmdVelTimeoutSec) {
       vx = cmd_vel_vx_;
       ax = cmd_vel_ax_;
     }
@@ -408,7 +419,10 @@ void DribbleControllerNode::update_motion_compensation()
 
     // アームの押し付け量 (後退速度または減速度に応じて 0.0〜backward_arm_clamp_rad_ を算出)
     if (backward_arm_clamp_rad_ > 0.0) {
-      const double clamp_factor = std::clamp(backward_vel / 1.5 + backward_accel / 3.0, 0.0, 1.0);
+      const double clamp_factor = std::clamp(
+        backward_vel / kMaxBackwardVelocityMps +
+        backward_accel / kMaxBackwardAccelerationMps2,
+        0.0, 1.0);
       current_motion_arm_clamp_rad_ = clamp_factor * backward_arm_clamp_rad_;
     } else {
       current_motion_arm_clamp_rad_ = 0.0;
@@ -460,14 +474,13 @@ void DribbleControllerNode::update_and_publish_roller_command()
       current_filtered_roller_rpm_ = target_rpm;
     }
   } else {
-    // 50ms 周期の制御タイマーごとに、最大 150 RPM ずつ滑らかに立ち上げ/減速する Ramp Filter
-    constexpr int max_rpm_step = 150;
+    // Limit the RPM change on every control tick.
     if (current_filtered_roller_rpm_ < target_rpm) {
       current_filtered_roller_rpm_ =
-        std::min(target_rpm, current_filtered_roller_rpm_ + max_rpm_step);
+        std::min(target_rpm, current_filtered_roller_rpm_ + kMaxRollerRpmStepPerTick);
     } else if (current_filtered_roller_rpm_ > target_rpm) {
       current_filtered_roller_rpm_ =
-        std::max(target_rpm, current_filtered_roller_rpm_ - max_rpm_step);
+        std::max(target_rpm, current_filtered_roller_rpm_ - kMaxRollerRpmStepPerTick);
     }
   }
 
@@ -547,8 +560,8 @@ void DribbleControllerNode::control_timer_callback()
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
         position_mode_ = robot_msgs::msg::ArmPosition::FEED;
-        upper_belt_min_shot_rpm_ = 99999.0f;
-        under_belt_min_shot_rpm_ = 99999.0f;
+        upper_belt_min_shot_rpm_ = kUnsetMinimumBeltRpm;
+        under_belt_min_shot_rpm_ = kUnsetMinimumBeltRpm;
         RCLCPP_INFO(
           get_logger(),
           "Shot Cycle: BELT_SPINUP -> FEED | Spinup Check (%.1fs) -> Upper Belt: %.1f RPM, Under Belt: %.1f RPM",
@@ -606,8 +619,8 @@ void DribbleControllerNode::control_timer_callback()
           RCLCPP_INFO(
             get_logger(),
             "Shot Cycle: FEED -> RETURNING | Shot Impact Min Belt RPM -> Upper: %.1f RPM, Under: %.1f RPM",
-            upper_belt_min_shot_rpm_ == 99999.0f ? 0.0f : upper_belt_min_shot_rpm_,
-            under_belt_min_shot_rpm_ == 99999.0f ? 0.0f : under_belt_min_shot_rpm_);
+            std::isfinite(upper_belt_min_shot_rpm_) ? upper_belt_min_shot_rpm_ : 0.0f,
+            std::isfinite(under_belt_min_shot_rpm_) ? under_belt_min_shot_rpm_ : 0.0f);
         } else {
           shot_cycle_active_ = false;
           has_ball_ = false;
@@ -797,6 +810,7 @@ void DribbleControllerNode::load_parameters()
   ball_lost_debounce_count_ =
     declare_parameter<int>("ball_lost_debounce_count", 12);
   dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 400);
+  spring_fire_dribble_rpm_ = declare_parameter<int>("spring_fire_dribble_rpm", 600);
   dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
   dribble_reverse_ramp_sec_ = declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);
   shot_cycle_opening_rpm_ = declare_parameter<int>("shot_cycle_opening_rpm", 800);
@@ -825,7 +839,7 @@ void DribbleControllerNode::load_parameters()
   {
     throw std::runtime_error("logical IDs must be in [0, 65535]");
   }
-  if (dribble_on_rpm_ < 0 || dribble_reverse_rpm_ < 0 ||
+  if (dribble_on_rpm_ < 0 || spring_fire_dribble_rpm_ < 0 || dribble_reverse_rpm_ < 0 ||
     shot_cycle_opening_rpm_ < 0 || shot_cycle_feeding_rpm_ < 0 || shot_cycle_returning_rpm_ < 0 ||
     max_boost_rpm_ < 0)
   {
@@ -878,6 +892,7 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     // 再起動が必要なパラメータ
     if (name == "command_period_ms" || name == "qos_depth" ||
       name == "position_logical_id" || name == "roller_logical_id" ||
+      name == "upper_belt_logical_id" || name == "under_belt_logical_id" ||
       name == "position_target_topic" || name == "roller_target_topic" ||
       name == "cmd_vel_topic")
     {
@@ -901,8 +916,16 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       if (val < 0) {
         result.successful = false; result.reason = name + " must be non-negative"; return result;
       }
+      if (name == "shot_cycle_belt_spinup_level" && (val < 1 || val > 4)) {
+        result.successful = false;
+        result.reason = name + " must be in [1, 4]";
+        return result;
+      }
+
       if (name == "dribble_on_rpm") {
         dribble_on_rpm_ = val;
+      } else if (name == "spring_fire_dribble_rpm") {
+        spring_fire_dribble_rpm_ = val;
       } else if (name == "dribble_reverse_rpm") {
         dribble_reverse_rpm_ = val;
       } else if (name == "shot_cycle_opening_rpm") {
@@ -931,12 +954,31 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       if (!std::isfinite(val)) {
         result.successful = false; result.reason = name + " must be finite"; return result;
       }
-      if ((name == "ball_detection_threshold_a" || name == "ball_lost_threshold_a" ||
+      const bool must_be_nonnegative =
+        name == "ball_detection_threshold_a" ||
+        name == "ball_lost_threshold_a" ||
         name == "backward_velocity_boost_rpm_per_mps" ||
         name == "acceleration_boost_rpm_per_mps2" ||
-        name == "backward_arm_clamp_rad") && val < 0.0)
-      {
-        result.successful = false; result.reason = name + " must be non-negative"; return result;
+        name == "backward_arm_clamp_rad" ||
+        name == "open_duration_sec" ||
+        name == "feed_duration_sec" ||
+        name == "belt_spinup_delay_sec" ||
+        name == "dribble_reverse_ramp_sec";
+      if (must_be_nonnegative && val < 0.0) {
+        result.successful = false;
+        result.reason = name + " must be non-negative";
+        return result;
+      }
+
+      const bool must_be_positive =
+        name == "opening_max_velocity_rad_s" ||
+        name == "feeding_max_velocity_rad_s" ||
+        name == "returning_max_velocity_rad_s" ||
+        name == "dribbling_max_velocity_rad_s" ||
+        name == "opening_accel_factor" ||
+        name == "dribbling_accel_factor";
+      if (must_be_positive && val <= 0.0) {
+        result.successful = false; result.reason = name + " must be positive"; return result;
       }
       if (name == "current_lpf_alpha" && (val <= 0.0 || val > 1.0)) {
         result.successful = false; result.reason = name + " must be in (0.0, 1.0]"; return result;
@@ -965,6 +1007,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
           dribble_position_rad_ = val;
         } else if (name == "open_position_rad") {
           open_position_rad_ = val;
+        } else if (name == "bottom_position_rad") {
+          bottom_position_rad_ = val;
         } else if (name == "feed_position_rad") {
           feed_position_rad_ = val;
         } else if (name == "open_duration_sec") {

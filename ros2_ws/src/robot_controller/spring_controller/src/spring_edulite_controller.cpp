@@ -215,8 +215,8 @@ void SpringEduliteController::actuator_state_callback(
 
   if (!actuator_state_is_ready) {
     if (actuator_ready_ || position_reference_set_) {
-      RCLCPP_WARN(
-        get_logger(),
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 10000,
         "Spring EduLite disconnected. Clearing target and homing state.");
     }
     actuator_ready_ = false;
@@ -238,8 +238,8 @@ void SpringEduliteController::actuator_state_callback(
     homing_required_ = false;
     stopped_count_ = 0;
     state_ = State::READY;
-    RCLCPP_INFO(
-      get_logger(),
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 10000,
       "Existing spring position reference detected. Resuming at %.3f rad without homing.",
       target_position_rad_);
   }
