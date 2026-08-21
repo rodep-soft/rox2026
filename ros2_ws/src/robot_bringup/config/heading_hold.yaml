@@ -1,16 +1,16 @@
 /heading_hold_node:
   ros__parameters:
     # IMU ジャイロ補正のPID
-    kp: 4.0
+    kp: 3.5
     ki: 0.0
-    kd: 0.05
+    kd: 0.15
     integral_limit: 0.5
 
-    heading_deadband_rad: 0.02
-    rotation_input_deadband_rad_s: 0.02
+    heading_deadband_rad: 0.01
+    rotation_input_deadband_rad_s: 0.01
     max_correction_rad_s: 1.5
     rotation_settle_velocity_rad_s: 0.08
-    rotation_settle_duration_ms: 100
+    rotation_settle_duration_ms: 200
 
     control_period_ms: 10   # トピック配信周期
     command_timeout_ms: 500 # cmd_velのタイムアウト判断時間
