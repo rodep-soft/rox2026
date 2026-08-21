@@ -19,7 +19,7 @@ def launch_setup(context, *args, **kwargs):
         "family": tag_family,
         "size": tag_size,
         "max_hamming": 0,
-        "publish_tf": True,
+        "publish_tf": False,
         "pose_estimation_method": "pnp",
         "decimate": 1.0,
         "blur": 0.0,
