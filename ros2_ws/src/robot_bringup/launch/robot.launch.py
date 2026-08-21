@@ -62,7 +62,6 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
-
     # 拡張カルマンフィルタ (EKF) ノード
     ekf_launch = include(
         "ekf.launch.py",
