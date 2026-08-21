@@ -195,12 +195,15 @@ private:
   bool has_target_ = false;
   bool feedback_connected_ = false;
   bool motor_enabled_ = false;
+  bool startup_run_state_observed_ = false;
+  bool motor_was_running_at_startup_ = false;
   int consecutive_non_run_feedback_count_ = 0;
   int initialization_retry_count_ = 0;
   uint32_t detailed_fault_code_ = 0;
   float motor_position_rad_ = 0.0f;
   float last_wrapped_position_rad_ = 0.0f;
   bool motor_position_initialized_ = false;
+  bool startup_position_alignment_pending_ = false;
   float logical_position_offset_rad_ = 0.0f;
   float startup_hold_position_rad_ = 0.0f;
   PositionReferenceState position_reference_state_ =
