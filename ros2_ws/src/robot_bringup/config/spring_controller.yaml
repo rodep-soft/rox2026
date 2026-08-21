@@ -18,11 +18,11 @@
     # ── ゆっくり射出 (逆回転・正方向押し出し) ──
     slow_fire_target_rad: 13.5             # [rad] ゆっくり射出時の目標角度 (正方向・13.5 rad)
     slow_fire_velocity_rad_s: 12.0          # [rad/s] 前進（押し出し）速度
-    slow_fire_return_velocity_rad_s: 6.0    # [rad/s] 待機位置への復帰速度
+    slow_fire_return_velocity_rad_s: 20.0    # [rad/s] 待機位置への復帰速度
     slow_fire_settle_timeout_sec: 3.0       # [s] 目標送信完了後に実機の到達を待つ猶予
     
     # [rad/s] 未原点時に目標位置を負方向へずらす速度
-    homing_velocity_rad_s: 5.0
+    homing_velocity_rad_s: 4.0
     
     # [s] リミットスイッチが見つからない場合のタイムアウト
     homing_timeout_sec: 50.0
