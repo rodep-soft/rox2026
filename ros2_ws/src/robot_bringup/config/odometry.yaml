@@ -14,10 +14,11 @@ mecanum_odometry_node:
     publish_period_ms: 20.0
     feedback_timeout_ms: 250.0
 
-    # / odom
-    velocity_scale_x: 1.0
-    velocity_scale_y: 1.0
-    velocity_scale_yaw: 1.0
+    # ── 📐 実測スケール補正 & 共分散チューニング ──
+    # 詳細な決め方手順: ros2_ws/src/robot_bringup/docs/ODOMETRY_TUNING_GUIDE.md
+    velocity_scale_x: 1.0     # 前後実測スケール補正 (目標1m走らせた実測平均値)
+    velocity_scale_y: 1.0     # 左右カニ歩き実測スケール補正
+    velocity_scale_yaw: 1.0   # 旋回スケール補正
     velocity_filter_alpha: 0.40  # 高速応答性とノイズ抑制のバランス
 
     slip_compensation:
