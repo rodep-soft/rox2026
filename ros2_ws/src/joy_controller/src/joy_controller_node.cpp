@@ -533,8 +533,8 @@ void JoyControllerNode::loop_callback()
 
   // 10. アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
   if (!game2_active_) {
-    double raw_vx = get_axis_value(joy_msg_, left_stick_x_axis_);
-    double raw_vy = get_axis_value(joy_msg_, left_stick_y_axis_);
+    double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
+    double raw_vy = get_axis_value(joy_msg_, left_stick_x_axis_);
     const double raw_wz = -get_axis_value(joy_msg_, right_stick_x_axis_);
 
     if (is_drive_reversed_) {
