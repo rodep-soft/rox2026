@@ -5,19 +5,19 @@
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
     dribble_position_rad: -0.91   # DRIBBLE姿勢
-    open_position_rad: -1.27      # OPEN姿勢 (ボールを出すときの姿勢)
+    open_position_rad: -1.2      # OPEN姿勢 (ボールを出すときの姿勢)
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.5        # FEED姿勢(発射機構に押し込む姿勢)
     
     # [s] 自動シュートサイクルのタイミング
     belt_spinup_delay_sec: 1.0  # ベルト回転開始から動作開始までのスピンアップ待機時間
     open_duration_sec: 0.2      # OPEN 姿勢を保持する時間
-    feed_duration_sec: 0.5      # FEED 押し込みを保持する時間
+    feed_duration_sec: 0.2      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
     opening_max_velocity_rad_s: 4.0   # OPEN 動作最大速度 (約0.27sで滑らかかつキビキビ開く)
     opening_accel_factor: 1.2         # OPEN 動作で最高速度に達するまでの遅さ倍率
-    feeding_max_velocity_rad_s: 11.0  # DRIBBLE -> FEED
+    feeding_max_velocity_rad_s: 6.0  # DRIBBLE -> FEED
     returning_max_velocity_rad_s: 6.0 # FEED -> DRIBBLE
     dribbling_max_velocity_rad_s: 3.0 # DRIBBLE 保持姿勢遷移 (約0.36sでスムーズに閉じる)
     dribbling_accel_factor: 1.2       # DRIBBLE 遷移の加速緩やかさ倍率
@@ -27,9 +27,9 @@
     dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
     dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
     spring_fire_dribble_rpm: 0    # ばね発射時の減速着地RPM (300 -> 600 RPMへ少し引き上げて球離れと飛距離を強化)
-    shot_cycle_opening_rpm: 1700    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
+    shot_cycle_opening_rpm: 200    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
     shot_cycle_feeding_rpm: 200       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
-    shot_cycle_returning_rpm: 1000  # FEED -> DRIBBLE
+    shot_cycle_returning_rpm: 800  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
     ball_detection_threshold_a: 4.2 # 1.7A 以上でボール保持(BALL DETECTED)と判定

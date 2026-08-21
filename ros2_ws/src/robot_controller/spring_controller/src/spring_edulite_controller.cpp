@@ -231,20 +231,8 @@ void SpringEduliteController::actuator_state_callback(
   actuator_position_rad_ = msg->position;
   actuator_position_received_ = true;
 
-  // A controller restart must not home a motor that stayed powered and still has a valid
-  // position reference. Adopt its measured position so emergency release cannot cause a jump.
-  if (state_ == State::UNINITIALIZED && homing_required_ && position_reference_set_) {
-    target_position_rad_ = msg->position;
-    homing_required_ = false;
-    stopped_count_ = 0;
-    state_ = State::READY;
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 10000,
-      "Existing spring position reference detected. Resuming at %.3f rad without homing.",
-      target_position_rad_);
-  }
-
-  // Home exactly once for this motor connection. A power-cycle sets homing_required_ again.
+  // A restored driver reference is not proof that the spring limit switch has been used.
+  // Home once after startup, beginning at feedback position after emergency stop is released.
   if (state_ == State::UNINITIALIZED && homing_required_ && !emergency_stop_active_) {
     RCLCPP_WARN(get_logger(), "Spring EduLite startup detected. Starting one-time HOMING.");
     start_homing();

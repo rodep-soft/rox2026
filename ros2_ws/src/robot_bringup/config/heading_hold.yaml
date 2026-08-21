@@ -9,6 +9,8 @@
     heading_deadband_rad: 0.02
     rotation_input_deadband_rad_s: 0.02
     max_correction_rad_s: 1.5
+    rotation_settle_velocity_rad_s: 0.08
+    rotation_settle_duration_ms: 100
 
     control_period_ms: 10   # トピック配信周期
     command_timeout_ms: 500 # cmd_velのタイムアウト判断時間
