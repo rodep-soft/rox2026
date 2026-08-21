@@ -7,14 +7,23 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     bringup_dir = get_package_share_directory("robot_bringup")
-    config_path = os.path.join(bringup_dir, "config", "game1.yaml")
+    game1_config = os.path.join(bringup_dir, "config", "game1.yaml")
+    tag_map_config = os.path.join(bringup_dir, "config", "apriltag_tag_map.yaml")
 
-    node = Node(
+    game1_node = Node(
         package="robot_controller",
         executable="game1_auto_node",
         name="game1_auto_node",
         output="screen",
-        parameters=[config_path],
+        parameters=[game1_config],
     )
 
-    return LaunchDescription([node])
+    localizer_node = Node(
+        package="robot_controller",
+        executable="apriltag_localizer_node",
+        name="apriltag_localizer_node",
+        output="screen",
+        parameters=[tag_map_config],
+    )
+
+    return LaunchDescription([game1_node, localizer_node])

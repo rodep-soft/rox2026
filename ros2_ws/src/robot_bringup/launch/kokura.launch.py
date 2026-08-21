@@ -151,10 +151,10 @@ def generate_launch_description():
             include("ekf.launch.py"),
             Node(
                 package="robot_controller",
-                executable="tag_localization_node",
-                name="tag_localization_node",
+                executable="apriltag_localizer_node",
+                name="apriltag_localizer_node",
                 output="screen",
-                parameters=[odometry_parameter_file],
+                parameters=[os.path.join(bringup_share, "config", "apriltag_tag_map.yaml")],
             ),
             # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
             include(

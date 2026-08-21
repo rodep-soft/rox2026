@@ -1,0 +1,42 @@
+apriltag_localizer_node:
+  ros__parameters:
+    base_frame: "base_link"
+    map_frame: "map"
+    tag_size: 0.18 # [m] Tagの一辺の長さ (18cm)
+    camera_offset_x: 0.265 # [m] 射出口中心からのカメラ前方オフセット
+    camera_offset_y: 0.035 # [m] 射出口中心からのカメラ左方オフセット
+    camera_offset_z: 0.193 # [m] 射出口中心からのカメラ高さオフセット
+
+    # ── 使用するタグIDリスト ──
+    # ここに列挙したIDのタグだけを自己位置補正に使用する
+    active_tag_ids: [0, 1, 2, 3]
+
+    # ── フィールド絶対座標マップ [x (m), y (m), yaw (rad)] ──
+    # フィールド原点: スタート位置 (0, 0, 0)
+    # yaw: タグの法線方向 (タグが向いている方角)
+
+    # ゲートに貼ったタグ ID=0
+    tag_0_x: 1.5
+    tag_0_y: 0.0
+    tag_0_yaw: 3.14159 # ゲートはロボット側(手前)を向いている
+
+    # ゲート横の壁 ID=1
+    tag_1_x: 2.5
+    tag_1_y: 1.0
+    tag_1_yaw: 3.14159
+
+    # パスエリア付近 ID=2
+    tag_2_x: 2.0
+    tag_2_y: -1.0
+    tag_2_yaw: 1.5708
+
+    # スタート付近 ID=3
+    tag_3_x: 0.3
+    tag_3_y: 0.0
+    tag_3_yaw: 0.0
+
+    # ── 共分散パラメータ (EKFへの信頼度) ──
+    # 距離に応じて自動で共分散をスケーリングするベース値
+    base_position_covariance: 0.01  # x, y の測定誤差分散 [m^2]
+    base_yaw_covariance: 0.005      # yaw の測定誤差分散 [rad^2]
+    max_valid_distance: 5.5         # [m] これ以上遠いタグはノイズ防止のため除外
