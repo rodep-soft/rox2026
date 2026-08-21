@@ -25,6 +25,7 @@ constexpr uint16_t SPEED_REFERENCE = 0x700A;
 constexpr uint16_t POSITION_REFERENCE = 0x7016;
 constexpr uint16_t SPEED_LIMIT = 0x7017;
 constexpr uint16_t CURRENT_LIMIT = 0x7018;
+constexpr uint16_t MECHANICAL_POSITION = 0x7019;
 constexpr uint16_t CURRENT_FEEDBACK = 0x701A;
 constexpr uint16_t ACCELERATION = 0x7022;
 constexpr uint16_t PP_SPEED = 0x7024;
@@ -137,6 +138,12 @@ private:
     WAIT_AFTER_WRITE,
     READ_PARAMETER,
     WAIT_FOR_READ,
+    READ_STARTUP_POSITION,
+    WAIT_FOR_STARTUP_POSITION,
+    WRITE_STARTUP_HOLD,
+    WAIT_AFTER_STARTUP_HOLD_WRITE,
+    READ_STARTUP_HOLD,
+    WAIT_FOR_STARTUP_HOLD,
     ENABLE,
     WAIT_FOR_ENABLE,
     READY,
@@ -196,6 +203,7 @@ private:
   float last_wrapped_position_rad_ = 0.0f;
   bool motor_position_initialized_ = false;
   float logical_position_offset_rad_ = 0.0f;
+  float startup_hold_position_rad_ = 0.0f;
   PositionReferenceState position_reference_state_ =
     PositionReferenceState::NOT_REQUIRED;
   TimePoint last_feedback_time_{};

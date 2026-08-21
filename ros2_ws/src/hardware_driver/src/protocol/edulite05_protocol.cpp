@@ -88,6 +88,24 @@ std::string Protocol::initialization_diagnostic() const
     case InitializationStep::WAIT_FOR_READ:
       step_name = "wait_for_read";
       break;
+    case InitializationStep::READ_STARTUP_POSITION:
+      step_name = "read_startup_position";
+      break;
+    case InitializationStep::WAIT_FOR_STARTUP_POSITION:
+      step_name = "wait_for_startup_position";
+      break;
+    case InitializationStep::WRITE_STARTUP_HOLD:
+      step_name = "write_startup_hold";
+      break;
+    case InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE:
+      step_name = "wait_after_startup_hold_write";
+      break;
+    case InitializationStep::READ_STARTUP_HOLD:
+      step_name = "read_startup_hold";
+      break;
+    case InitializationStep::WAIT_FOR_STARTUP_HOLD:
+      step_name = "wait_for_startup_hold";
+      break;
     case InitializationStep::ENABLE:
       step_name = "enable";
       break;
@@ -103,7 +121,19 @@ std::string Protocol::initialization_diagnostic() const
   }
   std::ostringstream stream;
   stream << "step=" << step_name;
-  if (initialization_parameter_index_ <
+  if (initialization_step_ == InitializationStep::READ_STARTUP_POSITION ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_POSITION)
+  {
+    stream << " register=0x" << std::hex << std::uppercase
+           << MECHANICAL_POSITION;
+  } else if (initialization_step_ == InitializationStep::WRITE_STARTUP_HOLD ||
+    initialization_step_ == InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE ||
+    initialization_step_ == InitializationStep::READ_STARTUP_HOLD ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD)
+  {
+    stream << " register=0x" << std::hex << std::uppercase
+           << POSITION_REFERENCE;
+  } else if (initialization_parameter_index_ <
     initialization_parameters_.size())
   {
     stream << " register=0x" << std::hex << std::uppercase
@@ -197,6 +227,45 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame(
         }
 
       case InitializationStep::WAIT_FOR_READ:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
+        retry_initialization();
+        continue;
+
+      case InitializationStep::READ_STARTUP_POSITION:
+        last_request_time_ = current_time;
+        initialization_step_ =
+          InitializationStep::WAIT_FOR_STARTUP_POSITION;
+        return make_read_parameter_frame(config_.can_id, MECHANICAL_POSITION);
+
+      case InitializationStep::WAIT_FOR_STARTUP_POSITION:
+        if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
+          return std::nullopt;
+        }
+        retry_initialization();
+        continue;
+
+      case InitializationStep::WRITE_STARTUP_HOLD:
+        last_request_time_ = current_time;
+        initialization_step_ =
+          InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE;
+        return make_write_float_frame(
+          config_.can_id, POSITION_REFERENCE, startup_hold_position_rad_);
+
+      case InitializationStep::WAIT_AFTER_STARTUP_HOLD_WRITE:
+        if (current_time - last_request_time_ < WRITE_SETTLING_TIME) {
+          return std::nullopt;
+        }
+        initialization_step_ = InitializationStep::READ_STARTUP_HOLD;
+        continue;
+
+      case InitializationStep::READ_STARTUP_HOLD:
+        last_request_time_ = current_time;
+        initialization_step_ = InitializationStep::WAIT_FOR_STARTUP_HOLD;
+        return make_read_parameter_frame(config_.can_id, POSITION_REFERENCE);
+
+      case InitializationStep::WAIT_FOR_STARTUP_HOLD:
         if (current_time - last_request_time_ <= RESPONSE_TIMEOUT) {
           return std::nullopt;
         }
@@ -385,6 +454,40 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     return false;
   }
+  if (initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_POSITION) {
+    if (index != MECHANICAL_POSITION) {
+      return false;
+    }
+    float current_position = 0.0f;
+    std::memcpy(&current_position, message.data.data() + 4, sizeof(float));
+    if (status != RESET_STATUS_MODE || !std::isfinite(current_position)) {
+      retry_initialization();
+      return false;
+    }
+
+    startup_hold_position_rad_ = current_position;
+    initialization_step_ = InitializationStep::WRITE_STARTUP_HOLD;
+    return true;
+  }
+
+  if (initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD) {
+    if (index != POSITION_REFERENCE) {
+      return false;
+    }
+    float hold_position = 0.0f;
+    std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
+    if (status != RESET_STATUS_MODE || !std::isfinite(hold_position) ||
+      std::fabs(hold_position - startup_hold_position_rad_) >= 0.001f)
+    {
+      retry_initialization();
+      return false;
+    }
+
+    initialization_retry_count_ = 0;
+    initialization_step_ = InitializationStep::ENABLE;
+    return true;
+  }
+
   if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
     return false;
   }
@@ -424,7 +527,11 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
       initialization_step_ = InitializationStep::ENABLE;
     }
   } else if (!motor_enabled_) {
-    initialization_step_ = InitializationStep::ENABLE;
+    if (uses_position_control() && expected.index == RUN_MODE) {
+      initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
+    } else {
+      initialization_step_ = InitializationStep::ENABLE;
+    }
   } else {
     initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
@@ -509,6 +616,11 @@ void Protocol::retry_initialization()
   }
   if (initialization_step_ == InitializationStep::WAIT_FOR_ENABLE) {
     initialization_step_ = InitializationStep::ENABLE;
+  } else if (initialization_step_ ==
+    InitializationStep::WAIT_FOR_STARTUP_POSITION ||
+    initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_HOLD)
+  {
+    initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
   } else {
     // Writeからやり直す
     initialization_step_ = InitializationStep::WRITE_PARAMETER;

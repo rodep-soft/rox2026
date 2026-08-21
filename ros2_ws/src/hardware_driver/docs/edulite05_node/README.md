@@ -66,6 +66,6 @@ ros2 service call /edulite/set_position actuator_msgs/srv/SetPosition \
 | `update_period_ms` | 初期化・watchdog・CAN指令を確認する周期 [ms] |
 | `state_array_publish_period_ms` | `/edulite/state_array`を配信する周期 [ms] |
 
-初期化はデータシートの起動順（`RUN_MODE`の設定・確認後にEnableし、続いて残りのパラメーターを設定）を維持する。応答待ちのモーターは送信対象から一時的に飛ばし、待機完了時は同じ更新周期内で次の読出しまたは再送フレームまで生成する。初期化フレームはCAN負荷を抑えるため1更新周期につき最大1つとする。
+初期化は`RUN_MODE`を設定・確認してからEnableし、続いて残りのパラメーターを設定する。PP/CSPではEnable時の意図しない移動を防ぐため、`RUN_MODE`確認後に0x7019から現在機械位置を読み、その値を`POSITION_REFERENCE`へ書き込んでReadback一致を確認してからEnableする。この保持位置は正式な原点には使用せず、位置基準状態はserviceまたはYAMLで確定する。応答待ちのモーターは送信対象から一時的に飛ばし、待機完了時は同じ更新周期内で次の読出しまたは再送フレームまで生成する。初期化フレームはCAN負荷を抑えるため1更新周期につき最大1つとする。
 
 CANフレーム形式とEduLite固有パラメーターは`hardware_driver`内部に閉じ込め、上位ノードは`logical_id`、速度、位置だけを扱う。
