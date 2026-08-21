@@ -49,12 +49,20 @@ mecanum_odometry_node:
 
 tag_localization_node:
   ros__parameters:
-    detection_topic: /detection
+    detection_topic: /detections
     output_topic: /apriltag/pose
+    camera_info_topic: /image_combine_raw/left/camera_info
     map_frame: map
     base_frame: base_link
-    camera_frame: camera_link
-    tag_position: [0.0, 0.0, 1.0]
-    tag_rpy: [0.0, 0.0, 0.0]
     covariance_xy: 0.04
     covariance_yaw: 0.08
+
+    # ── 🗺️ フィールド上 AprilTag マップ絶対座標登録 ──
+    # tag_ids: 登録する AprilTag の ID 一覧
+    # tag_positions_x / y / z: 各タグのマップ原点基準座標 (m)
+    # tag_yaws: 各タグ面の法線方向・向き (rad)
+    tag_ids: [0, 1, 2]
+    tag_positions_x: [1.5, 3.5, 0.0]
+    tag_positions_y: [0.0, 0.0, 0.0]
+    tag_positions_z: [0.5, 0.5, 0.5]
+    tag_yaws: [3.14159, 3.14159, 0.0]

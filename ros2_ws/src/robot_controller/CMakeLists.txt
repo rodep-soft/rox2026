@@ -118,7 +118,11 @@ add_executable(imu_mux_node imu_mux/src/imu_mux_node.cpp)
 ament_target_dependencies(
   imu_mux_node rclcpp sensor_msgs)
 
-list(APPEND controller_nodes mecanum_odometry_node heading_hold_node imu_mux_node test_game1_wp_move_node)
+add_executable(tag_localization_node auto_controllers/game1_shooter/src/tag_localization_node.cpp)
+ament_target_dependencies(
+  tag_localization_node apriltag_msgs geometry_msgs rclcpp sensor_msgs tf2 tf2_geometry_msgs)
+
+list(APPEND controller_nodes mecanum_odometry_node heading_hold_node imu_mux_node test_game1_wp_move_node tag_localization_node)
 
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 

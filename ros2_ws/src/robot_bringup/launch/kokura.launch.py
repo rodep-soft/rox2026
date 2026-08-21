@@ -147,8 +147,15 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-            # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ---
+            # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ＆ AprilTag マップ位置補正ノード ---
             include("ekf.launch.py"),
+            Node(
+                package="robot_controller",
+                executable="tag_localization_node",
+                name="tag_localization_node",
+                output="screen",
+                parameters=[odometry_parameter_file],
+            ),
             # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
             include(
                 "vision_launch.py",
