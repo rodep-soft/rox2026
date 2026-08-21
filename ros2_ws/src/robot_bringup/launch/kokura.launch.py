@@ -29,7 +29,11 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            # --- 起動引数 ---
+            DeclareLaunchArgument(
+                "side",
+                default_value="left",
+                description="Field side orientation: 'left' (red) or 'right' (blue) for auto Y/Yaw mirroring",
+            ),
             DeclareLaunchArgument(
                 "can_interface",
                 default_value="can0",
@@ -154,7 +158,10 @@ def generate_launch_description():
                 executable="apriltag_localizer_node",
                 name="apriltag_localizer_node",
                 output="screen",
-                parameters=[os.path.join(bringup_share, "config", "apriltag_tag_map.yaml")],
+                parameters=[
+                    os.path.join(bringup_share, "config", "apriltag_tag_map.yaml"),
+                    {"field_side": LaunchConfiguration("side")},
+                ],
             ),
             # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
             include(

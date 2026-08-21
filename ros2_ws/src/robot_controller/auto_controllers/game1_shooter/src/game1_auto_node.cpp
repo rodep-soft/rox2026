@@ -22,26 +22,35 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   wp_test_.y = declare_parameter<double>("wp_test_y", 0.0);
   wp_test_.yaw = declare_parameter<double>("wp_test_yaw", 0.0);
 
-  // YAML からの Waypoint 読み込み
+  // フィールドサイド設定 ("left" or "right" / 左右反転フィールド対応)
+  std::string field_side = declare_parameter<std::string>("field_side", "left");
+  const double mirror = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+  if (mirror < 0.0) {
+    RCLCPP_INFO(get_logger(), "🔄 [Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
+  } else {
+    RCLCPP_INFO(get_logger(), "🚩 [Game 1] LEFT/RED Field Side selected (Standard orientation).");
+  }
+
+  // YAML からの Waypoint 読み込み (フィールド反転を自動適用)
   wp_gate_.x = declare_parameter<double>("wp_gate_x", 1.5);
-  wp_gate_.y = declare_parameter<double>("wp_gate_y", 0.0);
-  wp_gate_.yaw = declare_parameter<double>("wp_gate_yaw", 0.0);
+  wp_gate_.y = declare_parameter<double>("wp_gate_y", 0.0) * mirror;
+  wp_gate_.yaw = declare_parameter<double>("wp_gate_yaw", 0.0) * mirror;
 
   wp_around_gate_.x = declare_parameter<double>("wp_around_gate_x", 2.5);
-  wp_around_gate_.y = declare_parameter<double>("wp_around_gate_y", 1.0);
-  wp_around_gate_.yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0);
+  wp_around_gate_.y = declare_parameter<double>("wp_around_gate_y", 1.0) * mirror;
+  wp_around_gate_.yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0) * mirror;
 
   wp_ball_.x = declare_parameter<double>("wp_ball_x", 3.5);
-  wp_ball_.y = declare_parameter<double>("wp_ball_y", 0.0);
-  wp_ball_.yaw = declare_parameter<double>("wp_ball_yaw", 0.0);
+  wp_ball_.y = declare_parameter<double>("wp_ball_y", 0.0) * mirror;
+  wp_ball_.yaw = declare_parameter<double>("wp_ball_yaw", 0.0) * mirror;
 
   wp_pass_area_.x = declare_parameter<double>("wp_pass_area_x", 2.0);
-  wp_pass_area_.y = declare_parameter<double>("wp_pass_area_y", -1.0);
-  wp_pass_area_.yaw = declare_parameter<double>("wp_pass_area_yaw", -1.5708);
+  wp_pass_area_.y = declare_parameter<double>("wp_pass_area_y", -1.0) * mirror;
+  wp_pass_area_.yaw = declare_parameter<double>("wp_pass_area_yaw", -1.5708) * mirror;
 
   wp_start_.x = declare_parameter<double>("wp_start_x", 0.0);
-  wp_start_.y = declare_parameter<double>("wp_start_y", 0.0);
-  wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0);
+  wp_start_.y = declare_parameter<double>("wp_start_y", 0.0) * mirror;
+  wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0) * mirror;
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,

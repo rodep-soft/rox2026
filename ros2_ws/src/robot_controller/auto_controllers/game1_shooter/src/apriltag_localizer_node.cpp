@@ -66,6 +66,13 @@ private:
     base_yaw_cov_ = declare_parameter<double>("base_yaw_covariance", 0.005);
     max_valid_distance_ = declare_parameter<double>("max_valid_distance", 5.5);
 
+    // フィールドサイド設定 ("left" or "right" / 左右反転フィールド対応)
+    std::string field_side = declare_parameter<std::string>("field_side", "left");
+    const double mirror = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+    if (mirror < 0.0) {
+      RCLCPP_INFO(get_logger(), "🔄 [Localizer] RIGHT/BLUE Field Side! Auto-mirroring Tag Y positions and Yaw orientations.");
+    }
+
     const auto active_ids = declare_parameter<std::vector<int64_t>>("active_tag_ids", {0, 1, 2, 3});
 
     tag_map_.clear();
@@ -74,8 +81,8 @@ private:
       TagMapEntry entry;
       entry.id = static_cast<int>(id);
       entry.x = declare_parameter<double>(prefix + "x", 0.0);
-      entry.y = declare_parameter<double>(prefix + "y", 0.0);
-      entry.yaw = declare_parameter<double>(prefix + "yaw", 0.0);
+      entry.y = declare_parameter<double>(prefix + "y", 0.0) * mirror;
+      entry.yaw = declare_parameter<double>(prefix + "yaw", 0.0) * mirror;
       tag_map_[static_cast<int>(id)] = entry;
       RCLCPP_INFO(
         get_logger(), "📍 [Field Map Tag #%d] Pos: (%.3f, %.3f), Heading: %+.2f rad (%.1f deg)",
