@@ -57,7 +57,7 @@ jobs:
       - name: Start container
         run: |
           mkdir -p ~/.ccache
-          docker compose up -d
+          docker compose up -d --no-build
 
       # ── 🔄 VCS 外部リポジトリの同期 (libbno055-linux, zenoh_joy_rs) ──
       - name: Sync external VCS repositories
