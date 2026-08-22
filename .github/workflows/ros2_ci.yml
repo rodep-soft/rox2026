@@ -48,6 +48,14 @@ jobs:
         run: |
           docker compose up -d
 
+      # ── 🔄 VCS 外部リポジトリの同期 (libbno055-linux, zenoh_joy_rs) ──
+      - name: Sync external VCS repositories
+        run: |
+          docker compose exec -T ros2_rox2026 \
+          bash -ec "
+            cd /root/ros2_ws && \
+            vcs import src < src/rox2026.repos || true"
+
       - name: Format C++
         if: github.event_name == 'pull_request'
         run: |
@@ -57,6 +65,7 @@ jobs:
             -path "*/ament_uncrustify/configuration/ament_code_style.cfg" | head -n 1) && \
             find src \
             -path 'src/libbno055-linux' -prune \
+            -o -path 'src/zenoh_joy_rs' -prune \
             -o \
             \( \
               -name '*.cpp' \
@@ -76,7 +85,7 @@ jobs:
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec "
-            black src --exclude '/libbno055-linux/'"
+            black src --exclude '/(libbno055-linux|zenoh_joy_rs)/'"
 
       - name: Format CMake
         if: github.event_name == 'pull_request'
@@ -85,6 +94,7 @@ jobs:
           bash -ec "
             find src \
             -path 'src/libbno055-linux' -prune \
+            -o -path 'src/zenoh_joy_rs' -prune \
             -o \
             -name 'CMakeLists.txt' \
             -exec cmake-format --config-files .cmake-format.yml \

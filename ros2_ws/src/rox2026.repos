@@ -1,9 +1,9 @@
 repositories:
   libbno055-linux:
     type: git
-    url: git@github.com:lazytatzv/libbno055-linux.git
+    url: https://github.com/lazytatzv/libbno055-linux.git
     version: main
   zenoh_joy_rs:
     type: git
-    url: git@github.com:lazytatzv/zenoh_joy_rs.git
+    url: https://github.com/lazytatzv/zenoh_joy_rs.git
     version: main
