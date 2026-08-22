@@ -46,10 +46,6 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     "/dribble/ball_detected", cmd_qos,
     std::bind(&Game2AutoNode::ball_callback, this, std::placeholders::_1));
 
-  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
-    "/joy", rclcpp::SensorDataQoS(),
-    std::bind(&Game2AutoNode::joy_callback, this, std::placeholders::_1));
-
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", estop_qos,
     std::bind(&Game2AutoNode::emergency_stop_callback, this, std::placeholders::_1));
@@ -294,32 +290,6 @@ void Game2AutoNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr
     publish_all(
       geometry_msgs::msg::Twist{}, 0.0f, false, false,
       robot_msgs::msg::ArmPosition::DRIBBLE, false);
-  }
-}
-
-void Game2AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
-{
-  if (!is_enabled_) {
-    return;
-  }
-
-  // Joystick manual override: disengage if operator moves sticks
-  constexpr double deadzone = 0.15;
-  bool manual_stick_moved = false;
-  for (const float axis_val : msg->axes) {
-    if (std::abs(axis_val) > deadzone) {
-      manual_stick_moved = true;
-      break;
-    }
-  }
-
-  if (manual_stick_moved) {
-    is_enabled_ = false;
-    state_ = robot_msgs::msg::Game2State::STANDBY;
-    reset_sequence();
-    RCLCPP_WARN(
-      get_logger(),
-      "Joystick Manual Stick Input Detected! Disengaging Game 2 Auto Sequence.");
   }
 }
 
