@@ -141,6 +141,9 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_nodes.append(camera_tf_node)
 
+        apriltag_launch_file = os.path.join(
+            bringup_share, "launch", "apriltag_launch.py"
+        )
         left_info = (
             "/image_combine_raw/left/camera_info"
             if enable_stereonet
