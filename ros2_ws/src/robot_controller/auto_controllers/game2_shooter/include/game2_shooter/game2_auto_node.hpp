@@ -54,7 +54,6 @@ private:
     const std::vector<rclcpp::Parameter> & parameters);
 
   void tag_detections_callback(const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg);
-  void camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void ball_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -79,7 +78,6 @@ private:
 
   // Subscriptions & Publishers & Timers
   rclcpp::Subscription<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr ball_sub_;

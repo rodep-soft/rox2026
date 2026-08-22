@@ -29,11 +29,6 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     "/detections", cmd_qos,
     std::bind(&Game2AutoNode::tag_detections_callback, this, std::placeholders::_1));
 
-  // /camera_info から実際のカメラ内部パラメータ行列 K を自動取得 (未受信時はYAML値で動作)
-  camera_info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/image_left_raw/camera_info", cmd_qos,
-    std::bind(&Game2AutoNode::camera_info_callback, this, std::placeholders::_1));
-
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game2/command_start", cmd_qos,
     std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
@@ -217,23 +212,6 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
   }
 
   return result;
-}
-
-void Game2AutoNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
-{
-  if (msg->k[0] > 10.0 && msg->k[4] > 10.0) {
-    camera_fx_ = msg->k[0];
-    camera_cx_ = msg->k[2];
-    camera_fy_ = msg->k[4];
-    camera_cy_ = msg->k[5];
-    camera_image_width_ = static_cast<double>(msg->width);
-    camera_image_height_ = static_cast<double>(msg->height);
-
-    RCLCPP_INFO_ONCE(
-      get_logger(),
-      "📷 CameraInfo received! Calibrated intrinsics loaded: fx=%.1f, fy=%.1f, cx=%.1f, cy=%.1f (Image: %dx%d)",
-      camera_fx_, camera_fy_, camera_cx_, camera_cy_, msg->width, msg->height);
-  }
 }
 
 void Game2AutoNode::reset_sequence()
