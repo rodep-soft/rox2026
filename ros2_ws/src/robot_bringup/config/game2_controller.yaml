@@ -20,11 +20,11 @@ game2_auto_node:
     tag_pitch_y: 0.43       # [m] 縦方向中心間ピッチ (実測値: 430mm)
 
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
-    kp_yaw: 2.0             # 比例ゲイン (視覚誤差)
-    kd_yaw: 0.18            # 微分/制動ゲイン (IMU gyro_z角速度ダンピングを強化してオーバーシュート防止)
-    min_angular_z: 0.08     # [rad/s] 静止摩擦補償最小角速度 (低速旋回での行きすぎ防止)
-    max_angular_z: 0.80     # [rad/s] 最大旋回角速度
-    max_angular_accel: 3.5  # [rad/s^2] 旋回加減速度リミッター (スリップ防止)
+    kp_yaw: 3.5             # 比例ゲイン (視覚誤差への高速追従)
+    kd_yaw: 0.22            # 微分/制動ゲイン (高速旋回からの急制動ダンピング)
+    min_angular_z: 0.12     # [rad/s] 静止摩擦補償最小角速度
+    max_angular_z: 1.80     # [rad/s] 最大旋回角速度 (大幅引き上げ: 約103 deg/s)
+    max_angular_accel: 8.0  # [rad/s^2] 旋回加減速度リミッター (キビキビ旋回)
     yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.85度)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
 
