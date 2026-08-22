@@ -233,7 +233,8 @@ void SpringEduliteController::actuator_state_callback(
   const bool actuator_state_is_ready =
     msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   std_msgs::msg::Bool ready_msg;
-  ready_msg.data = (actuator_state_is_ready && state_ == State::READY && !belt_clearance_requested_);
+  ready_msg.data =
+    (actuator_state_is_ready && state_ == State::READY && !belt_clearance_requested_);
   actuator_ready_pub_->publish(ready_msg);
 
   if (!actuator_state_is_ready) {
