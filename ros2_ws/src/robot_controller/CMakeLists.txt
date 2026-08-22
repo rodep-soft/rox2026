@@ -103,6 +103,8 @@ ament_target_dependencies(
   rclcpp
   sensor_msgs
   tf2
+  tf2_ros)
+
 add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp)
 ament_target_dependencies(
   test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
