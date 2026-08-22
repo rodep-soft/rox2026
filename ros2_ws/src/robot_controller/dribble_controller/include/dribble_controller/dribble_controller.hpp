@@ -29,7 +29,6 @@ private:
   void dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void belt_clearance_ready_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_shot_cycle();
   void publish_belt_clearance_request(bool requested);
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
@@ -125,8 +124,6 @@ private:
   int manual_transition_start_rpm_{0};
 
   bool shot_cycle_active_{false};
-  bool shot_cycle_waiting_for_spring_{false};
-  bool spring_belt_clearance_ready_{false};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};
   uint8_t last_published_shot_cycle_state_{0xFF};
   rclcpp::Time shot_cycle_start_time_;
@@ -156,7 +153,6 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_reverse_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_decel_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr belt_clearance_ready_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;

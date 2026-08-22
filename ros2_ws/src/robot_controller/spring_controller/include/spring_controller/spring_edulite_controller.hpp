@@ -55,7 +55,6 @@ private:
   bool actuator_position_received_{false};
   bool homing_required_{true};
   bool belt_clearance_requested_{false};
-  bool belt_clearance_ready_{false};
 
   int limit_switch_bit_offset_{0};
   int command_period_ms_{10};
@@ -86,7 +85,6 @@ private:
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr belt_clearance_ready_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr slow_fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;

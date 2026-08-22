@@ -95,8 +95,6 @@ SpringEduliteController::SpringEduliteController()
   // 装填・待機完了しているかどうかを見るtopic
   actuator_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/actuator_ready", command_qos);
-  belt_clearance_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/spring/belt_clearance_ready", rclcpp::QoS(1).reliable().transient_local());
 
   // spring_controller -> hardware_driver: 原点検出後の現在位置を0 radに設定する。
   set_position_client_ =
@@ -209,11 +207,6 @@ void SpringEduliteController::belt_clearance_request_callback(
   if (msg->data == belt_clearance_requested_) {return;}
 
   belt_clearance_requested_ = msg->data;
-  belt_clearance_ready_ = false;
-  std_msgs::msg::Bool ready_msg;
-  ready_msg.data = false;
-  belt_clearance_ready_pub_->publish(ready_msg);
-
   if (state_ != State::READY && state_ != State::MOVING_TO_STANDBY) {return;}
 
   target_position_rad_ = belt_clearance_requested_ ? 0.0 : standby_offset_rad_;
@@ -270,19 +263,12 @@ void SpringEduliteController::actuator_state_callback(
   // Feedback remains useful for the release position, but state completion and timeout checks
   // must stay paused until emergency stop is released.
   if (state_ == State::READY && belt_clearance_requested_ &&
-    !belt_clearance_ready_)
+    std::fabs(target_position_rad_) > standby_position_tolerance_rad_)
   {
-    if (std::fabs(actuator_position_rad_) <= standby_position_tolerance_rad_) {
-      belt_clearance_ready_ = true;
-      std_msgs::msg::Bool ready_msg;
-      ready_msg.data = true;
-      belt_clearance_ready_pub_->publish(ready_msg);
-    } else {
-      target_position_rad_ = 0.0;
-      state_ = State::MOVING_TO_STANDBY;
-      stopped_count_ = 0;
-      publish_target(target_position_rad_);
-    }
+    target_position_rad_ = 0.0;
+    state_ = State::MOVING_TO_STANDBY;
+    stopped_count_ = 0;
+    publish_target(target_position_rad_);
   }
 
   const bool emergency_motion_paused = emergency_stop_active_ &&
@@ -333,11 +319,6 @@ void SpringEduliteController::actuator_state_callback(
       }
       state_ = State::READY;
       stopped_count_ = 0;
-      std_msgs::msg::Bool clearance_ready;
-      clearance_ready.data = belt_clearance_requested_ &&
-        std::fabs(target_position_rad_) <= standby_position_tolerance_rad_;
-      belt_clearance_ready_ = clearance_ready.data;
-      belt_clearance_ready_pub_->publish(clearance_ready);
     }
   }
 
@@ -507,12 +488,6 @@ void SpringEduliteController::request_zero_reference()
           target_position_rad_ = 0.0;
           state_ = State::READY;
           publish_target(0.0);
-          if (belt_clearance_requested_) {
-            belt_clearance_ready_ = true;
-            std_msgs::msg::Bool ready_msg;
-            ready_msg.data = true;
-            belt_clearance_ready_pub_->publish(ready_msg);
-          }
         }
       } else {
         state_ = State::ERROR;
