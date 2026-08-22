@@ -67,6 +67,7 @@ private:
   double deceleration_yaw_rad_s2_{6.0};
   double axis_deadzone_{0.05};
   double axis_on_threshold_{0.7};
+  double game2_override_deadzone_{0.25};
 
   int ps_button_{12};
   int home_button_{13};

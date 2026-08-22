@@ -26,6 +26,7 @@ JoyControllerNode::JoyControllerNode()
   deceleration_yaw_rad_s2_ = declare_parameter<double>("angular_z_deceleration_limit", 6.0);
   axis_deadzone_ = declare_parameter<double>("axis_deadzone", 0.05);
   axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.7);
+  game2_override_deadzone_ = declare_parameter<double>("game2_override_deadzone", 0.25);
 
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
@@ -251,6 +252,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         axis_deadzone_ = val;
       } else if (name == "axis_on_threshold") {
         axis_on_threshold_ = val;
+      } else if (name == "game2_override_deadzone") {
+        game2_override_deadzone_ = val;
       } else if (name == "slow_turn_scale" || name == "slow_turn_ratio") {
         slow_turn_scale_ = val;
       } else if (name == "slow_linear_scale" || name == "slow_linear_ratio") {
@@ -379,8 +382,10 @@ void JoyControllerNode::loop_callback()
   }
 
   // 6. Game 2 自動戦術モード切替 (OPTIONS)
+  bool game2_just_toggled = false;
   if (is_button_just_pressed(joy_msg_, game2_start_button_)) {
     game2_active_ = !game2_active_;
+    game2_just_toggled = true;
     RCLCPP_INFO(get_logger(), "Game 2 mode toggled: %s", game2_active_ ? "START" : "STOP");
     std_msgs::msg::Bool game2_msg;
     game2_msg.data = game2_active_;
@@ -388,14 +393,21 @@ void JoyControllerNode::loop_callback()
   }
 
   // 7. 手動オーバーライド: Game 2 モード中にスティック操作を検出したら自動解除
-  if (game2_active_) {
-    const double raw_vx = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
-    const double raw_vy = apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
-    const double raw_wz = apply_axis_deadzone(-get_axis_value(joy_msg_, right_stick_x_axis_));
+  // ※ボタンを押した瞬間フレームはスキップし、スティック微動・ドリフトで誤解除されないよう閾値(game2_override_deadzone_)で判定
+  if (game2_active_ && !game2_just_toggled) {
+    const double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
+    const double raw_vy = get_axis_value(joy_msg_, left_stick_x_axis_);
+    const double raw_wz = -get_axis_value(joy_msg_, right_stick_x_axis_);
 
-    if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
+    if (std::abs(raw_vx) > game2_override_deadzone_ ||
+      std::abs(raw_vy) > game2_override_deadzone_ ||
+      std::abs(raw_wz) > game2_override_deadzone_)
+    {
       game2_active_ = false;
-      RCLCPP_WARN(get_logger(), "Manual stick input detected! Game 2 AUTO mode disengaged.");
+      RCLCPP_WARN(
+        get_logger(),
+        "Manual stick input detected (vx=%.2f, vy=%.2f, wz=%.2f > %.2f)! Game 2 AUTO mode disengaged.",
+        raw_vx, raw_vy, raw_wz, game2_override_deadzone_);
       std_msgs::msg::Bool game2_msg;
       game2_msg.data = false;
       game2_start_pub_->publish(game2_msg);

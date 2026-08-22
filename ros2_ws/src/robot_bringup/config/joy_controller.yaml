@@ -45,6 +45,8 @@
 
     # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
+    # Game2 自動モード中の手動介入解除しきい値 (スティック微小ドリフトでの誤解除防止)
+    game2_override_deadzone: 0.25
     # トリガー・DPAD軸をONとみなすしきい値
     axis_on_threshold: 0.7
 
