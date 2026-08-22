@@ -51,7 +51,8 @@ launch:
 	ros2 launch robot_bringup manual_robot.launch.py
 
 sync:
-	vcs import --input src/rox2026.repos src
+	vcs import --skip-existing --input src/rox2026.repos src || true
+	vcs pull src || true
 
 vcs-status:
 	vcs status src

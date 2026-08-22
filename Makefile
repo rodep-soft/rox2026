@@ -7,8 +7,8 @@ dev:
 
 sync:
 	git submodule update --init --recursive
-	vcs import ros2_ws/src < ros2_ws/src/rox2026.repos || true
-	vcs custom ros2_ws/src --git --args pull origin main || true
+	vcs import --skip-existing ros2_ws/src < ros2_ws/src/rox2026.repos || true
+	vcs pull ros2_ws/src || true
 
 build:
 	$(MAKE) -C ros2_ws build
