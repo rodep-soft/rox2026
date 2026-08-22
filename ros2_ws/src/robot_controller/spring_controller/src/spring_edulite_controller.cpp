@@ -114,11 +114,19 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
 
   if (!rising_edge) {return;}
 
-  if (emergency_stop_active_ || state_ != State::READY) {
+  if (emergency_stop_active_) {
     RCLCPP_WARN(
       get_logger(),
-      "Fire request rejected: emergency stop active or state is not READY.");
+      "Fire request rejected: emergency stop active.");
     return;
+  }
+
+  if (state_ != State::READY) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Fire request received while state was %d (not READY). Auto-recovering to READY and firing.",
+      static_cast<int>(state_));
+    state_ = State::READY;
   }
 
   // 1回転を加算して発射し、回転完了後に待機位置へ戻る
@@ -139,11 +147,19 @@ void SpringEduliteController::slow_fire_request_callback(const std_msgs::msg::Bo
 
   if (!rising_edge) {return;}
 
-  if (emergency_stop_active_ || state_ != State::READY) {
+  if (emergency_stop_active_) {
     RCLCPP_WARN(
       get_logger(),
-      "Slow fire request rejected: emergency stop active or state is not READY.");
+      "Slow fire request rejected: emergency stop active.");
     return;
+  }
+
+  if (state_ != State::READY) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Slow fire request received while state was %d (not READY). Auto-recovering to READY.",
+      static_cast<int>(state_));
+    state_ = State::READY;
   }
 
   // 13.5 rad を超えないように絶対的なハード安全リミット（13.5 rad上限）を適用
@@ -298,22 +314,19 @@ void SpringEduliteController::actuator_state_callback(
       (slow_fire_velocity_rad_s_ > 0.0) ?
       (stroke_rad / slow_fire_velocity_rad_s_) : 1.0;
 
-    if (elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_) {
-      enter_error_with_position_hold(
-        msg->position, "Slow fire extension timed out");
-      return;
-    }
-
     const bool pos_reached =
       msg->position >=
       slow_fire_peak_rad_ - standby_position_tolerance_rad_;
-    if (pos_reached && target_position_rad_ >= slow_fire_peak_rad_) {
+    const bool timeout_reached =
+      elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_;
+
+    if ((pos_reached && target_position_rad_ >= slow_fire_peak_rad_) || timeout_reached) {
       ++stopped_count_;
     } else {
       stopped_count_ = 0;
     }
 
-    if (stopped_count_ >= required_stopped_count_) {
+    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
       RCLCPP_INFO(
         get_logger(),
         "Reached slow fire peak (target: %.3f rad, feedback: %.3f rad). Returning to base (%.3f rad).",
@@ -332,27 +345,23 @@ void SpringEduliteController::actuator_state_callback(
       (slow_fire_return_velocity_rad_s_ > 0.0) ?
       (stroke_rad / slow_fire_return_velocity_rad_s_) : 1.0;
 
-    if (elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_) {
-      enter_error_with_position_hold(
-        msg->position, "Slow fire return timed out");
-      return;
-    }
-
     const bool pos_reached =
       std::fabs(msg->position - slow_fire_base_rad_) <=
       standby_position_tolerance_rad_;
     const bool vel_stopped =
       std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_;
+    const bool timeout_reached =
+      elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_;
 
-    if (pos_reached && vel_stopped &&
-      target_position_rad_ <= slow_fire_base_rad_ + 1e-4)
+    if ((pos_reached && vel_stopped &&
+      target_position_rad_ <= slow_fire_base_rad_ + 1e-4) || timeout_reached)
     {
       ++stopped_count_;
     } else {
       stopped_count_ = 0;
     }
 
-    if (stopped_count_ >= required_stopped_count_) {
+    if (stopped_count_ >= required_stopped_count_ || timeout_reached) {
       target_position_rad_ = slow_fire_base_rad_;
       publish_target(target_position_rad_);
       RCLCPP_INFO(
