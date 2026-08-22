@@ -18,7 +18,7 @@ enum WheelIndex : std::size_t
 };
 
 /// @brief 遅延ゼロでトゲ・外れ値スパイクノイズを除去する汎用メディアンフィルタ (奇数バッファ N=3 or 5)
-template <std::size_t N = 3>
+template<std::size_t N = 3>
 class MedianFilter
 {
   static_assert(N % 2 == 1, "MedianFilter buffer size N must be odd (e.g. 3 or 5)");
