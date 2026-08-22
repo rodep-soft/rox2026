@@ -103,19 +103,6 @@ ament_target_dependencies(
   rclcpp
   sensor_msgs
   tf2
-  tf2_ros)
-
-add_executable(heading_hold_node heading_hold/src/heading_hold_node.cpp)
-ament_target_dependencies(
-  heading_hold_node
-  geometry_msgs
-  rcl_interfaces
-  rclcpp
-  sensor_msgs
-  std_msgs
-  tf2
-  tf2_geometry_msgs)
-
 add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp)
 ament_target_dependencies(
   test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
@@ -130,7 +117,7 @@ ament_target_dependencies(
   tf2
   tf2_geometry_msgs)
 
-list(APPEND controller_nodes mecanum_odometry_node heading_hold_node test_game1_wp_move_node apriltag_localizer_node)
+list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories

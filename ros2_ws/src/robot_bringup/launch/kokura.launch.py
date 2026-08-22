@@ -114,11 +114,11 @@ def generate_launch_description():
             include("controllers/dribble_controller.launch.py"),
             include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
-            # --- 4. Heading controller using the STM32 IMU on /imu/data (FF + 2-DOF) ---
+            # --- 4. BNO055 Heading Control Node (Feedforward + 2-DOF) from libbno055_linux ---
             Node(
-                package="robot_controller",
-                executable="heading_hold_node",
-                name="heading_hold_node",
+                package="libbno055_linux",
+                executable="bno055_heading_control_node",
+                name="bno055_heading_control_node",
                 parameters=[heading_hold_parameter_file],
                 output="screen",
             ),
