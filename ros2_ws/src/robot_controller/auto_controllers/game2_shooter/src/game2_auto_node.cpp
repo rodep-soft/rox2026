@@ -31,7 +31,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
 
   // /camera_info から実際のカメラ内部パラメータ行列 K を自動取得 (未受信時はYAML値で動作)
   camera_info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/image_combine_raw/left/camera_info", cmd_qos,
+    "/image_left_raw/camera_info", cmd_qos,
     std::bind(&Game2AutoNode::camera_info_callback, this, std::placeholders::_1));
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
@@ -96,10 +96,10 @@ void Game2AutoNode::load_parameters()
   camera_offset_z_ = declare_parameter<double>("camera_offset_z", 0.193);
   camera_image_width_ = declare_parameter<double>("camera_image_width", 1920.0);
   camera_image_height_ = declare_parameter<double>("camera_image_height", 1080.0);
-  camera_fx_ = declare_parameter<double>("camera_fx", 800.0);
-  camera_fy_ = declare_parameter<double>("camera_fy", 800.0);
-  camera_cx_ = declare_parameter<double>("camera_cx", camera_image_width_ / 2.0);
-  camera_cy_ = declare_parameter<double>("camera_cy", camera_image_height_ / 2.0);
+  camera_fx_ = declare_parameter<double>("camera_fx", 723.47);
+  camera_fy_ = declare_parameter<double>("camera_fy", 723.47);
+  camera_cx_ = declare_parameter<double>("camera_cx", 746.35);
+  camera_cy_ = declare_parameter<double>("camera_cy", 578.43);
 
   // Tolerances & Timings
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.015);

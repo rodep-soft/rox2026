@@ -10,10 +10,10 @@ game2_auto_node:
     camera_offset_z: 0.193  # [m] 上方オフセット (実測値: 193mm)
     camera_image_width: 1920.0
     camera_image_height: 1080.0
-    camera_fx: 800.0        # [px] 水平焦点距離
-    camera_fy: 800.0        # [px] 垂直焦点距離
-    camera_cx: 960.0        # [px] 光学主点X
-    camera_cy: 540.0        # [px] 光学主点Y
+    camera_fx: 723.47       # [px] 水平焦点距離 (実測 CameraInfo: 723.4666)
+    camera_fy: 723.47       # [px] 垂直焦点距離 (実測 CameraInfo: 723.4666)
+    camera_cx: 746.35       # [px] 光学主点X (実測 CameraInfo: 746.3508)
+    camera_cy: 578.43       # [px] 光学主点Y (実測 CameraInfo: 578.4283)
 
     # ── 📐 パネル物理配置パラメータ (Tag中心間ピッチ) ──
     tag_pitch_x: 0.40       # [m] 横方向中心間ピッチ (実測値: 400mm)
