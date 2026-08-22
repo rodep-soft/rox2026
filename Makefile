@@ -11,28 +11,27 @@ sync:
 	vcs custom ros2_ws/src --git --args pull origin main || (cd ros2_ws/src/libbno055-linux && git pull origin main)
 
 build:
-	cd ros2_ws && colcon build --symlink-install --event-handlers console_direct- status+ console_stderr+
+	$(MAKE) -C ros2_ws build
 
 # ── 📦 パッケージ個別・クリーンビルド ──
 clean-build:
 	@if [ -z "$(pkg)" ]; then \
 		echo "❌ エラー: パッケージ名を指定してください"; \
-		echo "   例: make clean-build pkg=libbno055_linux"; \
+		echo "   例: make clean-build pkg=robot_controller"; \
 		echo "   例: make clean-build pkg=robot_bringup"; \
 		exit 1; \
 	fi
 	@echo "🧹 クリーンビルド中: $(pkg)..."
 	rm -rf ros2_ws/build/$(pkg) ros2_ws/install/$(pkg)
-	cd ros2_ws && colcon build --symlink-install --packages-select $(pkg) --event-handlers console_direct- status+ console_stderr+
+	$(MAKE) -C ros2_ws build-package PACKAGE=$(pkg)
 
 build-pkg:
 	@if [ -z "$(pkg)" ]; then \
 		echo "❌ エラー: パッケージ名を指定してください"; \
-		echo "   例: make build-pkg pkg=libbno055_linux"; \
+		echo "   例: make build-pkg pkg=robot_controller"; \
 		exit 1; \
 	fi
-	@echo "🔨 ビルド中: $(pkg)..."
-	cd ros2_ws && colcon build --symlink-install --packages-select $(pkg) --event-handlers console_direct- status+ console_stderr+
+	$(MAKE) -C ros2_ws build-package PACKAGE=$(pkg)
 
 # ── 🛠️ トラブルシューティング＆診断一発起動 ──
 debug:

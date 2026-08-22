@@ -1,11 +1,12 @@
 .PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
-BUILD_JOBS ?= 3
-PARALLEL_WORKERS ?= 2
-EXECUTOR ?= parallel
+BUILD_JOBS ?= 2
+PARALLEL_WORKERS ?= 1
+EXECUTOR ?= sequential
 
 CMAKE_ARGS = \
 	-G Ninja \
+	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_C_COMPILER_LAUNCHER=ccache \
 	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
