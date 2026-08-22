@@ -141,8 +141,10 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_nodes.append(camera_tf_node)
 
-        apriltag_launch_file = os.path.join(
-            bringup_share, "launch", "apriltag_launch.py"
+        left_info = (
+            "/image_combine_raw/left/camera_info"
+            if enable_stereonet
+            else "/image_left_raw/camera_info"
         )
         apriltag_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(apriltag_launch_file),
@@ -150,7 +152,7 @@ def launch_setup(context, *args, **kwargs):
                 {
                     "node_name": "apriltag_csi_node",
                     "image_topic": "/image_left_raw",
-                    "camera_info_topic": "/image_combine_raw/left/camera_info",
+                    "camera_info_topic": left_info,
                     "camera_frame_id": "default_cam",
                     "tag_family": tag_family,
                     "tag_size": tag_size,
