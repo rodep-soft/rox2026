@@ -413,7 +413,7 @@ private:
   double pose_cov_x_{0.0};
   double pose_cov_y_{0.0};
   double pose_cov_yaw_{0.0};
-  std::string state_topic_, odom_topic_, odom_frame_, base_frame_;
+  std::string state_topic_, imu_topic_, odom_topic_, odom_frame_, base_frame_;
 };
 
 int main(int argc, char ** argv)

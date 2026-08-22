@@ -822,23 +822,18 @@ void Game2AutoNode::control_loop()
 
         // ── 👁️ 着弾・ノックダウン（AprilTag消失）視覚判定 ──
         if (state_elapsed >= result_wait_duration_) {
-          bool any_knockdown = false;
-          bool any_remaining = false;
-
           for (const int tid : current_target_tag_ids_) {
             auto it = panel_grid_.find(tid);
             if (it != panel_grid_.end()) {
               // タグが見えなくなっていれば（消失 = 倒れた）ノックダウン成功！
               if (!it->second.detected) {
                 it->second.shot_completed = true;
-                any_knockdown = true;
                 RCLCPP_INFO(
                   get_logger(),
                   "💥 [Game2 KNOCKDOWN CONFIRMED!] Tag #%d vanished (panel fell down). Marked as completed! (Shot attempts: %d)",
                   tid, it->second.shot_count);
               } else {
                 // まだタグが見えている（倒れなかった or ミス）
-                any_remaining = true;
                 RCLCPP_WARN(
                   get_logger(),
                   "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry (Shot attempts: %d)",
