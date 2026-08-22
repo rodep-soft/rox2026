@@ -57,5 +57,21 @@ sync:
 vcs-status:
 	vcs status src
 
+# ── ⚡ CIビルド済みバイナリのワンクリックダウンロード ──
+download:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"); \
+	echo "⬇️ GitHub Actions からブランチ [$$BRANCH] の最新ビルド済みバイナリを取得中..."; \
+	if command -v gh > /dev/null 2>&1; then \
+		rm -rf /tmp/rox2026-dl; \
+		gh run download --name rox2026-install --branch "$$BRANCH" --dir /tmp/rox2026-dl && \
+		tar -xzf /tmp/rox2026-dl/rox2026-install.tar.gz -C . && \
+		rm -rf /tmp/rox2026-dl && \
+		echo "✅ デプロイ完了 [$$BRANCH]！'source install/setup.bash' して即起動できます。"; \
+	else \
+		echo "❌ エラー: GitHub CLI (gh) がインストールされていません。"; \
+		echo "   インストールコマンド: sudo apt update && sudo apt install -y gh && gh auth login"; \
+		exit 1; \
+	fi
+
 clean:
 	rm -rf build install log
