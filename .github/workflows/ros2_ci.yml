@@ -132,7 +132,7 @@ jobs:
             cd /root/ros2_ws && \
             colcon build \
               --merge-install \
-              --cmake-args -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_MODULE_PATH=/opt/ros/humble/share/spdlog_vendor/cmake \
+              --cmake-args -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="/opt/ros/humble;/opt/ros/humble/opt/spdlog_vendor;/opt/ros/humble/opt/yaml_cpp_vendor" \
               --parallel-workers \$(nproc) && \
             echo '── 📊 ccache 統計情報 ──' && \
             ccache -s"
