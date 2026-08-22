@@ -35,17 +35,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ── ⚡ C++ Build Cache (ccache) の永続化 ──
+      # ── ⚡ C++ Compilation Cache (ccache) の永続化（最速設定） ──
       - name: Cache ccache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-${{ github.sha }}
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('ros2_ws/src/**/CMakeLists.txt', 'ros2_ws/src/**/package.xml', 'ros2_ws/src/rox2026.repos') }}-${{ github.run_id }}
           restore-keys: |
+            ccache-${{ runner.os }}-${{ hashFiles('ros2_ws/src/**/CMakeLists.txt', 'ros2_ws/src/**/package.xml', 'ros2_ws/src/rox2026.repos') }}-
             ccache-${{ runner.os }}-
+
+      # ── ⚡ Colcon Build 中間ディレクトリの永続化 ──
+      - name: Cache colcon build directory
+        uses: actions/cache@v4
+        with:
+          path: ros2_ws/build
+          key: colcon-build-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            colcon-build-${{ runner.os }}-
 
       - name: Start container
         run: |
+          mkdir -p ~/.ccache
           docker compose up -d
 
       # ── 🔄 VCS 外部リポジトリの同期 (libbno055-linux, zenoh_joy_rs) ──
@@ -100,16 +111,28 @@ jobs:
             -exec cmake-format --config-files .cmake-format.yml \
             --in-place {} +"
 
-      # ── ⚡ ccache を活用した爆速 colcon build ──
-      - name: Run build (Accelerated with ccache)
+      # ── ⚡ ccache 最適化設定 ＆ 爆速 colcon build ──
+      - name: Run build (Accelerated with ccache & ninja)
         run: |
           docker compose exec -T ros2_rox2026 \
           bash -ec " 
+            export CCACHE_DIR='/root/.ccache' && \
+            export CCACHE_MAXSIZE='5G' && \
+            export CCACHE_COMPRESS='true' && \
+            export CCACHE_COMPRESSLEVEL='1' && \
+            export CCACHE_SLOPPINESS='time_macros,include_file_mtime,file_macro' && \
+            export CCACHE_BASEDIR='/root/ros2_ws' && \
+            export CCACHE_NOHASHDIR='true' && \
             export CC='/usr/lib/ccache/gcc' && \
             export CXX='/usr/lib/ccache/g++' && \
             source /opt/ros/humble/setup.bash && \
             cd /root/ros2_ws && \
-            colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF --parallel-workers \$(nproc)"
+            colcon build \
+              --merge-install \
+              --cmake-args -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+              --parallel-workers \$(nproc) && \
+            echo '── 📊 ccache 統計情報 ──' && \
+            ccache -s"
 
       # ── 📦 ARM64/RDK 用ビルド済みバイナリのアーカイブ作成 ──
       - name: Package install directory
