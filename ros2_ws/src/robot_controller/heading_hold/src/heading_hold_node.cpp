@@ -10,6 +10,7 @@
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
@@ -45,6 +46,21 @@ public:
     imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
       imu_topic_, rclcpp::SensorDataQoS(),
       [this](const sensor_msgs::msg::Imu::SharedPtr message) {receive_imu(*message);});
+
+    if (!enable_topic_.empty()) {
+      enable_sub_ = create_subscription<std_msgs::msg::Bool>(
+        enable_topic_, rclcpp::QoS(1).reliable().transient_local(),
+        [this](const std_msgs::msg::Bool::SharedPtr message) {
+          heading_hold_enabled_ = message->data;
+          if (!heading_hold_enabled_) {
+            reset_heading_hold();
+          }
+          RCLCPP_INFO(
+            get_logger(), "Heading hold enable state changed: %s",
+            heading_hold_enabled_ ? "ENABLED" : "DISABLED");
+        });
+    }
+
     corrected_command_pub_ = create_publisher<geometry_msgs::msg::Twist>(
       corrected_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
 
@@ -57,8 +73,9 @@ public:
       std::chrono::milliseconds(control_period_ms_), [this]() {control();});
 
     RCLCPP_INFO(
-      get_logger(), "Heading hold: input=%s output=%s imu=%s",
-      raw_cmd_vel_topic_.c_str(), corrected_cmd_vel_topic_.c_str(), imu_topic_.c_str());
+      get_logger(), "Heading hold: input=%s output=%s imu=%s (FF vel=%.2f, acc=%.3f)",
+      raw_cmd_vel_topic_.c_str(), corrected_cmd_vel_topic_.c_str(), imu_topic_.c_str(),
+      k_ff_vel_, k_ff_acc_);
   }
 
 private:
@@ -84,6 +101,18 @@ private:
     imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
     corrected_cmd_vel_topic_ =
       declare_parameter<std::string>("corrected_cmd_vel_topic", "/mecanum/cmd_vel_heading");
+    enable_topic_ = declare_parameter<std::string>("enable_topic", "/heading_control/enable");
+    heading_hold_enabled_ = declare_parameter<bool>("enable_heading_hold", true);
+
+    // フィードフォワードパラメータ
+    enable_feedforward_ = declare_parameter<bool>("enable_feedforward", true);
+    k_ff_vel_ = declare_parameter<double>("k_ff_vel", 1.0);
+    k_ff_acc_ = declare_parameter<double>("k_ff_acc", 0.0);
+    k_ff_drift_vx_ = declare_parameter<double>("k_ff_drift_vx", 0.0);
+    k_ff_drift_vy_ = declare_parameter<double>("k_ff_drift_vy", 0.0);
+    k_ff_drift_ax_ = declare_parameter<double>("k_ff_drift_ax", 0.0);
+    k_ff_drift_ay_ = declare_parameter<double>("k_ff_drift_ay", 0.0);
+    accel_filter_alpha_ = declare_parameter<double>("accel_filter_alpha", 0.3);
 
     validate_non_negative("kp", kp_);
     validate_non_negative("ki", ki_);
@@ -119,7 +148,7 @@ private:
   {
     auto result = rcl_interfaces::msg::SetParametersResult();
     result.successful = false;
-    result.reason = "Only PID and heading-hold limits can be changed while running";
+    result.reason = "Only PID, FF, and heading-hold limits can be changed while running";
 
     double next_kp = kp_;
     double next_ki = ki_;
@@ -128,9 +157,19 @@ private:
     double next_heading_deadband = heading_deadband_rad_;
     double next_rotation_deadband = rotation_input_deadband_rad_s_;
     double next_max_correction = max_correction_rad_s_;
-
     double next_settle_velocity = rotation_settle_velocity_rad_s_;
     int next_settle_duration_ms = rotation_settle_duration_ms_;
+
+    bool next_enable_ff = enable_feedforward_;
+    double next_k_ff_vel = k_ff_vel_;
+    double next_k_ff_acc = k_ff_acc_;
+    double next_k_ff_drift_vx = k_ff_drift_vx_;
+    double next_k_ff_drift_vy = k_ff_drift_vy_;
+    double next_k_ff_drift_ax = k_ff_drift_ax_;
+    double next_k_ff_drift_ay = k_ff_drift_ay_;
+    double next_accel_filter_alpha = accel_filter_alpha_;
+    bool next_enable_heading_hold = heading_hold_enabled_;
+
     for (const auto & parameter : parameters) {
       const auto & name = parameter.get_name();
       if (name == "kp") {
@@ -151,6 +190,24 @@ private:
         next_settle_velocity = parameter.as_double();
       } else if (name == "rotation_settle_duration_ms") {
         next_settle_duration_ms = parameter.as_int();
+      } else if (name == "enable_feedforward") {
+        next_enable_ff = parameter.as_bool();
+      } else if (name == "k_ff_vel") {
+        next_k_ff_vel = parameter.as_double();
+      } else if (name == "k_ff_acc") {
+        next_k_ff_acc = parameter.as_double();
+      } else if (name == "k_ff_drift_vx") {
+        next_k_ff_drift_vx = parameter.as_double();
+      } else if (name == "k_ff_drift_vy") {
+        next_k_ff_drift_vy = parameter.as_double();
+      } else if (name == "k_ff_drift_ax") {
+        next_k_ff_drift_ax = parameter.as_double();
+      } else if (name == "k_ff_drift_ay") {
+        next_k_ff_drift_ay = parameter.as_double();
+      } else if (name == "accel_filter_alpha") {
+        next_accel_filter_alpha = parameter.as_double();
+      } else if (name == "enable_heading_hold") {
+        next_enable_heading_hold = parameter.as_bool();
       } else {
         return result;
       }
@@ -160,12 +217,16 @@ private:
       !std::isfinite(next_integral_limit) || !std::isfinite(next_heading_deadband) ||
       !std::isfinite(next_rotation_deadband) || !std::isfinite(next_settle_velocity) ||
       !std::isfinite(next_max_correction) ||
+      !std::isfinite(next_k_ff_vel) || !std::isfinite(next_k_ff_acc) ||
+      !std::isfinite(next_k_ff_drift_vx) || !std::isfinite(next_k_ff_drift_vy) ||
+      !std::isfinite(next_k_ff_drift_ax) || !std::isfinite(next_k_ff_drift_ay) ||
+      !std::isfinite(next_accel_filter_alpha) ||
       next_kp < 0.0 || next_ki < 0.0 || next_kd < 0.0 || next_integral_limit < 0.0 ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
       next_settle_velocity < 0.0 || next_settle_duration_ms <= 0 ||
-      next_max_correction <= 0.0)
+      next_max_correction <= 0.0 || next_accel_filter_alpha < 0.0 || next_accel_filter_alpha > 1.0)
     {
-      result.reason = "PID gains and limits must be finite and non-negative";
+      result.reason = "Gains and limits must be finite and within valid ranges";
       return result;
     }
 
@@ -178,9 +239,19 @@ private:
     rotation_settle_velocity_rad_s_ = next_settle_velocity;
     rotation_settle_duration_ms_ = next_settle_duration_ms;
     max_correction_rad_s_ = next_max_correction;
+    enable_feedforward_ = next_enable_ff;
+    k_ff_vel_ = next_k_ff_vel;
+    k_ff_acc_ = next_k_ff_acc;
+    k_ff_drift_vx_ = next_k_ff_drift_vx;
+    k_ff_drift_vy_ = next_k_ff_drift_vy;
+    k_ff_drift_ax_ = next_k_ff_drift_ax;
+    k_ff_drift_ay_ = next_k_ff_drift_ay;
+    accel_filter_alpha_ = next_accel_filter_alpha;
+    heading_hold_enabled_ = next_enable_heading_hold;
+
     result.successful = true;
     result.reason = "success";
-    RCLCPP_INFO(get_logger(), "Heading-hold parameters updated");
+    RCLCPP_INFO(get_logger(), "Heading-hold and feedforward parameters updated");
     return result;
   }
 
@@ -231,6 +302,12 @@ private:
     integral_error_rad_s_ = 0.0;
     rotation_state_ = RotationState::HOLDING;
     settle_velocity_is_stable_ = false;
+    prev_cmd_vx_ = 0.0;
+    prev_cmd_vy_ = 0.0;
+    prev_cmd_wz_ = 0.0;
+    filtered_ax_ = 0.0;
+    filtered_ay_ = 0.0;
+    filtered_ang_accel_ = 0.0;
   }
 
   void control()
@@ -251,6 +328,13 @@ private:
       return;
     }
 
+    // Heading Hold 自体が無効化されている場合はスルー
+    if (!heading_hold_enabled_) {
+      corrected_command_pub_->publish(latest_command_);
+      reset_heading_hold();
+      return;
+    }
+
     const bool imu_is_fresh = last_imu_time_.nanoseconds() != 0 &&
       (current_time - last_imu_time_).nanoseconds() <= imu_timeout_ms_ * 1000000LL;
     if (!imu_is_fresh) {
@@ -258,56 +342,46 @@ private:
       reset_heading_hold();
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 2000,
-        "IMU data is unavailable; passing through the upstream cmd_vel without correction");
+        "IMU data is unavailable; passing through upstream cmd_vel without correction");
       return;
     }
 
-    if (std::abs(latest_command_.angular.z) > rotation_input_deadband_rad_s_) {
-      target_yaw_rad_ = current_yaw_rad_;
-      target_yaw_initialized_ = true;
-      integral_error_rad_s_ = 0.0;
-      rotation_state_ = RotationState::MANUAL_ROTATION;
-      corrected_command_pub_->publish(latest_command_);
-      return;
+    const double safe_dt_s =
+      dt_s > 0.0 && dt_s < 0.5 ? dt_s : static_cast<double>(control_period_ms_) / 1000.0;
+
+    // --- 加速度・加減速の推定 (ローパスフィルタ付き数値微分) ---
+    const double raw_ax = (latest_command_.linear.x - prev_cmd_vx_) / safe_dt_s;
+    const double raw_ay = (latest_command_.linear.y - prev_cmd_vy_) / safe_dt_s;
+    const double raw_ang_accel = (latest_command_.angular.z - prev_cmd_wz_) / safe_dt_s;
+
+    filtered_ax_ = (1.0 - accel_filter_alpha_) * filtered_ax_ + accel_filter_alpha_ * raw_ax;
+    filtered_ay_ = (1.0 - accel_filter_alpha_) * filtered_ay_ + accel_filter_alpha_ * raw_ay;
+    filtered_ang_accel_ =
+      (1.0 - accel_filter_alpha_) * filtered_ang_accel_ + accel_filter_alpha_ * raw_ang_accel;
+
+    prev_cmd_vx_ = latest_command_.linear.x;
+    prev_cmd_vy_ = latest_command_.linear.y;
+    prev_cmd_wz_ = latest_command_.angular.z;
+
+    // --- フィードフォワード項の計算 ---
+    double ff_rad_s = 0.0;
+    if (enable_feedforward_) {
+      // 1. 旋回速度・角加速度 FF
+      ff_rad_s += k_ff_vel_ * latest_command_.angular.z;
+      ff_rad_s += k_ff_acc_ * filtered_ang_accel_;
+
+      // 2. 並進速度・加速度起因の回転偏向相殺 FF (Cross-coupling Drift Cancellation)
+      ff_rad_s += k_ff_drift_vx_ * latest_command_.linear.x;
+      ff_rad_s += k_ff_drift_vy_ * latest_command_.linear.y;
+      ff_rad_s += k_ff_drift_ax_ * filtered_ax_;
+      ff_rad_s += k_ff_drift_ay_ * filtered_ay_;
+    } else {
+      ff_rad_s = latest_command_.angular.z;
     }
 
-    if (rotation_state_ == RotationState::MANUAL_ROTATION) {
-      rotation_state_ = RotationState::SETTLING;
-      settle_velocity_is_stable_ = false;
-    }
-
-    if (rotation_state_ == RotationState::SETTLING) {
-      target_yaw_rad_ = current_yaw_rad_;
-      target_yaw_initialized_ = true;
-      integral_error_rad_s_ = 0.0;
-
-      auto settling_command = latest_command_;
-      settling_command.angular.z = 0.0;
-      corrected_command_pub_->publish(settling_command);
-
-      if (std::abs(current_angular_velocity_z_rad_s_) >
-        rotation_settle_velocity_rad_s_)
-      {
-        settle_velocity_is_stable_ = false;
-        return;
-      }
-
-      if (!settle_velocity_is_stable_) {
-        settle_velocity_is_stable_ = true;
-        settle_stable_since_ = current_time;
-        return;
-      }
-
-      if ((current_time - settle_stable_since_).nanoseconds() <
-        rotation_settle_duration_ms_ * 1000000LL)
-      {
-        return;
-      }
-
-      rotation_state_ = RotationState::HOLDING;
-      settle_velocity_is_stable_ = false;
-      target_yaw_rad_ = current_yaw_rad_;
-    }
+    // --- 目標方位のトラッキングとフィードバック制御 (2-DOF Control) ---
+    const bool is_manual_turning =
+      std::abs(latest_command_.angular.z) > rotation_input_deadband_rad_s_;
 
     if (!target_yaw_initialized_) {
       target_yaw_rad_ = current_yaw_rad_;
@@ -315,29 +389,47 @@ private:
       integral_error_rad_s_ = 0.0;
     }
 
-    const double safe_dt_s =
-      dt_s > 0.0 && dt_s < 0.5 ? dt_s : static_cast<double>(control_period_ms_) / 1000.0;
+    if (is_manual_turning) {
+      // 旋回中: 指令角速度分だけ目標方位を積分更新し、リアルタイム追従
+      target_yaw_rad_ = normalize_angle(target_yaw_rad_ + latest_command_.angular.z * safe_dt_s);
+      rotation_state_ = RotationState::MANUAL_ROTATION;
+    } else if (rotation_state_ == RotationState::MANUAL_ROTATION) {
+      // 旋回直後: 目標方位を現在方位に再同期して過度な戻りを防止
+      target_yaw_rad_ = current_yaw_rad_;
+      integral_error_rad_s_ = 0.0;
+      rotation_state_ = RotationState::HOLDING;
+    }
+
+    // 姿勢誤差の計算
     double heading_error_rad = normalize_angle(target_yaw_rad_ - current_yaw_rad_);
     if (std::abs(heading_error_rad) < heading_deadband_rad_) {
       heading_error_rad = 0.0;
     }
 
-    integral_error_rad_s_ = std::clamp(
-      integral_error_rad_s_ + heading_error_rad * safe_dt_s,
-      -integral_limit_rad_s_, integral_limit_rad_s_);
+    // 積分項 (アンチワインドアップ)
+    if (!is_manual_turning) {
+      integral_error_rad_s_ = std::clamp(
+        integral_error_rad_s_ + heading_error_rad * safe_dt_s,
+        -integral_limit_rad_s_, integral_limit_rad_s_);
+    } else {
+      integral_error_rad_s_ = 0.0;
+    }
 
-    const double correction_rad_s = std::clamp(
+    // IMU フィードバック補正量
+    const double feedback_rad_s = std::clamp(
       kp_ * heading_error_rad + ki_ * integral_error_rad_s_ -
       kd_ * current_angular_velocity_z_rad_s_,
       -max_correction_rad_s_, max_correction_rad_s_);
 
+    // 最終出力 = フィードフォワード + フィードバック
     auto corrected_command = latest_command_;
-    corrected_command.angular.z = correction_rad_s;
+    corrected_command.angular.z = ff_rad_s + feedback_rad_s;
     corrected_command_pub_->publish(corrected_command);
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr corrected_command_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_;
@@ -355,6 +447,15 @@ private:
   bool target_yaw_initialized_{false};
   bool cmd_vel_timeout_logged_{false};
 
+  // 前周期の指令値（微分用）
+  double prev_cmd_vx_{0.0};
+  double prev_cmd_vy_{0.0};
+  double prev_cmd_wz_{0.0};
+  double filtered_ax_{0.0};
+  double filtered_ay_{0.0};
+  double filtered_ang_accel_{0.0};
+
+  // PID ゲイン・制限
   double kp_{4.0};
   double ki_{0.0};
   double kd_{0.0};
@@ -374,6 +475,18 @@ private:
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;
+  std::string enable_topic_;
+  bool heading_hold_enabled_{true};
+
+  // フィードフォワード設定
+  bool enable_feedforward_{true};
+  double k_ff_vel_{1.0};
+  double k_ff_acc_{0.0};
+  double k_ff_drift_vx_{0.0};
+  double k_ff_drift_vy_{0.0};
+  double k_ff_drift_ax_{0.0};
+  double k_ff_drift_ay_{0.0};
+  double accel_filter_alpha_{0.3};
 };
 
 int main(int argc, char ** argv)

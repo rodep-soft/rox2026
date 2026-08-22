@@ -1,6 +1,20 @@
 /heading_hold_node:
   ros__parameters:
-    # IMU ジャイロ補正のPID
+    # 補正機能全体の有効化
+    enable_heading_hold: true
+    enable_topic: /heading_control/enable
+
+    # --- フィードフォワード制御 (Feedforward) ---
+    enable_feedforward: true
+    k_ff_vel: 1.0           # 旋回指令速度FFゲイン (w_cmd)
+    k_ff_acc: 0.0           # 旋回角加速度FFゲイン (dw_cmd/dt: 立ち上がりの機体慣性補償)
+    k_ff_drift_vx: 0.0      # 前後移動速度によるヨー偏向相殺ゲイン
+    k_ff_drift_vy: 0.0      # 左右移動速度によるヨー偏向相殺ゲイン
+    k_ff_drift_ax: 0.0      # 前後急加速によるヨー偏向相殺ゲイン
+    k_ff_drift_ay: 0.0      # 左右急加速によるヨー偏向相殺ゲイン
+    accel_filter_alpha: 0.3 # 加速度推定フィルタ係数 (0.0: 低感度/高平滑 〜 1.0: フィルタなし)
+
+    # --- IMU フィードバック (PID) ---
     kp: 3.5
     ki: 0.0
     kd: 0.15
@@ -20,3 +34,4 @@
     raw_cmd_vel_topic: /drive/cmd_vel
     imu_topic: /imu/data
     corrected_cmd_vel_topic: /mecanum/cmd_vel_heading
+
