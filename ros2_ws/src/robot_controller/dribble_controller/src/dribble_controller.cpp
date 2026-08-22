@@ -46,6 +46,8 @@ DribbleControllerNode::DribbleControllerNode()
     roller_target_topic, command_qos);
   shot_cycle_state_pub_ = create_publisher<robot_msgs::msg::ShotCycleState>(
     "/dribble/shot_cycle_state", rclcpp::QoS(1).reliable().transient_local());
+  belt_clearance_request_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/spring/belt_clearance_request", rclcpp::QoS(1).reliable().transient_local());
 
   ball_detected_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/ball_detected", command_qos);
@@ -76,6 +78,11 @@ DribbleControllerNode::DribbleControllerNode()
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", command_qos,
     std::bind(&DribbleControllerNode::shot_cycle_callback, this, std::placeholders::_1));
+  belt_clearance_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/spring/belt_clearance_ready", rclcpp::QoS(1).reliable().transient_local(),
+    std::bind(
+      &DribbleControllerNode::belt_clearance_ready_callback, this,
+      std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos,
@@ -114,8 +121,10 @@ void DribbleControllerNode::position_mode_callback(
 
   const uint8_t target_mode = msg->position;
 
-  if (target_mode != position_mode_ || shot_cycle_active_) {
+  if (target_mode != position_mode_ || shot_cycle_active_ || shot_cycle_waiting_for_spring_) {
     shot_cycle_active_ = false;
+    shot_cycle_waiting_for_spring_ = false;
+    publish_belt_clearance_request(false);
     manual_transition_active_ = true;
     manual_transition_start_time_ = now();
     manual_transition_start_position_rad_ = last_position_command_rad_;
@@ -153,8 +162,37 @@ void DribbleControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::
 
 void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (!msg->data || emergency_stop_active_) {return;}
+  if (!msg->data || emergency_stop_active_ || shot_cycle_active_ ||
+    shot_cycle_waiting_for_spring_)
+  {return;}
 
+  spring_belt_clearance_ready_ = false;
+  shot_cycle_waiting_for_spring_ = true;
+  publish_belt_clearance_request(true);
+  RCLCPP_INFO(get_logger(), "Belt shot requested: waiting for spring clearance at 0 rad");
+}
+
+void DribbleControllerNode::belt_clearance_ready_callback(
+  const std_msgs::msg::Bool::SharedPtr msg)
+{
+  spring_belt_clearance_ready_ = msg->data;
+  if (!spring_belt_clearance_ready_ || !shot_cycle_waiting_for_spring_ ||
+    emergency_stop_active_)
+  {return;}
+
+  shot_cycle_waiting_for_spring_ = false;
+  start_shot_cycle();
+}
+
+void DribbleControllerNode::publish_belt_clearance_request(bool requested)
+{
+  std_msgs::msg::Bool request;
+  request.data = requested;
+  belt_clearance_request_pub_->publish(request);
+}
+
+void DribbleControllerNode::start_shot_cycle()
+{
   RCLCPP_INFO(get_logger(), "Starting Auto Shot Cycle: FEED -> DRIBBLE");
   manual_transition_active_ = false;
   shot_cycle_active_ = true;
@@ -237,6 +275,10 @@ void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::S
       reverse_transition_start_rpm_ = 0;
     }
     last_position_command_rad_ = resume_position_rad;
+    if (shot_cycle_waiting_for_spring_ && spring_belt_clearance_ready_) {
+      shot_cycle_waiting_for_spring_ = false;
+      start_shot_cycle();
+    }
     RCLCPP_INFO(
       get_logger(),
       "Emergency stop released: resuming dribble operation from %.3f rad",
@@ -630,6 +672,7 @@ void DribbleControllerNode::control_timer_callback()
             std::isfinite(under_belt_min_shot_rpm_) ? under_belt_min_shot_rpm_ : 0.0f);
         } else {
           shot_cycle_active_ = false;
+          publish_belt_clearance_request(false);
           has_ball_ = false;
           ball_detected_counter_ = 0;
           ball_lost_counter_ = ball_detection_debounce_count_;
