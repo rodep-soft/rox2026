@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libboost-dev \
     libspdlog-dev \
     libfmt-dev \
+    libyaml-cpp-dev \
     ros-humble-spdlog-vendor \
     && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
