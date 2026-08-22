@@ -92,7 +92,7 @@ void Game2AutoNode::load_parameters()
 
   // Camera Physical & Optical Parameters
   camera_offset_x_ = declare_parameter<double>("camera_offset_x", 0.265);
-  camera_offset_y_ = declare_parameter<double>("camera_offset_y", 0.035);
+  camera_offset_y_ = declare_parameter<double>("camera_offset_y", -0.035);
   camera_offset_z_ = declare_parameter<double>("camera_offset_z", 0.193);
   camera_image_width_ = declare_parameter<double>("camera_image_width", 1920.0);
   camera_image_height_ = declare_parameter<double>("camera_image_height", 1080.0);
@@ -675,9 +675,17 @@ void Game2AutoNode::control_loop()
             desired_wz -= kd_yaw_ * gyro_z_;
           }
 
-          // Stiction overcoming minimum angular velocity
-          if (std::abs(desired_wz) < min_angular_z_) {
-            desired_wz = std::copysign(min_angular_z_, desired_wz);
+          // Stiction overcoming minimum angular velocity with smooth attenuation near zero
+          // 誤差が tolerance の近傍になったら急に min_angular_z で突き抜けないよう滑らかに減速
+          const double err_abs = std::abs(heading_err);
+          const double slow_zone = yaw_tolerance_ * 3.0;
+          double eff_min_wz = min_angular_z_;
+          if (err_abs < slow_zone) {
+            eff_min_wz = min_angular_z_ * (err_abs / slow_zone);
+          }
+
+          if (std::abs(desired_wz) < eff_min_wz) {
+            desired_wz = std::copysign(eff_min_wz, desired_wz);
           }
           desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
 
