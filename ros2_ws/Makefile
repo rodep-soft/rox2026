@@ -63,7 +63,12 @@ download:
 	echo "⬇️ GitHub Actions からブランチ [$$BRANCH] の最新ビルド済みバイナリを取得中..."; \
 	if command -v gh > /dev/null 2>&1; then \
 		rm -rf /tmp/rox2026-dl; \
-		gh run download --name rox2026-install --branch "$$BRANCH" --dir /tmp/rox2026-dl && \
+		RUN_ID=$$(gh run list --branch "$$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null); \
+		if [ -n "$$RUN_ID" ]; then \
+			gh run download "$$RUN_ID" -n rox2026-install -D /tmp/rox2026-dl; \
+		else \
+			gh run download -n rox2026-install -D /tmp/rox2026-dl; \
+		fi && \
 		tar -xzf /tmp/rox2026-dl/rox2026-install.tar.gz -C . && \
 		rm -rf /tmp/rox2026-dl && \
 		echo "✅ デプロイ完了 [$$BRANCH]！'source install/setup.bash' して即起動できます。"; \
