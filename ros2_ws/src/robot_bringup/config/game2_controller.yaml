@@ -34,9 +34,9 @@ game2_auto_node:
     test_alignment_only: false
 
     # ── 🚀 射出・ボール制御パラメータ ──
-    rpm_bottom: 2200.0      # 下段パネル射出回転数 [RPM] (belt_controller Level 1: 2200)
-    rpm_middle: 2900.0      # 中段パネル射出回転数 [RPM] (belt_controller Level 2: 2900)
-    rpm_top: 3700.0         # 上段パネル射出回転数 [RPM] (belt_controller Level 3: 3700)
+    rpm_bottom: 2050.0      # 下段パネル射出回転数 [RPM] (手動 belt_controller Level 1: 2050 RPM と完全一致)
+    rpm_middle: 2300.0      # 中段パネル射出回転数 [RPM] (手動 belt_controller Level 2: 2300 RPM と完全一致)
+    rpm_top: 2700.0         # 上段パネル射出回転数 [RPM] (手動 belt_controller Level 3: 2700 RPM と完全一致)
     open_duration: 0.3      # [s] アームOPEN展開所要時間
     shoot_hold_duration: 0.8 # [s] FEED押し込み保持時間
     ball_settle_duration: 0.3 # [s] ボール吸着安定待ち時間
