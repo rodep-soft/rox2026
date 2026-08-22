@@ -8,7 +8,7 @@ dev:
 sync:
 	git submodule update --init --recursive
 	vcs import ros2_ws/src < ros2_ws/src/rox2026.repos || true
-	vcs custom ros2_ws/src --git --args pull origin main || (cd ros2_ws/src/libbno055-linux && git pull origin main)
+	vcs custom ros2_ws/src --git --args pull origin main || true
 
 build:
 	$(MAKE) -C ros2_ws build

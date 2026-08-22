@@ -51,6 +51,7 @@ fix.md
 
 # External vcs repositories (Do not commit to git)
 ros2_ws/src/libbno055-linux/
+ros2_ws/src/zenoh_joy_rs/
 
 
 # kamei氏のdirを入れないものとする
