@@ -55,6 +55,7 @@ private:
   bool homing_required_{true};
 
   int limit_switch_bit_offset_{0};
+  int limit_switch_debounce_count_{0};
   int command_period_ms_{10};
   int stopped_count_{0};
   int required_stopped_count_{3};

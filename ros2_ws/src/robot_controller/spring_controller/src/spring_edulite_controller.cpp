@@ -213,7 +213,16 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
 
 void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  limit_switch_active_ = ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
+  const bool raw_active = ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
+  if (raw_active) {
+    ++limit_switch_debounce_count_;
+    if (limit_switch_debounce_count_ >= 3) {
+      limit_switch_active_ = true;
+    }
+  } else {
+    limit_switch_debounce_count_ = 0;
+    limit_switch_active_ = false;
+  }
 }
 
 void SpringEduliteController::actuator_state_callback(
@@ -264,15 +273,22 @@ void SpringEduliteController::actuator_state_callback(
 
 
   // リミットスイッチ検知後の静止検出（HOMING中）
-  if (state_ == State::WAITING_FOR_STOP && limit_switch_active_ && !zero_service_pending_) {
-    if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
-      ++stopped_count_;
-    } else {
+  if (state_ == State::WAITING_FOR_STOP && !zero_service_pending_) {
+    if (!limit_switch_active_) {
+      // ノイズ等の誤検知でスイッチが離れていた場合はHOMINGを再開
+      state_ = State::HOMING;
       stopped_count_ = 0;
-    }
+      RCLCPP_WARN(get_logger(), "Limit switch false trigger detected. Resuming HOMING.");
+    } else {
+      if (std::fabs(msg->velocity) <= zeroing_velocity_threshold_rad_s_) {
+        ++stopped_count_;
+      } else {
+        stopped_count_ = 0;
+      }
 
-    if (stopped_count_ >= required_stopped_count_) {
-      request_zero_reference();
+      if (stopped_count_ >= required_stopped_count_) {
+        request_zero_reference();
+      }
     }
   }
 
