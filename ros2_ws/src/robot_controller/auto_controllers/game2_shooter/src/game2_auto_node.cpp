@@ -201,6 +201,9 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       RCLCPP_INFO(
         get_logger(), "Param updated: test_alignment_only = %s",
         test_alignment_only_ ? "true" : "false");
+    } else if (name == "max_shots_per_panel") {
+      max_shots_per_panel_ = param.as_int();
+      RCLCPP_INFO(get_logger(), "Param updated: max_shots_per_panel = %d", max_shots_per_panel_);
     } else if (name == "require_ball_detected") {
       require_ball_detected_ = param.as_bool();
     } else if (name == "enable_double_panel_midpoint_targeting") {
@@ -790,10 +793,18 @@ void Game2AutoNode::control_loop()
                   tid, it->second.shot_count);
               } else {
                 // まだタグが見えている（倒れなかった or ミス）
-                RCLCPP_WARN(
-                  get_logger(),
-                  "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry (Shot attempts: %d)",
-                  tid, it->second.shot_count);
+                if (it->second.shot_count >= max_shots_per_panel_) {
+                  it->second.shot_completed = true;
+                  RCLCPP_WARN(
+                    get_logger(),
+                    "⚠️ [Game2 MAX SHOTS REACHED] Tag #%d reached max attempts (%d/%d). Advancing target.",
+                    tid, it->second.shot_count, max_shots_per_panel_);
+                } else {
+                  RCLCPP_WARN(
+                    get_logger(),
+                    "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry (Shot attempts: %d/%d)",
+                    tid, it->second.shot_count, max_shots_per_panel_);
+                }
               }
             }
           }
