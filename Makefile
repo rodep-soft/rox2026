@@ -13,6 +13,21 @@ sync:
 build:
 	$(MAKE) -C ros2_ws build
 
+# ── ⚡ CIビルド済みバイナリのワンクリックダウンロード ──
+download:
+	@echo "⬇️ GitHub Actions から最新のビルド済みバイナリ (install) を取得中..."
+	@if command -v gh > /dev/null 2>&1; then \
+		rm -rf /tmp/rox2026-dl; \
+		gh run download --name rox2026-install --dir /tmp/rox2026-dl && \
+		tar -xzf /tmp/rox2026-dl/rox2026-install.tar.gz -C ros2_ws && \
+		rm -rf /tmp/rox2026-dl && \
+		echo "✅ デプロイ完了！'source ros2_ws/install/setup.bash' して即起動できます。"; \
+	else \
+		echo "❌ エラー: GitHub CLI (gh) がインストールされていません。"; \
+		echo "   インストールコマンド: sudo apt update && sudo apt install -y gh && gh auth login"; \
+		exit 1; \
+	fi
+
 # ── 📦 パッケージ個別・クリーンビルド ──
 clean-build:
 	@if [ -z "$(pkg)" ]; then \

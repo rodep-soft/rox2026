@@ -99,7 +99,19 @@ jobs:
             export CXX='/usr/lib/ccache/g++' && \
             source /opt/ros/humble/setup.bash && \
             cd /root/ros2_ws && \
-            colcon build --symlink-install --parallel-workers \$(nproc)"
+            colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF --parallel-workers \$(nproc)"
+
+      # ── 📦 ARM64/RDK 用ビルド済みバイナリのアーカイブ作成 ──
+      - name: Package install directory
+        run: |
+          tar -czf rox2026-install.tar.gz -C ros2_ws install
+
+      - name: Upload pre-built binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rox2026-install
+          path: rox2026-install.tar.gz
+          retention-days: 14
 
       - name: Commit formatted code
         if: github.event_name == 'pull_request'
