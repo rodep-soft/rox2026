@@ -26,9 +26,9 @@ def generate_launch_description():
     return LaunchDescription(
         [
             Node(
-                package="libbno055_linux",
-                executable="bno055_heading_control_node",
-                name="bno055_heading_control_node",
+                package="robot_controller",
+                executable="heading_hold_node",
+                name="heading_hold_node",
                 output="screen",
                 parameters=[heading_hold_parameter_file],
             ),
