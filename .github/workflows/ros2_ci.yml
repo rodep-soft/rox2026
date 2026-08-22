@@ -65,7 +65,10 @@ jobs:
           docker compose exec -T ros2_rox2026 \
           bash -ec "
             cd /root/ros2_ws && \
-            vcs import src < src/rox2026.repos || true"
+            vcs import --skip-existing src < src/rox2026.repos || true && \
+            source /opt/ros/humble/setup.bash && \
+            apt-get update && \
+            rosdep install --from-paths src --ignore-src -r -y || true"
 
       - name: Format C++
         if: github.event_name == 'pull_request'
