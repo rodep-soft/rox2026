@@ -33,9 +33,15 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
+    kp_linear_ = declare_parameter<double>("kp_linear", 1.2);
+    kp_angular_ = declare_parameter<double>("kp_angular", 2.0);
+    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);
+    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.5);
+    pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
+    yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
+
     const std::string field_side = declare_parameter<std::string>("field_side", "left");
     const double mirror_x = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
-    const double yaw_flip = (mirror_x < 0.0) ? M_PI : 0.0;
 
     const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
     const double wp_start_y = declare_parameter<double>("wp_start_y", 4.950);
@@ -111,33 +117,59 @@ private:
 
   void sim_loop()
   {
-    const double dt = 0.03;
+    const double dt = 0.03; // 33Hz
     current_time_ += dt;
 
-    if (current_segment_ >= waypoints_.size() - 1) {
+    if (current_segment_ >= waypoints_.size()) {
       current_segment_ = 0;
-      segment_elapsed_ = 0.0;
       executed_path_.poses.clear();
+      // スタート位置へリセット
+      curr_x_ = waypoints_[0].x;
+      curr_y_ = waypoints_[0].y;
+      curr_yaw_ = waypoints_[0].yaw;
+      vx_ = 0.0;
+      vy_ = 0.0;
+      vyaw_ = 0.0;
     }
 
-    const auto & p0 = waypoints_[current_segment_];
-    const auto & p1 = waypoints_[current_segment_ + 1];
-    const double dur = std::max(0.3, p1.duration);
+    const auto & target = waypoints_[current_segment_];
 
-    segment_elapsed_ += dt;
-    double t = std::min(1.0, segment_elapsed_ / dur);
-    double s = t * t * (3.0 - 2.0 * t); // Smooth-step curve
+    // 実機アルゴリズム (game1_auto_node.cpp: compute_holonomic_pursuit と 100% 同一数式)
+    const double dx_world = target.x - curr_x_;
+    const double dy_world = target.y - curr_y_;
+    const double dist = std::hypot(dx_world, dy_world);
+    const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
 
-    double curr_x = p0.x + (p1.x - p0.x) * s;
-    double curr_y = p0.y + (p1.y - p0.y) * s;
-    
-    // 最短角度でのスムーズなYaw補間（360度大回り旋回を防止）
-    double dyaw = std::remainder(p1.yaw - p0.yaw, 2.0 * M_PI);
-    double curr_yaw = p0.yaw + dyaw * s;
+    // 1. 位置・速度のホロノミック追従
+    double target_vx = 0.0;
+    double target_vy = 0.0;
+    if (dist > 1e-4) {
+      const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
+      target_vx = target_speed * (dx_world / dist);
+      target_vy = target_speed * (dy_world / dist);
+    }
 
-    if (t >= 1.0) {
-      current_segment_++;
-      segment_elapsed_ = 0.0;
+    // 2. 最短姿勢角 P 制御 (旋回速度)
+    const double target_vyaw = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
+
+    // 3. 実機メカナムの物理加速度リミットによる積分 (1階遅れ)
+    vx_ += (target_vx - vx_) * std::min(1.0, 10.0 * dt);
+    vy_ += (target_vy - vy_) * std::min(1.0, 10.0 * dt);
+    vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, 12.0 * dt);
+
+    curr_x_ += vx_ * dt;
+    curr_y_ += vy_ * dt;
+    curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
+
+    // 目標WP到達判定 (実機判定 is_aligned_to_target と 100% 一致)
+    if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
+      wp_wait_timer_ += dt;
+      if (wp_wait_timer_ >= 0.5) { // 射出/動作タスク待機
+        current_segment_++;
+        wp_wait_timer_ = 0.0;
+      }
+    } else {
+      wp_wait_timer_ = 0.0;
     }
 
     const auto now_stamp = this->now();
@@ -147,19 +179,19 @@ private:
     tf_msg.header.stamp = now_stamp;
     tf_msg.header.frame_id = "map";
     tf_msg.child_frame_id = "base_footprint";
-    tf_msg.transform.translation.x = curr_x;
-    tf_msg.transform.translation.y = curr_y;
+    tf_msg.transform.translation.x = curr_x_;
+    tf_msg.transform.translation.y = curr_y_;
     tf_msg.transform.translation.z = 0.05;
-    tf_msg.transform.rotation.z = std::sin(curr_yaw / 2.0);
-    tf_msg.transform.rotation.w = std::cos(curr_yaw / 2.0);
+    tf_msg.transform.rotation.z = std::sin(curr_yaw_ / 2.0);
+    tf_msg.transform.rotation.w = std::cos(curr_yaw_ / 2.0);
     tf_broadcaster_->sendTransform(tf_msg);
 
     // 2. 走行軌跡 (Executed Path)
     geometry_msgs::msg::PoseStamped ps;
     ps.header.stamp = now_stamp;
     ps.header.frame_id = "map";
-    ps.pose.position.x = curr_x;
-    ps.pose.position.y = curr_y;
+    ps.pose.position.x = curr_x_;
+    ps.pose.position.y = curr_y_;
     ps.pose.position.z = 0.05;
     ps.pose.orientation = tf_msg.transform.rotation;
     executed_path_.header.stamp = now_stamp;
@@ -209,18 +241,18 @@ private:
     ball.color.a = 1.0f;
 
     if (current_segment_ == 0) {
-      ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
-      ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
+      ball.pose.position.x = curr_x_ + 0.25 * std::cos(curr_yaw_);
+      ball.pose.position.y = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 1) {
-      double progress = std::min(1.0, segment_elapsed_ / 1.40);
+      double progress = std::min(1.0, (now_stamp - this->now()).seconds() / 1.40);
       const auto & p_shoot = waypoints_[1];
       ball.pose.position.x = p_shoot.x + progress * (ball_catch_x_ - p_shoot.x);
       ball.pose.position.y = p_shoot.y;
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 2 || current_segment_ == 3) {
-      ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
-      ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
+      ball.pose.position.x = curr_x_ + 0.25 * std::cos(curr_yaw_);
+      ball.pose.position.y = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball.pose.position.z = 0.11;
     } else {
       ball.pose.position.x = pass_drop_x_;
@@ -228,6 +260,7 @@ private:
       ball.pose.position.z = 0.11;
     }
     ball_array.markers.push_back(ball);
+    ball_pub_->publish(ball_array);
     ball_pub_->publish(ball_array);
 
     // 5. オドメトリ配信
@@ -258,6 +291,22 @@ private:
   size_t current_segment_{0};
   double segment_elapsed_{0.0};
   double current_time_{0.0};
+  double wp_wait_timer_{0.0};
+
+  double curr_x_{-5.925};
+  double curr_y_{4.950};
+  double curr_yaw_{-1.5708};
+  double vx_{0.0};
+  double vy_{0.0};
+  double vyaw_{0.0};
+
+  double kp_linear_{1.2};
+  double kp_angular_{2.0};
+  double max_linear_vel_{1.5};
+  double max_angular_vel_{1.5};
+  double pos_tolerance_{0.08};
+  double yaw_tolerance_{0.05};
+
   nav_msgs::msg::Path executed_path_;
 };
 
