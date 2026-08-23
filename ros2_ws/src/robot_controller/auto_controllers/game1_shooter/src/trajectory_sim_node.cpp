@@ -177,7 +177,7 @@ private:
     } else {
       if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
         wp_wait_timer_ += dt;
-        const double wait_time = (current_segment_ == 1 || current_segment_ == 4) ? 0.3 : 0.0;
+        const double wait_time = (current_segment_ == 1 || current_segment_ == 4) ? 0.6 : 0.0;
         if (wp_wait_timer_ >= wait_time) {
           current_segment_++;
           wp_wait_timer_ = 0.0;

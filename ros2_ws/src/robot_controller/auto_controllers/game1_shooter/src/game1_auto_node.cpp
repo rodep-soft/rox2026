@@ -246,9 +246,9 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::FIRE_GATE_SPRING: {
-        // 2. ゲートへスプリング発射 (1発目) - IMU補正がすぐかかるので0.3秒で十分
+        // 2. ゲートへスプリング発射 (1発目) - 発射直後に少し間を置いてから走り出す (0.6s)
         spring_fire = true;
-        if ((now() - state_start_time_).seconds() > 0.3) {
+        if ((now() - state_start_time_).seconds() > 0.6) {
           RCLCPP_INFO(get_logger(), "Gate Shot Complete. Navigating AROUND gate (free area).");
           state_ = Game1State::NAV_AROUND_GATE;
           state_start_time_ = now();
