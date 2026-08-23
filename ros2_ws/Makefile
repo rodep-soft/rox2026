@@ -28,8 +28,10 @@ build-test:
 		$(COLCON_ARGS) \
 		--cmake-args $(CMAKE_ARGS) -DBUILD_TESTING=ON
 
+PACKAGE ?= $(pkg)
+
 build-package:
-	@test -n "$(PACKAGE)" || (echo "Usage: make build-package PACKAGE=<package>" && exit 1)
+	@test -n "$(PACKAGE)" || (echo "Usage: make build-package PACKAGE=<package> (or pkg=<package>)" && exit 1)
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
 	colcon build \
 		$(COLCON_ARGS) \
