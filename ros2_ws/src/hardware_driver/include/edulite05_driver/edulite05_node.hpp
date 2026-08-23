@@ -22,6 +22,10 @@ class Node : public rclcpp::Node
 {
 public:
   Node();
+  ~Node() override;
+
+  /// @brief 全モーターを即座にリセット（トルク遮断・停止）
+  void stop_all_motors();
 
 private:
   /// @brief yamlから各種情報の取得

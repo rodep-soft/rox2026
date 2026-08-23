@@ -198,6 +198,19 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame(
   // 待機完了やタイムアウト処理だけで呼び出しを終えずに送信が必要な状態まで同じ呼び出し内で進め，送信フレームは必ず最大1つ
   while (true) {
     switch (initialization_step_) {
+      case InitializationStep::RESET_MOTOR:
+        state_ = MotorState::INITIALIZING;
+        last_request_time_ = current_time;
+        initialization_step_ = InitializationStep::WAIT_AFTER_RESET;
+        return make_reset_frame(config_.can_id);
+
+      case InitializationStep::WAIT_AFTER_RESET:
+        if (current_time - last_request_time_ < WRITE_SETTLING_TIME) {
+          return std::nullopt;
+        }
+        initialization_step_ = InitializationStep::WRITE_PARAMETER;
+        continue;
+
       case InitializationStep::WRITE_PARAMETER: {
           state_ = MotorState::INITIALIZING;
           const auto & parameter =
@@ -667,7 +680,7 @@ void Protocol::restart_initialization(bool clear_target)
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
   detailed_fault_code_ = 0;
-  initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  initialization_step_ = InitializationStep::RESET_MOTOR;
   feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
   last_current_feedback_time_ = TimePoint{};
   if (uses_position_control()) {
@@ -794,6 +807,11 @@ can_msgs::msg::Frame Protocol::make_read_parameter_frame(
 can_msgs::msg::Frame Protocol::make_enable_frame(uint8_t motor_id)
 {
   return make_base_frame(TYPE_ENABLE, motor_id);
+}
+
+can_msgs::msg::Frame Protocol::make_reset_frame(uint8_t motor_id)
+{
+  return make_base_frame(TYPE_RESET, motor_id);
 }
 
 

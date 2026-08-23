@@ -19,6 +19,22 @@ Node::Node()
   create_interfaces();
 }
 
+Node::~Node()
+{
+  stop_all_motors();
+}
+
+void Node::stop_all_motors()
+{
+  if (!can_frame_publisher_) {
+    return;
+  }
+  for (const auto & motor : motors_) {
+    // 確実に届くようリセットフレームを配信
+    can_frame_publisher_->publish(Protocol::make_reset_frame(motor.can_id()));
+  }
+}
+
 void Node::declare_and_load_parameters()
 {
   can_tx_topic_ =
