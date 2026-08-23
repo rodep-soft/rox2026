@@ -42,6 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libyaml-cpp-dev \
     ros-humble-spdlog-vendor \
     ros-humble-console-bridge-vendor \
+    ros-humble-orocos-kdl-vendor \
+    ros-humble-class-loader \
+    ros-humble-tf2-geometry-msgs \
     && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 

@@ -68,6 +68,7 @@ jobs:
             vcs import --skip-existing src < src/rox2026.repos || true && \
             source /opt/ros/humble/setup.bash && \
             apt-get update && \
+            apt-get install -y --no-install-recommends ros-humble-tf2-geometry-msgs ros-humble-orocos-kdl-vendor ros-humble-console-bridge-vendor ros-humble-class-loader || true && \
             rosdep install --from-paths src --ignore-src -r -y || true"
 
       - name: Format C++
