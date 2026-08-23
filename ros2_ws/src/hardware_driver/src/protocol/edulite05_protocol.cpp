@@ -63,9 +63,7 @@ Protocol::Protocol(const MotorConfig & config)
       break;
     case ControlMode::PROFILE_POSITION:
       initialization_parameters_.push_back(
-        {PP_SPEED, InitializationParameterType::FLOAT, config_.speed_limit});
-      initialization_parameters_.push_back(
-        {PP_ACCELERATION, InitializationParameterType::FLOAT, config_.acceleration});
+        {SPEED_LIMIT, InitializationParameterType::FLOAT, config_.speed_limit});
       initialization_parameters_.push_back(
         {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       break;

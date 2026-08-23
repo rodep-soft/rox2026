@@ -81,7 +81,7 @@
 
       current_feedback_enabled: false
       command_period_ms: 10
-      feedback_timeout_ms: 500     # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄
+      feedback_timeout_ms: 2000    # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄 (2.0sで一時切断を防止)
 
     dribble:
       immediate_state_publish: true # 位置制御用に即時配信
