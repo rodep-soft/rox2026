@@ -10,6 +10,16 @@
 #include <utility>
 #include <vector>
 
+#ifdef __linux__
+#include <cstring>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
 namespace edulite05_driver
 {
 Node::Node()
@@ -26,13 +36,41 @@ Node::~Node()
 
 void Node::stop_all_motors()
 {
-  if (!can_frame_publisher_) {
-    return;
+  if (can_frame_publisher_) {
+    for (const auto & motor : motors_) {
+      can_frame_publisher_->publish(Protocol::make_reset_frame(motor.can_id()));
+    }
   }
-  for (const auto & motor : motors_) {
-    // 確実に届くようリセットフレームを配信
-    can_frame_publisher_->publish(Protocol::make_reset_frame(motor.can_id()));
+
+#ifdef __linux__
+  // ROS2トピック送受信ノード(socket_can_sender)がSIGINTで先に死んでいても、
+  // LinuxカーネルのSocketCAN (can0) へ直接Type 4 (RESET) フレームを投げて確実にトルクを遮断する
+  int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+  if (sock >= 0) {
+    struct ifreq ifr;
+    std::strncpy(ifr.ifr_name, "can0", IFNAMSIZ - 1);
+    ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+    if (ioctl(sock, SIOCGIFINDEX, &ifr) >= 0) {
+      struct sockaddr_can addr;
+      std::memset(&addr, 0, sizeof(addr));
+      addr.can_family = AF_CAN;
+      addr.can_ifindex = ifr.ifr_ifindex;
+      if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) >= 0) {
+        for (const auto & motor : motors_) {
+          struct can_frame frame;
+          std::memset(&frame, 0, sizeof(frame));
+          // Type 4 Reset: (0x04 << 24) | (HOST_ID << 8) | motor_id
+          frame.can_id = ((static_cast<uint32_t>(TYPE_RESET) << 24) |
+                          (static_cast<uint32_t>(HOST_ID) << 8) |
+                          static_cast<uint32_t>(motor.can_id())) | CAN_EFF_FLAG;
+          frame.can_dlc = 8;
+          write(sock, &frame, sizeof(struct can_frame));
+        }
+      }
+    }
+    close(sock);
   }
+#endif
 }
 
 void Node::declare_and_load_parameters()
