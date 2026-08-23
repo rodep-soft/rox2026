@@ -410,7 +410,10 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     startup_run_state_observed_ = true;
   }
 
-  if (summary_fault_code != 0U) {
+  // 致命的ハードウェア障害のみで ERROR 遷移（bit 0:未校正、bit 4:軽微な電圧ディップ等は除外）
+  constexpr uint32_t FATAL_FAULT_MASK = 0x2E; // bits 1(相), 2(エンコーダ), 3(過熱), 5(過電圧)
+
+  if ((summary_fault_code & FATAL_FAULT_MASK) != 0U) {
     const auto fault_code = detailed_fault_code_ != 0U ?
       detailed_fault_code_ : summary_fault_code;
     enter_fault_state(fault_code, current_time);
@@ -484,7 +487,8 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float current_position = 0.0f;
     std::memcpy(&current_position, message.data.data() + 4, sizeof(float));
-    if (fault_code != 0 || !std::isfinite(current_position)) {
+    constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+    if (((fault_code & FATAL_FAULT_MASK) != 0) || !std::isfinite(current_position)) {
       retry_initialization();
       return false;
     }
@@ -528,7 +532,8 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float hold_position = 0.0f;
     std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
-    if (fault_code != 0 || !std::isfinite(hold_position) ||
+    constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+    if (((fault_code & FATAL_FAULT_MASK) != 0) || !std::isfinite(hold_position) ||
       std::fabs(hold_position - startup_hold_position_rad_) > 0.1f)
     {
       retry_initialization();
@@ -544,7 +549,8 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     return false;
   }
   // Type17 fault summary != 0
-  if (fault_code != 0) {
+  constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+  if ((fault_code & FATAL_FAULT_MASK) != 0) {
     retry_initialization();
     return false;
   }
