@@ -70,10 +70,10 @@
       immediate_state_publish: true # 原点復帰用に即時配信
       logical_id: 4
       can_id: 40
-      control_mode: csp
+      control_mode: pp
       current_limit: 11.0
       acceleration: 150.0
-      speed_limit: 50.0
+      speed_limit: 30.0
 
       position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
       minimum_position_rad: -1000000.0 # 

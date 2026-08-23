@@ -63,7 +63,9 @@ Protocol::Protocol(const MotorConfig & config)
       break;
     case ControlMode::PROFILE_POSITION:
       initialization_parameters_.push_back(
-        {SPEED_LIMIT, InitializationParameterType::FLOAT, config_.speed_limit});
+        {PP_SPEED, InitializationParameterType::FLOAT, config_.speed_limit});
+      initialization_parameters_.push_back(
+        {PP_ACCELERATION, InitializationParameterType::FLOAT, config_.acceleration});
       initialization_parameters_.push_back(
         {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       break;
@@ -443,7 +445,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
 bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
 {
   const auto destination = static_cast<uint8_t>(message.id & 0xFF);
-  const auto status = static_cast<uint8_t>((message.id >> 16) & 0xFF);
+  const auto fault_code = static_cast<uint8_t>((message.id >> 16) & 0x3F);
   if (destination != HOST_ID) {
     return false;
   }
@@ -454,7 +456,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     (static_cast<uint16_t>(message.data[1]) << 8);
   if (initialization_step_ == InitializationStep::READY &&
     config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
-    status == RESET_STATUS_MODE)
+    fault_code == 0)
   {
     float value = 0.0f;
     std::memcpy(&value, message.data.data() + 4, sizeof(float));
@@ -471,7 +473,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float current_position = 0.0f;
     std::memcpy(&current_position, message.data.data() + 4, sizeof(float));
-    if (status != RESET_STATUS_MODE || !std::isfinite(current_position)) {
+    if (fault_code != 0 || !std::isfinite(current_position)) {
       retry_initialization();
       return false;
     }
@@ -507,7 +509,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float hold_position = 0.0f;
     std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
-    if (status != RESET_STATUS_MODE || !std::isfinite(hold_position) ||
+    if (fault_code != 0 || !std::isfinite(hold_position) ||
       std::fabs(hold_position - startup_hold_position_rad_) >= 0.001f)
     {
       retry_initialization();
@@ -522,8 +524,8 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
   if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
     return false;
   }
-  // Type17 status != 0
-  if (status != RESET_STATUS_MODE) {
+  // Type17 fault summary != 0
+  if (fault_code != 0) {
     retry_initialization();
     return false;
   }
