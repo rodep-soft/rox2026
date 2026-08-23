@@ -79,12 +79,12 @@ public:
       {wp_start_x,  wp_start_y,  return_yaw,    "Fast Straight Dash to Start", 1.50}
     };
 
-    gate_center_x_ = (wp_gate_x + wp_ball_x) / 2.0;
-    gate_center_y_ = wp_gate_y;
-    ball_catch_x_ = wp_ball_x;
-    ball_catch_y_ = wp_ball_y;
-    pass_drop_x_ = wp_pass_x;
-    pass_drop_y_ = wp_pass_y;
+    // Waypoint リスト: Start(0) -> Gate(1:Stop) -> Around(2:Fly) -> Ball(3:Fly) -> Pass(4:Stop) -> Apex(5:Fly) -> Start(6:Stop)
+    // waypoints_[0] は初期開始地点なので、目標は 1 からスタート
+    curr_x_ = waypoints_[0].x;
+    curr_y_ = waypoints_[0].y;
+    curr_yaw_ = waypoints_[0].yaw;
+    current_segment_ = 1;
 
     publish_static_planned_path();
 
@@ -121,15 +121,14 @@ private:
     current_time_ += dt;
 
     if (current_segment_ >= waypoints_.size()) {
-      current_segment_ = 0;
-      executed_path_.poses.clear();
-      // スタート位置へリセット
-      curr_x_ = waypoints_[0].x;
-      curr_y_ = waypoints_[0].y;
-      curr_yaw_ = waypoints_[0].yaw;
-      vx_ = 0.0;
-      vy_ = 0.0;
-      vyaw_ = 0.0;
+      // スタート位置で 1.5秒停止後、瞬間移動せずにスタート地点からそのまま2周目へスムーズに発進
+      wp_wait_timer_ += dt;
+      if (wp_wait_timer_ >= 1.5) {
+        current_segment_ = 1;
+        wp_wait_timer_ = 0.0;
+        executed_path_.poses.clear();
+      }
+      return;
     }
 
     const auto & target = waypoints_[current_segment_];
@@ -140,13 +139,18 @@ private:
     const double dist = std::hypot(dx_world, dy_world);
     const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
 
+    // 中間ポイントの判定 (2: Around, 3: Ball, 5: Apex は止まらずに高速フライスルー)
+    const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
+    const double arrive_threshold = is_fly_through ? 0.35 : pos_tolerance_;
+
     // 1. 位置・速度のホロノミック追従
     double target_vx = 0.0;
     double target_vy = 0.0;
     if (dist > 1e-4) {
-      const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
-      target_vx = target_speed * (dx_world / dist);
-      target_vy = target_speed * (dy_world / dist);
+      // フライスルー地点では減速せず最高速度を維持してスムーズに次のWPへカーブ
+      const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, kp_linear_ * dist);
+      target_vx = speed_limit * (dx_world / dist);
+      target_vy = speed_limit * (dy_world / dist);
     }
 
     // 2. 最短姿勢角 P 制御 (旋回速度)
@@ -161,15 +165,22 @@ private:
     curr_y_ += vy_ * dt;
     curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
 
-    // 目標WP到達判定 (実機判定 is_aligned_to_target と 100% 一致)
-    if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
-      wp_wait_timer_ += dt;
-      if (wp_wait_timer_ >= 0.5) { // 射出/動作タスク待機
-        current_segment_++;
-        wp_wait_timer_ = 0.0;
+    // 目標WP到達判定
+    if (is_fly_through) {
+      if (dist <= arrive_threshold) {
+        current_segment_++; // 止まらず即座に次のWPへ切り替え（滑らかなコーナリング）
       }
     } else {
-      wp_wait_timer_ = 0.0;
+      if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
+        wp_wait_timer_ += dt;
+        const double wait_time = (current_segment_ == 1 || current_segment_ == 4) ? 0.8 : 0.0;
+        if (wp_wait_timer_ >= wait_time) {
+          current_segment_++;
+          wp_wait_timer_ = 0.0;
+        }
+      } else {
+        wp_wait_timer_ = 0.0;
+      }
     }
 
     const auto now_stamp = this->now();
@@ -240,23 +251,24 @@ private:
     ball.color.b = 0.10f;
     ball.color.a = 1.0f;
 
-    if (current_segment_ == 0) {
+    if (current_segment_ <= 1) {
       ball.pose.position.x = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball.pose.position.y = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball.pose.position.z = 0.11;
-    } else if (current_segment_ == 1) {
-      double progress = std::min(1.0, (now_stamp - this->now()).seconds() / 1.40);
-      const auto & p_shoot = waypoints_[1];
-      ball.pose.position.x = p_shoot.x + progress * (ball_catch_x_ - p_shoot.x);
-      ball.pose.position.y = p_shoot.y;
+    } else if (current_segment_ == 2) {
+      // ゲート射出後: ボールはゲート出口へローリング
+      ball.pose.position.x = waypoints_[3].x;
+      ball.pose.position.y = waypoints_[3].y;
       ball.pose.position.z = 0.11;
-    } else if (current_segment_ == 2 || current_segment_ == 3) {
+    } else if (current_segment_ == 3 || current_segment_ == 4) {
+      // ドリブルキャッチ中: ロボット前方に保持
       ball.pose.position.x = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball.pose.position.y = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball.pose.position.z = 0.11;
     } else {
-      ball.pose.position.x = pass_drop_x_;
-      ball.pose.position.y = pass_drop_y_;
+      // パスエリア投下後: パスエリアにボールが残る
+      ball.pose.position.x = waypoints_[4].x;
+      ball.pose.position.y = waypoints_[4].y;
       ball.pose.position.z = 0.11;
     }
     ball_array.markers.push_back(ball);
