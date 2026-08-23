@@ -33,10 +33,10 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
-    kp_linear_ = declare_parameter<double>("kp_linear", 1.2);
-    kp_angular_ = declare_parameter<double>("kp_angular", 2.0);
-    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);
-    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.5);
+    kp_linear_ = declare_parameter<double>("kp_linear", 1.0);     // 実機と同一
+    kp_angular_ = declare_parameter<double>("kp_angular", 1.5);   // 実機と同一
+    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);   // 実機と同一
+    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0); // 実機と同一 (旋回は控えめ)
     pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
     yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
@@ -158,9 +158,12 @@ private:
     const double target_vyaw = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
     // 3. 実機メカナムの物理加速度リミットによる積分 (1階遅れ)
-    vx_ += (target_vx - vx_) * std::min(1.0, 10.0 * dt);
-    vy_ += (target_vy - vy_) * std::min(1.0, 10.0 * dt);
-    vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, 12.0 * dt);
+    //    実機のメカナム車は慣性があり、最高速まで約0.4秒かかる (加速時定数 tau=0.4s → alpha=dt/tau)
+    const double alpha_lin = dt / 0.40;  // 直線加速タウ = 0.40s (リアル)
+    const double alpha_ang = dt / 0.35;  // 旋回加速タウ = 0.35s (リアル)
+    vx_ += (target_vx - vx_) * std::min(1.0, alpha_lin);
+    vy_ += (target_vy - vy_) * std::min(1.0, alpha_lin);
+    vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, alpha_ang);
 
     curr_x_ += vx_ * dt;
     curr_y_ += vy_ * dt;
