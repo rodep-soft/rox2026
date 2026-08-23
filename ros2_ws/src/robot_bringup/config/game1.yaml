@@ -39,7 +39,7 @@
     wp_return_apex_y: 2.800
     wp_return_apex_yaw: 2.200
 
-    # 6. スタート復帰位置 (左上コーナー)
+    # 6. スタート復帰位置 (左上コーナー) - 前向き(ゲート方向)で帰還してそのまま次サイクル発進
     wp_start_x: -5.925
     wp_start_y: 4.950
-    wp_start_yaw: 2.356
+    wp_start_yaw: -1.5708

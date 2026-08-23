@@ -69,7 +69,8 @@ public:
     const double wp_apex_yaw = (mirror_x < 0.0) ? (M_PI - 2.200) : declare_parameter<double>("wp_return_apex_yaw", 2.200);
 
     // game1.yaml の全パラメータから完全構築
-    const double return_yaw = (mirror_x < 0.0) ? 0.7854 : 2.3562;
+    // 帰還時も前向き (ゲート方向 = -π/2) で戻る → そのまま次サイクルに発進できる
+    const double return_yaw = -M_PI / 2.0;
     waypoints_ = {
       {wp_start_x,  wp_start_y,  wp_start_yaw,  "Start Area", 0.0},
       {wp_gate_x,   wp_gate_y,   wp_gate_yaw,   "Shoot Outside Gate", 1.78},
