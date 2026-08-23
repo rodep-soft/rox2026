@@ -32,23 +32,22 @@ public:
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // ロボット寸法: 全長 0.60m, 全幅 0.45m (マージン込み 0.70m x 0.55m)
-    // 上側ゲート: X = -3.20m, Y = +3.80m (横向き |--|, 支柱: X=-3.50〜-2.90)
-    // 縦向きゲート: X = -4.50m, Y = +1.50m (縦向き I, 支柱: Y=1.20〜1.80)
+    // GAME1 手書き図面・実戦スピード重視「最小円弧回避ルート」:
+    // ゲート1 (縦向き): (X = -4.50, Y = 1.50)
+    // ゲート2 (上側横向き): (X = -3.20, Y = 3.80, 支柱左端: X=-3.50, Y=3.80)
     //
-    // 帰還ルート（上側ゲートを完全に避ける「下側〜左壁沿い安全レーン」）:
-    // 1. パスエリア (-1.30, 1.50) から一旦下（手前側 Y=0.40）へ退避
-    // 2. 下側の広い通路を真西 (-5.925, 0.40) へ直進
-    // 3. 左壁沿いを真北へ直進してスタート (-5.925, 4.950) へ帰還！
+    // 帰還ライン:
+    // パスエリア (-1.30, 1.50) から上側ゲート左支柱 (-3.50, 3.80) の下側を【かすめながら最速直線】で抜ける
+    // 経由点: (-3.80, 2.80) -> 支柱からマージン 1.0m 離れた最短ライン
+    // スタート枠 (-5.925, 4.950) へほぼ斜め一直線（所要時間わずか 2.8秒）！
     waypoints_ = {
       {-5.925, 4.950, -1.5708, "Start Area", 0.0},
       {-5.925, 1.500,  0.0000, "Shoot Outside Gate", 1.78},
-      {-4.500, 0.400,  0.0000, "Bypass Gate Bottom Side", 1.63},
-      {-3.500, 1.500,  0.0000, "Catch Ball & Re-dribble", 1.35},
-      {-1.300, 1.500,  0.0000, "Pass Area Drop", 2.00},
-      {-1.300, 0.400, -3.14159, "Retreat to Bottom Channel", 1.00},
-      {-5.925, 0.400,  1.57080, "Return along Bottom Wall", 2.50},
-      {-5.925, 4.950,  1.57080, "Return to Start along Left Wall", 2.50}
+      {-4.500, 0.500,  0.0000, "Bypass Gate Bottom", 1.40},
+      {-3.500, 1.500,  0.0000, "Catch Ball & Dribble", 1.20},
+      {-1.300, 1.500,  0.0000, "Pass Area Drop", 1.80},
+      {-3.800, 2.800,  2.2000, "Optimal Clearance Apex (Min Distance)", 1.30},
+      {-5.925, 4.950,  2.3562, "Fast Straight Dash to Start", 1.50}
     };
 
     publish_static_planned_path();
@@ -57,7 +56,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Collision-Free Return Simulation");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running High-Speed Optimal Curve Simulation");
   }
 
 private:
@@ -93,11 +92,11 @@ private:
 
     const auto & p0 = waypoints_[current_segment_];
     const auto & p1 = waypoints_[current_segment_ + 1];
-    const double dur = std::max(0.5, p1.duration);
+    const double dur = std::max(0.3, p1.duration);
 
     segment_elapsed_ += dt;
     double t = std::min(1.0, segment_elapsed_ / dur);
-    double s = t * t * (3.0 - 2.0 * t); // Smooth-step
+    double s = t * t * (3.0 - 2.0 * t); // Smooth-step curve
 
     double curr_x = p0.x + (p1.x - p0.x) * s;
     double curr_y = p0.y + (p1.y - p0.y) * s;
@@ -149,13 +148,13 @@ private:
     fp.action = visualization_msgs::msg::Marker::ADD;
     fp.pose = ps.pose;
     fp.pose.position.z = 0.15;
-    fp.scale.x = 0.65; // 全長 (マージン込み)
-    fp.scale.y = 0.50; // 全幅 (マージン込み)
+    fp.scale.x = 0.65;
+    fp.scale.y = 0.50;
     fp.scale.z = 0.25;
     fp.color.r = 0.2f;
-    fp.color.g = 0.7f;
+    fp.color.g = 0.8f;
     fp.color.b = 1.0f;
-    fp.color.a = 0.35f; // 半透明
+    fp.color.a = 0.35f;
     fp_array.markers.push_back(fp);
     footprint_pub_->publish(fp_array);
 
@@ -177,23 +176,19 @@ private:
     ball.color.a = 1.0f;
 
     if (current_segment_ == 0) {
-      // スタート〜シュート位置: ロボットが保持
       ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
       ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 1) {
-      // シュート〜迂回中: ボールがゲート (-4.50) をくぐって合流地点 (-3.50, 1.50) まで転がる
-      double progress = std::min(1.0, segment_elapsed_ / 1.63);
+      double progress = std::min(1.0, segment_elapsed_ / 1.40);
       ball.pose.position.x = -5.925 + progress * (-3.50 - (-5.925));
       ball.pose.position.y = 1.50;
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 2 || current_segment_ == 3) {
-      // ボール再保持〜パスエリアまでドリブル運搬
       ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
       ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
       ball.pose.position.z = 0.11;
     } else {
-      // パスエリア投下後: パスエリア内に静止
       ball.pose.position.x = -1.30;
       ball.pose.position.y = 1.50;
       ball.pose.position.z = 0.11;

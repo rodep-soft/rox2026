@@ -34,17 +34,12 @@ game1_auto_node:
     wp_pass_area_y: 1.500
     wp_pass_area_yaw: 0.0
 
-    # 5. 下側チャンネル退避位置 (上側ゲートに近づかず下側へ退避)
-    wp_return_bottom_x: -1.300
-    wp_return_bottom_y: 0.400
-    wp_return_bottom_yaw: -3.14159
+    # 5. 上側ゲート最短クリア 頂点ウェイポイント (上側ゲート下側をかすめて最短直線ダッシュ)
+    wp_return_apex_x: -3.800
+    wp_return_apex_y: 2.800
+    wp_return_apex_yaw: 2.200
 
-    # 6. 左壁沿い帰還アプローチ位置
-    wp_return_wall_x: -5.925
-    wp_return_wall_y: 0.400
-    wp_return_wall_yaw: 1.5708
-
-    # 7. スタート復帰位置 (左上コーナー)
+    # 6. スタート復帰位置 (左上コーナー)
     wp_start_x: -5.925
     wp_start_y: 4.950
-    wp_start_yaw: -1.5708
+    wp_start_yaw: 2.356
