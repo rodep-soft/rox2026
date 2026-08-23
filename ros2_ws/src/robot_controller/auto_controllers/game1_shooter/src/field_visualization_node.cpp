@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout with de-duplicated HUD label offsets");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and correct AprilTag markers");
   }
 
 private:
@@ -259,7 +259,7 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag (表裏のHUD文字ダブりを法線方向に完全分離)
+    // 6. 全27枚の公式 AprilTag (図面 2.3 完全一致: 左右を完全に反転補正)
     {
       struct TagData {
         int id;
@@ -278,27 +278,25 @@ private:
         {2,   6.490, -4.920, 0.300,  0.0000},
         {3,   5.920, -5.500, 0.300, -1.5708},
 
-        // 上側横向きゲート (4と6はバーの表裏: 4は北側+Y、6は南側-Yに離す)
-        // SIDE A:
+        // 上側横向きゲート (SIDE A: 4が上, 6が下, 7が左, 5が右)
         {4,  -3.265,  3.910, 0.802,  1.5708},   // 上側バー (北向き)
         {6,  -3.265,  3.850, 0.802, -1.5708},   // 下側バー (南向き)
         {7,  -3.500,  3.775, 0.122,  3.1416},   // 左支柱 (西向き)
         {5,  -2.840,  3.775, 0.122,  0.0000},   // 右支柱 (東向き)
 
-        // 上側横向きゲート (SIDE B)
+        // 上側横向きゲート (SIDE B: 4が上, 6が下, 5が左, 7が右)
         {4,   3.065,  3.910, 0.802,  1.5708},
         {6,   3.065,  3.850, 0.802, -1.5708},
         {5,   2.830,  3.775, 0.122,  3.1416},
         {7,   3.490,  3.775, 0.122,  0.0000},
 
-        // 中段縦向きゲート (8と10はバーの表裏: 8は西側-X、10は東側+Xに離す)
-        // SIDE A:
+        // 中段縦向きゲート (SIDE A: 9が上, 11が下, 8が左, 10が右)
         {9,  -4.375,  2.490, 0.122,  1.5708},   // 上支柱 (北向き)
         {11, -4.375,  1.830, 0.122, -1.5708},   // 下支柱 (南向き)
         {8,  -4.510,  2.065, 0.802,  3.1416},   // 左バー (西向き)
         {10, -4.450,  2.065, 0.802,  0.0000},   // 右バー (東向き)
 
-        // 中段縦向きゲート (SIDE B)
+        // 中段縦向きゲート (SIDE B: 9が上, 11が下, 10が左, 8が右)
         {9,   4.575,  2.490, 0.122,  1.5708},
         {11,  4.575,  1.830, 0.122, -1.5708},
         {10,  4.440,  2.065, 0.802,  3.1416},
@@ -309,21 +307,27 @@ private:
         {13, -0.020,  0.650, 0.302,  3.1416},
 
         // GAME2 3x3 シュートパネル (自陣下側 X = -3.23m, Y = -5.525m)
-        {14, -3.640, -5.525, 0.970,  1.5708},
+        // 左右を正しく反転:
+        // 左列 (X = -3.64m): 16 (上), 19 (中), 22 (下)
+        // 中列 (X = -3.23m): 15 (上), 18 (中), 21 (下)
+        // 右列 (X = -2.82m): 14 (上), 17 (中), 20 (下)
+        {16, -3.640, -5.525, 0.970,  1.5708},
         {15, -3.230, -5.525, 0.970,  1.5708},
-        {16, -2.820, -5.525, 0.970,  1.5708},
-        {17, -3.640, -5.525, 0.510,  1.5708},
+        {14, -2.820, -5.525, 0.970,  1.5708},
+        {19, -3.640, -5.525, 0.510,  1.5708},
         {18, -3.230, -5.525, 0.510,  1.5708},
-        {19, -2.820, -5.525, 0.510,  1.5708},
-        {20, -3.640, -5.525, 0.050,  1.5708},
+        {17, -2.820, -5.525, 0.510,  1.5708},
+        {22, -3.640, -5.525, 0.050,  1.5708},
         {21, -3.230, -5.525, 0.050,  1.5708},
-        {22, -2.820, -5.525, 0.050,  1.5708},
+        {20, -2.820, -5.525, 0.050,  1.5708},
 
-        // GAME3 ゴールエリア (正面ビュー, Y = -5.510m, コート正面北向き)
-        {23, -0.750, -5.510, 0.850,  1.5708},
-        {24,  0.950, -5.510, 0.850,  1.5708},
-        {25, -0.750, -5.510, 0.120,  1.5708},
-        {26,  0.950, -5.510, 0.120,  1.5708}
+        // GAME3 ゴールエリア (左右を正しく反転)
+        // 左側 (X = -0.75m): 上 24, 下 26
+        // 右側 (X = +0.95m): 上 23, 下 25
+        {24, -0.750, -5.510, 0.850,  1.5708},
+        {23,  0.950, -5.510, 0.850,  1.5708},
+        {26, -0.750, -5.510, 0.120,  1.5708},
+        {25,  0.950, -5.510, 0.120,  1.5708}
       };
 
       for (const auto & tag : all_tags) {
@@ -398,7 +402,6 @@ private:
         msg.markers.push_back(on_tag_text);
 
         // 4. 頭上に浮かぶネオンシアン HUD バッジ
-        // 表裏の文字が重ならないよう、法線方向（外側）に 0.18m オフセットさせて完全分離
         visualization_msgs::msg::Marker hud_badge;
         hud_badge.header.frame_id = map_frame_;
         hud_badge.header.stamp = now_stamp;
@@ -421,55 +424,7 @@ private:
       }
     }
 
-    // 7. GAME3 ゴールエリア & GAME2 パネル (3x3)
-    {
-      visualization_msgs::msg::Marker g3_goal;
-      g3_goal.header.frame_id = map_frame_;
-      g3_goal.header.stamp = now_stamp;
-      g3_goal.ns = "game3_goal";
-      g3_goal.id = id++;
-      g3_goal.type = visualization_msgs::msg::Marker::CUBE;
-      g3_goal.action = visualization_msgs::msg::Marker::ADD;
-      g3_goal.pose.position.x = 0.10;
-      g3_goal.pose.position.y = -5.45;
-      g3_goal.pose.position.z = 0.25;
-      g3_goal.pose.orientation.w = 1.0;
-      g3_goal.scale.x = 1.70;
-      g3_goal.scale.y = 0.40;
-      g3_goal.scale.z = 0.50;
-      g3_goal.color.r = 1.00f;
-      g3_goal.color.g = 0.85f;
-      g3_goal.color.b = 0.15f;
-      g3_goal.color.a = 0.90f;
-      msg.markers.push_back(g3_goal);
-
-      const std::vector<double> g2_xs = {-3.23, 3.63};
-      for (const double g2_x : g2_xs) {
-        for (int r = 0; r < 3; ++r) {
-          for (int c = 0; c < 3; ++c) {
-            visualization_msgs::msg::Marker panel;
-            panel.header.frame_id = map_frame_;
-            panel.header.stamp = now_stamp;
-            panel.ns = "game2_panels";
-            panel.id = id++;
-            panel.type = visualization_msgs::msg::Marker::CUBE;
-            panel.action = visualization_msgs::msg::Marker::ADD;
-            panel.pose.position.x = g2_x + (c - 1) * 0.41;
-            panel.pose.position.y = -5.50;
-            panel.pose.position.z = 0.05 + r * 0.46;
-            panel.pose.orientation.w = 1.0;
-            panel.scale.x = 0.35;
-            panel.scale.y = 0.04;
-            panel.scale.z = 0.35;
-            panel.color.r = 0.90f;
-            panel.color.g = 0.20f;
-            panel.color.b = 0.25f;
-            panel.color.a = 0.90f;
-            msg.markers.push_back(panel);
-          }
-        }
-      }
-    }
+    // 7. GAME3 ゴールエリア & GAME2 パネル (GazeboのSDFメッシュと干渉・重複するダミーCUBEマーカーを削除)
 
     marker_pub_->publish(msg);
   }
