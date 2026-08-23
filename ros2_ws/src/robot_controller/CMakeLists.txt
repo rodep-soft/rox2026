@@ -132,6 +132,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   nav_msgs
+  visualization_msgs
   tf2
   tf2_ros)
 

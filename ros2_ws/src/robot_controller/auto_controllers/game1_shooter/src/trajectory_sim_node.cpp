@@ -2,6 +2,7 @@
 #include <nav_msgs/msg/path.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <cmath>
@@ -27,22 +28,23 @@ public:
     path_pub_ = create_publisher<nav_msgs::msg::Path>("/robot/trajectory_plan", rclcpp::QoS(1).reliable().transient_local());
     current_path_pub_ = create_publisher<nav_msgs::msg::Path>("/robot/trajectory_executed", 10);
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom/simulated", 10);
+    ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // GAME1 ルート（上側スタート -> 縦向きゲート X=-4.5, Y=1.5 -> パスエリア X=-1.3, Y=1.5 -> スタート帰還）
-    // Start Area: (-5.50, 4.50)
-    // 縦向きゲート前アプローチ: (-4.50, 2.80)
-    // ゲートくぐり/シュート: (-4.50, 1.50)
-    // ゲート横回り込み: (-4.00, 0.80)
-    // パスエリア投入: (-1.30, 1.50)
-    // スタート地点へ斜め直線帰還: (-5.50, 4.50)
+    // GAME1 手書き図面・実機キック戦略:
+    // ゲート位置: (X = -4.50, Y = 1.50)
+    // 1. スタート枠 (-5.925, 4.950) から発進
+    // 2. ゲート【手前 1.78m】のキック待機位置 (-4.50, 3.28) に停止
+    // 3. ボールをシュート（ボールのみゲートを股抜き通過してパスエリアへ先行）
+    // 4. ロボットはゲートの右外側 (-3.50, 2.00) を大きく回り込んでパスエリアへ合流 (1.63s)
+    // 5. パスエリア (-1.30, 1.50) でボール回収・投下 (2.50s)
+    // 6. スタート地点 (-5.925, 4.950) へ斜め直線で帰還 (3.50s)
     waypoints_ = {
       {-5.925, 4.950, -1.5708, "Start Area", 0.0},
-      {-4.500, 2.800, -1.5708, "Vertical Gate Approach", 1.78},
-      {-4.500, 1.500, -1.5708, "Vertical Gate Pass Through", 1.00},
-      {-4.000, 0.800,  0.0000, "Gate Loop Around", 1.63},
-      {-1.300, 1.500,  0.0000, "Pass Area Drop", 2.50},
-      {-5.925, 4.950,  2.3562, "Straight Return", 3.50}
+      {-4.500, 3.280, -1.5708, "Shoot Position (1.78m before Gate)", 1.78},
+      {-3.500, 2.000, -1.5708, "Loop Around Gate Right Side", 1.63},
+      {-1.300, 1.500,  0.0000, "Pass Area Catch & Drop", 2.50},
+      {-5.925, 4.950,  2.3562, "Straight Return to Start", 3.50}
     };
 
     publish_static_planned_path();
@@ -51,7 +53,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Real-time Trajectory Simulation Loop");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Real-time Shooting & Bypass Trajectory Simulation");
   }
 
 private:
@@ -80,7 +82,6 @@ private:
     current_time_ += dt;
 
     if (current_segment_ >= waypoints_.size() - 1) {
-      // ループ再生（スタート地点に戻ったらリセットして再走）
       current_segment_ = 0;
       segment_elapsed_ = 0.0;
       executed_path_.poses.clear();
@@ -92,8 +93,7 @@ private:
 
     segment_elapsed_ += dt;
     double t = std::min(1.0, segment_elapsed_ / dur);
-    // Smooth step interpolation
-    double s = t * t * (3.0 - 2.0 * t);
+    double s = t * t * (3.0 - 2.0 * t); // Smooth-step
 
     double curr_x = p0.x + (p1.x - p0.x) * s;
     double curr_y = p0.y + (p1.y - p0.y) * s;
@@ -106,7 +106,7 @@ private:
 
     const auto now_stamp = this->now();
 
-    // 1. TF 配信 (map -> base_footprint) でロボット 3D モデルをリアルタイム移動！
+    // 1. TF 配信 (map -> base_footprint)
     geometry_msgs::msg::TransformStamped tf_msg;
     tf_msg.header.stamp = now_stamp;
     tf_msg.header.frame_id = "map";
@@ -118,7 +118,7 @@ private:
     tf_msg.transform.rotation.w = std::cos(curr_yaw / 2.0);
     tf_broadcaster_->sendTransform(tf_msg);
 
-    // 2. 走行軌跡 (Executed Path) を記録・配信
+    // 2. 走行軌跡 (Executed Path)
     geometry_msgs::msg::PoseStamped ps;
     ps.header.stamp = now_stamp;
     ps.header.frame_id = "map";
@@ -129,12 +129,51 @@ private:
     executed_path_.header.stamp = now_stamp;
     executed_path_.header.frame_id = "map";
     executed_path_.poses.push_back(ps);
-    if (executed_path_.poses.size() > 500) {
+    if (executed_path_.poses.size() > 600) {
       executed_path_.poses.erase(executed_path_.poses.begin());
     }
     current_path_pub_->publish(executed_path_);
 
-    // 3. オドメトリ配信
+    // 3. ボールのリアルタイム 3D 軌跡シミュレーション (黄色いボール)
+    // キック前: ロボットが保持
+    // キック後: ゲートをくぐってパスエリアへ直進
+    visualization_msgs::msg::MarkerArray ball_array;
+    visualization_msgs::msg::Marker ball;
+    ball.header.stamp = now_stamp;
+    ball.header.frame_id = "map";
+    ball.ns = "soccer_ball";
+    ball.id = 0;
+    ball.type = visualization_msgs::msg::Marker::SPHERE;
+    ball.action = visualization_msgs::msg::Marker::ADD;
+    ball.scale.x = 0.22;
+    ball.scale.y = 0.22;
+    ball.scale.z = 0.22;
+    ball.color.r = 1.0f;
+    ball.color.g = 0.85f;
+    ball.color.b = 0.10f;
+    ball.color.a = 1.0f;
+
+    if (current_segment_ == 0) {
+      // スタート〜キック位置: ロボット前方に保持
+      ball.pose.position.x = curr_x;
+      ball.pose.position.y = curr_y - 0.25;
+      ball.pose.position.z = 0.11;
+    } else if (current_segment_ == 1 || current_segment_ == 2) {
+      // シュート後: ボールがゲート (-4.5, 1.5) をくぐってパスエリア (-1.3, 1.5) へ先行ローリング
+      double ball_progress = (current_segment_ == 1) ? (segment_elapsed_ / 1.78) : 1.0;
+      ball.pose.position.x = -4.50 + ball_progress * (-1.30 - (-4.50));
+      ball.pose.position.y = 1.50;
+      ball.pose.position.z = 0.11;
+    } else {
+      // パスエリア投下後: パスエリア内に静止
+      ball.pose.position.x = -1.30;
+      ball.pose.position.y = 1.50;
+      ball.pose.position.z = 0.11;
+    }
+    ball_array.markers.push_back(ball);
+    ball_pub_->publish(ball_array);
+
+    // 4. オドメトリ配信
     nav_msgs::msg::Odometry odom;
     odom.header.stamp = now_stamp;
     odom.header.frame_id = "map";
@@ -146,6 +185,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr current_path_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ball_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
