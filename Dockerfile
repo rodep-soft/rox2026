@@ -37,6 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     evtest \
     libboost-dev \
     libconsole-bridge-dev \
+    liborocos-kdl-dev \
+    libeigen3-dev \
     libspdlog-dev \
     libfmt-dev \
     libyaml-cpp-dev \
