@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and realistic AprilTags with overhead HUD only");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and 100%% SDF-synchronized AprilTags to /field/markers");
   }
 
 private:
@@ -187,40 +187,28 @@ private:
       msg.markers.push_back(pass_b);
     }
 
-    // 5. GAME1 DFゲート
+    // 5. GAME1 DFゲート構造体 (SDF CAD メッシュの frame pose に完全一致)
+    // 縦向きゲート: frame_3 at (-4.475, 1.890) -> 支柱 Y=1.83 と Y=2.49, バー Y=2.16
+    // 横向きゲート: frame_4 at (-3.440, 3.875) -> 支柱 X=-3.50 と X=-2.84, バー X=-3.17
     {
-      struct DFGateLayout {
-        std::string name;
-        double x;
-        double y;
-        bool is_horizontal;
+      struct DFGateDef {
+        double p1_x, p1_y, p2_x, p2_y, bar_x, bar_y;
+        double bar_sx, bar_sy;
         float r, g, b;
       };
 
-      const std::vector<DFGateLayout> gates = {
-        {"df_a_top",  -3.165, 3.88, true,  0.10f, 0.75f, 1.00f},
-        {"df_a_mid",  -4.475, 2.16, false, 0.10f, 0.75f, 1.00f},
-        {"df_b_top",   3.165, 3.88, true,  1.00f, 0.55f, 0.10f},
-        {"df_b_mid",   4.475, 2.16, false, 1.00f, 0.55f, 0.10f}
+      const std::vector<DFGateDef> gates = {
+        // 自陣 縦向きゲート (X = -4.475)
+        {-4.375, 1.830, -4.375, 2.490, -4.475, 2.160, 0.06, 0.66, 0.10f, 0.75f, 1.00f},
+        // 自陣 横向きゲート (Y = 3.880)
+        {-3.500, 3.775, -2.840, 3.775, -3.170, 3.880, 0.66, 0.06, 0.10f, 0.75f, 1.00f},
+        // 敵陣 縦向きゲート (X = 4.475)
+        { 4.575, 1.830,  4.575, 2.490,  4.475, 2.160, 0.06, 0.66, 1.00f, 0.55f, 0.10f},
+        // 敵陣 横向きゲート (Y = 3.880)
+        { 2.830, 3.775,  3.490, 3.775,  3.160, 3.880, 0.66, 0.06, 1.00f, 0.55f, 0.10f}
       };
 
       for (const auto & g : gates) {
-        double p1_x = g.x, p1_y = g.y;
-        double p2_x = g.x, p2_y = g.y;
-        double bar_sx = 0.06, bar_sy = 0.65;
-
-        if (g.is_horizontal) {
-          p1_x = g.x - 0.33;
-          p2_x = g.x + 0.33;
-          bar_sx = 0.66;
-          bar_sy = 0.06;
-        } else {
-          p1_y = g.y + 0.33;
-          p2_y = g.y - 0.33;
-          bar_sx = 0.06;
-          bar_sy = 0.66;
-        }
-
         visualization_msgs::msg::Marker p1;
         p1.header.frame_id = map_frame_;
         p1.header.stamp = now_stamp;
@@ -228,8 +216,8 @@ private:
         p1.id = id++;
         p1.type = visualization_msgs::msg::Marker::CUBE;
         p1.action = visualization_msgs::msg::Marker::ADD;
-        p1.pose.position.x = p1_x;
-        p1.pose.position.y = p1_y;
+        p1.pose.position.x = g.p1_x;
+        p1.pose.position.y = g.p1_y;
         p1.pose.position.z = 0.40;
         p1.pose.orientation.w = 1.0;
         p1.scale.x = 0.06;
@@ -243,17 +231,17 @@ private:
 
         visualization_msgs::msg::Marker p2 = p1;
         p2.id = id++;
-        p2.pose.position.x = p2_x;
-        p2.pose.position.y = p2_y;
+        p2.pose.position.x = g.p2_x;
+        p2.pose.position.y = g.p2_y;
         msg.markers.push_back(p2);
 
         visualization_msgs::msg::Marker top_bar = p1;
         top_bar.id = id++;
-        top_bar.pose.position.x = g.x;
-        top_bar.pose.position.y = g.y;
+        top_bar.pose.position.x = g.bar_x;
+        top_bar.pose.position.y = g.bar_y;
         top_bar.pose.position.z = 0.80;
-        top_bar.scale.x = bar_sx;
-        top_bar.scale.y = bar_sy;
+        top_bar.scale.x = g.bar_sx;
+        top_bar.scale.y = g.bar_sy;
         top_bar.scale.z = 0.06;
         msg.markers.push_back(top_bar);
       }
@@ -346,7 +334,7 @@ private:
       }
     }
 
-    // 8. 全27枚の公式 AprilTag (プレート本体 + 頭上ネオンHUDバッジのみ)
+    // 8. 全27枚の公式 AprilTag (SDF CAD の 2d_code_panel joint poses と 100% 同期)
     {
       struct TagData {
         int id;
@@ -365,35 +353,43 @@ private:
         {2,   6.490, -4.920, 0.300,  0.0000},
         {3,   5.920, -5.500, 0.300, -1.5708},
 
-        // 上側横向きゲート (SIDE A: 4が上, 6が下, 7が左, 5が右)
-        {4,  -3.265,  3.910, 0.802,  1.5708},   // 上側バー (北向き)
-        {6,  -3.265,  3.850, 0.802, -1.5708},   // 下側バー (南向き)
-        {7,  -3.500,  3.775, 0.122,  3.1416},   // 左支柱 (西向き)
-        {5,  -2.840,  3.775, 0.122,  0.0000},   // 右支柱 (東向き)
+        // 横向きゲート (SIDE A: SDF 2d_code_panel_29..32 に完全一致)
+        // バー表 (北向き Y=3.91): 4
+        {4,  -3.265,  3.910, 0.802,  1.5708},
+        // バー裏 (南向き Y=3.85): 6
+        {6,  -3.265,  3.850, 0.802, -1.5708},
+        // 左支柱 (西向き X=-3.50, Y=3.775): 7
+        {7,  -3.500,  3.775, 0.400,  3.1416},
+        // 右支柱 (東向き X=-2.84, Y=3.775): 5
+        {5,  -2.840,  3.775, 0.400,  0.0000},
 
-        // 上側横向きゲート (SIDE B: 4が上, 6が下, 5が左, 7が右)
+        // 横向きゲート (SIDE B: SDF 2d_code_panel_21..24 に完全一致)
         {4,   3.065,  3.910, 0.802,  1.5708},
         {6,   3.065,  3.850, 0.802, -1.5708},
-        {5,   2.830,  3.775, 0.122,  3.1416},
-        {7,   3.490,  3.775, 0.122,  0.0000},
+        {5,   2.830,  3.775, 0.400,  3.1416},
+        {7,   3.490,  3.775, 0.400,  0.0000},
 
-        // 中段縦向きゲート (SIDE A: 9が上, 11が下, 8が左, 10が右)
-        {9,  -4.375,  2.490, 0.122,  1.5708},   // 上支柱 (北向き)
-        {11, -4.375,  1.830, 0.122, -1.5708},   // 下支柱 (南向き)
-        {8,  -4.510,  2.065, 0.802,  3.1416},   // 左バー (西向き)
-        {10, -4.450,  2.065, 0.802,  0.0000},   // 右バー (東向き)
+        // 縦向きゲート (SIDE A: SDF 2d_code_panel_25..28 に完全一致)
+        // 上支柱 (北向き X=-4.375, Y=2.49): 9
+        {9,  -4.375,  2.490, 0.400,  1.5708},
+        // 下支柱 (南向き X=-4.375, Y=1.83): 11
+        {11, -4.375,  1.830, 0.400, -1.5708},
+        // 左バー (西向き X=-4.510, Y=2.065): 8
+        {8,  -4.510,  2.065, 0.802,  3.1416},
+        // 右バー (東向き X=-4.450, Y=2.065): 10
+        {10, -4.450,  2.065, 0.802,  0.0000},
 
-        // 中段縦向きゲート (SIDE B: 9が上, 11が下, 10が左, 8が右)
-        {9,   4.575,  2.490, 0.122,  1.5708},
-        {11,  4.575,  1.830, 0.122, -1.5708},
+        // 縦向きゲート (SIDE B: SDF 2d_code_panel_17..20 に完全一致)
+        {9,   4.575,  2.490, 0.400,  1.5708},
+        {11,  4.575,  1.830, 0.400, -1.5708},
         {10,  4.440,  2.065, 0.802,  3.1416},
         {8,   4.500,  2.065, 0.802,  0.0000},
 
-        // センターラインポール (12が上 Y=2.45m, 13が下 Y=0.65m)
-        {12, -0.020,  2.450, 0.302,  3.1416},
-        {13, -0.020,  0.650, 0.302,  3.1416},
+        // センターラインポール (SDF 2d_code_panel_9..12 に完全一致)
+        {12, -0.020,  2.450, 0.400,  3.1416},
+        {13, -0.020,  0.650, 0.400,  3.1416},
 
-        // GAME2 3x3 シュートパネル (自陣下側 X = -3.23m, Y = -5.525m)
+        // GAME2 3x3 シュートパネル
         {16, -3.640, -5.525, 0.970,  1.5708},
         {15, -3.230, -5.525, 0.970,  1.5708},
         {14, -2.820, -5.525, 0.970,  1.5708},
@@ -404,7 +400,7 @@ private:
         {21, -3.230, -5.525, 0.050,  1.5708},
         {20, -2.820, -5.525, 0.050,  1.5708},
 
-        // GAME3 ゴールエリア (正面ビュー, Y = -5.510m, コート正面北向き)
+        // GAME3 ゴールエリア
         {24, -0.750, -5.510, 0.850,  1.5708},
         {23,  0.950, -5.510, 0.850,  1.5708},
         {26, -0.750, -5.510, 0.120,  1.5708},
@@ -412,13 +408,13 @@ private:
       };
 
       for (const auto & tag : all_tags) {
-        const double forward_offset = 0.035;
+        const double forward_offset = 0.025;
         const double nx = std::cos(tag.normal_yaw);
         const double ny = std::sin(tag.normal_yaw);
         const double px = tag.x + forward_offset * nx;
         const double py = tag.y + forward_offset * ny;
 
-        // 1. Tag プレート本体 (リアルな AprilTag 黒外枠)
+        // 1. Tag プレート本体 (黒外枠)
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -431,7 +427,7 @@ private:
         tag_plate.pose.position.z = tag.z;
         tag_plate.pose.orientation.z = std::sin(tag.normal_yaw / 2.0);
         tag_plate.pose.orientation.w = std::cos(tag.normal_yaw / 2.0);
-        tag_plate.scale.x = 0.015;
+        tag_plate.scale.x = 0.012;
         tag_plate.scale.y = 0.18;
         tag_plate.scale.z = 0.18;
         tag_plate.color.r = 0.05f;
@@ -440,7 +436,7 @@ private:
         tag_plate.color.a = 0.95f;
         msg.markers.push_back(tag_plate);
 
-        // 2. Tag プレート内側のリアルな白インナー枠（余計な直印字テキストを完全撤去！）
+        // 2. 白背景インナー枠
         visualization_msgs::msg::Marker tag_inner;
         tag_inner.header.frame_id = map_frame_;
         tag_inner.header.stamp = now_stamp;
@@ -448,11 +444,11 @@ private:
         tag_inner.id = id++;
         tag_inner.type = visualization_msgs::msg::Marker::CUBE;
         tag_inner.action = visualization_msgs::msg::Marker::ADD;
-        tag_inner.pose.position.x = px + 0.010 * nx;
-        tag_inner.pose.position.y = py + 0.010 * ny;
+        tag_inner.pose.position.x = px + 0.008 * nx;
+        tag_inner.pose.position.y = py + 0.008 * ny;
         tag_inner.pose.position.z = tag.z;
         tag_inner.pose.orientation = tag_plate.pose.orientation;
-        tag_inner.scale.x = 0.010;
+        tag_inner.scale.x = 0.008;
         tag_inner.scale.y = 0.14;
         tag_inner.scale.z = 0.14;
         tag_inner.color.r = 0.95f;
@@ -469,10 +465,10 @@ private:
         hud_badge.id = id++;
         hud_badge.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
         hud_badge.action = visualization_msgs::msg::Marker::ADD;
-        hud_badge.pose.position.x = tag.x + 0.18 * nx;
-        hud_badge.pose.position.y = tag.y + 0.18 * ny;
-        hud_badge.pose.position.z = tag.z + 0.20;
-        hud_badge.scale.z = 0.14;
+        hud_badge.pose.position.x = tag.x + 0.15 * nx;
+        hud_badge.pose.position.y = tag.y + 0.15 * ny;
+        hud_badge.pose.position.z = tag.z + 0.18;
+        hud_badge.scale.z = 0.13;
         hud_badge.color.r = 0.00f;
         hud_badge.color.g = 1.00f;
         hud_badge.color.b = 0.85f;
