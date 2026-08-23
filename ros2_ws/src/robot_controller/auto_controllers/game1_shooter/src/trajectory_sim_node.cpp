@@ -29,20 +29,20 @@ public:
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom/simulated", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // GAME1 の手書き図面・実寸ルート（上側スタート -> ゲートくぐり -> パスエリア -> 直線帰還）
-    // Start: (-5.5, 4.5)
-    // Gate 1 Approach: (-4.5, 4.5)
-    // Gate 1 Kick: (-3.2, 4.5) -> シュート通過
-    // Gate 1 Loop: (-2.2, 3.8) -> 右回りでゲート外側を旋回
-    // Pass Area: (-1.3, 1.5) -> ボール投入
-    // Return to Start: (-5.5, 4.5) -> 斜め直線帰還
+    // GAME1 ルート（上側スタート -> 縦向きゲート X=-4.5, Y=1.5 -> パスエリア X=-1.3, Y=1.5 -> スタート帰還）
+    // Start Area: (-5.50, 4.50)
+    // 縦向きゲート前アプローチ: (-4.50, 2.80)
+    // ゲートくぐり/シュート: (-4.50, 1.50)
+    // ゲート横回り込み: (-4.00, 0.80)
+    // パスエリア投入: (-1.30, 1.50)
+    // スタート地点へ斜め直線帰還: (-5.50, 4.50)
     waypoints_ = {
       {-5.50, 4.50, -1.5708, "Start Area", 0.0},
-      {-4.50, 4.50, -1.5708, "Gate Approach", 1.78},
-      {-3.20, 4.50, -1.5708, "Gate Nutmeg Kick", 1.00},
-      {-2.40, 3.80, -2.3562, "Gate Loop Around", 1.63},
-      {-1.30, 1.50, -3.14159, "Pass Area Drop", 2.50},
-      {-5.50, 4.50, -1.5708, "Straight Return", 3.50}
+      {-4.50, 2.80, -1.5708, "Vertical Gate Approach", 1.78},
+      {-4.50, 1.50, -1.5708, "Vertical Gate Pass Through", 1.00},
+      {-4.00, 0.80,  0.0000, "Gate Loop Around", 1.63},
+      {-1.30, 1.50,  0.0000, "Pass Area Drop", 2.50},
+      {-5.50, 4.50,  2.3562, "Straight Return", 3.50}
     };
 
     publish_static_planned_path();
