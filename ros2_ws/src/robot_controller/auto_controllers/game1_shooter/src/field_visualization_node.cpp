@@ -100,30 +100,49 @@ private:
       }
     }
 
-    // 3. スタートエリア (GAME2 スタートエリア: 手前側)
+    // 3. スタートエリア (GAME1 上側スタート / GAME2 手前側スタート)
     {
-      // SIDE A (自陣: X = -3.2m, Y = -0.5m)
-      visualization_msgs::msg::Marker start_a;
-      start_a.header.frame_id = map_frame_;
-      start_a.header.stamp = now_stamp;
-      start_a.ns = "start_areas";
+      // GAME1 上側スタートエリア (自陣: X = -5.50m, Y = 4.50m) - 鮮やかな緑色
+      visualization_msgs::msg::Marker g1_start_a;
+      g1_start_a.header.frame_id = map_frame_;
+      g1_start_a.header.stamp = now_stamp;
+      g1_start_a.ns = "start_areas";
+      g1_start_a.id = id++;
+      g1_start_a.type = visualization_msgs::msg::Marker::CUBE;
+      g1_start_a.action = visualization_msgs::msg::Marker::ADD;
+      g1_start_a.pose.position.x = -5.50;
+      g1_start_a.pose.position.y = 4.50;
+      g1_start_a.pose.position.z = 0.005;
+      g1_start_a.pose.orientation.w = 1.0;
+      g1_start_a.scale.x = 1.00;
+      g1_start_a.scale.y = 1.00;
+      g1_start_a.scale.z = 0.01;
+      g1_start_a.color.r = 0.10f;
+      g1_start_a.color.g = 0.90f;
+      g1_start_a.color.b = 0.20f;
+      g1_start_a.color.a = 0.75f;
+      msg.markers.push_back(g1_start_a);
+
+      // GAME1 敵陣上側スタート
+      visualization_msgs::msg::Marker g1_start_b = g1_start_a;
+      g1_start_b.id = id++;
+      g1_start_b.pose.position.x = 5.50;
+      g1_start_b.color.r = 0.20f;
+      g1_start_b.color.g = 0.50f;
+      g1_start_b.color.b = 0.90f;
+      msg.markers.push_back(g1_start_b);
+
+      // GAME2 手前側スタートエリア (自陣: X = -3.20m, Y = -0.50m)
+      visualization_msgs::msg::Marker start_a = g1_start_a;
       start_a.id = id++;
-      start_a.type = visualization_msgs::msg::Marker::CUBE;
-      start_a.action = visualization_msgs::msg::Marker::ADD;
       start_a.pose.position.x = -3.20;
       start_a.pose.position.y = -0.50;
-      start_a.pose.position.z = 0.003;
-      start_a.pose.orientation.w = 1.0;
       start_a.scale.x = 1.20;
       start_a.scale.y = 1.20;
-      start_a.scale.z = 0.005;
-      start_a.color.r = 0.10f;
-      start_a.color.g = 0.85f;
-      start_a.color.b = 0.25f;
-      start_a.color.a = 0.65f;
+      start_a.color.a = 0.40f;
       msg.markers.push_back(start_a);
 
-      // SIDE B (敵陣: X = +3.2m, Y = -0.5m)
+      // GAME2 敵陣手前側スタート
       visualization_msgs::msg::Marker start_b = start_a;
       start_b.id = id++;
       start_b.pose.position.x = 3.20;
