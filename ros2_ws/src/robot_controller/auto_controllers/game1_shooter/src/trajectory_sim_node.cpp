@@ -33,10 +33,10 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
-    kp_linear_ = declare_parameter<double>("kp_linear", 1.0);     // 実機と同一
-    kp_angular_ = declare_parameter<double>("kp_angular", 1.5);   // 実機と同一
+    kp_linear_ = declare_parameter<double>("kp_linear", 1.2);
+    kp_angular_ = declare_parameter<double>("kp_angular", 4.0);   // 実機と同一: 移動中に角度合わせ完了
     max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);   // 実機と同一
-    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0); // 実機と同一 (旋回は控えめ)
+    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 3.5); // 実機と同一: 高速旋回
     pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
     yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
@@ -177,7 +177,8 @@ private:
     } else {
       if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
         wp_wait_timer_ += dt;
-        const double wait_time = (current_segment_ == 1 || current_segment_ == 4) ? 0.6 : 0.0;
+        // 待機時間: ゲート射出後=0.6s, パスエリア投下=1.2s (図の計画時間に合わせる)
+        const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 1.2 : 0.0;
         if (wp_wait_timer_ >= wait_time) {
           current_segment_++;
           wp_wait_timer_ = 0.0;

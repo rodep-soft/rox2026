@@ -9,10 +9,10 @@ namespace robot_controller
 Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 : Node("game1_auto_node", options)
 {
-  kp_linear_ = declare_parameter<double>("kp_linear", 1.0);
-  kp_angular_ = declare_parameter<double>("kp_angular", 1.5);
+  kp_linear_ = declare_parameter<double>("kp_linear", 1.2);
+  kp_angular_ = declare_parameter<double>("kp_angular", 4.0);
   max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);
-  max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
+  max_angular_vel_ = declare_parameter<double>("max_angular_vel", 3.5);
   pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
@@ -325,7 +325,7 @@ void Game1AutoNode::control_loop()
         // アームが展開する時間 (0.3秒後) にゆっくり射出リクエストを発行
         bool spring_slow_fire = (elapsed >= 0.3);
 
-        if (elapsed > 2.0) {
+        if (elapsed > 1.2) {
           RCLCPP_INFO(get_logger(), "Pass Area Slow Fire Complete. Returning to Start position.");
           state_ = Game1State::NAV_TO_START;
           state_start_time_ = now();
