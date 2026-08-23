@@ -89,10 +89,13 @@ def generate_launch_description():
         output="screen",
     )
 
+    game1_config = os.path.join(pkg_robot_bringup, "config", "game1.yaml")
+
     trajectory_sim = Node(
         package="robot_controller",
         executable="trajectory_sim_node",
         name="trajectory_sim_node",
+        parameters=[game1_config],
         output="screen",
     )
 

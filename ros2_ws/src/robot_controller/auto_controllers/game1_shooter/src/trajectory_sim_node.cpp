@@ -32,23 +32,48 @@ public:
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // GAME1 手書き図面・実戦スピード重視「最小円弧回避ルート」:
-    // ゲート1 (縦向き): (X = -4.50, Y = 1.50)
-    // ゲート2 (上側横向き): (X = -3.20, Y = 3.80, 支柱左端: X=-3.50, Y=3.80)
-    //
-    // 帰還ライン:
-    // パスエリア (-1.30, 1.50) から上側ゲート左支柱 (-3.50, 3.80) の下側を【かすめながら最速直線】で抜ける
-    // 経由点: (-3.80, 2.80) -> 支柱からマージン 1.0m 離れた最短ライン
-    // スタート枠 (-5.925, 4.950) へほぼ斜め一直線（所要時間わずか 2.8秒）！
+    // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
+    const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925);
+    const double wp_start_y = declare_parameter<double>("wp_start_y", 4.950);
+    const double wp_start_yaw = declare_parameter<double>("wp_start_yaw", -1.5708);
+
+    const double wp_gate_x = declare_parameter<double>("wp_gate_x", -5.925);
+    const double wp_gate_y = declare_parameter<double>("wp_gate_y", 1.500);
+    const double wp_gate_yaw = declare_parameter<double>("wp_gate_yaw", 0.0);
+
+    const double wp_around_x = declare_parameter<double>("wp_around_gate_x", -4.500);
+    const double wp_around_y = declare_parameter<double>("wp_around_gate_y", 0.500);
+    const double wp_around_yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0);
+
+    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -3.500);
+    const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
+    const double wp_ball_yaw = declare_parameter<double>("wp_ball_yaw", 0.0);
+
+    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.300);
+    const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.500);
+    const double wp_pass_yaw = declare_parameter<double>("wp_pass_area_yaw", 0.0);
+
+    const double wp_apex_x = declare_parameter<double>("wp_return_apex_x", -3.800);
+    const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 2.800);
+    const double wp_apex_yaw = declare_parameter<double>("wp_return_apex_yaw", 2.200);
+
+    // game1.yaml の全パラメータから完全構築
     waypoints_ = {
-      {-5.925, 4.950, -1.5708, "Start Area", 0.0},
-      {-5.925, 1.500,  0.0000, "Shoot Outside Gate", 1.78},
-      {-4.500, 0.500,  0.0000, "Bypass Gate Bottom", 1.40},
-      {-3.500, 1.500,  0.0000, "Catch Ball & Dribble", 1.20},
-      {-1.300, 1.500,  0.0000, "Pass Area Drop", 1.80},
-      {-3.800, 2.800,  2.2000, "Optimal Clearance Apex (Min Distance)", 1.30},
-      {-5.925, 4.950,  2.3562, "Fast Straight Dash to Start", 1.50}
+      {wp_start_x,  wp_start_y,  wp_start_yaw,  "Start Area", 0.0},
+      {wp_gate_x,   wp_gate_y,   wp_gate_yaw,   "Shoot Outside Gate", 1.78},
+      {wp_around_x, wp_around_y, wp_around_yaw, "Bypass Gate Bottom", 1.40},
+      {wp_ball_x,   wp_ball_y,   wp_ball_yaw,   "Catch Ball & Dribble", 1.20},
+      {wp_pass_x,   wp_pass_y,   wp_pass_yaw,   "Pass Area Drop", 1.80},
+      {wp_apex_x,   wp_apex_y,   wp_apex_yaw,   "Optimal Clearance Apex", 1.30},
+      {wp_start_x,  wp_start_y,  2.3562,        "Fast Straight Dash to Start", 1.50}
     };
+
+    gate_center_x_ = (wp_gate_x + wp_ball_x) / 2.0;
+    gate_center_y_ = wp_gate_y;
+    ball_catch_x_ = wp_ball_x;
+    ball_catch_y_ = wp_ball_y;
+    pass_drop_x_ = wp_pass_x;
+    pass_drop_y_ = wp_pass_y;
 
     publish_static_planned_path();
 
@@ -56,7 +81,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running High-Speed Optimal Curve Simulation");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Configured DIRECTLY from game1.yaml ROS parameters!");
   }
 
 private:
@@ -137,7 +162,7 @@ private:
     }
     current_path_pub_->publish(executed_path_);
 
-    // 3. ロボット車体フットプリント (実寸 0.60m x 0.45m の可視化バウンディングボックス)
+    // 3. ロボット車体フットプリント (0.65m x 0.50m)
     visualization_msgs::msg::MarkerArray fp_array;
     visualization_msgs::msg::Marker fp;
     fp.header.stamp = now_stamp;
@@ -158,7 +183,7 @@ private:
     fp_array.markers.push_back(fp);
     footprint_pub_->publish(fp_array);
 
-    // 4. ボールのリアルタイム 3D 軌跡 (黄色いボール)
+    // 4. ボールのリアルタイム 3D 軌跡
     visualization_msgs::msg::MarkerArray ball_array;
     visualization_msgs::msg::Marker ball;
     ball.header.stamp = now_stamp;
@@ -181,16 +206,17 @@ private:
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 1) {
       double progress = std::min(1.0, segment_elapsed_ / 1.40);
-      ball.pose.position.x = -5.925 + progress * (-3.50 - (-5.925));
-      ball.pose.position.y = 1.50;
+      const auto & p_shoot = waypoints_[1];
+      ball.pose.position.x = p_shoot.x + progress * (ball_catch_x_ - p_shoot.x);
+      ball.pose.position.y = p_shoot.y;
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 2 || current_segment_ == 3) {
       ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
       ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
       ball.pose.position.z = 0.11;
     } else {
-      ball.pose.position.x = -1.30;
-      ball.pose.position.y = 1.50;
+      ball.pose.position.x = pass_drop_x_;
+      ball.pose.position.y = pass_drop_y_;
       ball.pose.position.z = 0.11;
     }
     ball_array.markers.push_back(ball);
@@ -214,6 +240,13 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 
   std::vector<Waypoint> waypoints_;
+  double gate_center_x_{-4.5};
+  double gate_center_y_{1.5};
+  double ball_catch_x_{-3.5};
+  double ball_catch_y_{1.5};
+  double pass_drop_x_{-1.3};
+  double pass_drop_y_{1.5};
+
   size_t current_segment_{0};
   double segment_elapsed_{0.0};
   double current_time_{0.0};
