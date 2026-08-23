@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     uncrustify \
     evtest \
     libboost-dev \
+    libconsole-bridge-dev \
     libspdlog-dev \
     libfmt-dev \
     libyaml-cpp-dev \
