@@ -19,6 +19,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(robot_msgs REQUIRED)
 find_package(apriltag_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -118,7 +119,14 @@ ament_target_dependencies(
   tf2
   tf2_geometry_msgs)
 
-list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node)
+add_executable(field_visualization_node auto_controllers/game1_shooter/src/field_visualization_node.cpp)
+ament_target_dependencies(
+  field_visualization_node
+  rclcpp
+  geometry_msgs
+  visualization_msgs)
+
+list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node field_visualization_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories

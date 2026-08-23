@@ -121,7 +121,7 @@ std::optional<TargetCandidate> TargetSelector::select_best_target(
         chosen = &cand;
         RCLCPP_INFO_THROTTLE(
           logger, *clock, 500,
-          "⚡ [Vertical Sweep: ZERO TURNING] Selected vertical target: %s (Heading Diff: %.2f deg)",
+          "[Vertical Sweep: ZERO TURNING] Selected vertical target: %s (Heading Diff: %.2f deg)",
           cand.desc.c_str(), std::abs(cand.heading_err - current_target_heading_err) * 180.0 / M_PI);
         break;
       }

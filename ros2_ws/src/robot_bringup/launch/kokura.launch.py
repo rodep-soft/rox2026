@@ -149,6 +149,16 @@ def generate_launch_description():
                     {"field_side": LaunchConfiguration("side")},
                 ],
             ),
+            Node(
+                package="robot_controller",
+                executable="field_visualization_node",
+                name="field_visualization_node",
+                output="screen",
+                parameters=[
+                    {"field_side": LaunchConfiguration("side")},
+                    {"map_frame": "map"},
+                ],
+            ),
             # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
             include(
                 "vision_launch.py",

@@ -28,9 +28,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   if (mirror < 0.0) {
     RCLCPP_INFO(
       get_logger(),
-      "🔄 [Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
+      "[Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
   } else {
-    RCLCPP_INFO(get_logger(), "🚩 [Game 1] LEFT/RED Field Side selected (Standard orientation).");
+    RCLCPP_INFO(get_logger(), "[Game 1] LEFT/RED Field Side selected (Standard orientation).");
   }
 
   // YAML からの Waypoint 読み込み (フィールド反転を自動適用)
@@ -79,6 +79,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   arm_position_pub_ =
     create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>("/spring/fire_request", 10);
+  spring_slow_fire_pub_ = create_publisher<std_msgs::msg::Bool>("/spring/slow_fire_request", 10);
   completed_pub_ = create_publisher<std_msgs::msg::Bool>("/game1/completed", 10);
 
   // 20 Hz 制御ループ
@@ -305,10 +306,10 @@ void Game1AutoNode::control_loop()
         // 5. ボール保持のままパスエリア射出位置へ移動
         cmd = compute_holonomic_pursuit(wp_pass_area_);
         dribble_enabled = true;
-        arm_pos = robot_msgs::msg::ArmPosition::OPEN; // 射出前にアームを開く
+        arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
         if (is_aligned_to_target(wp_pass_area_) || elapsed > 5.0) {
-          RCLCPP_INFO(get_logger(), "Arrived & Yaw-Aligned at Pass Area. Firing 2nd Spring!");
+          RCLCPP_INFO(get_logger(), "Arrived at Pass Area. Opening arm for Slow Fire (L1 behavior)...");
           state_ = Game1State::FIRE_PASS_SPRING;
           state_start_time_ = now();
         }
@@ -316,20 +317,27 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::FIRE_PASS_SPRING: {
-        // 5. パスエリアへスプリング発射 (2発目)
-        arm_pos = robot_msgs::msg::ArmPosition::FEED; // ベルトへボールを押し込む
-        spring_fire = true;
-        if ((now() - state_start_time_).seconds() > 1.0) {
-          RCLCPP_INFO(get_logger(), "Pass Area Shot Complete. Returning to Start position.");
+        // 5. パスエリアへスプリングゆっくり射出 (L1方式: ドリブルOFF, アームOPEN, slow_fire_request)
+        cmd = geometry_msgs::msg::Twist{};
+        dribble_enabled = false;
+        arm_pos = robot_msgs::msg::ArmPosition::OPEN;
+
+        // アームが展開する時間 (0.3秒後) にゆっくり射出リクエストを発行
+        bool spring_slow_fire = (elapsed >= 0.3);
+
+        if (elapsed > 2.0) {
+          RCLCPP_INFO(get_logger(), "Pass Area Slow Fire Complete. Returning to Start position.");
           state_ = Game1State::NAV_TO_START;
           state_start_time_ = now();
         }
-        break;
+        publish_commands(cmd, dribble_enabled, arm_pos, false, spring_slow_fire);
+        return;
       }
 
     case Game1State::NAV_TO_START: {
         // 6. スタート位置へ自動復帰
         cmd = compute_holonomic_pursuit(wp_start_);
+        arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
         if ((now() - state_start_time_).seconds() > 4.0) {
           RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED!");
           state_ = Game1State::COMPLETED;
@@ -359,14 +367,15 @@ void Game1AutoNode::control_loop()
       break;
   }
 
-  publish_commands(cmd, dribble_enabled, arm_pos, spring_fire);
+  publish_commands(cmd, dribble_enabled, arm_pos, spring_fire, false);
 }
 
 void Game1AutoNode::publish_commands(
   const geometry_msgs::msg::Twist & cmd_vel,
   bool dribble_enabled,
   uint8_t arm_position,
-  bool spring_fire)
+  bool spring_fire,
+  bool spring_slow_fire)
 {
   cmd_vel_pub_->publish(cmd_vel);
 
@@ -381,6 +390,10 @@ void Game1AutoNode::publish_commands(
   std_msgs::msg::Bool spring_msg;
   spring_msg.data = spring_fire;
   spring_fire_pub_->publish(spring_msg);
+
+  std_msgs::msg::Bool slow_spring_msg;
+  slow_spring_msg.data = spring_slow_fire;
+  spring_slow_fire_pub_->publish(slow_spring_msg);
 }
 
 }  // namespace robot_controller
