@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing full field 3D structures and AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and realistic AprilTags with overhead HUD only");
   }
 
 private:
@@ -259,9 +259,8 @@ private:
       }
     }
 
-    // 6. GAME3 ゴール構造体 (リアルなゴールフレーム & 左右レール)
+    // 6. GAME3 ゴール構造体
     {
-      // ゴール上部バー (横幅 1.70m, 高さ 0.90m)
       visualization_msgs::msg::Marker g3_top_bar;
       g3_top_bar.header.frame_id = map_frame_;
       g3_top_bar.header.stamp = now_stamp;
@@ -282,7 +281,6 @@ private:
       g3_top_bar.color.a = 1.00f;
       msg.markers.push_back(g3_top_bar);
 
-      // ゴール左支柱
       visualization_msgs::msg::Marker g3_left_post = g3_top_bar;
       g3_left_post.id = id++;
       g3_left_post.pose.position.x = -0.750;
@@ -291,7 +289,6 @@ private:
       g3_left_post.scale.z = 0.85;
       msg.markers.push_back(g3_left_post);
 
-      // ゴール右支柱
       visualization_msgs::msg::Marker g3_right_post = g3_top_bar;
       g3_right_post.id = id++;
       g3_right_post.pose.position.x = 0.950;
@@ -300,7 +297,6 @@ private:
       g3_right_post.scale.z = 0.85;
       msg.markers.push_back(g3_right_post);
 
-      // ゴール奥行きレール (左・右)
       visualization_msgs::msg::Marker g3_left_rail = g3_top_bar;
       g3_left_rail.id = id++;
       g3_left_rail.pose.position.x = -0.750;
@@ -320,7 +316,7 @@ private:
       msg.markers.push_back(g3_right_rail);
     }
 
-    // 7. GAME2 3x3 シュートパネル構造体 (自陣・敵陣)
+    // 7. GAME2 3x3 シュートパネル構造体
     {
       const std::vector<double> g2_xs = {-3.23, 3.63};
       for (const double g2_x : g2_xs) {
@@ -350,7 +346,7 @@ private:
       }
     }
 
-    // 8. 全27枚の公式 AprilTag (図面 2.3 完全一致)
+    // 8. 全27枚の公式 AprilTag (プレート本体 + 頭上ネオンHUDバッジのみ)
     {
       struct TagData {
         int id;
@@ -398,10 +394,6 @@ private:
         {13, -0.020,  0.650, 0.302,  3.1416},
 
         // GAME2 3x3 シュートパネル (自陣下側 X = -3.23m, Y = -5.525m)
-        // 左右を正しく反転:
-        // 左列 (X = -3.64m): 16 (上), 19 (中), 22 (下)
-        // 中列 (X = -3.23m): 15 (上), 18 (中), 21 (下)
-        // 右列 (X = -2.82m): 14 (上), 17 (中), 20 (下)
         {16, -3.640, -5.525, 0.970,  1.5708},
         {15, -3.230, -5.525, 0.970,  1.5708},
         {14, -2.820, -5.525, 0.970,  1.5708},
@@ -413,8 +405,6 @@ private:
         {20, -2.820, -5.525, 0.050,  1.5708},
 
         // GAME3 ゴールエリア (正面ビュー, Y = -5.510m, コート正面北向き)
-        // 左側 (X = -0.75m): 上 24, 下 26
-        // 右側 (X = +0.95m): 上 23, 下 25
         {24, -0.750, -5.510, 0.850,  1.5708},
         {23,  0.950, -5.510, 0.850,  1.5708},
         {26, -0.750, -5.510, 0.120,  1.5708},
@@ -428,7 +418,7 @@ private:
         const double px = tag.x + forward_offset * nx;
         const double py = tag.y + forward_offset * ny;
 
-        // 1. Tag プレート本体 (黒枠)
+        // 1. Tag プレート本体 (リアルな AprilTag 黒外枠)
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -450,7 +440,7 @@ private:
         tag_plate.color.a = 0.95f;
         msg.markers.push_back(tag_plate);
 
-        // 2. 白背景インナー枠
+        // 2. Tag プレート内側のリアルな白インナー枠（余計な直印字テキストを完全撤去！）
         visualization_msgs::msg::Marker tag_inner;
         tag_inner.header.frame_id = map_frame_;
         tag_inner.header.stamp = now_stamp;
@@ -465,34 +455,13 @@ private:
         tag_inner.scale.x = 0.010;
         tag_inner.scale.y = 0.14;
         tag_inner.scale.z = 0.14;
-        tag_inner.color.r = 1.00f;
-        tag_inner.color.g = 1.00f;
-        tag_inner.color.b = 1.00f;
+        tag_inner.color.r = 0.95f;
+        tag_inner.color.g = 0.95f;
+        tag_inner.color.b = 0.98f;
         tag_inner.color.a = 0.95f;
         msg.markers.push_back(tag_inner);
 
-        // 3. プレートど真ん中に刻印される黒太文字 ID
-        visualization_msgs::msg::Marker on_tag_text;
-        on_tag_text.header.frame_id = map_frame_;
-        on_tag_text.header.stamp = now_stamp;
-        on_tag_text.ns = "apriltags_center_num";
-        on_tag_text.id = id++;
-        on_tag_text.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
-        on_tag_text.action = visualization_msgs::msg::Marker::ADD;
-        on_tag_text.pose.position.x = px + 0.025 * nx;
-        on_tag_text.pose.position.y = py + 0.025 * ny;
-        on_tag_text.pose.position.z = tag.z;
-        on_tag_text.scale.z = 0.11;
-        on_tag_text.color.r = 0.05f;
-        on_tag_text.color.g = 0.05f;
-        on_tag_text.color.b = 0.05f;
-        on_tag_text.color.a = 1.00f;
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%d", tag.id);
-        on_tag_text.text = buf;
-        msg.markers.push_back(on_tag_text);
-
-        // 4. 頭上に浮かぶネオンシアン HUD バッジ
+        // 3. 頭上に浮かぶネオンシアン HUD バッジ (#00 〜 #26)
         visualization_msgs::msg::Marker hud_badge;
         hud_badge.header.frame_id = map_frame_;
         hud_badge.header.stamp = now_stamp;
