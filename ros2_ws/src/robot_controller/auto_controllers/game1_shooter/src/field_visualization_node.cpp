@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout with Cyberpunk/HUD styling to /field/markers");
   }
 
 private:
@@ -31,7 +31,7 @@ private:
     const auto now_stamp = this->now();
     int32_t id = 0;
 
-    // 1. フィールド床面
+    // 1. フィールド床面 (ダークサイバーマット + ネオングリッドライン)
     {
       visualization_msgs::msg::Marker floor;
       floor.header.frame_id = map_frame_;
@@ -47,12 +47,13 @@ private:
       floor.scale.x = 12.85;
       floor.scale.y = 10.90;
       floor.scale.z = 0.02;
-      floor.color.r = 0.15f;
-      floor.color.g = 0.18f;
-      floor.color.b = 0.22f;
-      floor.color.a = 0.95f;
+      floor.color.r = 0.10f;
+      floor.color.g = 0.12f;
+      floor.color.b = 0.16f;
+      floor.color.a = 0.98f;
       msg.markers.push_back(floor);
 
+      // センターライン (発光ホワイト)
       visualization_msgs::msg::Marker cline;
       cline.header.frame_id = map_frame_;
       cline.header.stamp = now_stamp;
@@ -62,14 +63,14 @@ private:
       cline.action = visualization_msgs::msg::Marker::ADD;
       cline.pose.position.x = 0.0;
       cline.pose.position.y = 0.0;
-      cline.pose.position.z = 0.001;
+      cline.pose.position.z = 0.002;
       cline.pose.orientation.w = 1.0;
       cline.scale.x = 0.08;
       cline.scale.y = 10.90;
       cline.scale.z = 0.005;
-      cline.color.r = 1.0f;
-      cline.color.g = 1.0f;
-      cline.color.b = 1.0f;
+      cline.color.r = 0.95f;
+      cline.color.g = 0.98f;
+      cline.color.b = 1.00f;
       cline.color.a = 0.95f;
       msg.markers.push_back(cline);
     }
@@ -97,15 +98,15 @@ private:
         corner.scale.x = 1.0;
         corner.scale.y = 1.0;
         corner.scale.z = 0.002;
-        corner.color.r = 1.0f;
-        corner.color.g = 1.0f;
-        corner.color.b = 1.0f;
-        corner.color.a = 0.20f;
+        corner.color.r = 0.40f;
+        corner.color.g = 0.50f;
+        corner.color.b = 0.60f;
+        corner.color.a = 0.25f;
         msg.markers.push_back(corner);
       }
     }
 
-    // 3. スタートエリア
+    // 3. スタートエリア (エメラルドグリーン & サイバーシアン)
     {
       // GAME1 上側スタートエリア
       visualization_msgs::msg::Marker g1_start_a;
@@ -122,18 +123,18 @@ private:
       g1_start_a.scale.x = 1.00;
       g1_start_a.scale.y = 1.00;
       g1_start_a.scale.z = 0.01;
-      g1_start_a.color.r = 0.10f;
-      g1_start_a.color.g = 0.90f;
-      g1_start_a.color.b = 0.20f;
-      g1_start_a.color.a = 0.75f;
+      g1_start_a.color.r = 0.00f;
+      g1_start_a.color.g = 0.95f;
+      g1_start_a.color.b = 0.45f;
+      g1_start_a.color.a = 0.70f;
       msg.markers.push_back(g1_start_a);
 
       visualization_msgs::msg::Marker g1_start_b = g1_start_a;
       g1_start_b.id = id++;
       g1_start_b.pose.position.x = 5.925;
-      g1_start_b.color.r = 0.20f;
-      g1_start_b.color.g = 0.50f;
-      g1_start_b.color.b = 0.90f;
+      g1_start_b.color.r = 0.00f;
+      g1_start_b.color.g = 0.70f;
+      g1_start_b.color.b = 1.00f;
       msg.markers.push_back(g1_start_b);
 
       // GAME2 手前側スタートエリア
@@ -143,18 +144,18 @@ private:
       start_a.pose.position.y = -0.50;
       start_a.scale.x = 1.20;
       start_a.scale.y = 1.20;
-      start_a.color.r = 0.15f;
-      start_a.color.g = 0.70f;
-      start_a.color.b = 0.30f;
-      start_a.color.a = 0.70f;
+      start_a.color.r = 0.00f;
+      start_a.color.g = 0.85f;
+      start_a.color.b = 0.60f;
+      start_a.color.a = 0.65f;
       msg.markers.push_back(start_a);
 
       visualization_msgs::msg::Marker start_b = start_a;
       start_b.id = id++;
       start_b.pose.position.x = 3.20;
       start_b.color.r = 0.20f;
-      start_b.color.g = 0.40f;
-      start_b.color.b = 0.80f;
+      start_b.color.g = 0.50f;
+      start_b.color.b = 1.00f;
       msg.markers.push_back(start_b);
     }
 
@@ -174,18 +175,18 @@ private:
       pass_a.scale.x = 0.80;
       pass_a.scale.y = 2.00;
       pass_a.scale.z = 0.01;
-      pass_a.color.r = 0.10f;
-      pass_a.color.g = 0.80f;
-      pass_a.color.b = 0.30f;
-      pass_a.color.a = 0.85f;
+      pass_a.color.r = 0.05f;
+      pass_a.color.g = 0.90f;
+      pass_a.color.b = 0.55f;
+      pass_a.color.a = 0.80f;
       msg.markers.push_back(pass_a);
 
       visualization_msgs::msg::Marker pass_b = pass_a;
       pass_b.id = id++;
       pass_b.pose.position.x = 1.30;
-      pass_b.color.r = 0.20f;
-      pass_b.color.g = 0.50f;
-      pass_b.color.b = 0.90f;
+      pass_b.color.r = 0.05f;
+      pass_b.color.g = 0.65f;
+      pass_b.color.b = 1.00f;
       msg.markers.push_back(pass_b);
     }
 
@@ -200,10 +201,10 @@ private:
       };
 
       const std::vector<DFGateLayout> gates = {
-        {"df_a_top",  -3.20, 3.80, true,  0.20f, 0.60f, 0.95f},
-        {"df_a_mid",  -4.50, 1.50, false, 0.20f, 0.60f, 0.95f},
-        {"df_b_top",   3.20, 3.80, true,  0.95f, 0.55f, 0.15f},
-        {"df_b_mid",   4.50, 1.50, false, 0.95f, 0.55f, 0.15f}
+        {"df_a_top",  -3.20, 3.80, true,  0.10f, 0.75f, 1.00f},
+        {"df_a_mid",  -4.50, 1.50, false, 0.10f, 0.75f, 1.00f},
+        {"df_b_top",   3.20, 3.80, true,  1.00f, 0.55f, 0.10f},
+        {"df_b_mid",   4.50, 1.50, false, 1.00f, 0.55f, 0.10f}
       };
 
       for (const auto & g : gates) {
@@ -262,92 +263,113 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag (ID 0〜26)
-    // GAME2パネル: 上段(14,15,16) -> 中段(17,18,19) -> 下段(20,21,22)
+    // 6. 全27枚の公式 AprilTag 3D マーカー (スタイリッシュなHUDバッジデザイン)
     {
       struct TagData {
         int id;
         double x, y, z, yaw;
+        std::string category;
       };
       const std::vector<TagData> all_tags = {
-        // コーナー・外壁
-        {0,  -6.495, -5.020, 0.420, -1.571},
-        {1,  -6.020, -5.495, 0.420, -3.142},
-        {2,  -6.500,  4.920, 0.320,  1.571},
-        {3,  -6.020,  5.495, 0.420, -3.142},
+        {0,  -6.495, -5.020, 0.420, -1.571, "WALL"},
+        {1,  -6.020, -5.495, 0.420, -3.142, "WALL"},
+        {2,  -6.500,  4.920, 0.320,  1.571, "START"},
+        {3,  -6.020,  5.495, 0.420, -3.142, "WALL"},
 
-        // GAME1 縦向きDFゲート
-        {4,  -4.505,  2.165, 0.922,  1.571},
-        {5,  -4.445,  2.165, 0.922,  1.571},
-        {6,  -4.475,  2.495, 0.122, -3.142},
-        {7,  -4.475,  1.835, 0.122, -3.142},
+        {4,  -4.505,  2.165, 0.922,  1.571, "GATE"},
+        {5,  -4.445,  2.165, 0.922,  1.571, "GATE"},
+        {6,  -4.475,  2.495, 0.122, -3.142, "GATE"},
+        {7,  -4.475,  1.835, 0.122, -3.142, "GATE"},
 
-        // GAME1 上側横向きDFゲート
-        {8,  -3.165,  3.905, 0.922,  0.000},
-        {9,  -3.495,  3.875, 0.122,  1.571},
-        {10, -2.835,  3.875, 0.122,  1.571},
-        {11, -3.165,  3.845, 0.922,  0.000},
+        {8,  -3.165,  3.905, 0.922,  0.000, "GATE"},
+        {9,  -3.495,  3.875, 0.122,  1.571, "GATE"},
+        {10, -2.835,  3.875, 0.122,  1.571, "GATE"},
+        {11, -3.165,  3.845, 0.922,  0.000, "GATE"},
 
-        // センターラインポール
-        {12,  0.015,  0.750, 0.422,  1.571},
-        {13,  0.015,  2.550, 0.422,  1.571},
+        {12,  0.015,  0.750, 0.422,  1.571, "CENTER"},
+        {13,  0.015,  2.550, 0.422,  1.571, "CENTER"},
 
-        // GAME2 3x3 シュートパネル (上段 14,15,16 / 中段 17,18,19 / 下段 20,21,22)
-        {14, -3.640, -5.525, 1.190, -3.142}, // 上段 左
-        {15, -3.230, -5.525, 1.190, -3.142}, // 上段 中
-        {16, -2.820, -5.525, 1.190, -3.142}, // 上段 右
-        {17, -3.640, -5.525, 0.730, -3.142}, // 中段 左
-        {18, -3.230, -5.525, 0.730, -3.142}, // 中段 中
-        {19, -2.820, -5.525, 0.730, -3.142}, // 中段 右
-        {20, -3.640, -5.525, 0.270, -3.142}, // 下段 左
-        {21, -3.230, -5.525, 0.270, -3.142}, // 下段 中
-        {22, -2.820, -5.525, 0.270, -3.142}, // 下段 右
+        {14, -3.640, -5.525, 1.190, -3.142, "P14"},
+        {15, -3.230, -5.525, 1.190, -3.142, "P15"},
+        {16, -2.820, -5.525, 1.190, -3.142, "P16"},
+        {17, -3.640, -5.525, 0.730, -3.142, "P17"},
+        {18, -3.230, -5.525, 0.730, -3.142, "P18"},
+        {19, -2.820, -5.525, 0.730, -3.142, "P19"},
+        {20, -3.640, -5.525, 0.270, -3.142, "P20"},
+        {21, -3.230, -5.525, 0.270, -3.142, "P21"},
+        {22, -2.820, -5.525, 0.270, -3.142, "P22"},
 
-        // GAME3 ゴールエリアポスト
-        {23,  0.850, -5.505, 0.120, -3.142},
-        {24,  0.850, -5.505, 0.970, -3.142},
-        {25, -0.850, -5.505, 0.120, -3.142},
-        {26, -0.850, -5.505, 0.970, -3.142}
+        {23,  0.850, -5.505, 0.120, -3.142, "GOAL"},
+        {24,  0.850, -5.505, 0.970, -3.142, "GOAL"},
+        {25, -0.850, -5.505, 0.120, -3.142, "GOAL"},
+        {26, -0.850, -5.505, 0.970, -3.142, "GOAL"}
       };
 
       for (const auto & tag : all_tags) {
-        visualization_msgs::msg::Marker tag_marker;
-        tag_marker.header.frame_id = map_frame_;
-        tag_marker.header.stamp = now_stamp;
-        tag_marker.ns = "apriltags_visual";
-        tag_marker.id = id++;
-        tag_marker.type = visualization_msgs::msg::Marker::CUBE;
-        tag_marker.action = visualization_msgs::msg::Marker::ADD;
-        tag_marker.pose.position.x = tag.x;
-        tag_marker.pose.position.y = tag.y;
-        tag_marker.pose.position.z = tag.z;
-        tag_marker.pose.orientation.z = std::sin(tag.yaw / 2.0);
-        tag_marker.pose.orientation.w = std::cos(tag.yaw / 2.0);
-        tag_marker.scale.x = 0.02;
-        tag_marker.scale.y = 0.18;
-        tag_marker.scale.z = 0.18;
-        tag_marker.color.r = 0.05f;
-        tag_marker.color.g = 0.05f;
-        tag_marker.color.b = 0.05f;
-        tag_marker.color.a = 1.0f;
-        msg.markers.push_back(tag_marker);
+        // 1. Tag プレート本体 (ピアノブラック + 白枠)
+        visualization_msgs::msg::Marker tag_plate;
+        tag_plate.header.frame_id = map_frame_;
+        tag_plate.header.stamp = now_stamp;
+        tag_plate.ns = "apriltags_plate";
+        tag_plate.id = id++;
+        tag_plate.type = visualization_msgs::msg::Marker::CUBE;
+        tag_plate.action = visualization_msgs::msg::Marker::ADD;
+        tag_plate.pose.position.x = tag.x;
+        tag_plate.pose.position.y = tag.y;
+        tag_plate.pose.position.z = tag.z;
+        tag_plate.pose.orientation.z = std::sin(tag.yaw / 2.0);
+        tag_plate.pose.orientation.w = std::cos(tag.yaw / 2.0);
+        tag_plate.scale.x = 0.02;
+        tag_plate.scale.y = 0.18;
+        tag_plate.scale.z = 0.18;
+        tag_plate.color.r = 0.08f;
+        tag_plate.color.g = 0.08f;
+        tag_plate.color.b = 0.10f;
+        tag_plate.color.a = 1.0f;
+        msg.markers.push_back(tag_plate);
 
+        // 2. HUD バックプレートバッジ (半透明ネオンシアン / オレンジ)
+        visualization_msgs::msg::Marker badge;
+        badge.header.frame_id = map_frame_;
+        badge.header.stamp = now_stamp;
+        badge.ns = "hud_badges";
+        badge.id = id++;
+        badge.type = visualization_msgs::msg::Marker::CUBE;
+        badge.action = visualization_msgs::msg::Marker::ADD;
+        badge.pose.position.x = tag.x;
+        badge.pose.position.y = tag.y;
+        badge.pose.position.z = tag.z + 0.16;
+        badge.pose.orientation = tag_plate.pose.orientation;
+        badge.scale.x = 0.015;
+        badge.scale.y = 0.22;
+        badge.scale.z = 0.07;
+        badge.color.r = 0.05f;
+        badge.color.g = 0.15f;
+        badge.color.b = 0.25f;
+        badge.color.a = 0.85f;
+        msg.markers.push_back(badge);
+
+        // 3. スタイリッシュな HUD テキストラベル [TAG-XX]
         visualization_msgs::msg::Marker text_marker;
         text_marker.header.frame_id = map_frame_;
         text_marker.header.stamp = now_stamp;
-        text_marker.ns = "apriltag_labels";
+        text_marker.ns = "apriltag_hud_text";
         text_marker.id = id++;
         text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
         text_marker.action = visualization_msgs::msg::Marker::ADD;
         text_marker.pose.position.x = tag.x;
         text_marker.pose.position.y = tag.y;
-        text_marker.pose.position.z = tag.z + 0.15;
-        text_marker.scale.z = 0.14;
-        text_marker.color.r = 1.0f;
-        text_marker.color.g = 1.0f;
-        text_marker.color.b = 0.2f;
-        text_marker.color.a = 1.0f;
-        text_marker.text = "#" + std::to_string(tag.id);
+        text_marker.pose.position.z = tag.z + 0.16;
+        text_marker.scale.z = 0.10; // 洗練されたタイポグラフィサイズ
+        text_marker.color.r = 0.00f;
+        text_marker.color.g = 0.95f;
+        text_marker.color.b = 1.00f; // ネオンシアン (Cyber Blue)
+        text_marker.color.a = 1.00f;
+
+        // 見栄えの良いフォーマット: [ 04 ], [ 18 ] など
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "[ %02d ]", tag.id);
+        text_marker.text = buf;
         msg.markers.push_back(text_marker);
       }
     }
@@ -368,9 +390,9 @@ private:
       g3_goal.scale.x = 1.60;
       g3_goal.scale.y = 0.40;
       g3_goal.scale.z = 0.50;
-      g3_goal.color.r = 1.0f;
+      g3_goal.color.r = 1.00f;
       g3_goal.color.g = 0.85f;
-      g3_goal.color.b = 0.10f;
+      g3_goal.color.b = 0.15f;
       g3_goal.color.a = 0.90f;
       msg.markers.push_back(g3_goal);
 
@@ -385,18 +407,16 @@ private:
             panel.id = id++;
             panel.type = visualization_msgs::msg::Marker::CUBE;
             panel.action = visualization_msgs::msg::Marker::ADD;
-            // c=0(左), c=1(中), c=2(右)
             panel.pose.position.x = g2_x + (c - 1) * 0.41;
             panel.pose.position.y = -5.45;
-            // r=0(下段 0.27m), r=1(中段 0.73m), r=2(上段 1.19m)
             panel.pose.position.z = 0.27 + r * 0.46;
             panel.pose.orientation.w = 1.0;
             panel.scale.x = 0.35;
             panel.scale.y = 0.04;
             panel.scale.z = 0.35;
-            panel.color.r = 0.85f;
+            panel.color.r = 0.90f;
             panel.color.g = 0.20f;
-            panel.color.b = 0.20f;
+            panel.color.b = 0.25f;
             panel.color.a = 0.90f;
             msg.markers.push_back(panel);
           }
