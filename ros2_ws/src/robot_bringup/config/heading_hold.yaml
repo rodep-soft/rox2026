@@ -26,15 +26,15 @@ bno055_heading_control_node:
     # --------------------------------------------------------------------------
     # 3. Control Gains (PID)
     # --------------------------------------------------------------------------
-    kp: 1.6                            # Proportional Gain (smoothed to prevent fluttering)
+    kp: 3.5                            # Proportional Gain (responsive heading restoration)
     ki: 0.0                            # Integral Gain
-    kd: 0.12                           # Derivative Gain (proper damping for inertia)
+    kd: 0.05                           # Derivative Gain (damping for inertia)
     kff: 1.0                           # Feedforward Gain (alias for k_ff_vel)
     max_i_term: 0.5                    # Anti-windup integral saturation limit
     max_output: 1.5                    # Maximum angular velocity correction limit (rad/s)
-    deadband_deg: 0.8                  # Deadband in degrees
-    angular_deadband: 0.05             # Turning threshold (rad/s) to start 2-DOF target tracking
-    turn_relock_delay: 0.10            # Delay (seconds) after manual turn to prevent snap-back
+    deadband_deg: 0.3                  # Deadband in degrees
+    angular_deadband: 0.08             # Turning threshold (rad/s) to start manual turning
+    turn_relock_delay: 0.15            # Delay (seconds) after manual turn to settle inertia
 
     # --------------------------------------------------------------------------
     # 4. Safety Watchdog & Diagnostics
