@@ -59,6 +59,21 @@ def generate_launch_description():
         output="screen",
     )
 
+    urdf_path = os.path.join(pkg_robot_bringup, "urdf", "robot.urdf.xacro")
+    from launch_ros.parameter_descriptions import ParameterValue
+    from launch.substitutions import Command
+
+    robot_description_content = ParameterValue(
+        Command(["xacro ", urdf_path, " gazebo:=true use_mock_hardware:=false"]),
+        value_type=str,
+    )
+
+    robot_state_publisher = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        parameters=[{"robot_description": robot_description_content, "use_sim_time": use_sim_time}],
+    )
+
     foxglove_bridge = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_robot_bringup, "launch", "foxglove_bridge.launch.py"))
     )
@@ -72,6 +87,7 @@ def generate_launch_description():
             set_gz_resource_path,
             gazebo_sim,
             bridge,
+            robot_state_publisher,
             foxglove_bridge,
         ]
     )
