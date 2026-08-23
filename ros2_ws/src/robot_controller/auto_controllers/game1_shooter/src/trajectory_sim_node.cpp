@@ -41,7 +41,8 @@ public:
     yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
     const std::string field_side = declare_parameter<std::string>("field_side", "left");
-    const double mirror_x = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+    mirror_x_ = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+    const double mirror_x = mirror_x_;
 
     const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
     const double wp_start_y = declare_parameter<double>("wp_start_y", 4.950);
@@ -59,7 +60,7 @@ public:
     const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
     const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
-    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.300) * mirror_x;
+    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -2.050) * mirror_x;
     const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.500);
     const double wp_pass_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_pass_area_yaw", 0.0);
 
@@ -260,15 +261,22 @@ private:
       ball.pose.position.x = waypoints_[3].x;
       ball.pose.position.y = waypoints_[3].y;
       ball.pose.position.z = 0.11;
-    } else if (current_segment_ == 3 || current_segment_ == 4) {
+    } else if (current_segment_ == 3) {
       // ドリブルキャッチ中: ロボット前方に保持
       ball.pose.position.x = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball.pose.position.y = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball.pose.position.z = 0.11;
+    } else if (current_segment_ == 4) {
+      // パスエリア外側停止 & ゆっくり射出: ボールがパスエリア内 (X = -1.316m) へ静かに転がり進入
+      double progress = std::min(1.0, wp_wait_timer_ / 0.8);
+      const double target_ball_x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
+      ball.pose.position.x = (curr_x_ + 0.25 * std::cos(curr_yaw_)) + progress * (target_ball_x - (curr_x_ + 0.25 * std::cos(curr_yaw_)));
+      ball.pose.position.y = 1.500;
+      ball.pose.position.z = 0.11;
     } else {
-      // パスエリア投下後: パスエリアにボールが残る
-      ball.pose.position.x = waypoints_[4].x;
-      ball.pose.position.y = waypoints_[4].y;
+      // パスエリア投下後: パスエリア内にボールが美しく静止
+      ball.pose.position.x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
+      ball.pose.position.y = 1.500;
       ball.pose.position.z = 0.11;
     }
     ball_array.markers.push_back(ball);
@@ -304,6 +312,7 @@ private:
   double segment_elapsed_{0.0};
   double current_time_{0.0};
   double wp_wait_timer_{0.0};
+  double mirror_x_{1.0};
 
   double curr_x_{-5.925};
   double curr_y_{4.950};

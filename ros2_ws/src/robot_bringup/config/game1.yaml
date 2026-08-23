@@ -29,8 +29,8 @@
     wp_ball_y: 1.500
     wp_ball_yaw: 0.0
 
-    # 4. パスエリア進入・投下位置
-    wp_pass_area_x: -1.300
+    # 4. パスエリア外側射出・投下位置 (パスエリア X=-1.70m〜-0.93m の外側手前 X=-2.05m で停止)
+    wp_pass_area_x: -2.050
     wp_pass_area_y: 1.500
     wp_pass_area_yaw: 0.0
 
