@@ -19,9 +19,9 @@ game1_auto_node:
     wp_gate_y: 1.500
     wp_gate_yaw: 0.0
 
-    # 2. ゲート横回り込み通過点 (ゲート上部を迂回)
+    # 2. ゲート横回り込み通過点 (ゲート下側・手前側を迂回)
     wp_around_gate_x: -4.500
-    wp_around_gate_y: 2.500
+    wp_around_gate_y: 0.500
     wp_around_gate_yaw: 0.0
 
     # 3. ボールキャッチ予想位置 (ゲート出口で減速停止したボールを回収)
