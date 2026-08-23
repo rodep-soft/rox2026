@@ -130,7 +130,10 @@ private:
 
     double curr_x = p0.x + (p1.x - p0.x) * s;
     double curr_y = p0.y + (p1.y - p0.y) * s;
-    double curr_yaw = p0.yaw + (p1.yaw - p0.yaw) * s;
+    
+    // 最短角度でのスムーズなYaw補間（360度大回り旋回を防止）
+    double dyaw = std::remainder(p1.yaw - p0.yaw, 2.0 * M_PI);
+    double curr_yaw = p0.yaw + dyaw * s;
 
     if (t >= 1.0) {
       current_segment_++;
