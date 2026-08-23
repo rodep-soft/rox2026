@@ -34,7 +34,12 @@ game1_auto_node:
     wp_pass_area_y: 1.500
     wp_pass_area_yaw: 0.0
 
-    # 5. スタート復帰位置 (左上コーナー)
+    # 5. 上側ゲート安全回避 帰還中間経由点 (上側ゲート X=-3.2, Y=3.8 を右側に大きくクリア)
+    wp_return_safe_x: -2.000
+    wp_return_safe_y: 3.200
+    wp_return_safe_yaw: 2.000
+
+    # 6. スタート復帰位置 (左上コーナー)
     wp_start_x: -5.925
     wp_start_y: 4.950
     wp_start_yaw: -1.5708

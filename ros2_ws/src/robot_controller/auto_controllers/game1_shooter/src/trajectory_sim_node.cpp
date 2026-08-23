@@ -29,24 +29,25 @@ public:
     current_path_pub_ = create_publisher<nav_msgs::msg::Path>("/robot/trajectory_executed", 10);
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom/simulated", 10);
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
+    footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // GAME1 手書き図面・実戦2フェーズ戦略:
-    // ゲート位置: (X = -4.50, Y = 1.50) [縦向き]
-    // 1. スタート枠 (-5.925, 4.950) から発進
-    // 2. ゲート外側シュート位置 (-5.925, 1.50) で停止し、東向き (+X) にゲートを狙ってシュート！
-    // 3. ボールはゲート (-4.50, 1.50) をくぐってゲート出口付近 (-3.50, 1.50) で減速停止
-    // 4. ロボットはゲート下側・手前側 (-4.50, 0.50) を迂回旋回 (1.63s)
-    // 5. 【ボール回収・合流】(-3.50, 1.50) でボールに追いつき、保持してドリブル開始 (1.35s)
-    // 6. パスエリア (-1.30, 1.50) までドリブルしてエリア内にボールを投下 (2.50s)
-    // 7. スタート地点 (-5.925, 4.950) へ斜め直線で帰還 (3.50s)
+    // ロボット寸法: 全長 0.60m, 全幅 0.45m (マージン込み 0.70m x 0.55m)
+    // 上側ゲート: X = -3.20m, Y = +3.80m (横向き |--|, 支柱: X=-3.50〜-2.90)
+    // 縦向きゲート: X = -4.50m, Y = +1.50m (縦向き I, 支柱: Y=1.20〜1.80)
+    //
+    // 帰還ルート:
+    // パスエリア (-1.30, 1.50) から左上スタート (-5.925, 4.950) へ一直線に戻ると、
+    // 上側ゲート (-3.20, 3.80) の右下角にロボット外周（幅0.55m）が接触する恐れがあるため、
+    // 帰還中間経由点 (-2.20, 3.00) または (-1.80, 3.50) を通って上側ゲートの【右側】を余裕（0.8m以上）をもって安全回避！
     waypoints_ = {
       {-5.925, 4.950, -1.5708, "Start Area", 0.0},
       {-5.925, 1.500,  0.0000, "Shoot Outside Gate", 1.78},
-      {-4.500, 0.500,  0.0000, "Bypass Gate Bottom Side", 1.63},
+      {-4.500, 0.400,  0.0000, "Bypass Gate Bottom Side", 1.63},
       {-3.500, 1.500,  0.0000, "Catch Ball & Re-dribble", 1.35},
-      {-1.300, 1.500,  0.0000, "Pass Area Drop", 2.50},
-      {-5.925, 4.950,  2.3562, "Straight Return to Start", 3.50}
+      {-1.300, 1.500,  0.0000, "Pass Area Drop", 2.00},
+      {-2.000, 3.200,  2.0000, "Safe Waypoint (Clear Top Gate)", 1.80},
+      {-5.925, 4.950,  2.3562, "Straight Return to Start", 2.20}
     };
 
     publish_static_planned_path();
@@ -55,7 +56,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Shoot -> Bypass -> Catch & Dribble -> Pass Simulation");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Collision-Free Return Simulation");
   }
 
 private:
@@ -136,7 +137,28 @@ private:
     }
     current_path_pub_->publish(executed_path_);
 
-    // 3. ボールのリアルタイム 3D 軌跡 (黄色いボール)
+    // 3. ロボット車体フットプリント (実寸 0.60m x 0.45m の可視化バウンディングボックス)
+    visualization_msgs::msg::MarkerArray fp_array;
+    visualization_msgs::msg::Marker fp;
+    fp.header.stamp = now_stamp;
+    fp.header.frame_id = "map";
+    fp.ns = "robot_footprint";
+    fp.id = 0;
+    fp.type = visualization_msgs::msg::Marker::CUBE;
+    fp.action = visualization_msgs::msg::Marker::ADD;
+    fp.pose = ps.pose;
+    fp.pose.position.z = 0.15;
+    fp.scale.x = 0.65; // 全長 (マージン込み)
+    fp.scale.y = 0.50; // 全幅 (マージン込み)
+    fp.scale.z = 0.25;
+    fp.color.r = 0.2f;
+    fp.color.g = 0.7f;
+    fp.color.b = 1.0f;
+    fp.color.a = 0.35f; // 半透明
+    fp_array.markers.push_back(fp);
+    footprint_pub_->publish(fp_array);
+
+    // 4. ボールのリアルタイム 3D 軌跡 (黄色いボール)
     visualization_msgs::msg::MarkerArray ball_array;
     visualization_msgs::msg::Marker ball;
     ball.header.stamp = now_stamp;
@@ -178,7 +200,7 @@ private:
     ball_array.markers.push_back(ball);
     ball_pub_->publish(ball_array);
 
-    // 4. オドメトリ配信
+    // 5. オドメトリ配信
     nav_msgs::msg::Odometry odom;
     odom.header.stamp = now_stamp;
     odom.header.frame_id = "map";
@@ -191,6 +213,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr current_path_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ball_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr footprint_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
