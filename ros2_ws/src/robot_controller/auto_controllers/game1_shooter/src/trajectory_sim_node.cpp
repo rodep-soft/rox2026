@@ -143,7 +143,9 @@ private:
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
       const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
-      const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
+      // フライスルー判定: 2=Around(gate bypass), 5=Apex(return) のみ止まらない
+      // 3=Ball はちゃんと減速して拾う（flythrough解除でパスエリア突入の勢いも防ぐ）
+      const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 5);
       const double arrive_threshold = is_fly_through ? 0.35 : pos_tolerance_;
 
       double target_vx = 0.0, target_vy = 0.0;

@@ -21,7 +21,7 @@
 
     # 2. ゲート横回り込み通過点 (ゲート下側Y=1.915より外を通過)
     wp_around_gate_x: -4.600
-    wp_around_gate_y: 1.400
+    wp_around_gate_y: 1.600
     wp_around_gate_yaw: 0.0
 
     # 3. ボールキャッチ予想位置 (ゲートを転がり抜けて止まる)
