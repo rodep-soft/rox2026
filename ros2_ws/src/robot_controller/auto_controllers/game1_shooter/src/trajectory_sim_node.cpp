@@ -262,11 +262,12 @@ private:
       ball_shot_time_ = 0.0;
       ball_is_caught_ = false;
     } else if (!ball_is_caught_) {
-      // ゲート射出後: ボールはゲートを潜り抜け独立して X = ±2.70m まで転がり、そこで自然停止して待機
+      // ゲート射出後: 実機のバネ力に合わせた適度な初速でゲートを潜り抜け、芝/床摩擦で自然にスーッと減速停止 (2.5秒かけてゆっくり転がる)
       ball_shot_time_ += dt;
       const double shoot_start_x = waypoints_[1].x;
-      double roll_t = std::min(1.0, ball_shot_time_ / 1.5);
-      double smooth_roll = 1.0 - std::pow(1.0 - roll_t, 2.0); // 減速ローリング
+      double roll_t = std::min(1.0, ball_shot_time_ / 2.6);
+      // 3次イージング曲線（初速が穏やかで、徐々に滑らかに減速停止）
+      double smooth_roll = 1.0 - std::pow(1.0 - roll_t, 3.0);
       ball_x_ = shoot_start_x + smooth_roll * (target_ball_stop_x - shoot_start_x);
       ball_y_ = waypoints_[1].y;
 
