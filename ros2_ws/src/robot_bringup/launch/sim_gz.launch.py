@@ -88,6 +88,14 @@ def generate_launch_description():
         arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "odom", "--child-frame-id", "base_footprint"],
     )
 
+    field_viz = Node(
+        package="robot_controller",
+        executable="field_visualization_node",
+        name="field_visualization_node",
+        parameters=[{"map_frame": "map"}],
+        output="screen",
+    )
+
     foxglove_bridge = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_robot_bringup, "launch", "foxglove_bridge.launch.py"))
     )
@@ -104,6 +112,7 @@ def generate_launch_description():
             robot_state_publisher,
             static_tf_map_odom,
             static_tf_odom_base,
+            field_viz,
             foxglove_bridge,
         ]
     )
