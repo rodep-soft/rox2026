@@ -1,5 +1,4 @@
 #include "game2_shooter/game2_auto_node.hpp"
-
 #include <algorithm>
 #include <cmath>
 
@@ -79,19 +78,19 @@ void Game2AutoNode::load_parameters()
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
 
   // Control gains & Limits
-  kp_yaw_ = declare_parameter<double>("kp_yaw", 2.2);
-  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.10);
+  kp_yaw_ = declare_parameter<double>("kp_yaw", 4.0);
+  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.30);
   min_angular_z_ = declare_parameter<double>("min_angular_z", 0.12);
-  max_angular_z_ = declare_parameter<double>("max_angular_z", 0.80);
-  max_angular_accel_ = declare_parameter<double>("max_angular_accel", 4.0);
+  max_angular_z_ = declare_parameter<double>("max_angular_z", 1.80);
+  max_angular_accel_ = declare_parameter<double>("max_angular_accel", 8.0);
   target_distance_ = declare_parameter<double>("target_distance", 4.0);
 
-  // Camera Physical & Optical Parameters (base_link frame: kicker is +X, left is +Y)
+  // Camera & Shooter Physical Parameters (base_link)
   camera_offset_x_ = declare_parameter<double>("camera_offset_x", -0.265);
   camera_offset_y_ = declare_parameter<double>("camera_offset_y", 0.035);
   camera_offset_z_ = declare_parameter<double>("camera_offset_z", 0.193);
-  shooter_offset_x_ = declare_parameter<double>("shooter_offset_x", -0.265);
-  shooter_offset_y_ = declare_parameter<double>("shooter_offset_y", 0.0);
+  target_config_.shooter_offset_x = declare_parameter<double>("shooter_offset_x", -0.265);
+  target_config_.shooter_offset_y = declare_parameter<double>("shooter_offset_y", 0.0);
   camera_image_width_ = declare_parameter<double>("camera_image_width", 1920.0);
   camera_image_height_ = declare_parameter<double>("camera_image_height", 1080.0);
   camera_fx_ = declare_parameter<double>("camera_fx", 723.47);
@@ -100,7 +99,7 @@ void Game2AutoNode::load_parameters()
   camera_cy_ = declare_parameter<double>("camera_cy", 578.43);
 
   // Tolerances & Timings
-  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.015);
+  target_config_.yaw_tolerance = declare_parameter<double>("yaw_tolerance", 0.015);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
   underbelt_rpm_bottom_ = declare_parameter<double>("underbelt_rpm_bottom", 2050.0);
   upperbelt_rpm_bottom_ = declare_parameter<double>("upperbelt_rpm_bottom", 2050.0);
@@ -124,11 +123,15 @@ void Game2AutoNode::load_parameters()
   require_ball_detected_ = declare_parameter<bool>("require_ball_detected", true);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
-  enable_double_panel_midpoint_targeting_ =
+
+  target_config_.enable_double_panel_midpoint_targeting =
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
-  prefer_same_row_first_ = declare_parameter<bool>("prefer_same_row_first", false);
-  enable_vertical_sweep_ = declare_parameter<bool>("enable_vertical_sweep", true);
-  enable_nearest_angle_search_ = declare_parameter<bool>("enable_nearest_angle_search", true);
+  target_config_.prefer_same_row_first =
+    declare_parameter<bool>("prefer_same_row_first", false);
+  target_config_.enable_vertical_sweep =
+    declare_parameter<bool>("enable_vertical_sweep", true);
+  target_config_.enable_nearest_angle_search =
+    declare_parameter<bool>("enable_nearest_angle_search", true);
 
   // AprilTag Panel Configuration (Row 0: Bottom, 1: Middle, 2: Top)
   const std::vector<int64_t> default_bottom = {20, 21, 22};
@@ -138,23 +141,7 @@ void Game2AutoNode::load_parameters()
   const auto middle_tags = declare_parameter<std::vector<int64_t>>("middle_tags", default_middle);
   const auto top_tags = declare_parameter<std::vector<int64_t>>("top_tags", default_top);
 
-  panel_grid_.clear();
-  auto register_row = [this](const std::vector<int64_t> & tags, int row) {
-      for (size_t col = 0; col < tags.size(); ++col) {
-        const int id = static_cast<int>(tags[col]);
-        PanelTagInfo info;
-        info.tag_id = id;
-        info.row = row;
-        info.col = static_cast<int>(col);
-        info.shot_completed = false;
-        info.shot_count = 0;
-        info.last_seen = this->now();
-        panel_grid_[id] = info;
-      }
-    };
-  register_row(bottom_tags, 0);
-  register_row(middle_tags, 1);
-  register_row(top_tags, 2);
+  vision_tracker_.initialize_grid(bottom_tags, middle_tags, top_tags, this->now());
 }
 
 rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
@@ -165,95 +152,43 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
 
   for (const auto & param : parameters) {
     const auto & name = param.get_name();
-    if (name == "kp_yaw") {
-      kp_yaw_ = param.as_double();
-      RCLCPP_INFO(get_logger(), "Param updated: kp_yaw = %.3f", kp_yaw_);
-    } else if (name == "kd_yaw") {
-      kd_yaw_ = param.as_double();
-      RCLCPP_INFO(get_logger(), "Param updated: kd_yaw = %.3f", kd_yaw_);
-    } else if (name == "shooting_timeout") {
-      shooting_timeout_ = param.as_double();
-    } else if (name == "belt_spinup_duration") {
-      belt_spinup_duration_ = param.as_double();
-      RCLCPP_INFO(get_logger(), "Param updated: belt_spinup_duration = %.3f", belt_spinup_duration_);
-    } else if (name == "result_wait_duration") {
-      result_wait_duration_ = param.as_double();
-    } else if (name == "max_total_balls") {
-      max_total_balls_ = param.as_int();
-    } else if (name == "enable_ball_limit") {
-      enable_ball_limit_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: enable_ball_limit = %s",
-        enable_ball_limit_ ? "true" : "false");
-    } else if (name == "min_angular_z") {
-      min_angular_z_ = param.as_double();
-    } else if (name == "max_angular_z") {
-      max_angular_z_ = param.as_double();
-    } else if (name == "max_angular_accel") {
-      max_angular_accel_ = param.as_double();
-    } else if (name == "yaw_tolerance") {
-      yaw_tolerance_ = param.as_double();
-    } else if (name == "target_distance") {
-      target_distance_ = param.as_double();
-    } else if (name == "tag_pitch_x") {
-      tag_pitch_x_ = param.as_double();
-    } else if (name == "tag_pitch_y") {
-      tag_pitch_y_ = param.as_double();
-    } else if (name == "camera_fx") {
-      camera_fx_ = param.as_double();
-    } else if (name == "camera_offset_x") {
-      camera_offset_x_ = param.as_double();
-    } else if (name == "camera_offset_y") {
-      camera_offset_y_ = param.as_double();
-    } else if (name == "camera_offset_z") {
-      camera_offset_z_ = param.as_double();
-    } else if (name == "shooter_offset_x") {
-      shooter_offset_x_ = param.as_double();
-    } else if (name == "shooter_offset_y") {
-      shooter_offset_y_ = param.as_double();
-    } else if (name == "underbelt_rpm_bottom") {
-      underbelt_rpm_bottom_ = param.as_double();
-    } else if (name == "upperbelt_rpm_bottom") {
-      upperbelt_rpm_bottom_ = param.as_double();
-    } else if (name == "underbelt_rpm_middle") {
-      underbelt_rpm_middle_ = param.as_double();
-    } else if (name == "upperbelt_rpm_middle") {
-      upperbelt_rpm_middle_ = param.as_double();
-    } else if (name == "underbelt_rpm_top") {
-      underbelt_rpm_top_ = param.as_double();
-    } else if (name == "upperbelt_rpm_top") {
-      upperbelt_rpm_top_ = param.as_double();
-    } else if (name == "test_alignment_only") {
-      test_alignment_only_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: test_alignment_only = %s",
-        test_alignment_only_ ? "true" : "false");
-    } else if (name == "max_shots_per_panel") {
-      max_shots_per_panel_ = param.as_int();
-      RCLCPP_INFO(get_logger(), "Param updated: max_shots_per_panel = %d", max_shots_per_panel_);
-    } else if (name == "require_ball_detected") {
-      require_ball_detected_ = param.as_bool();
-    } else if (name == "enable_double_panel_midpoint_targeting") {
-      enable_double_panel_midpoint_targeting_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: enable_double_panel_midpoint_targeting = %s",
-        enable_double_panel_midpoint_targeting_ ? "true" : "false");
-    } else if (name == "prefer_same_row_first") {
-      prefer_same_row_first_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: prefer_same_row_first = %s",
-        prefer_same_row_first_ ? "true" : "false");
-    } else if (name == "enable_vertical_sweep") {
-      enable_vertical_sweep_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: enable_vertical_sweep = %s",
-        enable_vertical_sweep_ ? "true" : "false");
-    } else if (name == "enable_nearest_angle_search") {
-      enable_nearest_angle_search_ = param.as_bool();
-      RCLCPP_INFO(
-        get_logger(), "Param updated: enable_nearest_angle_search = %s",
-        enable_nearest_angle_search_ ? "true" : "false");
-    }
+    if (name == "kp_yaw") kp_yaw_ = param.as_double();
+    else if (name == "kd_yaw") kd_yaw_ = param.as_double();
+    else if (name == "shooting_timeout") shooting_timeout_ = param.as_double();
+    else if (name == "belt_spinup_duration") belt_spinup_duration_ = param.as_double();
+    else if (name == "result_wait_duration") result_wait_duration_ = param.as_double();
+    else if (name == "max_total_balls") max_total_balls_ = param.as_int();
+    else if (name == "enable_ball_limit") enable_ball_limit_ = param.as_bool();
+    else if (name == "min_angular_z") min_angular_z_ = param.as_double();
+    else if (name == "max_angular_z") max_angular_z_ = param.as_double();
+    else if (name == "max_angular_accel") max_angular_accel_ = param.as_double();
+    else if (name == "yaw_tolerance") target_config_.yaw_tolerance = param.as_double();
+    else if (name == "target_distance") target_distance_ = param.as_double();
+    else if (name == "tag_pitch_x") tag_pitch_x_ = param.as_double();
+    else if (name == "tag_pitch_y") tag_pitch_y_ = param.as_double();
+    else if (name == "camera_fx") camera_fx_ = param.as_double();
+    else if (name == "camera_offset_x") camera_offset_x_ = param.as_double();
+    else if (name == "camera_offset_y") camera_offset_y_ = param.as_double();
+    else if (name == "camera_offset_z") camera_offset_z_ = param.as_double();
+    else if (name == "shooter_offset_x") target_config_.shooter_offset_x = param.as_double();
+    else if (name == "shooter_offset_y") target_config_.shooter_offset_y = param.as_double();
+    else if (name == "underbelt_rpm_bottom") underbelt_rpm_bottom_ = param.as_double();
+    else if (name == "upperbelt_rpm_bottom") upperbelt_rpm_bottom_ = param.as_double();
+    else if (name == "underbelt_rpm_middle") underbelt_rpm_middle_ = param.as_double();
+    else if (name == "upperbelt_rpm_middle") upperbelt_rpm_middle_ = param.as_double();
+    else if (name == "underbelt_rpm_top") underbelt_rpm_top_ = param.as_double();
+    else if (name == "upperbelt_rpm_top") upperbelt_rpm_top_ = param.as_double();
+    else if (name == "test_alignment_only") test_alignment_only_ = param.as_bool();
+    else if (name == "max_shots_per_panel") max_shots_per_panel_ = param.as_int();
+    else if (name == "require_ball_detected") require_ball_detected_ = param.as_bool();
+    else if (name == "enable_double_panel_midpoint_targeting")
+      target_config_.enable_double_panel_midpoint_targeting = param.as_bool();
+    else if (name == "prefer_same_row_first")
+      target_config_.prefer_same_row_first = param.as_bool();
+    else if (name == "enable_vertical_sweep")
+      target_config_.enable_vertical_sweep = param.as_bool();
+    else if (name == "enable_nearest_angle_search")
+      target_config_.enable_nearest_angle_search = param.as_bool();
   }
 
   return result;
@@ -263,7 +198,6 @@ void Game2AutoNode::reset_sequence()
 {
   active_row_ = 0;
   active_target_id_ = -1;
-  locked_target_id_ = -1;
   current_target_tag_ids_.clear();
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
@@ -272,7 +206,7 @@ void Game2AutoNode::reset_sequence()
   last_target_upperbelt_rpm_ = 0.0;
   rpm_changed_time_ = this->now();
 
-  for (auto & [id, panel] : panel_grid_) {
+  for (auto & [id, panel] : vision_tracker_.get_panel_grid()) {
     panel.shot_completed = false;
     panel.shot_count = 0;
     panel.detected = false;
@@ -314,7 +248,7 @@ void Game2AutoNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr
     reset_sequence();
     RCLCPP_WARN(get_logger(), "Emergency Stop Triggered! Game 2 Auto Sequence ABORTED.");
     publish_all(
-      geometry_msgs::msg::Twist{}, 0.0f, false, false,
+      geometry_msgs::msg::Twist{}, 0.0f, 0.0f, false, false,
       robot_msgs::msg::ArmPosition::DRIBBLE, false);
   }
 }
@@ -323,18 +257,13 @@ void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
   last_imu_time_ = now();
-
-  // Angular velocities (rad/s)
   gyro_x_ = msg->angular_velocity.x;
   gyro_y_ = msg->angular_velocity.y;
   gyro_z_ = msg->angular_velocity.z;
-
-  // Linear accelerations (m/s^2)
   accel_x_ = msg->linear_acceleration.x;
   accel_y_ = msg->linear_acceleration.y;
   accel_z_ = msg->linear_acceleration.z;
 
-  // Orientation Quaternion -> Euler Roll, Pitch, Yaw
   const double qx = msg->orientation.x;
   const double qy = msg->orientation.y;
   const double qz = msg->orientation.z;
@@ -345,11 +274,7 @@ void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   roll_ = std::atan2(sinr_cosp, cosr_cosp);
 
   const double sinp = 2.0 * (qw * qy - qz * qx);
-  if (std::abs(sinp) >= 1.0) {
-    pitch_ = std::copysign(M_PI / 2.0, sinp);
-  } else {
-    pitch_ = std::asin(sinp);
-  }
+  pitch_ = (std::abs(sinp) >= 1.0) ? std::copysign(M_PI / 2.0, sinp) : std::asin(sinp);
 
   const double siny_cosp = 2.0 * (qw * qz + qx * qy);
   const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
@@ -362,73 +287,12 @@ void Game2AutoNode::tag_detections_callback(
 {
   const auto current_time = now();
 
-  // 1. 各検出タグのピクセル座標を記録
-  for (const auto & detection : msg->detections) {
-    const int id = detection.id;
-    auto it = panel_grid_.find(id);
-    if (it != panel_grid_.end()) {
-      it->second.last_seen = current_time;
-      it->second.detected = true;
-      it->second.pixel_x = static_cast<double>(detection.centre.x);
-      it->second.pixel_y = static_cast<double>(detection.centre.y);
-    }
-  }
+  vision_tracker_.update_detections(
+    *msg, current_time, target_distance_, tag_lost_timeout_,
+    tag_pitch_x_, camera_fx_, camera_cx_,
+    camera_offset_x_, camera_offset_y_, camera_offset_z_);
 
-  // 2. 📐 既知のTag中心間距離（横0.40m, 縦0.43m）を用いたリアルタイム高精度実距離(Z)推定
-  double estimated_z = target_distance_; // デフォルト値 (4.0m)
-  double z_sum = 0.0;
-  int z_count = 0;
-
-  // 同一同一段内で2つ以上のTagが検出されている場合、横ピッチ(0.40m)からZ距離を三角測量
-  for (int r = 0; r <= 2; ++r) {
-    std::vector<const PanelTagInfo *> row_detected;
-    for (const auto & [id, panel] : panel_grid_) {
-      if (panel.row == r && panel.detected &&
-        (current_time - panel.last_seen).seconds() <= tag_lost_timeout_)
-      {
-        row_detected.push_back(&panel);
-      }
-    }
-
-    if (row_detected.size() >= 2) {
-      for (size_t i = 0; i < row_detected.size(); ++i) {
-        for (size_t j = i + 1; j < row_detected.size(); ++j) {
-          const double delta_col = std::abs(row_detected[i]->col - row_detected[j]->col);
-          const double delta_pixel_x =
-            std::abs(row_detected[i]->pixel_x - row_detected[j]->pixel_x);
-          if (delta_col > 0 && delta_pixel_x > 10.0) {
-            const double real_dx = delta_col * tag_pitch_x_; // [m]
-            const double z_est = (camera_fx_ * real_dx) / delta_pixel_x;
-            // 妥当な距離範囲 (2.0m 〜 6.0m) の場合のみ採用
-            if (z_est >= 2.0 && z_est <= 6.0) {
-              z_sum += z_est;
-              z_count++;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (z_count > 0) {
-    estimated_z = z_sum / static_cast<double>(z_count);
-  }
-
-  // 3. 各タグのロボット座標系 (base_link: x_robot, y_robot, z_robot) を精密計算
-  // カメラは後方 -X 向きに搭載されているため:
-  // - 画像の奥行き Z_cam は base_link の後方方向 (-X) に展開
-  // - 画像の水平オフセット (u - cx) は、後方を向いたカメラの画像左側 (u < cx) が base_link の左側 (+Y) に対応
-  for (auto & [id, panel] : panel_grid_) {
-    if (panel.detected) {
-      const double z_cam = estimated_z;
-      const double y_offset_from_cam = -(panel.pixel_x - camera_cx_) * z_cam / camera_fx_;
-      panel.x = camera_offset_x_ - z_cam; // 後方 -X 空間 (約 -0.265 - 4.0 = -4.265m)
-      panel.y = camera_offset_y_ + y_offset_from_cam; // base_link の Y 空間
-      panel.z = camera_offset_z_;
-    }
-  }
-
-  // テストモード時: 最も射出口正面に近いタグを選択
+  // テストモード時: 射出口正面に最も近いタグを追従
   if (test_alignment_only_) {
     int best_id = -1;
     double min_heading_err_abs = 1e9;
@@ -437,17 +301,16 @@ void Game2AutoNode::tag_detections_callback(
 
     for (const auto & detection : msg->detections) {
       const int id = detection.id;
-      if (panel_grid_.find(id) != panel_grid_.end()) {
+      const auto & grid = vision_tracker_.get_panel_grid();
+      if (grid.find(id) != grid.end()) {
         const double u = static_cast<double>(detection.centre.x);
         const double z_cam = target_distance_;
         const double y_offset_from_cam = -(u - camera_cx_) * z_cam / camera_fx_;
         const double x_target = camera_offset_x_ - z_cam;
         const double y_target = camera_offset_y_ + y_offset_from_cam;
 
-        // 射出口(shooter_offset_x, shooter_offset_y)から後方(-X)ターゲットへの方位角誤差
-        // 射出口の射出方向ベクトルは (-1, 0) すなわち yaw = M_PI (または -M_PI)
-        const double dx = x_target - shooter_offset_x_;
-        const double dy = y_target - shooter_offset_y_;
+        const double dx = x_target - target_config_.shooter_offset_x;
+        const double dy = y_target - target_config_.shooter_offset_y;
         const double heading_err = std::remainder(std::atan2(dy, dx) - M_PI, 2.0 * M_PI);
 
         if (std::abs(heading_err) < min_heading_err_abs) {
@@ -461,219 +324,54 @@ void Game2AutoNode::tag_detections_callback(
 
     if (best_id != -1) {
       active_target_id_ = best_id;
-      const auto & target = panel_grid_[best_id];
+      const auto & target = vision_tracker_.get_panel_grid().at(best_id);
       target_x_ = target.x;
       target_y_ = target.y;
       target_z_ = target.z;
       target_heading_err_ = best_heading_err;
       target_valid_ = true;
 
-      // 射出口と完全に一致する理論目標ピクセル (カメラが射出口より左(+35mm)にあるため、ターゲットは画像右側に映る)
       const double aligned_target_pixel =
-        camera_cx_ + ((camera_offset_y_ - shooter_offset_y_) / target_distance_) * camera_fx_;
+        camera_cx_ + ((camera_offset_y_ - target_config_.shooter_offset_y) / target_distance_) * camera_fx_;
 
       RCLCPP_INFO_THROTTLE(
-        get_logger(),
-        *get_clock(), 200,
+        get_logger(), *get_clock(), 200,
         "📷 [VisualServo Track Tag #%d] HeadingErr: %+.2f deg | Pixel: %.1f px (TargetAligned: %.1f px)",
         best_id, best_heading_err * 180.0 / M_PI, best_pixel_x, aligned_target_pixel);
     }
   }
 }
 
-void Game2AutoNode::update_panel_states()
+void Game2AutoNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  const auto current_time = now();
-
-  for (auto & [id, panel] : panel_grid_) {
-    if (panel.detected && (current_time - panel.last_seen).seconds() > tag_lost_timeout_) {
-      panel.detected = false;
-    }
+  const bool prev = ball_detected_;
+  ball_detected_ = msg->data;
+  if (!prev && ball_detected_) {
+    ball_detected_time_ = now();
+    RCLCPP_INFO(get_logger(), "⚽ Game2: Ball DETECTED in dribble intake!");
+  } else if (prev && !ball_detected_) {
+    RCLCPP_INFO(get_logger(), "💨 Game2: Ball LEFT dribble intake (Shot or Lost)!");
   }
 }
 
 void Game2AutoNode::select_target_and_aim()
 {
-  if (test_alignment_only_) {
-    // In test mode, target is updated in tag_detections_callback
-    if (active_target_id_ != -1) {
-      const auto it = panel_grid_.find(active_target_id_);
-      if (it == panel_grid_.end() || !it->second.detected) {
-        target_valid_ = false;
-      }
-    }
-    return;
-  }
-
   target_valid_ = false;
 
-  // 1. 各段(Row 0, 1, 2)の未射出タグを走査して候補リスト (TargetCandidate) を構築
-  struct TargetCandidate
-  {
-    int row{0};
-    std::vector<int> tag_ids;
-    double x{0.0};
-    double y{0.0};
-    double z{0.0};
-    double heading_err{0.0};
-    bool is_pair{false};
-    std::string desc;
-  };
+  auto best = target_selector_.select_best_target(
+    vision_tracker_.get_panel_grid(), active_row_, target_heading_err_,
+    current_target_tag_ids_, target_config_, get_logger(), get_clock());
 
-  std::vector<TargetCandidate> candidates;
-
-  auto compute_candidate_heading_err = [this](double x, double y) {
-      const double dx = x - shooter_offset_x_;
-      const double dy = y - shooter_offset_y_;
-      return std::remainder(std::atan2(dy, dx) - M_PI, 2.0 * M_PI);
-    };
-
-  for (int row = 0; row <= 2; ++row) {
-    const PanelTagInfo * p0 = nullptr;
-    const PanelTagInfo * p1 = nullptr;
-    const PanelTagInfo * p2 = nullptr;
-
-    for (const auto & [id, panel] : panel_grid_) {
-      if (panel.row == row && !panel.shot_completed && panel.detected) {
-        if (panel.col == 0) {
-          p0 = &panel;
-        } else if (panel.col == 1) {
-          p1 = &panel;
-        } else if (panel.col == 2) {
-          p2 = &panel;
-        }
-      }
-    }
-
-    if (!p0 && !p1 && !p2) {
-      continue;
-    }
-
-    if (enable_double_panel_midpoint_targeting_) {
-      // 3枚残存時: 左側2枚(0&1)の中点
-      if (p0 && p1 && p2) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {p0->tag_id, p1->tag_id};
-        c.x = (p0->x + p1->x) * 0.5;
-        c.y = (p0->y + p1->y) * 0.5;
-        c.z = (p0->z + p1->z) * 0.5;
-        c.heading_err = compute_candidate_heading_err(c.x, c.y);
-        c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p0->tag_id) +
-          " & #" + std::to_string(p1->tag_id);
-        candidates.push_back(c);
-      } else if (p0 && p1) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {p0->tag_id, p1->tag_id};
-        c.x = (p0->x + p1->x) * 0.5;
-        c.y = (p0->y + p1->y) * 0.5;
-        c.z = (p0->z + p1->z) * 0.5;
-        c.heading_err = compute_candidate_heading_err(c.x, c.y);
-        c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p0->tag_id) +
-          " & #" + std::to_string(p1->tag_id);
-        candidates.push_back(c);
-      } else if (p1 && p2) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {p1->tag_id, p2->tag_id};
-        c.x = (p1->x + p2->x) * 0.5;
-        c.y = (p1->y + p2->y) * 0.5;
-        c.z = (p1->z + p2->z) * 0.5;
-        c.heading_err = compute_candidate_heading_err(c.x, c.y);
-        c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p1->tag_id) +
-          " & #" + std::to_string(p2->tag_id);
-        candidates.push_back(c);
-      }
-    }
-
-    // 単独残存候補 (ペアが作れなかった、または単独のパネル)
-    if (candidates.empty() || candidates.back().row != row) {
-      const PanelTagInfo * single = p1 ? p1 : (p0 ? p0 : p2);
-      if (single) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {single->tag_id};
-        c.x = single->x;
-        c.y = single->y;
-        c.z = single->z;
-        c.heading_err = compute_candidate_heading_err(c.x, c.y);
-        c.is_pair = false;
-        c.desc = "Row " + std::to_string(row) + " Single Tag #" + std::to_string(single->tag_id);
-        candidates.push_back(c);
-      }
-    }
-  }
-
-  if (candidates.empty()) {
+  if (!best) {
     return;
   }
 
-  // 2. 最適ターゲット選定 (旋回量・旋回回数の最小化を最優先)
-  const TargetCandidate * chosen = nullptr;
-
-  // 戦略A: 垂直スイープ (直前の照準方向と同方位に未射出パネルがあれば、旋回0度・段のみ移行で即撃ち)
-  if (enable_vertical_sweep_ && !current_target_tag_ids_.empty()) {
-    for (const auto & cand : candidates) {
-      if (std::abs(cand.heading_err - target_heading_err_) < (yaw_tolerance_ * 1.5)) {
-        chosen = &cand;
-        RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 500,
-          "⚡ [Vertical Sweep: ZERO TURNING] Selected vertical target: %s (Heading Diff: %.2f deg)",
-          cand.desc.c_str(), std::abs(cand.heading_err - target_heading_err_) * 180.0 / M_PI);
-        break;
-      }
-    }
-  }
-
-  // 戦略B: TSP最小角度移動 (現在の方位から最も近い方位のターゲットを選択して旋回量を最小化)
-  if (!chosen && enable_nearest_angle_search_) {
-    double min_delta_angle = 1e9;
-    for (const auto & cand : candidates) {
-      const double delta = std::abs(cand.heading_err - target_heading_err_);
-      if (delta < min_delta_angle) {
-        min_delta_angle = delta;
-        chosen = &cand;
-      }
-    }
-  }
-
-  // 戦略C: 同一段・同RPM優先
-  if (!chosen && prefer_same_row_first_ && !current_target_tag_ids_.empty()) {
-    std::vector<const TargetCandidate *> same_row_candidates;
-    for (const auto & cand : candidates) {
-      if (cand.row == active_row_) {
-        same_row_candidates.push_back(&cand);
-      }
-    }
-
-    if (!same_row_candidates.empty()) {
-      double min_delta_angle = 1e9;
-      for (const auto * cand : same_row_candidates) {
-        const double delta = std::abs(cand->heading_err - target_heading_err_);
-        if (delta < min_delta_angle) {
-          min_delta_angle = delta;
-          chosen = cand;
-        }
-      }
-    }
-  }
-
-  // 戦略D: フォールバック（リスト先頭）
-  if (!chosen) {
-    chosen = &candidates.front();
-  }
-
-  // 3. 確定ターゲットの諸元を反映
-  active_row_ = chosen->row;
-  current_target_tag_ids_ = chosen->tag_ids;
-  target_x_ = chosen->x;
-  target_y_ = chosen->y;
-  target_z_ = chosen->z;
-  target_heading_err_ = chosen->heading_err;
+  active_row_ = best->row;
+  current_target_tag_ids_ = best->tag_ids;
+  target_x_ = best->x;
+  target_y_ = best->y;
+  target_z_ = best->z;
+  target_heading_err_ = best->heading_err;
   active_target_id_ = current_target_tag_ids_.empty() ? -1 : current_target_tag_ids_[0];
   target_valid_ = true;
 
@@ -711,25 +409,11 @@ void Game2AutoNode::select_target_and_aim()
   target_upperbelt_rpm_ = next_upper_rpm;
 }
 
-void Game2AutoNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-  const bool prev = ball_detected_;
-  ball_detected_ = msg->data;
-  if (!prev && ball_detected_) {
-    ball_detected_time_ = now();
-    RCLCPP_INFO(get_logger(), "⚽ Game2: Ball DETECTED in dribble intake!");
-  } else if (prev && !ball_detected_) {
-    RCLCPP_INFO(get_logger(), "💨 Game2: Ball LEFT dribble intake (Shot or Lost)!");
-  }
-}
-
 void Game2AutoNode::control_loop()
 {
   const auto current_time = now();
   double dt = (current_time - last_loop_time_).seconds();
-  if (dt <= 0.001 || dt > 0.2) {
-    dt = 0.05;
-  }
+  if (dt <= 0.001 || dt > 0.2) dt = 0.05;
   last_loop_time_ = current_time;
 
   // Publish current state
@@ -745,12 +429,12 @@ void Game2AutoNode::control_loop()
     return;
   }
 
-  update_panel_states();
+  vision_tracker_.timeout_unseen_tags(current_time, tag_lost_timeout_);
   select_target_and_aim();
 
   // Check if all panels are completed or all balls fired (if limit is enabled)
   bool all_panels_completed = true;
-  for (const auto & [id, panel] : panel_grid_) {
+  for (const auto & [id, panel] : vision_tracker_.get_panel_grid()) {
     if (!panel.shot_completed) {
       all_panels_completed = false;
       break;
@@ -761,8 +445,7 @@ void Game2AutoNode::control_loop()
   if (all_panels_completed || balls_exhausted) {
     state_ = robot_msgs::msg::Game2State::COMPLETED;
     RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 3000,
+      get_logger(), *get_clock(), 3000,
       "🏆 Game 2: Sequence FINISHED! (Total shots: %d%s, All Panels Cleared: %s)",
       total_shots_fired_,
       enable_ball_limit_ ? ("/" + std::to_string(max_total_balls_)).c_str() : " (No limit)",
@@ -781,8 +464,7 @@ void Game2AutoNode::control_loop()
     last_cmd_wz_ = 0.0;
 
     RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 1000,
+      get_logger(), *get_clock(), 1000,
       "🔍 [Game2 Search] Waiting for target AprilTags (Active Row: %d)... Standing still",
       active_row_);
 
@@ -797,205 +479,8 @@ void Game2AutoNode::control_loop()
   geometry_msgs::msg::Twist cmd;
   bool shoot_trigger = false;
   uint8_t arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-  const double state_elapsed = (current_time - state_start_time_).seconds();
 
-  switch (state_) {
-    case robot_msgs::msg::Game2State::SEARCHING:
-    case robot_msgs::msg::Game2State::ALIGNING: {
-        state_ = robot_msgs::msg::Game2State::ALIGNING;
-
-        const double heading_err = target_heading_err_;
-        const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
-
-        if (is_aligned) {
-          cmd.angular.z = 0.0;
-        } else {
-          // Proportional visual error + IMU Gyro damping (PD control)
-          double desired_wz = kp_yaw_ * heading_err;
-          if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
-            desired_wz -= kd_yaw_ * gyro_z_;
-          }
-
-          // Stiction overcoming minimum angular velocity with smooth attenuation near zero
-          // 誤差が tolerance の近傍になったら急に min_angular_z で突き抜けないよう滑らかに減速
-          const double err_abs = std::abs(heading_err);
-          const double slow_zone = yaw_tolerance_ * 3.0;
-          double eff_min_wz = min_angular_z_;
-          if (err_abs < slow_zone) {
-            eff_min_wz = min_angular_z_ * (err_abs / slow_zone);
-          }
-
-          if (std::abs(desired_wz) < eff_min_wz) {
-            desired_wz = std::copysign(eff_min_wz, desired_wz);
-          }
-          desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
-
-          // Slew rate limiter on angular acceleration
-          const double max_wz_step = max_angular_accel_ * dt;
-          if (desired_wz > last_cmd_wz_ + max_wz_step) {
-            desired_wz = last_cmd_wz_ + max_wz_step;
-          } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
-            desired_wz = last_cmd_wz_ - max_wz_step;
-          }
-
-          cmd.angular.z = desired_wz;
-        }
-        last_cmd_wz_ = cmd.angular.z;
-
-        const bool is_ball_settled = !require_ball_detected_ || (
-          ball_detected_ &&
-          ((current_time - ball_detected_time_).seconds() >= ball_settle_duration_));
-
-        const bool is_belt_ready =
-          ((current_time - rpm_changed_time_).seconds() >= belt_spinup_duration_);
-
-        // Diagnostics output (200ms)
-        RCLCPP_INFO_THROTTLE(
-          get_logger(),
-          *get_clock(), 200,
-          "🎯 [Game2 Track Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s | Ball: %s | Belt: %s",
-          active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z,
-          is_aligned ? "✨ ALIGNED" : "🔄 TURNING",
-          ball_detected_ ? "YES" : "NO",
-          is_belt_ready ? "READY" : "SPINUP");
-
-        if (test_alignment_only_) {
-          if (is_aligned) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "✨ [Game2 TEST] Target Perfect Aligned! Holding heading.");
-          }
-        } else {
-          if (is_aligned && is_ball_settled && is_belt_ready) {
-            RCLCPP_INFO(
-              get_logger(),
-              "🚀 [Game2] Target Aligned & Belt Stable & Ball Settled! Moving arm to OPEN for shooting.");
-            state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-            state_start_time_ = current_time;
-            shoot_start_time_ = current_time;
-          } else if (is_aligned && !is_belt_ready) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "⏳ [Game2] Aligned to Target Tag #%d, waiting for flywheel belt to stabilize (%.0f / %.0f RPM)...",
-              active_target_id_, target_underbelt_rpm_, target_upperbelt_rpm_);
-          } else if (is_aligned && !is_ball_settled && require_ball_detected_) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1500,
-              "⏳ [Game2] Aligned to Target Tag #%d, waiting for ball to settle in dribble...",
-              active_target_id_);
-          }
-        }
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        arm_mode = robot_msgs::msg::ArmPosition::OPEN;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-
-        if (state_elapsed >= open_duration_) {
-          RCLCPP_INFO(
-            get_logger(),
-            "🔥 [Game2] Arm OPEN complete. Feeding ball to dual flywheel belt (Under RPM: %.0f, Upper RPM: %.0f)!",
-            target_underbelt_rpm_, target_upperbelt_rpm_);
-          state_ = robot_msgs::msg::Game2State::SHOOTING;
-          state_start_time_ = current_time;
-          shoot_start_time_ = current_time;
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::SHOOTING: {
-        arm_mode = robot_msgs::msg::ArmPosition::FEED;
-        shoot_trigger = true;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-
-        if (state_elapsed >= shoot_hold_duration_) {
-          total_shots_fired_++;
-          if (current_target_tag_ids_.size() >= 2) {
-            RCLCPP_INFO(
-              get_logger(),
-              "🚀 [Game2 SPLIT SHOT!] Shot #%d/%d triggered for Tags #%d & #%d. Waiting for impact...",
-              total_shots_fired_, max_total_balls_,
-              current_target_tag_ids_[0], current_target_tag_ids_[1]);
-          } else if (!current_target_tag_ids_.empty()) {
-            RCLCPP_INFO(
-              get_logger(),
-              "🚀 [Game2] Shot #%d/%d triggered for Tag #%d. Waiting for impact...",
-              total_shots_fired_, max_total_balls_,
-              current_target_tag_ids_[0]);
-          }
-
-          // Increment shot attempts for targeted panels
-          for (const int tid : current_target_tag_ids_) {
-            auto it = panel_grid_.find(tid);
-            if (it != panel_grid_.end()) {
-              it->second.shot_count++;
-            }
-          }
-
-          state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
-          state_start_time_ = current_time;
-          shoot_start_time_ = current_time;
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-
-        // ── 👁️ 着弾・ノックダウン（AprilTag消失）視覚判定 ──
-        if (state_elapsed >= result_wait_duration_) {
-          for (const int tid : current_target_tag_ids_) {
-            auto it = panel_grid_.find(tid);
-            if (it != panel_grid_.end()) {
-              // タグが見えなくなっていれば（消失 = 倒れた）ノックダウン成功！
-              if (!it->second.detected) {
-                it->second.shot_completed = true;
-                RCLCPP_INFO(
-                  get_logger(),
-                  "💥 [Game2 KNOCKDOWN CONFIRMED!] Tag #%d vanished (panel fell down). Marked as completed! (Shot attempts: %d)",
-                  tid, it->second.shot_count);
-              } else {
-                // まだタグが見えている（倒れなかった or ミス）
-                if (max_shots_per_panel_ > 0 && it->second.shot_count >= max_shots_per_panel_) {
-                  it->second.shot_completed = true;
-                  RCLCPP_WARN(
-                    get_logger(),
-                    "⚠️ [Game2 MAX SHOTS REACHED] Tag #%d reached max attempts (%d/%d). Advancing target.",
-                    tid, it->second.shot_count, max_shots_per_panel_);
-                } else {
-                  RCLCPP_WARN(
-                    get_logger(),
-                    "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry until knockdown! (Shot attempts: %d%s)",
-                    tid, it->second.shot_count,
-                    max_shots_per_panel_ > 0 ? ("/" + std::to_string(max_shots_per_panel_)).c_str() : "");
-                }
-              }
-            }
-          }
-
-          // 状態をリセットして次の照準・射出へ
-          state_ = robot_msgs::msg::Game2State::ALIGNING;
-          state_start_time_ = current_time;
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::COMPLETED: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-        break;
-      }
-
-    default:
-      break;
-  }
+  execute_state_machine(current_time, dt, cmd, shoot_trigger, arm_mode);
 
   publish_all(
     cmd,
@@ -1004,6 +489,202 @@ void Game2AutoNode::control_loop()
     test_alignment_only_ ? false : shoot_trigger,
     test_alignment_only_ ? false : true,
     arm_mode, state_ == robot_msgs::msg::Game2State::COMPLETED);
+}
+
+void Game2AutoNode::execute_state_machine(
+  const rclcpp::Time & current_time, double dt,
+  geometry_msgs::msg::Twist & cmd, bool & shoot_trigger, uint8_t & arm_mode)
+{
+  const double state_elapsed = (current_time - state_start_time_).seconds();
+
+  switch (state_) {
+    case robot_msgs::msg::Game2State::SEARCHING:
+    case robot_msgs::msg::Game2State::ALIGNING: {
+      state_ = robot_msgs::msg::Game2State::ALIGNING;
+
+      const double heading_err = target_heading_err_;
+      const bool is_aligned = (std::abs(heading_err) < target_config_.yaw_tolerance);
+
+      if (is_aligned) {
+        cmd.angular.z = 0.0;
+      } else {
+        double desired_wz = kp_yaw_ * heading_err;
+        if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
+          desired_wz -= kd_yaw_ * gyro_z_;
+        }
+
+        const double err_abs = std::abs(heading_err);
+        const double slow_zone = target_config_.yaw_tolerance * 3.0;
+        double eff_min_wz = min_angular_z_;
+        if (err_abs < slow_zone) {
+          eff_min_wz = min_angular_z_ * (err_abs / slow_zone);
+        }
+
+        if (std::abs(desired_wz) < eff_min_wz) {
+          desired_wz = std::copysign(eff_min_wz, desired_wz);
+        }
+        desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
+
+        const double max_wz_step = max_angular_accel_ * dt;
+        if (desired_wz > last_cmd_wz_ + max_wz_step) {
+          desired_wz = last_cmd_wz_ + max_wz_step;
+        } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
+          desired_wz = last_cmd_wz_ - max_wz_step;
+        }
+
+        cmd.angular.z = desired_wz;
+      }
+      last_cmd_wz_ = cmd.angular.z;
+
+      const bool is_ball_settled = !require_ball_detected_ || (
+        ball_detected_ &&
+        ((current_time - ball_detected_time_).seconds() >= ball_settle_duration_));
+
+      const bool is_belt_ready =
+        ((current_time - rpm_changed_time_).seconds() >= belt_spinup_duration_);
+
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 200,
+        "🎯 [Game2 Track Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s | Ball: %s | Belt: %s",
+        active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z,
+        is_aligned ? "✨ ALIGNED" : "🔄 TURNING",
+        ball_detected_ ? "YES" : "NO",
+        is_belt_ready ? "READY" : "SPINUP");
+
+      if (test_alignment_only_) {
+        if (is_aligned) {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "✨ [Game2 TEST] Target Perfect Aligned! Holding heading.");
+        }
+      } else {
+        if (is_aligned && is_ball_settled && is_belt_ready) {
+          RCLCPP_INFO(
+            get_logger(),
+            "🚀 [Game2] Target Aligned & Belt Stable & Ball Settled! Moving arm to OPEN for shooting.");
+          state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
+          state_start_time_ = current_time;
+          shoot_start_time_ = current_time;
+        } else if (is_aligned && !is_belt_ready) {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "⏳ [Game2] Aligned to Target Tag #%d, waiting for flywheel belt to stabilize (%.0f / %.0f RPM)...",
+            active_target_id_, target_underbelt_rpm_, target_upperbelt_rpm_);
+        } else if (is_aligned && !is_ball_settled && require_ball_detected_) {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1500,
+            "⏳ [Game2] Aligned to Target Tag #%d, waiting for ball to settle in dribble...",
+            active_target_id_);
+        }
+      }
+      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+      break;
+    }
+
+    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
+      arm_mode = robot_msgs::msg::ArmPosition::OPEN;
+      cmd.angular.z = 0.0;
+      last_cmd_wz_ = 0.0;
+
+      if (state_elapsed >= open_duration_) {
+        RCLCPP_INFO(
+          get_logger(),
+          "🔥 [Game2] Arm OPEN complete. Feeding ball to dual flywheel belt (Under RPM: %.0f, Upper RPM: %.0f)!",
+          target_underbelt_rpm_, target_upperbelt_rpm_);
+        state_ = robot_msgs::msg::Game2State::SHOOTING;
+        state_start_time_ = current_time;
+        shoot_start_time_ = current_time;
+      }
+      break;
+    }
+
+    case robot_msgs::msg::Game2State::SHOOTING: {
+      arm_mode = robot_msgs::msg::ArmPosition::FEED;
+      shoot_trigger = true;
+      cmd.angular.z = 0.0;
+      last_cmd_wz_ = 0.0;
+
+      if (state_elapsed >= shoot_hold_duration_) {
+        total_shots_fired_++;
+        if (current_target_tag_ids_.size() >= 2) {
+          RCLCPP_INFO(
+            get_logger(),
+            "🚀 [Game2 SPLIT SHOT!] Shot #%d/%d triggered for Tags #%d & #%d. Waiting for impact...",
+            total_shots_fired_, max_total_balls_,
+            current_target_tag_ids_[0], current_target_tag_ids_[1]);
+        } else if (!current_target_tag_ids_.empty()) {
+          RCLCPP_INFO(
+            get_logger(),
+            "🚀 [Game2] Shot #%d/%d triggered for Tag #%d. Waiting for impact...",
+            total_shots_fired_, max_total_balls_,
+            current_target_tag_ids_[0]);
+        }
+
+        auto & grid = vision_tracker_.get_panel_grid();
+        for (const int tid : current_target_tag_ids_) {
+          auto it = grid.find(tid);
+          if (it != grid.end()) {
+            it->second.shot_count++;
+          }
+        }
+
+        state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
+        state_start_time_ = current_time;
+        shoot_start_time_ = current_time;
+      }
+      break;
+    }
+
+    case robot_msgs::msg::Game2State::WAITING_RESULT: {
+      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+      cmd.angular.z = 0.0;
+      last_cmd_wz_ = 0.0;
+
+      if (state_elapsed >= result_wait_duration_) {
+        auto & grid = vision_tracker_.get_panel_grid();
+        for (const int tid : current_target_tag_ids_) {
+          auto it = grid.find(tid);
+          if (it != grid.end()) {
+            if (!it->second.detected) {
+              it->second.shot_completed = true;
+              RCLCPP_INFO(
+                get_logger(),
+                "💥 [Game2 KNOCKDOWN CONFIRMED!] Tag #%d vanished (panel fell down). Marked as completed! (Shot attempts: %d)",
+                tid, it->second.shot_count);
+            } else {
+              if (max_shots_per_panel_ > 0 && it->second.shot_count >= max_shots_per_panel_) {
+                it->second.shot_completed = true;
+                RCLCPP_WARN(
+                  get_logger(),
+                  "⚠️ [Game2 MAX SHOTS REACHED] Tag #%d reached max attempts (%d/%d). Advancing target.",
+                  tid, it->second.shot_count, max_shots_per_panel_);
+              } else {
+                RCLCPP_WARN(
+                  get_logger(),
+                  "⚠️ [Game2 SHOT MISSED / STANDING!] Tag #%d still visible. Will retry until knockdown! (Shot attempts: %d%s)",
+                  tid, it->second.shot_count,
+                  max_shots_per_panel_ > 0 ? ("/" + std::to_string(max_shots_per_panel_)).c_str() : "");
+              }
+            }
+          }
+        }
+
+        state_ = robot_msgs::msg::Game2State::ALIGNING;
+        state_start_time_ = current_time;
+      }
+      break;
+    }
+
+    case robot_msgs::msg::Game2State::COMPLETED: {
+      arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
+      cmd.angular.z = 0.0;
+      last_cmd_wz_ = 0.0;
+      break;
+    }
+
+    default:
+      break;
+  }
 }
 
 void Game2AutoNode::publish_all(

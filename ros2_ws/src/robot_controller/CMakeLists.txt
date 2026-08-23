@@ -67,19 +67,18 @@ add_controller(
   rcl_interfaces
   std_msgs
   robot_msgs)
-add_controller(
-  game2_auto_node
-  auto_controllers/game2_shooter
-  game2_auto_node.cpp
-  geometry_msgs
-  rclcpp
-  rcl_interfaces
-  sensor_msgs
-  std_msgs
-  robot_msgs
-  apriltag_msgs
-  tf2
-  tf2_ros)
+add_library(game2_auto_node_implementation STATIC
+  auto_controllers/game2_shooter/src/game2_auto_node.cpp
+  auto_controllers/game2_shooter/src/vision_tracker.cpp
+  auto_controllers/game2_shooter/src/target_selector.cpp)
+target_include_directories(game2_auto_node_implementation
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/auto_controllers/game2_shooter/include>)
+ament_target_dependencies(game2_auto_node_implementation
+  geometry_msgs rclcpp rcl_interfaces sensor_msgs std_msgs robot_msgs apriltag_msgs tf2 tf2_ros)
+add_executable(game2_auto_node auto_controllers/game2_shooter/src/main.cpp)
+target_link_libraries(game2_auto_node PRIVATE game2_auto_node_implementation)
+list(APPEND controller_nodes game2_auto_node)
+
 add_controller(
   game1_auto_node
   auto_controllers/game1_shooter
