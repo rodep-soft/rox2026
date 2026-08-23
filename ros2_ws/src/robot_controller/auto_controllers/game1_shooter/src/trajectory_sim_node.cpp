@@ -33,9 +33,9 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
-    kp_linear_ = declare_parameter<double>("kp_linear", 1.2);
-    kp_angular_ = declare_parameter<double>("kp_angular", 4.0);   // 実機と同一: 移動中に角度合わせ完了
-    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);   // 実機と同一
+    kp_linear_ = declare_parameter<double>("kp_linear", 1.0);
+    kp_angular_ = declare_parameter<double>("kp_angular", 2.0);   // 高すぎると発振するので2.0に抑える
+    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);
     max_angular_vel_ = declare_parameter<double>("max_angular_vel", 3.5); // 実機と同一: 高速旋回
     pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
     yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
