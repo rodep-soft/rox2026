@@ -31,18 +31,17 @@ public:
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // GAME1 手書き図面・実機キック戦略:
-    // ゲート位置: (X = -4.50, Y = 1.50)
+    // 縦向きゲート位置: (X = -4.50, Y = 1.50) [通過方向: 左から右（東向き +X 方向）]
     // 1. スタート枠 (-5.925, 4.950) から発進
-    // 2. ゲート【手前 1.78m】のキック待機位置 (-4.50, 3.28) に停止
-    // 3. ボールをシュート（ボールのみゲートを股抜き通過してパスエリアへ先行）
-    // 4. ロボットはゲートの右外側 (-3.50, 2.00) を大きく回り込んでパスエリアへ合流 (1.63s)
+    // 2. ゲートの左手前 1.78m (-5.925, 1.50) で停止して東向き (+X) にロングシュート！
+    // 3. ボールがゲート (-4.50, 1.50) を股抜き通過してパスエリア (-1.30, 1.50) へ直進
+    // 4. ロボットはゲートの上側 (-4.50, 2.50) を迂回旋回してパスエリアへ合流 (1.63s)
     // 5. パスエリア (-1.30, 1.50) でボール回収・投下 (2.50s)
     // 6. スタート地点 (-5.925, 4.950) へ斜め直線で帰還 (3.50s)
     waypoints_ = {
       {-5.925, 4.950, -1.5708, "Start Area", 0.0},
-      {-4.500, 3.280, -1.5708, "Shoot Position (1.78m before Gate)", 1.78},
-      {-3.500, 2.000, -1.5708, "Loop Around Gate Right Side", 1.63},
+      {-5.925, 1.500,  0.0000, "Shoot Position (1.78m before Gate)", 1.78},
+      {-4.500, 2.500,  0.0000, "Loop Around Gate Top Side", 1.63},
       {-1.300, 1.500,  0.0000, "Pass Area Catch & Drop", 2.50},
       {-5.925, 4.950,  2.3562, "Straight Return to Start", 3.50}
     };
@@ -53,7 +52,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Real-time Shooting & Bypass Trajectory Simulation");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Running Correct West-to-East Shoot & Bypass Simulation");
   }
 
 private:
@@ -134,9 +133,7 @@ private:
     }
     current_path_pub_->publish(executed_path_);
 
-    // 3. ボールのリアルタイム 3D 軌跡シミュレーション (黄色いボール)
-    // キック前: ロボットが保持
-    // キック後: ゲートをくぐってパスエリアへ直進
+    // 3. ボールのリアルタイム 3D 軌跡 (黄色いボール)
     visualization_msgs::msg::MarkerArray ball_array;
     visualization_msgs::msg::Marker ball;
     ball.header.stamp = now_stamp;
@@ -154,14 +151,14 @@ private:
     ball.color.a = 1.0f;
 
     if (current_segment_ == 0) {
-      // スタート〜キック位置: ロボット前方に保持
-      ball.pose.position.x = curr_x;
-      ball.pose.position.y = curr_y - 0.25;
+      // スタート〜シュート位置: ロボットが保持して南下
+      ball.pose.position.x = curr_x + 0.25 * std::cos(curr_yaw);
+      ball.pose.position.y = curr_y + 0.25 * std::sin(curr_yaw);
       ball.pose.position.z = 0.11;
     } else if (current_segment_ == 1 || current_segment_ == 2) {
-      // シュート後: ボールがゲート (-4.5, 1.5) をくぐってパスエリア (-1.3, 1.5) へ先行ローリング
-      double ball_progress = (current_segment_ == 1) ? (segment_elapsed_ / 1.78) : 1.0;
-      ball.pose.position.x = -4.50 + ball_progress * (-1.30 - (-4.50));
+      // シュート後: 西(-5.925)から東(-1.30)に向けてゲート(-4.50)をくぐり直進ローリング
+      double progress = (current_segment_ == 1) ? (segment_elapsed_ / 1.78) : 1.0;
+      ball.pose.position.x = -5.925 + progress * (-1.30 - (-5.925));
       ball.pose.position.y = 1.50;
       ball.pose.position.z = 0.11;
     } else {
