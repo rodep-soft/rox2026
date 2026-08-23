@@ -609,13 +609,14 @@ void Protocol::enter_fault_state(uint32_t fault_code, TimePoint current_time)
   feedback_.fault_code = fault_code;
   feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
   last_current_feedback_time_ = TimePoint{};
-  state_ = MotorState::ERROR;
+  if (state_ != MotorState::ERROR) {
+    state_ = MotorState::ERROR;
+    error_time_ = current_time;
+  }
   motor_enabled_ = false;
   has_target_ = false;
   target_value_ = 0.0f;
   initialization_step_ = InitializationStep::ERROR;
-  // faultが継続する間はType 2フィードバックによって更新される
-  error_time_ = current_time;
 }
 
 void Protocol::invalidate_stale_current(TimePoint current_time)
