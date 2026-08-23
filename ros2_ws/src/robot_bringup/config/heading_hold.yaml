@@ -14,8 +14,8 @@ bno055_heading_control_node:
     # --------------------------------------------------------------------------
     # 2. Feedforward (FF) Control & Cross-Coupling Drift Cancellation
     # --------------------------------------------------------------------------
-    enable_feedforward: true           # Enable feedforward
-    k_ff_vel: 1.0                      # Angular velocity command FF gain (w_cmd)
+    enable_feedforward: false          # Enable feedforward
+    k_ff_vel: 0.0                      # Angular velocity command FF gain (w_cmd)
     k_ff_acc: 0.0                      # Angular acceleration FF gain (dw_cmd/dt)
     k_ff_drift_vx: 0.0                 # Translational Vx drift compensation gain
     k_ff_drift_vy: 0.0                 # Translational Vy drift compensation gain
