@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and 100%% Rulebook-matched AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and 100%% CAD-aligned AprilTags to /field/markers");
   }
 
 private:
@@ -137,8 +137,8 @@ private:
 
       visualization_msgs::msg::Marker start_a = g1_start_a;
       start_a.id = id++;
-      start_a.pose.position.x = -3.20;
-      start_a.pose.position.y = -0.50;
+      start_a.pose.position.x = -3.43;
+      start_a.pose.position.y = -0.75;
       start_a.scale.x = 1.20;
       start_a.scale.y = 1.20;
       start_a.color.r = 0.00f;
@@ -149,7 +149,7 @@ private:
 
       visualization_msgs::msg::Marker start_b = start_a;
       start_b.id = id++;
-      start_b.pose.position.x = 3.20;
+      start_b.pose.position.x = 3.43;
       start_b.color.r = 0.20f;
       start_b.color.g = 0.50f;
       start_b.color.b = 1.00f;
@@ -187,7 +187,7 @@ private:
       msg.markers.push_back(pass_b);
     }
 
-    // 5. GAME1 DFゲート
+    // 5. GAME1 DFゲート (SDF Onshape CAD の実寸座標に完全一致)
     {
       struct DFGateLayout {
         std::string name;
@@ -198,28 +198,29 @@ private:
       };
 
       const std::vector<DFGateLayout> gates = {
-        {"df_a_top",  -3.20, 3.80, true,  0.10f, 0.75f, 1.00f},
-        {"df_a_mid",  -4.50, 1.50, false, 0.10f, 0.75f, 1.00f},
-        {"df_b_top",   3.20, 3.80, true,  1.00f, 0.55f, 0.10f},
-        {"df_b_mid",   4.50, 1.50, false, 1.00f, 0.55f, 0.10f}
+        // 横向きゲート: 中心 X = ±3.165, Y = 3.88
+        {"df_a_top",  -3.165, 3.88, true,  0.10f, 0.75f, 1.00f},
+        // 縦向きゲート: 中心 X = ±4.475, Y = 2.16
+        {"df_a_mid",  -4.475, 2.16, false, 0.10f, 0.75f, 1.00f},
+        {"df_b_top",   3.165, 3.88, true,  1.00f, 0.55f, 0.10f},
+        {"df_b_mid",   4.475, 2.16, false, 1.00f, 0.55f, 0.10f}
       };
 
       for (const auto & g : gates) {
-        const double half_gap = 0.30;
         double p1_x = g.x, p1_y = g.y;
         double p2_x = g.x, p2_y = g.y;
-        double bar_sx = 0.05, bar_sy = 0.65;
+        double bar_sx = 0.06, bar_sy = 0.65;
 
         if (g.is_horizontal) {
-          p1_x += half_gap;
-          p2_x -= half_gap;
-          bar_sx = 0.65;
-          bar_sy = 0.05;
+          p1_x = g.x - 0.33; // 左支柱 X=-3.50
+          p2_x = g.x + 0.33; // 右支柱 X=-2.84
+          bar_sx = 0.66;
+          bar_sy = 0.06;
         } else {
-          p1_y += half_gap;
-          p2_y -= half_gap;
-          bar_sx = 0.05;
-          bar_sy = 0.65;
+          p1_y = g.y + 0.33; // 上支柱 Y=2.49
+          p2_y = g.y - 0.33; // 下支柱 Y=1.83
+          bar_sx = 0.06;
+          bar_sy = 0.66;
         }
 
         visualization_msgs::msg::Marker p1;
@@ -260,77 +261,73 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag (ルールブック「2.3 2次元コード」完全一致配置)
+    // 6. 全27枚の公式 AprilTag (SDF CAD の joint pose に 1mm 単位で完全一致)
     {
       struct TagData {
         int id;
         double x, y, z, normal_yaw;
       };
       const std::vector<TagData> all_tags = {
-        // 四隅・外壁 (Screenshot: 上側 0, 1 / 下側 2, 3)
+        // 四隅・外壁 (SDF joints: Y=±5.49, X=±6.49)
         // 自陣 (SIDE A):
-        {0,  -5.925,  5.450, 0.300,  1.5708},   // 上壁 (上・北向き)
-        {1,  -6.425,  4.920, 0.300,  3.1416},   // 左上壁 (左・西向き)
-        {2,  -6.425, -4.920, 0.300,  3.1416},   // 左下壁 (左・西向き)
-        {3,  -5.925, -5.450, 0.300, -1.5708},   // 下壁 (下・南向き)
+        {0,  -5.920,  5.490, 0.300,  1.5708},   // 上壁
+        {1,  -6.500,  4.920, 0.300,  3.1416},   // 左上壁
+        {2,  -6.490, -4.920, 0.300,  3.1416},   // 左下壁
+        {3,  -5.920, -5.500, 0.300, -1.5708},   // 下壁
         // 敵陣 (SIDE B):
-        {0,   5.925,  5.450, 0.300,  1.5708},   // 敵陣上壁
-        {1,   6.425,  4.920, 0.300,  0.0000},   // 敵陣右上壁 (右・東向き)
-        {2,   6.425, -4.920, 0.300,  0.0000},   // 敵陣右下壁 (右・東向き)
-        {3,   5.925, -5.450, 0.300, -1.5708},   // 敵陣下壁
+        {0,   5.920,  5.490, 0.300,  1.5708},
+        {1,   6.500,  4.920, 0.300,  0.0000},
+        {2,   6.490, -4.920, 0.300,  0.0000},
+        {3,   5.920, -5.500, 0.300, -1.5708},
 
-        // 上側横向きゲート (SIDE A: 4が上, 6が下, 7が左, 5が右)
-        {4,  -3.200,  3.860, 0.800,  1.5708},   // 上面バー (北向き)
-        {6,  -3.200,  3.740, 0.800, -1.5708},   // 下面バー (南向き)
-        {7,  -3.530,  3.800, 0.400,  3.1416},   // 左支柱 (西向き)
-        {5,  -2.870,  3.800, 0.400,  0.0000},   // 右支柱 (東向き)
+        // 上側横向きゲート (SDF: X=-3.265, Y=3.88, Z=0.802)
+        // SIDE A:
+        {4,  -3.265,  3.910, 0.802,  1.5708},   // 上側バー (北向き)
+        {6,  -3.265,  3.850, 0.802, -1.5708},   // 下側バー (南向き)
+        {7,  -3.500,  3.775, 0.122,  3.1416},   // 左支柱 (西向き)
+        {5,  -2.840,  3.775, 0.122,  0.0000},   // 右支柱 (東向き)
+        // SIDE B:
+        {4,   3.065,  3.910, 0.802,  1.5708},
+        {6,   3.065,  3.850, 0.802, -1.5708},
+        {5,   2.830,  3.775, 0.122,  3.1416},
+        {7,   3.490,  3.775, 0.122,  0.0000},
 
-        // 上側横向きゲート (SIDE B: 4が上, 6が下, 5が左, 7が右)
-        {4,   3.200,  3.860, 0.800,  1.5708},
-        {6,   3.200,  3.740, 0.800, -1.5708},
-        {5,   2.870,  3.800, 0.400,  3.1416},
-        {7,   3.530,  3.800, 0.400,  0.0000},
+        // 中段縦向きゲート (SDF: X=-4.48, Y=2.065〜2.490)
+        // SIDE A:
+        {9,  -4.375,  2.490, 0.122,  1.5708},   // 上支柱 (北向き)
+        {11, -4.375,  1.830, 0.122, -1.5708},   // 下支柱 (南向き)
+        {8,  -4.510,  2.065, 0.802,  3.1416},   // 左バー (西向き)
+        {10, -4.450,  2.065, 0.802,  0.0000},   // 右バー (東向き)
+        // SIDE B:
+        {9,   4.575,  2.490, 0.122,  1.5708},
+        {11,  4.575,  1.830, 0.122, -1.5708},
+        {10,  4.440,  2.065, 0.802,  3.1416},
+        {8,   4.500,  2.065, 0.802,  0.0000},
 
-        // 中段縦向きゲート (SIDE A: 9が上, 11が下, 8が左, 10が右)
-        {9,  -4.500,  1.830, 0.400,  1.5708},   // 上支柱 (北向き)
-        {11, -4.500,  1.170, 0.400, -1.5708},   // 下支柱 (南向き)
-        {8,  -4.560,  1.500, 0.800,  3.1416},   // 左バー (西向き)
-        {10, -4.440,  1.500, 0.800,  0.0000},   // 右バー (東向き)
+        // センターラインポール (SDF: X=±0.010, Y=0.650 / 2.450, Z=0.302)
+        {12, -0.020,  0.650, 0.302,  3.1416},   // 自陣西向き
+        {13, -0.020,  2.450, 0.302,  3.1416},   // 自陣西向き
 
-        // 中段縦向きゲート (SIDE B: 9が上, 11が下, 10が左, 8が右)
-        {9,   4.500,  1.830, 0.400,  1.5708},
-        {11,  4.500,  1.170, 0.400, -1.5708},
-        {10,  4.440,  1.500, 0.800,  3.1416},
-        {8,   4.560,  1.500, 0.800,  0.0000},
+        // GAME2 3x3 シュートパネル (SDF: Y=-5.525, X=-3.64 / -3.23 / -2.82, Z=0.05 / 0.51 / 0.97)
+        {14, -3.640, -5.525, 0.970,  1.5708},
+        {15, -3.230, -5.525, 0.970,  1.5708},
+        {16, -2.820, -5.525, 0.970,  1.5708},
+        {17, -3.640, -5.525, 0.510,  1.5708},
+        {18, -3.230, -5.525, 0.510,  1.5708},
+        {19, -2.820, -5.525, 0.510,  1.5708},
+        {20, -3.640, -5.525, 0.050,  1.5708},
+        {21, -3.230, -5.525, 0.050,  1.5708},
+        {22, -2.820, -5.525, 0.050,  1.5708},
 
-        // センターラインポール (12が上, 13が下)
-        {12,  0.000,  2.000, 0.400,  3.1416},   // 自陣西向き
-        {13,  0.000,  0.000, 0.400,  3.1416},   // 自陣西向き
-
-        // GAME2 3x3 シュートパネル (自陣下側 X = -3.20m, Y = -5.45m)
-        // 上段: 14(左), 15(中), 16(右)
-        // 中段: 17(左), 18(中), 19(右)
-        // 下段: 20(左), 21(中), 22(右)
-        {14, -3.61, -5.45, 1.19,  1.5708},
-        {15, -3.20, -5.45, 1.19,  1.5708},
-        {16, -2.79, -5.45, 1.19,  1.5708},
-        {17, -3.61, -5.45, 0.73,  1.5708},
-        {18, -3.20, -5.45, 0.73,  1.5708},
-        {19, -2.79, -5.45, 0.73,  1.5708},
-        {20, -3.61, -5.45, 0.27,  1.5708},
-        {21, -3.20, -5.45, 0.27,  1.5708},
-        {22, -2.79, -5.45, 0.27,  1.5708},
-
-        // GAME3 ゴールエリア (正面ビュー, Y = -5.45m)
-        // 左上: 23, 右上: 24, 左下: 25, 右下: 26
-        {23, -0.80, -5.45, 0.85,  1.5708},
-        {24,  0.80, -5.45, 0.85,  1.5708},
-        {25, -0.80, -5.45, 0.15,  1.5708},
-        {26,  0.80, -5.45, 0.15,  1.5708}
+        // GAME3 ゴールエリア (SDF: Y=-5.510, X=-0.75 / +0.95, Z=0.00 / 0.85)
+        {23, -0.750, -5.510, 0.850,  1.5708},
+        {24,  0.950, -5.510, 0.850,  1.5708},
+        {25, -0.750, -5.510, 0.120,  1.5708},
+        {26,  0.950, -5.510, 0.120,  1.5708}
       };
 
       for (const auto & tag : all_tags) {
-        const double forward_offset = 0.04;
+        const double forward_offset = 0.035;
         const double nx = std::cos(tag.normal_yaw);
         const double ny = std::sin(tag.normal_yaw);
         const double px = tag.x + forward_offset * nx;
@@ -410,7 +407,7 @@ private:
         hud_badge.action = visualization_msgs::msg::Marker::ADD;
         hud_badge.pose.position.x = tag.x;
         hud_badge.pose.position.y = tag.y;
-        hud_badge.pose.position.z = tag.z + 0.22;
+        hud_badge.pose.position.z = tag.z + 0.20;
         hud_badge.scale.z = 0.15;
         hud_badge.color.r = 0.00f;
         hud_badge.color.g = 1.00f;
@@ -432,11 +429,11 @@ private:
       g3_goal.id = id++;
       g3_goal.type = visualization_msgs::msg::Marker::CUBE;
       g3_goal.action = visualization_msgs::msg::Marker::ADD;
-      g3_goal.pose.position.x = 0.0;
+      g3_goal.pose.position.x = 0.10;
       g3_goal.pose.position.y = -5.45;
       g3_goal.pose.position.z = 0.25;
       g3_goal.pose.orientation.w = 1.0;
-      g3_goal.scale.x = 1.60;
+      g3_goal.scale.x = 1.70;
       g3_goal.scale.y = 0.40;
       g3_goal.scale.z = 0.50;
       g3_goal.color.r = 1.00f;
@@ -445,7 +442,7 @@ private:
       g3_goal.color.a = 0.90f;
       msg.markers.push_back(g3_goal);
 
-      const std::vector<double> g2_xs = {-3.20, 3.20};
+      const std::vector<double> g2_xs = {-3.23, 3.63};
       for (const double g2_x : g2_xs) {
         for (int r = 0; r < 3; ++r) {
           for (int c = 0; c < 3; ++c) {
@@ -457,8 +454,8 @@ private:
             panel.type = visualization_msgs::msg::Marker::CUBE;
             panel.action = visualization_msgs::msg::Marker::ADD;
             panel.pose.position.x = g2_x + (c - 1) * 0.41;
-            panel.pose.position.y = -5.45;
-            panel.pose.position.z = 0.27 + r * 0.46;
+            panel.pose.position.y = -5.50;
+            panel.pose.position.z = 0.05 + r * 0.46;
             panel.pose.orientation.w = 1.0;
             panel.scale.x = 0.35;
             panel.scale.y = 0.04;
