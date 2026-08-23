@@ -425,14 +425,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     if (mode_status == RUN_STATUS_MODE) {
       motor_enabled_ = true;
       initialization_retry_count_ = 0;
-      if (initialization_parameter_index_ >=
-        initialization_parameters_.size())
-      {
-        state_ = MotorState::READY;
-        initialization_step_ = InitializationStep::READY;
-      } else {
-        initialization_step_ = InitializationStep::WRITE_PARAMETER;
-      }
+      state_ = MotorState::READY;
+      initialization_step_ = InitializationStep::READY;
     }
     return;
   }
@@ -572,23 +566,16 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
 
   initialization_retry_count_ = 0;
   ++initialization_parameter_index_;
-  if (initialization_parameter_index_ >= initialization_parameters_.size()) {
-    if (motor_enabled_) {
-      state_ = MotorState::READY;
-      initialization_step_ = InitializationStep::READY;
-    } else {
-      initialization_step_ = InitializationStep::ENABLE;
-    }
-  } else if (!motor_enabled_) {
-    if (uses_position_control() && expected.index == RUN_MODE) {
+  if (initialization_parameter_index_ < initialization_parameters_.size()) {
+    initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  } else {
+    // 全パラメータの書込み・読み戻し完了後に位置アライメントまたはEnableへ
+    if (uses_position_control()) {
       initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
     } else {
       initialization_step_ = InitializationStep::ENABLE;
     }
-  } else {
-    initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
-  // 初期化状態が進んだことをNodeへ通知し，特に最終readbackでREADYになったstateを個別topicへ即時publish
   return true;
 }
 
