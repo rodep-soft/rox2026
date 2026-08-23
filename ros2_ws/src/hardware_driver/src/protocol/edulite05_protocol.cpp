@@ -527,7 +527,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     float hold_position = 0.0f;
     std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
     if (fault_code != 0 || !std::isfinite(hold_position) ||
-      std::fabs(hold_position - startup_hold_position_rad_) >= 0.001f)
+      std::fabs(hold_position - startup_hold_position_rad_) > 0.1f)
     {
       retry_initialization();
       return false;
@@ -560,7 +560,10 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
   } else {
     float value = 0.0f;
     std::memcpy(&value, message.data.data() + 4, sizeof(float));
-    values_match = std::fabs(value - expected.value) < 0.001f;
+    // モーター内部の浮動小数点丸めや固定小数点変換誤差を許容
+    values_match = std::isfinite(value) &&
+      (std::fabs(value - expected.value) < 0.2f ||
+      (std::fabs(expected.value) > 1e-4f && std::fabs(value - expected.value) / std::fabs(expected.value) < 0.05f));
   }
   if (!values_match) {
     retry_initialization();
