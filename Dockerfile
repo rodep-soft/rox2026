@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfmt-dev \
     libyaml-cpp-dev \
     ros-humble-spdlog-vendor \
+    ros-humble-console-bridge-vendor \
     && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
