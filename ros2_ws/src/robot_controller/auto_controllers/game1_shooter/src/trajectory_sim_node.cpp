@@ -121,72 +121,57 @@ private:
     const double dt = 0.03; // 33Hz
     current_time_ += dt;
 
-    if (current_segment_ >= waypoints_.size()) {
-      // スタート位置で 1.5秒停止後、瞬間移動せずにスタート地点からそのまま2周目へスムーズに発進
+    // スタート位置で人がボールを渡す待機フェーズ
+    bool skip_movement = false;
+    if (current_segment_ >= static_cast<int>(waypoints_.size())) {
       wp_wait_timer_ += dt;
       if (wp_wait_timer_ >= 1.5) {
         current_segment_ = 1;
         wp_wait_timer_ = 0.0;
         executed_path_.poses.clear();
       }
-      return;
+      vx_ = 0.0; vy_ = 0.0; vyaw_ = 0.0;
+      skip_movement = true;
     }
 
-    const auto & target = waypoints_[current_segment_];
+    if (!skip_movement) {
+      const auto & target = waypoints_[current_segment_];
+      const double dx_world = target.x - curr_x_;
+      const double dy_world = target.y - curr_y_;
+      const double dist = std::hypot(dx_world, dy_world);
+      const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
+      const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
+      const double arrive_threshold = is_fly_through ? 0.35 : pos_tolerance_;
 
-    // 実機アルゴリズム (game1_auto_node.cpp: compute_holonomic_pursuit と 100% 同一数式)
-    const double dx_world = target.x - curr_x_;
-    const double dy_world = target.y - curr_y_;
-    const double dist = std::hypot(dx_world, dy_world);
-    const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
-
-    // 中間ポイントの判定 (2: Around, 3: Ball, 5: Apex は止まらずに高速フライスルー)
-    const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
-    const double arrive_threshold = is_fly_through ? 0.35 : pos_tolerance_;
-
-    // 1. 位置・速度のホロノミック追従
-    double target_vx = 0.0;
-    double target_vy = 0.0;
-    if (dist > 1e-4) {
-      // フライスルー地点では減速せず最高速度を維持してスムーズに次のWPへカーブ
-      const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, kp_linear_ * dist);
-      target_vx = speed_limit * (dx_world / dist);
-      target_vy = speed_limit * (dy_world / dist);
-    }
-
-    // 2. 最短姿勢角 P 制御 (旋回速度)
-    const double target_vyaw = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
-
-    // 3. 実機メカナムの物理加速度リミットによる積分 (1階遅れ)
-    //    実機のメカナム車は慣性があり、最高速まで約0.4秒かかる (加速時定数 tau=0.4s → alpha=dt/tau)
-    const double alpha_lin = dt / 0.40;  // 直線加速タウ = 0.40s (リアル)
-    const double alpha_ang = dt / 0.35;  // 旋回加速タウ = 0.35s (リアル)
-    vx_ += (target_vx - vx_) * std::min(1.0, alpha_lin);
-    vy_ += (target_vy - vy_) * std::min(1.0, alpha_lin);
-    vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, alpha_ang);
-
-    curr_x_ += vx_ * dt;
-    curr_y_ += vy_ * dt;
-    curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
-
-    // 目標WP到達判定
-    if (is_fly_through) {
-      if (dist <= arrive_threshold) {
-        current_segment_++; // 止まらず即座に次のWPへ切り替え（滑らかなコーナリング）
+      double target_vx = 0.0, target_vy = 0.0;
+      if (dist > 1e-4) {
+        const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, kp_linear_ * dist);
+        target_vx = speed_limit * (dx_world / dist);
+        target_vy = speed_limit * (dy_world / dist);
       }
-    } else {
-      if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
-        wp_wait_timer_ += dt;
-        // 待機時間: ゲート射出後=0.6s, パスエリア投下=1.2s (図の計画時間に合わせる)
-        const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 1.2 : 0.0;
-        if (wp_wait_timer_ >= wait_time) {
-          current_segment_++;
+      const double target_vyaw = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
+      const double alpha_lin = dt / 0.40;
+      const double alpha_ang = dt / 0.35;
+      vx_ += (target_vx - vx_) * std::min(1.0, alpha_lin);
+      vy_ += (target_vy - vy_) * std::min(1.0, alpha_lin);
+      vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, alpha_ang);
+      curr_x_ += vx_ * dt;
+      curr_y_ += vy_ * dt;
+      curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
+
+      if (is_fly_through) {
+        if (dist <= arrive_threshold) { current_segment_++; }
+      } else {
+        if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
+          wp_wait_timer_ += dt;
+          const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 1.2 : 0.0;
+          if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }
+        } else {
           wp_wait_timer_ = 0.0;
         }
-      } else {
-        wp_wait_timer_ = 0.0;
       }
     }
+
 
     const auto now_stamp = this->now();
 
@@ -259,8 +244,15 @@ private:
     const double target_ball_stop_x = waypoints_[3].x;
     const double target_ball_stop_y = waypoints_[3].y;
 
-    if (current_segment_ <= 1) {
-      // 射出前: ロボット前方に保持
+    if (current_segment_ >= static_cast<int>(waypoints_.size())) {
+      // スタート待機中: 人がボールをロボットに渡すアニメーション (0.7s後にボールがロボット前方に現れる)
+      if (wp_wait_timer_ > 0.7) {
+        ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
+        ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
+      }
+      // 0.7s未満はパスエリアのボールがフェードせず残る（前サイクルの投下位置）
+    } else if (current_segment_ <= 1) {
+      // 射出前: ロボット前方に保持 (スタート時から保持済み)
       ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball_shot_time_ = 0.0;
