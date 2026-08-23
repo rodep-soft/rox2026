@@ -490,6 +490,14 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
 
     startup_hold_position_rad_ = current_position;
+    if (config_.control_mode == ControlMode::CYCLIC_SYNCHRONOUS_POSITION) {
+      while (startup_hold_position_rad_ > 4.0f * PI) {
+        startup_hold_position_rad_ -= 8.0f * PI;
+      }
+      while (startup_hold_position_rad_ < -4.0f * PI) {
+        startup_hold_position_rad_ += 8.0f * PI;
+      }
+    }
     if (motor_position_initialized_) {
       // MECHANICAL_POSITION is multi-turn. Align the accumulated feedback position with it;
       // otherwise the temporary zero can differ by whole 8*PI turns after a driver restart.
@@ -732,8 +740,16 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame(
     std::clamp(
     target_value_, config_.minimum_position_rad,
     config_.maximum_position_rad);
-  const auto motor_position_target =
+  auto motor_position_target =
     absolute_position_target - logical_position_offset_rad_;
+  if (config_.control_mode == ControlMode::CYCLIC_SYNCHRONOUS_POSITION) {
+    while (motor_position_target > 4.0f * PI) {
+      motor_position_target -= 8.0f * PI;
+    }
+    while (motor_position_target < -4.0f * PI) {
+      motor_position_target += 8.0f * PI;
+    }
+  }
   return make_write_float_frame(
     config_.can_id, POSITION_REFERENCE,
     motor_position_target);
