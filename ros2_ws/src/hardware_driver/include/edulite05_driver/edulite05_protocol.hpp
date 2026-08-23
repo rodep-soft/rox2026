@@ -193,7 +193,7 @@ private:
   MotorConfig config_;
   MotorFeedback feedback_;
   MotorState state_ = MotorState::INITIALIZING;
-  InitializationStep initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  InitializationStep initialization_step_ = InitializationStep::RESET_MOTOR;
   std::vector<InitializationParameter> initialization_parameters_;
   std::size_t initialization_parameter_index_ = 0;
   float target_value_ = 0.0f;

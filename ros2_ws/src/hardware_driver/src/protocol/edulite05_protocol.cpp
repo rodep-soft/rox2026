@@ -74,6 +74,12 @@ std::string Protocol::initialization_diagnostic() const
 {
   const char * step_name = "unknown";
   switch (initialization_step_) {
+    case InitializationStep::RESET_MOTOR:
+      step_name = "reset_motor";
+      break;
+    case InitializationStep::WAIT_AFTER_RESET:
+      step_name = "wait_after_reset";
+      break;
     case InitializationStep::WRITE_PARAMETER:
       step_name = "write";
       break;
@@ -205,7 +211,7 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame(
         return make_reset_frame(config_.can_id);
 
       case InitializationStep::WAIT_AFTER_RESET:
-        if (current_time - last_request_time_ < WRITE_SETTLING_TIME) {
+        if (current_time - last_request_time_ < std::chrono::milliseconds(10)) {
           return std::nullopt;
         }
         initialization_step_ = InitializationStep::WRITE_PARAMETER;
