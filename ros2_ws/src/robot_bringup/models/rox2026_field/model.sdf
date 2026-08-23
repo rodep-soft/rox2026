@@ -1,0 +1,4578 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape document_id: d3fb9dd3b0054d89c351c05b -->
+<sdf version="1.7">
+  <model name="rox2026_field">
+    <static>true</static>
+    <!-- Link game2_start_area -->
+    <link name="game2_start_area">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game2_start_area_game2_start_area -->
+    <link name="game2_start_area_game2_start_area">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_start_area_game2_start_area_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_start_area -->
+      <visual name="game2_start_area_visual_mesh_1">
+        <pose relative_to="game2_start_area_game2_start_area">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_start_area.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.792157 0.819608 0.933333 1</ambient>
+          <diffuse>0.792157 0.819608 0.933333 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game2_start_area_collision_mesh_2">
+        <pose relative_to="game2_start_area_game2_start_area">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_start_area.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_start_area to game2_start_area_game2_start_area -->
+    <joint name="game2_start_area_game2_start_area_fixed" type="fixed">
+      <pose relative_to="game2_start_area">3.43 0.002 0.75 0 -0 0</pose>
+      <parent>game2_start_area</parent>
+      <child>game2_start_area_game2_start_area</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_start_area_2 -->
+    <link name="game2_start_area_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game2_start_area_2_game2_start_area_2 -->
+    <link name="game2_start_area_2_game2_start_area_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_start_area_2_game2_start_area_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_start_area_2 -->
+      <visual name="game2_start_area_2_visual_mesh_1">
+        <pose relative_to="game2_start_area_2_game2_start_area_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_start_area.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.792157 0.819608 0.933333 1</ambient>
+          <diffuse>0.792157 0.819608 0.933333 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game2_start_area_2_collision_mesh_2">
+        <pose relative_to="game2_start_area_2_game2_start_area_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_start_area.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_start_area_2 to game2_start_area_2_game2_start_area_2 -->
+    <joint name="game2_start_area_2_game2_start_area_2_fixed" type="fixed">
+      <pose relative_to="game2_start_area_2">-3.43 0.002 0.75 0 -0 0</pose>
+      <parent>game2_start_area_2</parent>
+      <child>game2_start_area_2_game2_start_area_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel -->
+    <link name="corner_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link corner_panel_2d_code_panel -->
+    <link name="corner_panel_2d_code_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel_2d_code_panel_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel -->
+      <visual name="2d_code_panel_visual_mesh_1">
+        <pose relative_to="corner_panel_2d_code_panel">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_0.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_collision_mesh_2">
+        <pose relative_to="corner_panel_2d_code_panel">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel to corner_panel_2d_code_panel -->
+    <joint name="corner_panel_2d_code_panel_fixed" type="fixed">
+      <pose relative_to="corner_panel">6.5 0.3 4.92 0 -1.5708 0</pose>
+      <parent>corner_panel</parent>
+      <child>corner_panel_2d_code_panel</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel_corner_board -->
+    <link name="corner_panel_corner_board">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel_corner_board_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part corner_board -->
+      <visual name="corner_board_visual_mesh_1">
+        <pose relative_to="corner_panel_corner_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="corner_board_collision_mesh_2">
+        <pose relative_to="corner_panel_corner_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel to corner_panel_corner_board -->
+    <joint name="corner_panel_corner_board_fixed" type="fixed">
+      <pose relative_to="corner_panel">6.52 0 5.52 -0 1.5708 0</pose>
+      <parent>corner_panel</parent>
+      <child>corner_panel_corner_board</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel_2d_code_panel_2 -->
+    <link name="corner_panel_2d_code_panel_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel_2d_code_panel_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_2 -->
+      <visual name="2d_code_panel_2_visual_mesh_1">
+        <pose relative_to="corner_panel_2d_code_panel_2">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_1.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_2_collision_mesh_2">
+        <pose relative_to="corner_panel_2d_code_panel_2">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel to corner_panel_2d_code_panel_2 -->
+    <joint name="corner_panel_2d_code_panel_2_fixed" type="fixed">
+      <pose relative_to="corner_panel">5.92 0.3 5.49 0 0 0</pose>
+      <parent>corner_panel</parent>
+      <child>corner_panel_2d_code_panel_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__1 -->
+    <link name="corner_panel__1">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link corner_panel__1_2d_code_panel_3 -->
+    <link name="corner_panel__1_2d_code_panel_3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__1_2d_code_panel_3_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_3 -->
+      <visual name="2d_code_panel_3_visual_mesh_1">
+        <pose relative_to="corner_panel__1_2d_code_panel_3">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_2.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_3_collision_mesh_2">
+        <pose relative_to="corner_panel__1_2d_code_panel_3">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__1 to corner_panel__1_2d_code_panel_3 -->
+    <joint name="corner_panel__1_2d_code_panel_3_fixed" type="fixed">
+      <pose relative_to="corner_panel__1">5.92 0.3 -5.5 0 0 0</pose>
+      <parent>corner_panel__1</parent>
+      <child>corner_panel__1_2d_code_panel_3</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__1_corner_board_2 -->
+    <link name="corner_panel__1_corner_board_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__1_corner_board_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part corner_board_2 -->
+      <visual name="corner_board_2_visual_mesh_1">
+        <pose relative_to="corner_panel__1_corner_board_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="corner_board_2_collision_mesh_2">
+        <pose relative_to="corner_panel__1_corner_board_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__1 to corner_panel__1_corner_board_2 -->
+    <joint name="corner_panel__1_corner_board_2_fixed" type="fixed">
+      <pose relative_to="corner_panel__1">6.52 0 -5.52 3.14159 -0 3.14159</pose>
+      <parent>corner_panel__1</parent>
+      <child>corner_panel__1_corner_board_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__1_2d_code_panel_4 -->
+    <link name="corner_panel__1_2d_code_panel_4">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__1_2d_code_panel_4_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_4 -->
+      <visual name="2d_code_panel_4_visual_mesh_1">
+        <pose relative_to="corner_panel__1_2d_code_panel_4">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_3.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_4_collision_mesh_2">
+        <pose relative_to="corner_panel__1_2d_code_panel_4">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__1 to corner_panel__1_2d_code_panel_4 -->
+    <joint name="corner_panel__1_2d_code_panel_4_fixed" type="fixed">
+      <pose relative_to="corner_panel__1">6.49 0.3 -4.92 -0 1.5708 0</pose>
+      <parent>corner_panel__1</parent>
+      <child>corner_panel__1_2d_code_panel_4</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__2 -->
+    <link name="corner_panel__2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link corner_panel__2_2d_code_panel_5 -->
+    <link name="corner_panel__2_2d_code_panel_5">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__2_2d_code_panel_5_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_5 -->
+      <visual name="2d_code_panel_5_visual_mesh_1">
+        <pose relative_to="corner_panel__2_2d_code_panel_5">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_0.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_5_collision_mesh_2">
+        <pose relative_to="corner_panel__2_2d_code_panel_5">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__2 to corner_panel__2_2d_code_panel_5 -->
+    <joint name="corner_panel__2_2d_code_panel_5_fixed" type="fixed">
+      <pose relative_to="corner_panel__2">-6.49 0.3 4.92 -0 -1.5708 0</pose>
+      <parent>corner_panel__2</parent>
+      <child>corner_panel__2_2d_code_panel_5</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__2_2d_code_panel_6 -->
+    <link name="corner_panel__2_2d_code_panel_6">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__2_2d_code_panel_6_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_6 -->
+      <visual name="2d_code_panel_6_visual_mesh_1">
+        <pose relative_to="corner_panel__2_2d_code_panel_6">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_1.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_6_collision_mesh_2">
+        <pose relative_to="corner_panel__2_2d_code_panel_6">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__2 to corner_panel__2_2d_code_panel_6 -->
+    <joint name="corner_panel__2_2d_code_panel_6_fixed" type="fixed">
+      <pose relative_to="corner_panel__2">-5.92 0.3 5.5 -3.14159 -0 3.14159</pose>
+      <parent>corner_panel__2</parent>
+      <child>corner_panel__2_2d_code_panel_6</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__2_corner_board_3 -->
+    <link name="corner_panel__2_corner_board_3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__2_corner_board_3_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part corner_board_3 -->
+      <visual name="corner_board_3_visual_mesh_1">
+        <pose relative_to="corner_panel__2_corner_board_3">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="corner_board_3_collision_mesh_2">
+        <pose relative_to="corner_panel__2_corner_board_3">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__2 to corner_panel__2_corner_board_3 -->
+    <joint name="corner_panel__2_corner_board_3_fixed" type="fixed">
+      <pose relative_to="corner_panel__2">-6.52 0 5.52 0 -0 0</pose>
+      <parent>corner_panel__2</parent>
+      <child>corner_panel__2_corner_board_3</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__3 -->
+    <link name="corner_panel__3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link corner_panel__3_corner_board_4 -->
+    <link name="corner_panel__3_corner_board_4">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__3_corner_board_4_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part corner_board_4 -->
+      <visual name="corner_board_4_visual_mesh_1">
+        <pose relative_to="corner_panel__3_corner_board_4">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="corner_board_4_collision_mesh_2">
+        <pose relative_to="corner_panel__3_corner_board_4">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/corner_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__3 to corner_panel__3_corner_board_4 -->
+    <joint name="corner_panel__3_corner_board_4_fixed" type="fixed">
+      <pose relative_to="corner_panel__3">-6.52 0 -5.52 -0 -1.5708 0</pose>
+      <parent>corner_panel__3</parent>
+      <child>corner_panel__3_corner_board_4</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__3_2d_code_panel_7 -->
+    <link name="corner_panel__3_2d_code_panel_7">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__3_2d_code_panel_7_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_7 -->
+      <visual name="2d_code_panel_7_visual_mesh_1">
+        <pose relative_to="corner_panel__3_2d_code_panel_7">0 0 0 -0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/2d_code_panel.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_2.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_7_collision_mesh_2">
+        <pose relative_to="corner_panel__3_2d_code_panel_7">0 0 0 -0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/2d_code_panel.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__3 to corner_panel__3_2d_code_panel_7 -->
+    <joint name="corner_panel__3_2d_code_panel_7_fixed" type="fixed">
+      <pose relative_to="corner_panel__3">-6.5 0.3 -4.92 0 1.5708 0</pose>
+      <parent>corner_panel__3</parent>
+      <child>corner_panel__3_2d_code_panel_7</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link corner_panel__3_2d_code_panel_8 -->
+    <link name="corner_panel__3_2d_code_panel_8">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="corner_panel__3_2d_code_panel_8_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_8 -->
+      <visual name="2d_code_panel_8_visual_mesh_1">
+        <pose relative_to="corner_panel__3_2d_code_panel_8">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_3.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_8_collision_mesh_2">
+        <pose relative_to="corner_panel__3_2d_code_panel_8">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from corner_panel__3 to corner_panel__3_2d_code_panel_8 -->
+    <joint name="corner_panel__3_2d_code_panel_8_fixed" type="fixed">
+      <pose relative_to="corner_panel__3">-5.92 0.3 -5.49 3.14159 -0 3.14159</pose>
+      <parent>corner_panel__3</parent>
+      <child>corner_panel__3_2d_code_panel_8</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_center_panel -->
+    <link name="game1_center_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_center_panel_2d_code_panel_9 -->
+    <link name="game1_center_panel_2d_code_panel_9">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_center_panel_2d_code_panel_9_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_9 -->
+      <visual name="2d_code_panel_9_visual_mesh_1">
+        <pose relative_to="game1_center_panel_2d_code_panel_9">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_12.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_9_collision_mesh_2">
+        <pose relative_to="game1_center_panel_2d_code_panel_9">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_center_panel to game1_center_panel_2d_code_panel_9 -->
+    <joint name="game1_center_panel_2d_code_panel_9_fixed" type="fixed">
+      <pose relative_to="game1_center_panel">-0.02 0.302 -0.65 -0 1.5708 0</pose>
+      <parent>game1_center_panel</parent>
+      <child>game1_center_panel_2d_code_panel_9</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_center_panel_2d_code_panel_10 -->
+    <link name="game1_center_panel_2d_code_panel_10">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_center_panel_2d_code_panel_10_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_10 -->
+      <visual name="2d_code_panel_10_visual_mesh_1">
+        <pose relative_to="game1_center_panel_2d_code_panel_10">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_13.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_10_collision_mesh_2">
+        <pose relative_to="game1_center_panel_2d_code_panel_10">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_center_panel to game1_center_panel_2d_code_panel_10 -->
+    <joint name="game1_center_panel_2d_code_panel_10_fixed" type="fixed">
+      <pose relative_to="game1_center_panel">-0.02 0.302 -2.45 -0 1.5708 0</pose>
+      <parent>game1_center_panel</parent>
+      <child>game1_center_panel_2d_code_panel_10</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_center_panel_game1_center_board -->
+    <link name="game1_center_panel_game1_center_board">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_center_panel_game1_center_board_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_center_board -->
+      <visual name="game1_center_board_visual_mesh_1">
+        <pose relative_to="game1_center_panel_game1_center_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_center_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_center_board_collision_mesh_2">
+        <pose relative_to="game1_center_panel_game1_center_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_center_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_center_panel to game1_center_panel_game1_center_board -->
+    <joint name="game1_center_panel_game1_center_board_fixed" type="fixed">
+      <pose relative_to="game1_center_panel">0 0.002 -0.65 0 -0 0</pose>
+      <parent>game1_center_panel</parent>
+      <child>game1_center_panel_game1_center_board</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_center_panel_2d_code_panel_11 -->
+    <link name="game1_center_panel_2d_code_panel_11">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_center_panel_2d_code_panel_11_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_11 -->
+      <visual name="2d_code_panel_11_visual_mesh_1">
+        <pose relative_to="game1_center_panel_2d_code_panel_11">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_12.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_11_collision_mesh_2">
+        <pose relative_to="game1_center_panel_2d_code_panel_11">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_center_panel to game1_center_panel_2d_code_panel_11 -->
+    <joint name="game1_center_panel_2d_code_panel_11_fixed" type="fixed">
+      <pose relative_to="game1_center_panel">0.01 0.302 -0.65 -0 1.5708 0</pose>
+      <parent>game1_center_panel</parent>
+      <child>game1_center_panel_2d_code_panel_11</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_center_panel_2d_code_panel_12 -->
+    <link name="game1_center_panel_2d_code_panel_12">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_center_panel_2d_code_panel_12_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_12 -->
+      <visual name="2d_code_panel_12_visual_mesh_1">
+        <pose relative_to="game1_center_panel_2d_code_panel_12">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_13.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_12_collision_mesh_2">
+        <pose relative_to="game1_center_panel_2d_code_panel_12">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_center_panel to game1_center_panel_2d_code_panel_12 -->
+    <joint name="game1_center_panel_2d_code_panel_12_fixed" type="fixed">
+      <pose relative_to="game1_center_panel">0.01 0.302 -2.45 -0 1.5708 0</pose>
+      <parent>game1_center_panel</parent>
+      <child>game1_center_panel_2d_code_panel_12</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel -->
+    <link name="game2_shoot_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game2_shoot_panel_game2_panel -->
+    <link name="game2_shoot_panel_game2_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel -->
+      <visual name="game2_panel_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_14.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel -->
+    <joint name="game2_shoot_panel_game2_panel_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.22 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_2 -->
+    <link name="game2_shoot_panel_game2_panel_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_2 -->
+      <visual name="game2_panel_2_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_2">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_15.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_2_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_2">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_2 -->
+    <joint name="game2_shoot_panel_game2_panel_2_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.63 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_3 -->
+    <link name="game2_shoot_panel_game2_panel_3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_3_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_3 -->
+      <visual name="game2_panel_3_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_3">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_16.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_3_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_3">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_3 -->
+    <joint name="game2_shoot_panel_game2_panel_3_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">4.04 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_3</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_4 -->
+    <link name="game2_shoot_panel_game2_panel_4">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_4_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_4 -->
+      <visual name="game2_panel_4_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_4">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_17.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_4_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_4">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_4 -->
+    <joint name="game2_shoot_panel_game2_panel_4_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">4.04 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_4</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_5 -->
+    <link name="game2_shoot_panel_game2_panel_5">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_5_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_5 -->
+      <visual name="game2_panel_5_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_5">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_18.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_5_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_5">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_5 -->
+    <joint name="game2_shoot_panel_game2_panel_5_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.22 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_5</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_frame -->
+    <link name="game2_shoot_panel_game2_frame">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_frame_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_frame -->
+      <visual name="game2_frame_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game2_frame_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_frame -->
+    <joint name="game2_shoot_panel_game2_frame_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">4.1 0 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_frame</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_6 -->
+    <link name="game2_shoot_panel_game2_panel_6">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_6_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_6 -->
+      <visual name="game2_panel_6_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_6">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_19.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_6_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_6">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_6 -->
+    <joint name="game2_shoot_panel_game2_panel_6_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.22 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_6</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_7 -->
+    <link name="game2_shoot_panel_game2_panel_7">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_7_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_7 -->
+      <visual name="game2_panel_7_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_7">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_20.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_7_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_7">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_7 -->
+    <joint name="game2_shoot_panel_game2_panel_7_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">4.04 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_7</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_8 -->
+    <link name="game2_shoot_panel_game2_panel_8">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_8_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_8 -->
+      <visual name="game2_panel_8_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_8">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_21.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_8_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_8">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_8 -->
+    <joint name="game2_shoot_panel_game2_panel_8_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.63 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_8</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel_game2_panel_9 -->
+    <link name="game2_shoot_panel_game2_panel_9">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel_game2_panel_9_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_9 -->
+      <visual name="game2_panel_9_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel_game2_panel_9">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_22.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_9_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel_game2_panel_9">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel to game2_shoot_panel_game2_panel_9 -->
+    <joint name="game2_shoot_panel_game2_panel_9_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel">3.63 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel</parent>
+      <child>game2_shoot_panel_game2_panel_9</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1 -->
+    <link name="game2_shoot_panel__1">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game2_shoot_panel__1_game2_panel_10 -->
+    <link name="game2_shoot_panel__1_game2_panel_10">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_10_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_10 -->
+      <visual name="game2_panel_10_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_10">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_14.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_10_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_10">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_10 -->
+    <joint name="game2_shoot_panel__1_game2_panel_10_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.23 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_10</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_11 -->
+    <link name="game2_shoot_panel__1_game2_panel_11">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_11_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_11 -->
+      <visual name="game2_panel_11_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_11">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_15.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_11_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_11">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_11 -->
+    <joint name="game2_shoot_panel__1_game2_panel_11_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-2.82 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_11</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_12 -->
+    <link name="game2_shoot_panel__1_game2_panel_12">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_12_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_12 -->
+      <visual name="game2_panel_12_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_12">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_16.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_12_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_12">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_12 -->
+    <joint name="game2_shoot_panel__1_game2_panel_12_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.64 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_12</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_13 -->
+    <link name="game2_shoot_panel__1_game2_panel_13">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_13_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_13 -->
+      <visual name="game2_panel_13_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_13">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_17.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_13_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_13">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_13 -->
+    <joint name="game2_shoot_panel__1_game2_panel_13_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.23 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_13</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_14 -->
+    <link name="game2_shoot_panel__1_game2_panel_14">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_14_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_14 -->
+      <visual name="game2_panel_14_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_14">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_18.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_14_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_14">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_14 -->
+    <joint name="game2_shoot_panel__1_game2_panel_14_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.23 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_14</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_15 -->
+    <link name="game2_shoot_panel__1_game2_panel_15">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_15_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_15 -->
+      <visual name="game2_panel_15_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_15">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_19.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_15_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_15">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_15 -->
+    <joint name="game2_shoot_panel__1_game2_panel_15_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-2.82 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_15</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_16 -->
+    <link name="game2_shoot_panel__1_game2_panel_16">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_16_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_16 -->
+      <visual name="game2_panel_16_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_16">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_20.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_16_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_16">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_16 -->
+    <joint name="game2_shoot_panel__1_game2_panel_16_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.64 0.97 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_16</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_17 -->
+    <link name="game2_shoot_panel__1_game2_panel_17">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_17_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_17 -->
+      <visual name="game2_panel_17_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_17">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_21.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_17_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_17">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_17 -->
+    <joint name="game2_shoot_panel__1_game2_panel_17_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-2.82 0.51 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_17</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_frame_2 -->
+    <link name="game2_shoot_panel__1_game2_frame_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_frame_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_frame_2 -->
+      <visual name="game2_frame_2_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_frame_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game2_frame_2_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_frame_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game2_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_frame_2 -->
+    <joint name="game2_shoot_panel__1_game2_frame_2_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-2.76 -0 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_frame_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game2_shoot_panel__1_game2_panel_18 -->
+    <link name="game2_shoot_panel__1_game2_panel_18">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game2_shoot_panel__1_game2_panel_18_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game2_panel_18 -->
+      <visual name="game2_panel_18_visual_mesh_1">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_18">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_22.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="game2_panel_18_collision_mesh_2">
+        <pose relative_to="game2_shoot_panel__1_game2_panel_18">0.2 0.2 0.0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.4 0.4 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game2_shoot_panel__1 to game2_shoot_panel__1_game2_panel_18 -->
+    <joint name="game2_shoot_panel__1_game2_panel_18_fixed" type="fixed">
+      <pose relative_to="game2_shoot_panel__1">-3.64 0.05 5.525 3.14159 -0 3.14159</pose>
+      <parent>game2_shoot_panel__1</parent>
+      <child>game2_shoot_panel__1_game2_panel_18</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_pass_area -->
+    <link name="game1_pass_area">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_pass_area_game1_cushion -->
+    <link name="game1_pass_area_game1_cushion">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_pass_area_game1_cushion_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_cushion -->
+      <visual name="game1_cushion_visual_mesh_1">
+        <pose relative_to="game1_pass_area_game1_cushion">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_cushion.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_cushion_collision_mesh_2">
+        <pose relative_to="game1_pass_area_game1_cushion">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_cushion.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_pass_area to game1_pass_area_game1_cushion -->
+    <joint name="game1_pass_area_game1_cushion_fixed" type="fixed">
+      <pose relative_to="game1_pass_area">1.691 0.002 -0.791 -0 1.5708 0</pose>
+      <parent>game1_pass_area</parent>
+      <child>game1_pass_area_game1_cushion</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_pass_area_game1_board -->
+    <link name="game1_pass_area_game1_board">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_pass_area_game1_board_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_board -->
+      <visual name="game1_board_visual_mesh_1">
+        <pose relative_to="game1_pass_area_game1_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.698039 0.698039 0.698039 1</ambient>
+          <diffuse>0.698039 0.698039 0.698039 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_board_collision_mesh_2">
+        <pose relative_to="game1_pass_area_game1_board">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_pass_area to game1_pass_area_game1_board -->
+    <joint name="game1_pass_area_game1_board_fixed" type="fixed">
+      <pose relative_to="game1_pass_area">1.316 0.012 -1.641 -0 1.5708 0</pose>
+      <parent>game1_pass_area</parent>
+      <child>game1_pass_area_game1_board</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_pass_area__1 -->
+    <link name="game1_pass_area__1">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_pass_area__1_game1_cushion_2 -->
+    <link name="game1_pass_area__1_game1_cushion_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_pass_area__1_game1_cushion_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_cushion_2 -->
+      <visual name="game1_cushion_2_visual_mesh_1">
+        <pose relative_to="game1_pass_area__1_game1_cushion_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_cushion.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_cushion_2_collision_mesh_2">
+        <pose relative_to="game1_pass_area__1_game1_cushion_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_cushion.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_pass_area__1 to game1_pass_area__1_game1_cushion_2 -->
+    <joint name="game1_pass_area__1_game1_cushion_2_fixed" type="fixed">
+      <pose relative_to="game1_pass_area__1">-0.941 0.002 -0.791 -0 1.5708 0</pose>
+      <parent>game1_pass_area__1</parent>
+      <child>game1_pass_area__1_game1_cushion_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_pass_area__1_game1_board_2 -->
+    <link name="game1_pass_area__1_game1_board_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_pass_area__1_game1_board_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_board_2 -->
+      <visual name="game1_board_2_visual_mesh_1">
+        <pose relative_to="game1_pass_area__1_game1_board_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_board.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.698039 0.698039 0.698039 1</ambient>
+          <diffuse>0.698039 0.698039 0.698039 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_board_2_collision_mesh_2">
+        <pose relative_to="game1_pass_area__1_game1_board_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_board.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_pass_area__1 to game1_pass_area__1_game1_board_2 -->
+    <joint name="game1_pass_area__1_game1_board_2_fixed" type="fixed">
+      <pose relative_to="game1_pass_area__1">-1.316 0.012 -1.641 -0 1.5708 0</pose>
+      <parent>game1_pass_area__1</parent>
+      <child>game1_pass_area__1_game1_board_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area -->
+    <link name="game3_goal_area">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game3_goal_area_2d_code_panel_13 -->
+    <link name="game3_goal_area_2d_code_panel_13">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_2d_code_panel_13_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_13 -->
+      <visual name="2d_code_panel_13_visual_mesh_1">
+        <pose relative_to="game3_goal_area_2d_code_panel_13">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_23.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_13_collision_mesh_2">
+        <pose relative_to="game3_goal_area_2d_code_panel_13">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_2d_code_panel_13 -->
+    <joint name="game3_goal_area_2d_code_panel_13_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">0.95 0 5.51 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_2d_code_panel_13</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_game3_rail -->
+    <link name="game3_goal_area_game3_rail">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_game3_rail_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game3_rail -->
+      <visual name="game3_rail_visual_mesh_1">
+        <pose relative_to="game3_goal_area_game3_rail">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_rail.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.780392 0.780392 0.780392 1</ambient>
+          <diffuse>0.780392 0.780392 0.780392 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game3_rail_collision_mesh_2">
+        <pose relative_to="game3_goal_area_game3_rail">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_rail.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_game3_rail -->
+    <joint name="game3_goal_area_game3_rail_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">-0.765687 0 6.46 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_game3_rail</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_2d_code_panel_14 -->
+    <link name="game3_goal_area_2d_code_panel_14">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_2d_code_panel_14_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_14 -->
+      <visual name="2d_code_panel_14_visual_mesh_1">
+        <pose relative_to="game3_goal_area_2d_code_panel_14">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_24.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_14_collision_mesh_2">
+        <pose relative_to="game3_goal_area_2d_code_panel_14">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_2d_code_panel_14 -->
+    <joint name="game3_goal_area_2d_code_panel_14_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">0.95 0.85 5.51 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_2d_code_panel_14</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_2d_code_panel_15 -->
+    <link name="game3_goal_area_2d_code_panel_15">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_2d_code_panel_15_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_15 -->
+      <visual name="2d_code_panel_15_visual_mesh_1">
+        <pose relative_to="game3_goal_area_2d_code_panel_15">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_25.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_15_collision_mesh_2">
+        <pose relative_to="game3_goal_area_2d_code_panel_15">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_2d_code_panel_15 -->
+    <joint name="game3_goal_area_2d_code_panel_15_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">-0.75 0 5.51 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_2d_code_panel_15</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_game3_frame -->
+    <link name="game3_goal_area_game3_frame">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_game3_frame_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game3_frame -->
+      <visual name="game3_frame_visual_mesh_1">
+        <pose relative_to="game3_goal_area_game3_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game3_frame_collision_mesh_2">
+        <pose relative_to="game3_goal_area_game3_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_game3_frame -->
+    <joint name="game3_goal_area_game3_frame_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">0.75 0 5.51 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_game3_frame</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_2d_code_panel_16 -->
+    <link name="game3_goal_area_2d_code_panel_16">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_2d_code_panel_16_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_16 -->
+      <visual name="2d_code_panel_16_visual_mesh_1">
+        <pose relative_to="game3_goal_area_2d_code_panel_16">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_26.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_16_collision_mesh_2">
+        <pose relative_to="game3_goal_area_2d_code_panel_16">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_2d_code_panel_16 -->
+    <joint name="game3_goal_area_2d_code_panel_16_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">-0.75 0.85 5.51 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_2d_code_panel_16</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game3_goal_area_game3_rail_2 -->
+    <link name="game3_goal_area_game3_rail_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game3_goal_area_game3_rail_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game3_rail_2 -->
+      <visual name="game3_rail_2_visual_mesh_1">
+        <pose relative_to="game3_goal_area_game3_rail_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_rail.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.780392 0.780392 0.780392 1</ambient>
+          <diffuse>0.780392 0.780392 0.780392 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game3_rail_2_collision_mesh_2">
+        <pose relative_to="game3_goal_area_game3_rail_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game3_rail.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game3_goal_area to game3_goal_area_game3_rail_2 -->
+    <joint name="game3_goal_area_game3_rail_2_fixed" type="fixed">
+      <pose relative_to="game3_goal_area">0.765687 0 6.46 3.14159 -0 3.14159</pose>
+      <parent>game3_goal_area</parent>
+      <child>game3_goal_area_game3_rail_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel -->
+    <link name="game1_df_panel">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_df_panel_2d_code_panel_17 -->
+    <link name="game1_df_panel_2d_code_panel_17">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel_2d_code_panel_17_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_17 -->
+      <visual name="2d_code_panel_17_visual_mesh_1">
+        <pose relative_to="game1_df_panel_2d_code_panel_17">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_4.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_17_collision_mesh_2">
+        <pose relative_to="game1_df_panel_2d_code_panel_17">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel to game1_df_panel_2d_code_panel_17 -->
+    <joint name="game1_df_panel_2d_code_panel_17_fixed" type="fixed">
+      <pose relative_to="game1_df_panel">4.575 0.002 -1.83 3.14159 -0 3.14159</pose>
+      <parent>game1_df_panel</parent>
+      <child>game1_df_panel_2d_code_panel_17</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel_game1_frame -->
+    <link name="game1_df_panel_game1_frame">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel_game1_frame_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_frame -->
+      <visual name="game1_frame_visual_mesh_1">
+        <pose relative_to="game1_df_panel_game1_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_frame_collision_mesh_2">
+        <pose relative_to="game1_df_panel_game1_frame">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel to game1_df_panel_game1_frame -->
+    <joint name="game1_df_panel_game1_frame_fixed" type="fixed">
+      <pose relative_to="game1_df_panel">4.475 0.002 -1.89 -0 1.5708 0</pose>
+      <parent>game1_df_panel</parent>
+      <child>game1_df_panel_game1_frame</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel_2d_code_panel_18 -->
+    <link name="game1_df_panel_2d_code_panel_18">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel_2d_code_panel_18_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_18 -->
+      <visual name="2d_code_panel_18_visual_mesh_1">
+        <pose relative_to="game1_df_panel_2d_code_panel_18">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_5.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_18_collision_mesh_2">
+        <pose relative_to="game1_df_panel_2d_code_panel_18">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel to game1_df_panel_2d_code_panel_18 -->
+    <joint name="game1_df_panel_2d_code_panel_18_fixed" type="fixed">
+      <pose relative_to="game1_df_panel">4.5 0.802 -2.065 -0 1.5708 0</pose>
+      <parent>game1_df_panel</parent>
+      <child>game1_df_panel_2d_code_panel_18</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel_2d_code_panel_19 -->
+    <link name="game1_df_panel_2d_code_panel_19">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel_2d_code_panel_19_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_19 -->
+      <visual name="2d_code_panel_19_visual_mesh_1">
+        <pose relative_to="game1_df_panel_2d_code_panel_19">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_6.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_19_collision_mesh_2">
+        <pose relative_to="game1_df_panel_2d_code_panel_19">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel to game1_df_panel_2d_code_panel_19 -->
+    <joint name="game1_df_panel_2d_code_panel_19_fixed" type="fixed">
+      <pose relative_to="game1_df_panel">4.44 0.802 -2.065 -0 1.5708 0</pose>
+      <parent>game1_df_panel</parent>
+      <child>game1_df_panel_2d_code_panel_19</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel_2d_code_panel_20 -->
+    <link name="game1_df_panel_2d_code_panel_20">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel_2d_code_panel_20_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_20 -->
+      <visual name="2d_code_panel_20_visual_mesh_1">
+        <pose relative_to="game1_df_panel_2d_code_panel_20">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_7.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_20_collision_mesh_2">
+        <pose relative_to="game1_df_panel_2d_code_panel_20">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel to game1_df_panel_2d_code_panel_20 -->
+    <joint name="game1_df_panel_2d_code_panel_20_fixed" type="fixed">
+      <pose relative_to="game1_df_panel">4.575 0.002 -2.49 3.14159 -0 3.14159</pose>
+      <parent>game1_df_panel</parent>
+      <child>game1_df_panel_2d_code_panel_20</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__1 -->
+    <link name="game1_df_panel__1">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_df_panel__1_2d_code_panel_21 -->
+    <link name="game1_df_panel__1_2d_code_panel_21">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__1_2d_code_panel_21_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_21 -->
+      <visual name="2d_code_panel_21_visual_mesh_1">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_21">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_8.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_21_collision_mesh_2">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_21">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__1 to game1_df_panel__1_2d_code_panel_21 -->
+    <joint name="game1_df_panel__1_2d_code_panel_21_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__1">3.065 0.802 -3.85 0 -0 0</pose>
+      <parent>game1_df_panel__1</parent>
+      <child>game1_df_panel__1_2d_code_panel_21</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__1_2d_code_panel_22 -->
+    <link name="game1_df_panel__1_2d_code_panel_22">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__1_2d_code_panel_22_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_22 -->
+      <visual name="2d_code_panel_22_visual_mesh_1">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_22">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_9.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_22_collision_mesh_2">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_22">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__1 to game1_df_panel__1_2d_code_panel_22 -->
+    <joint name="game1_df_panel__1_2d_code_panel_22_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__1">2.83 0.002 -3.775 -0 1.5708 0</pose>
+      <parent>game1_df_panel__1</parent>
+      <child>game1_df_panel__1_2d_code_panel_22</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__1_2d_code_panel_23 -->
+    <link name="game1_df_panel__1_2d_code_panel_23">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__1_2d_code_panel_23_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_23 -->
+      <visual name="2d_code_panel_23_visual_mesh_1">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_23">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_10.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_23_collision_mesh_2">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_23">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__1 to game1_df_panel__1_2d_code_panel_23 -->
+    <joint name="game1_df_panel__1_2d_code_panel_23_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__1">3.065 0.802 -3.91 0 -0 0</pose>
+      <parent>game1_df_panel__1</parent>
+      <child>game1_df_panel__1_2d_code_panel_23</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__1_game1_frame_2 -->
+    <link name="game1_df_panel__1_game1_frame_2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__1_game1_frame_2_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_frame_2 -->
+      <visual name="game1_frame_2_visual_mesh_1">
+        <pose relative_to="game1_df_panel__1_game1_frame_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_frame_2_collision_mesh_2">
+        <pose relative_to="game1_df_panel__1_game1_frame_2">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__1 to game1_df_panel__1_game1_frame_2 -->
+    <joint name="game1_df_panel__1_game1_frame_2_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__1">2.89 0.002 -3.875 0 -0 0</pose>
+      <parent>game1_df_panel__1</parent>
+      <child>game1_df_panel__1_game1_frame_2</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__1_2d_code_panel_24 -->
+    <link name="game1_df_panel__1_2d_code_panel_24">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__1_2d_code_panel_24_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_24 -->
+      <visual name="2d_code_panel_24_visual_mesh_1">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_24">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_11.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_24_collision_mesh_2">
+        <pose relative_to="game1_df_panel__1_2d_code_panel_24">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__1 to game1_df_panel__1_2d_code_panel_24 -->
+    <joint name="game1_df_panel__1_2d_code_panel_24_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__1">3.49 0.002 -3.775 -0 1.5708 0</pose>
+      <parent>game1_df_panel__1</parent>
+      <child>game1_df_panel__1_2d_code_panel_24</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__2 -->
+    <link name="game1_df_panel__2">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_df_panel__2_2d_code_panel_25 -->
+    <link name="game1_df_panel__2_2d_code_panel_25">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__2_2d_code_panel_25_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_25 -->
+      <visual name="2d_code_panel_25_visual_mesh_1">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_25">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_4.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_25_collision_mesh_2">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_25">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__2 to game1_df_panel__2_2d_code_panel_25 -->
+    <joint name="game1_df_panel__2_2d_code_panel_25_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__2">-4.51 0.802 -2.065 -0 1.5708 0</pose>
+      <parent>game1_df_panel__2</parent>
+      <child>game1_df_panel__2_2d_code_panel_25</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__2_2d_code_panel_26 -->
+    <link name="game1_df_panel__2_2d_code_panel_26">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__2_2d_code_panel_26_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_26 -->
+      <visual name="2d_code_panel_26_visual_mesh_1">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_26">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_5.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_26_collision_mesh_2">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_26">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__2 to game1_df_panel__2_2d_code_panel_26 -->
+    <joint name="game1_df_panel__2_2d_code_panel_26_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__2">-4.45 0.802 -2.065 -0 1.5708 0</pose>
+      <parent>game1_df_panel__2</parent>
+      <child>game1_df_panel__2_2d_code_panel_26</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__2_2d_code_panel_27 -->
+    <link name="game1_df_panel__2_2d_code_panel_27">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__2_2d_code_panel_27_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_27 -->
+      <visual name="2d_code_panel_27_visual_mesh_1">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_27">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_6.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_27_collision_mesh_2">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_27">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__2 to game1_df_panel__2_2d_code_panel_27 -->
+    <joint name="game1_df_panel__2_2d_code_panel_27_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__2">-4.375 0.002 -2.49 3.14159 -0 3.14159</pose>
+      <parent>game1_df_panel__2</parent>
+      <child>game1_df_panel__2_2d_code_panel_27</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__2_2d_code_panel_28 -->
+    <link name="game1_df_panel__2_2d_code_panel_28">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__2_2d_code_panel_28_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_28 -->
+      <visual name="2d_code_panel_28_visual_mesh_1">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_28">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_7.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_28_collision_mesh_2">
+        <pose relative_to="game1_df_panel__2_2d_code_panel_28">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__2 to game1_df_panel__2_2d_code_panel_28 -->
+    <joint name="game1_df_panel__2_2d_code_panel_28_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__2">-4.375 0.002 -1.83 3.14159 -0 3.14159</pose>
+      <parent>game1_df_panel__2</parent>
+      <child>game1_df_panel__2_2d_code_panel_28</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__2_game1_frame_3 -->
+    <link name="game1_df_panel__2_game1_frame_3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__2_game1_frame_3_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_frame_3 -->
+      <visual name="game1_frame_3_visual_mesh_1">
+        <pose relative_to="game1_df_panel__2_game1_frame_3">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_frame_3_collision_mesh_2">
+        <pose relative_to="game1_df_panel__2_game1_frame_3">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__2 to game1_df_panel__2_game1_frame_3 -->
+    <joint name="game1_df_panel__2_game1_frame_3_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__2">-4.475 0.002 -1.89 -0 1.5708 0</pose>
+      <parent>game1_df_panel__2</parent>
+      <child>game1_df_panel__2_game1_frame_3</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__3 -->
+    <link name="game1_df_panel__3">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link game1_df_panel__3_2d_code_panel_29 -->
+    <link name="game1_df_panel__3_2d_code_panel_29">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__3_2d_code_panel_29_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_29 -->
+      <visual name="2d_code_panel_29_visual_mesh_1">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_29">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_8.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_29_collision_mesh_2">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_29">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__3 to game1_df_panel__3_2d_code_panel_29 -->
+    <joint name="game1_df_panel__3_2d_code_panel_29_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__3">-3.265 0.802 -3.91 0 -0 0</pose>
+      <parent>game1_df_panel__3</parent>
+      <child>game1_df_panel__3_2d_code_panel_29</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__3_2d_code_panel_30 -->
+    <link name="game1_df_panel__3_2d_code_panel_30">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__3_2d_code_panel_30_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_30 -->
+      <visual name="2d_code_panel_30_visual_mesh_1">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_30">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_9.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_30_collision_mesh_2">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_30">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__3 to game1_df_panel__3_2d_code_panel_30 -->
+    <joint name="game1_df_panel__3_2d_code_panel_30_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__3">-3.5 0.002 -3.775 -0 1.5708 0</pose>
+      <parent>game1_df_panel__3</parent>
+      <child>game1_df_panel__3_2d_code_panel_30</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__3_2d_code_panel_31 -->
+    <link name="game1_df_panel__3_2d_code_panel_31">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__3_2d_code_panel_31_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_31 -->
+      <visual name="2d_code_panel_31_visual_mesh_1">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_31">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_10.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_31_collision_mesh_2">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_31">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__3 to game1_df_panel__3_2d_code_panel_31 -->
+    <joint name="game1_df_panel__3_2d_code_panel_31_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__3">-2.84 0.002 -3.775 -0 1.5708 0</pose>
+      <parent>game1_df_panel__3</parent>
+      <child>game1_df_panel__3_2d_code_panel_31</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__3_2d_code_panel_32 -->
+    <link name="game1_df_panel__3_2d_code_panel_32">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__3_2d_code_panel_32_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part 2d_code_panel_32 -->
+      <visual name="2d_code_panel_32_visual_mesh_1">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_32">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://rox2026_field/materials/textures/tag_11.png</albedo_map>
+              <roughness>0.8</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+      <collision name="2d_code_panel_32_collision_mesh_2">
+        <pose relative_to="game1_df_panel__3_2d_code_panel_32">0.1 0.1 0.005 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.01</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__3 to game1_df_panel__3_2d_code_panel_32 -->
+    <joint name="game1_df_panel__3_2d_code_panel_32_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__3">-3.265 0.802 -3.85 0 -0 0</pose>
+      <parent>game1_df_panel__3</parent>
+      <child>game1_df_panel__3_2d_code_panel_32</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link game1_df_panel__3_game1_frame_4 -->
+    <link name="game1_df_panel__3_game1_frame_4">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="game1_df_panel__3_game1_frame_4_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part game1_frame_4 -->
+      <visual name="game1_frame_4_visual_mesh_1">
+        <pose relative_to="game1_df_panel__3_game1_frame_4">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="game1_frame_4_collision_mesh_2">
+        <pose relative_to="game1_df_panel__3_game1_frame_4">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/game1_frame.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from game1_df_panel__3 to game1_df_panel__3_game1_frame_4 -->
+    <joint name="game1_df_panel__3_game1_frame_4_fixed" type="fixed">
+      <pose relative_to="game1_df_panel__3">-3.44 0.002 -3.875 0 -0 0</pose>
+      <parent>game1_df_panel__3</parent>
+      <child>game1_df_panel__3_game1_frame_4</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link field_line -->
+    <link name="field_line">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link field_line_field_line -->
+    <link name="field_line_field_line">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="field_line_field_line_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part field_line -->
+      <visual name="field_line_visual_mesh_1">
+        <pose relative_to="field_line_field_line">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/field_line.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.223529 0.223529 0.223529 1</ambient>
+          <diffuse>0.223529 0.223529 0.223529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="field_line_collision_mesh_2">
+        <pose relative_to="field_line_field_line">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/field_line.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from field_line to field_line_field_line -->
+    <joint name="field_line_field_line_fixed" type="fixed">
+      <pose relative_to="field_line">0 0.002 -0 0 -0 0</pose>
+      <parent>field_line</parent>
+      <child>field_line_field_line</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+    <!-- Link field_sheet -->
+    <link name="field_sheet">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose>0 0 0 0 -0 0</pose>
+    </link>
+    <!-- Link field_sheet_field_sheet -->
+    <link name="field_sheet_field_sheet">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1e-09</mass>
+        <inertia>
+          <ixx>1e-09</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1e-09</iyy>
+          <iyz>0</iyz>
+          <izz>1e-09</izz>
+        </inertia>
+      </inertial>
+      <pose relative_to="field_sheet_field_sheet_fixed">0 0 0 0 -0 0</pose>
+      <!-- Part field_sheet -->
+      <visual name="field_sheet_visual_mesh_1">
+        <pose relative_to="field_sheet_field_sheet">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/field_sheet.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.823529 0.823529 0.823529 1</ambient>
+          <diffuse>0.823529 0.823529 0.823529 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+          <emissive>0 0 0 0</emissive>
+        </material>
+      </visual>
+      <collision name="field_sheet_collision_mesh_2">
+        <pose relative_to="field_sheet_field_sheet">0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://rox2026_field/assets/field_sheet.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+    <!-- Joint from field_sheet to field_sheet_field_sheet -->
+    <joint name="field_sheet_field_sheet_fixed" type="fixed">
+      <pose relative_to="field_sheet">0 0 0 0 -0 0</pose>
+      <parent>field_sheet</parent>
+      <child>field_sheet_field_sheet</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <effort>10</effort>
+          <velocity>10</velocity>
+        </limit>
+        <dynamics>
+          <friction>0.0</friction>
+          <damping>0.0</damping>
+        </dynamics>
+      </axis>
+    </joint>
+  </model>
+</sdf>
