@@ -78,7 +78,7 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         name="static_tf_map_to_odom",
-        arguments=["--x", "-5.50", "--y", "4.50", "--z", "0", "--yaw", "-1.57079", "--pitch", "0", "--roll", "0", "--frame-id", "map", "--child-frame-id", "odom"],
+        arguments=["--x", "-5.925", "--y", "4.950", "--z", "0", "--yaw", "-1.57079", "--pitch", "0", "--roll", "0", "--frame-id", "map", "--child-frame-id", "odom"],
     )
 
     field_viz = Node(

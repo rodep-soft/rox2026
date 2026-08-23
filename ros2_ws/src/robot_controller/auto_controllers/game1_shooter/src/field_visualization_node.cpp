@@ -102,7 +102,7 @@ private:
 
     // 3. スタートエリア (GAME1 上側スタート / GAME2 手前側スタート)
     {
-      // GAME1 上側スタートエリア (自陣: X = -5.50m, Y = 4.50m) - 鮮やかな緑色
+      // GAME1 上側スタートエリア (自陣左上コーナー内: X = -5.925m, Y = 4.950m)
       visualization_msgs::msg::Marker g1_start_a;
       g1_start_a.header.frame_id = map_frame_;
       g1_start_a.header.stamp = now_stamp;
@@ -110,8 +110,8 @@ private:
       g1_start_a.id = id++;
       g1_start_a.type = visualization_msgs::msg::Marker::CUBE;
       g1_start_a.action = visualization_msgs::msg::Marker::ADD;
-      g1_start_a.pose.position.x = -5.50;
-      g1_start_a.pose.position.y = 4.50;
+      g1_start_a.pose.position.x = -5.925;
+      g1_start_a.pose.position.y = 4.950;
       g1_start_a.pose.position.z = 0.005;
       g1_start_a.pose.orientation.w = 1.0;
       g1_start_a.scale.x = 1.00;
@@ -126,7 +126,7 @@ private:
       // GAME1 敵陣上側スタート
       visualization_msgs::msg::Marker g1_start_b = g1_start_a;
       g1_start_b.id = id++;
-      g1_start_b.pose.position.x = 5.50;
+      g1_start_b.pose.position.x = 5.925;
       g1_start_b.color.r = 0.20f;
       g1_start_b.color.g = 0.50f;
       g1_start_b.color.b = 0.90f;

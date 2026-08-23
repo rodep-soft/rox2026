@@ -37,12 +37,12 @@ public:
     // パスエリア投入: (-1.30, 1.50)
     // スタート地点へ斜め直線帰還: (-5.50, 4.50)
     waypoints_ = {
-      {-5.50, 4.50, -1.5708, "Start Area", 0.0},
-      {-4.50, 2.80, -1.5708, "Vertical Gate Approach", 1.78},
-      {-4.50, 1.50, -1.5708, "Vertical Gate Pass Through", 1.00},
-      {-4.00, 0.80,  0.0000, "Gate Loop Around", 1.63},
-      {-1.30, 1.50,  0.0000, "Pass Area Drop", 2.50},
-      {-5.50, 4.50,  2.3562, "Straight Return", 3.50}
+      {-5.925, 4.950, -1.5708, "Start Area", 0.0},
+      {-4.500, 2.800, -1.5708, "Vertical Gate Approach", 1.78},
+      {-4.500, 1.500, -1.5708, "Vertical Gate Pass Through", 1.00},
+      {-4.000, 0.800,  0.0000, "Gate Loop Around", 1.63},
+      {-1.300, 1.500,  0.0000, "Pass Area Drop", 2.50},
+      {-5.925, 4.950,  2.3562, "Straight Return", 3.50}
     };
 
     publish_static_planned_path();
