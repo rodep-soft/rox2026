@@ -1,6 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-#include <ament_index_python/packages.hpp>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -247,5 +246,11 @@ private:
 
 }  // namespace robot_controller
 
-#include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(robot_controller::FieldVisualizationNode)
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<robot_controller::FieldVisualizationNode>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
+}
