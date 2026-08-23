@@ -42,7 +42,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   wp_around_gate_.y = declare_parameter<double>("wp_around_gate_y", 0.500);
   wp_around_gate_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_around_gate_yaw", 0.0);
 
-  wp_ball_.x = declare_parameter<double>("wp_ball_x", -3.500) * mirror_x;
+  wp_ball_.x = declare_parameter<double>("wp_ball_x", -2.700) * mirror_x;
   wp_ball_.y = declare_parameter<double>("wp_ball_y", 1.500);
   wp_ball_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 

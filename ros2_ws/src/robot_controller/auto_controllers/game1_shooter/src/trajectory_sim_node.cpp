@@ -56,7 +56,7 @@ public:
     const double wp_around_y = declare_parameter<double>("wp_around_gate_y", 0.500);
     const double wp_around_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_around_gate_yaw", 0.0);
 
-    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -3.500) * mirror_x;
+    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -2.700) * mirror_x;
     const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
     const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
