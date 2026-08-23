@@ -152,6 +152,29 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   }
   EXPECT_EQ(last_underbelt_rpm, 4200);
   EXPECT_EQ(last_upperbelt_rpm, 3800);
+
+  // 個別直接RPMトピック (/belt/command_underbelt_rpm, /belt/command_upperbelt_rpm) の動作テスト
+  auto pub_under_rpm = test_node->create_publisher<std_msgs::msg::Float32>(
+    "/belt/command_underbelt_rpm", 1);
+  auto pub_upper_rpm = test_node->create_publisher<std_msgs::msg::Float32>(
+    "/belt/command_upperbelt_rpm", 1);
+
+  std_msgs::msg::Float32 under_msg;
+  under_msg.data = 2100.0f;
+  std_msgs::msg::Float32 upper_msg;
+  upper_msg.data = 2900.0f;
+  pub_under_rpm->publish(under_msg);
+  pub_upper_rpm->publish(upper_msg);
+
+  start = std::chrono::steady_clock::now();
+  while ((last_underbelt_rpm != 2100 || last_upperbelt_rpm != 2900) &&
+    std::chrono::steady_clock::now() - start < std::chrono::seconds(2))
+  {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_EQ(last_underbelt_rpm, 2100);
+  EXPECT_EQ(last_upperbelt_rpm, 2900);
 }
 
 TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)

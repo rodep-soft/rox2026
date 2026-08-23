@@ -66,7 +66,8 @@ private:
 
   void publish_all(
     const geometry_msgs::msg::Twist & cmd_vel,
-    float belt_rpm,
+    float underbelt_rpm,
+    float upperbelt_rpm,
     bool shoot_trigger,
     bool dribble_enabled,
     uint8_t arm_mode,
@@ -84,7 +85,8 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr underbelt_rpm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr upperbelt_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
@@ -120,9 +122,12 @@ private:
   double dist_tolerance_{0.05};
   double tag_pitch_x_{0.40};    // [m] AprilTag横方向中心間ピッチ (実測値: 400mm)
   double tag_pitch_y_{0.43};    // [m] AprilTag縦方向中心間ピッチ (実測値: 430mm)
-  double rpm_bottom_{3000.0};
-  double rpm_middle_{4500.0};
-  double rpm_top_{6000.0};
+  double underbelt_rpm_bottom_{2050.0};
+  double upperbelt_rpm_bottom_{2050.0};
+  double underbelt_rpm_middle_{2300.0};
+  double upperbelt_rpm_middle_{2300.0};
+  double underbelt_rpm_top_{2700.0};
+  double upperbelt_rpm_top_{2700.0};
   double open_duration_{0.3};
   double shoot_hold_duration_{0.8};
   double ball_settle_duration_{0.3};
@@ -153,7 +158,8 @@ private:
   double target_y_{0.0};
   double target_z_{0.0};
   double target_heading_err_{0.0};
-  double target_rpm_{0.0};
+  double target_underbelt_rpm_{0.0};
+  double target_upperbelt_rpm_{0.0};
   bool target_valid_{false};
   int locked_target_id_{-1};
   rclcpp::Time state_start_time_;

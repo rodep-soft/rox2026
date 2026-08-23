@@ -47,7 +47,8 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
 
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
-  belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", cmd_qos);
+  underbelt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_underbelt_rpm", cmd_qos);
+  upperbelt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_upperbelt_rpm", cmd_qos);
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", cmd_qos);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", cmd_qos);
   arm_position_pub_ =
@@ -99,9 +100,12 @@ void Game2AutoNode::load_parameters()
   // Tolerances & Timings
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.015);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
-  rpm_bottom_ = declare_parameter<double>("rpm_bottom", 3000.0);
-  rpm_middle_ = declare_parameter<double>("rpm_middle", 4500.0);
-  rpm_top_ = declare_parameter<double>("rpm_top", 6000.0);
+  underbelt_rpm_bottom_ = declare_parameter<double>("underbelt_rpm_bottom", 2050.0);
+  upperbelt_rpm_bottom_ = declare_parameter<double>("upperbelt_rpm_bottom", 2050.0);
+  underbelt_rpm_middle_ = declare_parameter<double>("underbelt_rpm_middle", 2300.0);
+  upperbelt_rpm_middle_ = declare_parameter<double>("upperbelt_rpm_middle", 2300.0);
+  underbelt_rpm_top_ = declare_parameter<double>("underbelt_rpm_top", 2700.0);
+  upperbelt_rpm_top_ = declare_parameter<double>("upperbelt_rpm_top", 2700.0);
   open_duration_ = declare_parameter<double>("open_duration", 0.3);
   shoot_hold_duration_ = declare_parameter<double>("shoot_hold_duration", 0.8);
   ball_settle_duration_ = declare_parameter<double>("ball_settle_duration", 0.3);
@@ -190,12 +194,18 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
       camera_fx_ = param.as_double();
     } else if (name == "camera_offset_y") {
       camera_offset_y_ = param.as_double();
-    } else if (name == "rpm_bottom") {
-      rpm_bottom_ = param.as_double();
-    } else if (name == "rpm_middle") {
-      rpm_middle_ = param.as_double();
-    } else if (name == "rpm_top") {
-      rpm_top_ = param.as_double();
+    } else if (name == "underbelt_rpm_bottom") {
+      underbelt_rpm_bottom_ = param.as_double();
+    } else if (name == "upperbelt_rpm_bottom") {
+      upperbelt_rpm_bottom_ = param.as_double();
+    } else if (name == "underbelt_rpm_middle") {
+      underbelt_rpm_middle_ = param.as_double();
+    } else if (name == "upperbelt_rpm_middle") {
+      upperbelt_rpm_middle_ = param.as_double();
+    } else if (name == "underbelt_rpm_top") {
+      underbelt_rpm_top_ = param.as_double();
+    } else if (name == "upperbelt_rpm_top") {
+      upperbelt_rpm_top_ = param.as_double();
     } else if (name == "test_alignment_only") {
       test_alignment_only_ = param.as_bool();
       RCLCPP_INFO(
@@ -546,10 +556,22 @@ void Game2AutoNode::select_target_and_aim()
       target_valid_ = true;
 
       switch (row) {
-        case 0: target_rpm_ = rpm_bottom_; break;
-        case 1: target_rpm_ = rpm_middle_; break;
-        case 2: target_rpm_ = rpm_top_; break;
-        default: target_rpm_ = rpm_bottom_; break;
+        case 0:
+          target_underbelt_rpm_ = underbelt_rpm_bottom_;
+          target_upperbelt_rpm_ = upperbelt_rpm_bottom_;
+          break;
+        case 1:
+          target_underbelt_rpm_ = underbelt_rpm_middle_;
+          target_upperbelt_rpm_ = upperbelt_rpm_middle_;
+          break;
+        case 2:
+          target_underbelt_rpm_ = underbelt_rpm_top_;
+          target_upperbelt_rpm_ = upperbelt_rpm_top_;
+          break;
+        default:
+          target_underbelt_rpm_ = underbelt_rpm_bottom_;
+          target_upperbelt_rpm_ = upperbelt_rpm_bottom_;
+          break;
       }
       return;
     }
@@ -590,7 +612,7 @@ void Game2AutoNode::control_loop()
   if (!is_enabled_ || emergency_stop_active_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
     last_cmd_wz_ = 0.0;
     publish_all(
-      geometry_msgs::msg::Twist{}, 0.0f,
+      geometry_msgs::msg::Twist{}, 0.0f, 0.0f,
       false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
@@ -610,7 +632,7 @@ void Game2AutoNode::control_loop()
       enable_ball_limit_ ? ("/" + std::to_string(max_total_balls_)).c_str() : " (No limit)",
       std::min(active_row_, 3));
     publish_all(
-      geometry_msgs::msg::Twist{}, 0.0f,
+      geometry_msgs::msg::Twist{}, 0.0f, 0.0f,
       false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
     return;
   }
@@ -629,7 +651,9 @@ void Game2AutoNode::control_loop()
       active_row_);
 
     publish_all(
-      cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
+      cmd,
+      test_alignment_only_ ? 0.0f : static_cast<float>(target_underbelt_rpm_),
+      test_alignment_only_ ? 0.0f : static_cast<float>(target_upperbelt_rpm_),
       false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
@@ -728,8 +752,8 @@ void Game2AutoNode::control_loop()
         if (state_elapsed >= open_duration_) {
           RCLCPP_INFO(
             get_logger(),
-            "🔥 [Game2] Arm OPEN complete. Feeding ball to dual flywheel belt (RPM: %.0f)!",
-            target_rpm_);
+            "🔥 [Game2] Arm OPEN complete. Feeding ball to dual flywheel belt (Under RPM: %.0f, Upper RPM: %.0f)!",
+            target_underbelt_rpm_, target_upperbelt_rpm_);
           state_ = robot_msgs::msg::Game2State::SHOOTING;
           state_start_time_ = current_time;
           shoot_start_time_ = current_time;
@@ -828,7 +852,9 @@ void Game2AutoNode::control_loop()
   }
 
   publish_all(
-    cmd, test_alignment_only_ ? 0.0f : static_cast<float>(target_rpm_),
+    cmd,
+    test_alignment_only_ ? 0.0f : static_cast<float>(target_underbelt_rpm_),
+    test_alignment_only_ ? 0.0f : static_cast<float>(target_upperbelt_rpm_),
     test_alignment_only_ ? false : shoot_trigger,
     test_alignment_only_ ? false : true,
     arm_mode, state_ == robot_msgs::msg::Game2State::COMPLETED);
@@ -836,7 +862,8 @@ void Game2AutoNode::control_loop()
 
 void Game2AutoNode::publish_all(
   const geometry_msgs::msg::Twist & cmd_vel,
-  float belt_rpm,
+  float underbelt_rpm,
+  float upperbelt_rpm,
   bool shoot_trigger,
   bool dribble_enabled,
   uint8_t arm_mode,
@@ -844,9 +871,13 @@ void Game2AutoNode::publish_all(
 {
   cmd_vel_pub_->publish(cmd_vel);
 
-  std_msgs::msg::Float32 rpm_msg;
-  rpm_msg.data = belt_rpm;
-  belt_rpm_pub_->publish(rpm_msg);
+  std_msgs::msg::Float32 under_rpm_msg;
+  under_rpm_msg.data = underbelt_rpm;
+  underbelt_rpm_pub_->publish(under_rpm_msg);
+
+  std_msgs::msg::Float32 upper_rpm_msg;
+  upper_rpm_msg.data = upperbelt_rpm;
+  upperbelt_rpm_pub_->publish(upper_rpm_msg);
 
   std_msgs::msg::Bool shoot_msg;
   shoot_msg.data = shoot_trigger;
