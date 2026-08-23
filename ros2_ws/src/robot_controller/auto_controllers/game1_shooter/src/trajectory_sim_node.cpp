@@ -85,9 +85,8 @@ public:
     // waypoints_[0] は初期開始地点なので、目標は 1 からスタート
     curr_x_ = waypoints_[0].x;
     curr_y_ = waypoints_[0].y;
-    // 初期向き: ゲート方向（スタート→ゲートは真下 = -π/2）でボール保持側を前に向ける
-    // ※帰還時のyaw (wp_start_yaw) は帰ってきたときの向きなので初期向きとは別
-    curr_yaw_ = -M_PI / 2.0;
+    // 初期向き: yaw=0.0 (ゲート射出方向)。帰還も同じyawなので次サイクルに旋回不要
+    curr_yaw_ = 0.0;
     current_segment_ = 1;
 
     publish_static_planned_path();
@@ -167,7 +166,7 @@ private:
       if (is_fly_through) {
         if (dist <= arrive_threshold) { current_segment_++; }
       } else {
-        if (dist <= pos_tolerance_ && std::abs(yaw_err) <= yaw_tolerance_) {
+        if (dist <= pos_tolerance_ && (current_segment_ == 4 || std::abs(yaw_err) <= yaw_tolerance_)) {
           wp_wait_timer_ += dt;
           const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 1.2 : 0.0;
           if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }

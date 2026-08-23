@@ -52,7 +52,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 
   wp_start_.x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
   wp_start_.y = declare_parameter<double>("wp_start_y", 4.950);
-  wp_start_.yaw = (mirror_x < 0.0) ? -M_PI / 2.0 : declare_parameter<double>("wp_start_yaw", -M_PI / 2.0);
+  wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0);
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,
