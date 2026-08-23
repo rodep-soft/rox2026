@@ -185,6 +185,13 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
   }
 
   emergency_stop_active_ = msg->data;
+  if (!emergency_stop_active_ && state_ == State::UNINITIALIZED && homing_required_ && actuator_ready_) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Spring EduLite ready and emergency stop released. Starting one-time HOMING.");
+    start_homing();
+  }
+
   const bool slow_fire_interrupted =
     state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING;
   if (!emergency_stop_active_ &&
@@ -392,8 +399,17 @@ void SpringEduliteController::actuator_state_callback(
 
 void SpringEduliteController::control_timer_callback()
 {
-  if (state_ == State::UNINITIALIZED || state_ == State::ERROR ||
-    zero_service_pending_)
+  if (state_ == State::UNINITIALIZED) {
+    if (homing_required_ && actuator_ready_ && !emergency_stop_active_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Spring EduLite ready in control timer. Starting one-time HOMING.");
+      start_homing();
+    }
+    return;
+  }
+
+  if (state_ == State::ERROR || zero_service_pending_)
   {
     return;
   }
