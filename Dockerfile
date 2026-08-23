@@ -61,7 +61,9 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       ros-humble-rqt \
       ros-humble-rqt-graph \
       ros-humble-rviz2 \
-      ros-humble-foxglove-bridge; \
+      ros-humble-foxglove-bridge \
+      ros-humble-ros-gz-sim \
+      ros-humble-ros-gz-bridge; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init || true
