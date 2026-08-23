@@ -89,13 +89,15 @@ def generate_launch_description():
         output="screen",
     )
 
+    side = LaunchConfiguration("side", default="right")
+
     game1_config = os.path.join(pkg_robot_bringup, "config", "game1.yaml")
 
     trajectory_sim = Node(
         package="robot_controller",
         executable="trajectory_sim_node",
         name="trajectory_sim_node",
-        parameters=[game1_config],
+        parameters=[game1_config, {"field_side": side}],
         output="screen",
     )
 

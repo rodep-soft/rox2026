@@ -33,31 +33,36 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
-    const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925);
+    const std::string field_side = declare_parameter<std::string>("field_side", "left");
+    const double mirror_x = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+    const double yaw_flip = (mirror_x < 0.0) ? M_PI : 0.0;
+
+    const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
     const double wp_start_y = declare_parameter<double>("wp_start_y", 4.950);
-    const double wp_start_yaw = declare_parameter<double>("wp_start_yaw", -1.5708);
+    const double wp_start_yaw = (mirror_x < 0.0) ? -1.5708 : declare_parameter<double>("wp_start_yaw", -1.5708);
 
-    const double wp_gate_x = declare_parameter<double>("wp_gate_x", -5.925);
+    const double wp_gate_x = declare_parameter<double>("wp_gate_x", -5.925) * mirror_x;
     const double wp_gate_y = declare_parameter<double>("wp_gate_y", 1.500);
-    const double wp_gate_yaw = declare_parameter<double>("wp_gate_yaw", 0.0);
+    const double wp_gate_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_gate_yaw", 0.0);
 
-    const double wp_around_x = declare_parameter<double>("wp_around_gate_x", -4.500);
+    const double wp_around_x = declare_parameter<double>("wp_around_gate_x", -4.500) * mirror_x;
     const double wp_around_y = declare_parameter<double>("wp_around_gate_y", 0.500);
-    const double wp_around_yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0);
+    const double wp_around_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_around_gate_yaw", 0.0);
 
-    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -3.500);
+    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -3.500) * mirror_x;
     const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
-    const double wp_ball_yaw = declare_parameter<double>("wp_ball_yaw", 0.0);
+    const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
-    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.300);
+    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.300) * mirror_x;
     const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.500);
-    const double wp_pass_yaw = declare_parameter<double>("wp_pass_area_yaw", 0.0);
+    const double wp_pass_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_pass_area_yaw", 0.0);
 
-    const double wp_apex_x = declare_parameter<double>("wp_return_apex_x", -3.800);
+    const double wp_apex_x = declare_parameter<double>("wp_return_apex_x", -3.800) * mirror_x;
     const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 2.800);
-    const double wp_apex_yaw = declare_parameter<double>("wp_return_apex_yaw", 2.200);
+    const double wp_apex_yaw = (mirror_x < 0.0) ? (M_PI - 2.200) : declare_parameter<double>("wp_return_apex_yaw", 2.200);
 
     // game1.yaml の全パラメータから完全構築
+    const double return_yaw = (mirror_x < 0.0) ? 0.7854 : 2.3562;
     waypoints_ = {
       {wp_start_x,  wp_start_y,  wp_start_yaw,  "Start Area", 0.0},
       {wp_gate_x,   wp_gate_y,   wp_gate_yaw,   "Shoot Outside Gate", 1.78},
@@ -65,7 +70,7 @@ public:
       {wp_ball_x,   wp_ball_y,   wp_ball_yaw,   "Catch Ball & Dribble", 1.20},
       {wp_pass_x,   wp_pass_y,   wp_pass_yaw,   "Pass Area Drop", 1.80},
       {wp_apex_x,   wp_apex_y,   wp_apex_yaw,   "Optimal Clearance Apex", 1.30},
-      {wp_start_x,  wp_start_y,  2.3562,        "Fast Straight Dash to Start", 1.50}
+      {wp_start_x,  wp_start_y,  return_yaw,    "Fast Straight Dash to Start", 1.50}
     };
 
     gate_center_x_ = (wp_gate_x + wp_ball_x) / 2.0;
@@ -81,7 +86,7 @@ public:
       std::chrono::milliseconds(30), // 33Hz
       std::bind(&TrajectorySimNode::sim_loop, this));
 
-    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Configured DIRECTLY from game1.yaml ROS parameters!");
+    RCLCPP_INFO(get_logger(), "TrajectorySimNode: Configured for field_side='%s' from game1.yaml!", field_side.c_str());
   }
 
 private:
