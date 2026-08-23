@@ -262,36 +262,48 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag 3D マーカー (/tmp/ref_repo tag_localizer 準拠)
+    // 6. 全27枚の公式 AprilTag (ID 0〜26)
+    // GAME2パネル: 上段(14,15,16) -> 中段(17,18,19) -> 下段(20,21,22)
     {
       struct TagData {
         int id;
         double x, y, z, yaw;
       };
       const std::vector<TagData> all_tags = {
+        // コーナー・外壁
         {0,  -6.495, -5.020, 0.420, -1.571},
         {1,  -6.020, -5.495, 0.420, -3.142},
         {2,  -6.500,  4.920, 0.320,  1.571},
         {3,  -6.020,  5.495, 0.420, -3.142},
+
+        // GAME1 縦向きDFゲート
         {4,  -4.505,  2.165, 0.922,  1.571},
         {5,  -4.445,  2.165, 0.922,  1.571},
         {6,  -4.475,  2.495, 0.122, -3.142},
         {7,  -4.475,  1.835, 0.122, -3.142},
+
+        // GAME1 上側横向きDFゲート
         {8,  -3.165,  3.905, 0.922,  0.000},
         {9,  -3.495,  3.875, 0.122,  1.571},
         {10, -2.835,  3.875, 0.122,  1.571},
         {11, -3.165,  3.845, 0.922,  0.000},
+
+        // センターラインポール
         {12,  0.015,  0.750, 0.422,  1.571},
         {13,  0.015,  2.550, 0.422,  1.571},
-        {14, -3.430, -5.525, 0.270, -3.142},
-        {15, -3.020, -5.525, 0.270, -3.142},
-        {16, -3.840, -5.525, 0.730, -3.142},
-        {17, -3.430, -5.525, 1.190, -3.142},
-        {18, -3.430, -5.525, 0.730, -3.142},
-        {19, -3.020, -5.525, 1.190, -3.142},
-        {20, -3.840, -5.525, 1.190, -3.142},
-        {21, -3.020, -5.525, 0.730, -3.142},
-        {22, -3.840, -5.525, 0.270, -3.142},
+
+        // GAME2 3x3 シュートパネル (上段 14,15,16 / 中段 17,18,19 / 下段 20,21,22)
+        {14, -3.640, -5.525, 1.190, -3.142}, // 上段 左
+        {15, -3.230, -5.525, 1.190, -3.142}, // 上段 中
+        {16, -2.820, -5.525, 1.190, -3.142}, // 上段 右
+        {17, -3.640, -5.525, 0.730, -3.142}, // 中段 左
+        {18, -3.230, -5.525, 0.730, -3.142}, // 中段 中
+        {19, -2.820, -5.525, 0.730, -3.142}, // 中段 右
+        {20, -3.640, -5.525, 0.270, -3.142}, // 下段 左
+        {21, -3.230, -5.525, 0.270, -3.142}, // 下段 中
+        {22, -2.820, -5.525, 0.270, -3.142}, // 下段 右
+
+        // GAME3 ゴールエリアポスト
         {23,  0.850, -5.505, 0.120, -3.142},
         {24,  0.850, -5.505, 0.970, -3.142},
         {25, -0.850, -5.505, 0.120, -3.142},
@@ -299,7 +311,6 @@ private:
       };
 
       for (const auto & tag : all_tags) {
-        // Tag 板 (黒枠)
         visualization_msgs::msg::Marker tag_marker;
         tag_marker.header.frame_id = map_frame_;
         tag_marker.header.stamp = now_stamp;
@@ -321,7 +332,6 @@ private:
         tag_marker.color.a = 1.0f;
         msg.markers.push_back(tag_marker);
 
-        // Tag ID テキストラベル
         visualization_msgs::msg::Marker text_marker;
         text_marker.header.frame_id = map_frame_;
         text_marker.header.stamp = now_stamp;
@@ -332,17 +342,17 @@ private:
         text_marker.pose.position.x = tag.x;
         text_marker.pose.position.y = tag.y;
         text_marker.pose.position.z = tag.z + 0.15;
-        text_marker.scale.z = 0.14; // 文字サイズ
+        text_marker.scale.z = 0.14;
         text_marker.color.r = 1.0f;
         text_marker.color.g = 1.0f;
-        text_marker.color.b = 0.3f;
+        text_marker.color.b = 0.2f;
         text_marker.color.a = 1.0f;
         text_marker.text = "#" + std::to_string(tag.id);
         msg.markers.push_back(text_marker);
       }
     }
 
-    // 7. GAME3 ゴールエリア & GAME2 パネル
+    // 7. GAME3 ゴールエリア & GAME2 パネル (3x3)
     {
       visualization_msgs::msg::Marker g3_goal;
       g3_goal.header.frame_id = map_frame_;
@@ -364,7 +374,7 @@ private:
       g3_goal.color.a = 0.90f;
       msg.markers.push_back(g3_goal);
 
-      const std::vector<double> g2_xs = {-3.20, 3.20};
+      const std::vector<double> g2_xs = {-3.23, 3.23};
       for (const double g2_x : g2_xs) {
         for (int r = 0; r < 3; ++r) {
           for (int c = 0; c < 3; ++c) {
@@ -375,13 +385,15 @@ private:
             panel.id = id++;
             panel.type = visualization_msgs::msg::Marker::CUBE;
             panel.action = visualization_msgs::msg::Marker::ADD;
-            panel.pose.position.x = g2_x + (c - 1) * 0.32;
+            // c=0(左), c=1(中), c=2(右)
+            panel.pose.position.x = g2_x + (c - 1) * 0.41;
             panel.pose.position.y = -5.45;
-            panel.pose.position.z = 0.20 + r * 0.32;
+            // r=0(下段 0.27m), r=1(中段 0.73m), r=2(上段 1.19m)
+            panel.pose.position.z = 0.27 + r * 0.46;
             panel.pose.orientation.w = 1.0;
-            panel.scale.x = 0.28;
+            panel.scale.x = 0.35;
             panel.scale.y = 0.04;
-            panel.scale.z = 0.28;
+            panel.scale.z = 0.35;
             panel.color.r = 0.85f;
             panel.color.g = 0.20f;
             panel.color.b = 0.20f;
