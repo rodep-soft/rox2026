@@ -74,6 +74,20 @@ def generate_launch_description():
         parameters=[{"robot_description": robot_description_content, "use_sim_time": use_sim_time}],
     )
 
+    static_tf_map_odom = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="static_tf_map_to_odom",
+        arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "map", "--child-frame-id", "odom"],
+    )
+
+    static_tf_odom_base = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="static_tf_odom_to_base",
+        arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "odom", "--child-frame-id", "base_footprint"],
+    )
+
     foxglove_bridge = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(pkg_robot_bringup, "launch", "foxglove_bridge.launch.py"))
     )
@@ -88,6 +102,8 @@ def generate_launch_description():
             gazebo_sim,
             bridge,
             robot_state_publisher,
+            static_tf_map_odom,
+            static_tf_odom_base,
             foxglove_bridge,
         ]
     )
