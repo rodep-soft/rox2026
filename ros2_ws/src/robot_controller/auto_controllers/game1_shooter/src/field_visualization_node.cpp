@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and Ultra-High Visibility AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and inverted-normal AprilTags to /field/markers");
   }
 
 private:
@@ -260,7 +260,7 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag 3D マーカー (最前面 HUD フローティング表示)
+    // 6. 全27枚の公式 AprilTag 3D マーカー (180度反転して正しい表面をコート内側に向ける)
     {
       struct TagData {
         int id;
@@ -268,43 +268,43 @@ private:
       };
       const std::vector<TagData> all_tags = {
         // コーナー・外壁
-        {0,  -6.490, -4.920, 0.300,  0.000},   // 左下壁 (東向き)
-        {1,  -5.920, -5.500, 0.300,  1.571},   // 左下壁 (北向き)
-        {2,  -6.500,  4.920, 0.300,  0.000},   // 左上壁 (東向き)
-        {3,  -5.920,  5.490, 0.300, -1.571},   // 左上壁 (南向き)
+        {0,  -6.490, -4.920, 0.300,  3.142},   // 西向き
+        {1,  -5.920, -5.500, 0.300, -1.571},   // 南向き
+        {2,  -6.500,  4.920, 0.300,  3.142},   // 西向き
+        {3,  -5.920,  5.490, 0.300,  1.571},   // 北向き
 
-        // GAME1 縦向きDFゲート (X=-4.50, Y=1.50)
-        {4,  -4.510,  2.065, 0.802,  0.000},   // バー表 (東向き)
-        {5,  -4.450,  2.065, 0.802,  3.142},   // バー裏 (西向き)
-        {6,  -4.375,  2.490, 0.122, -1.571},   // 上支柱 (南向き)
-        {7,  -4.375,  1.830, 0.122,  1.571},   // 下支柱 (北向き)
+        // GAME1 縦向きDFゲート
+        {4,  -4.510,  2.065, 0.802,  3.142},   // 西向き
+        {5,  -4.450,  2.065, 0.802,  0.000},   // 東向き
+        {6,  -4.375,  2.490, 0.122,  1.571},   // 北向き
+        {7,  -4.375,  1.830, 0.122, -1.571},   // 南向き
 
-        // GAME1 上側横向きDFゲート (X=-3.20, Y=3.80)
-        {8,  -3.265,  3.910, 0.802, -1.571},   // バー表 (南向き)
-        {9,  -3.500,  3.775, 0.122,  0.000},   // 左支柱 (東向き)
-        {10, -2.840,  3.775, 0.122,  3.142},   // 右支柱 (西向き)
-        {11, -3.265,  3.850, 0.802,  1.571},   // バー裏 (北向き)
+        // GAME1 上側横向きDFゲート
+        {8,  -3.265,  3.910, 0.802,  1.571},   // 北向き
+        {9,  -3.500,  3.775, 0.122,  3.142},   // 西向き
+        {10, -2.840,  3.775, 0.122,  0.000},   // 東向き
+        {11, -3.265,  3.850, 0.802, -1.571},   // 南向き
 
-        // センターラインポール (X=0.0)
-        {12, -0.020,  0.650, 0.302,  3.142},   // 自陣向き (西向き)
-        {13, -0.020,  2.450, 0.302,  3.142},   // 自陣向き (西向き)
+        // センターラインポール
+        {12, -0.020,  0.650, 0.302,  0.000},   // 東向き
+        {13, -0.020,  2.450, 0.302,  0.000},   // 東向き
 
-        // GAME2 3x3 シュートパネル (上段 14,15,16 / 中段 17,18,19 / 下段 20,21,22)
-        {14, -3.640, -5.525, 0.970,  1.571},   // 上段 左
-        {15, -3.230, -5.525, 0.970,  1.571},   // 上段 中
-        {16, -2.820, -5.525, 0.970,  1.571},   // 上段 右
-        {17, -3.640, -5.525, 0.510,  1.571},   // 中段 左
-        {18, -3.230, -5.525, 0.510,  1.571},   // 中段 中
-        {19, -2.820, -5.525, 0.510,  1.571},   // 中段 右
-        {20, -3.640, -5.525, 0.050,  1.571},   // 下段 左
-        {21, -3.230, -5.525, 0.050,  1.571},   // 下段 中
-        {22, -2.820, -5.525, 0.050,  1.571},   // 下段 右
+        // GAME2 3x3 シュートパネル (南向き -Y 方向に反転)
+        {14, -3.640, -5.525, 0.970, -1.571},   // 上段 左
+        {15, -3.230, -5.525, 0.970, -1.571},   // 上段 中
+        {16, -2.820, -5.525, 0.970, -1.571},   // 上段 右
+        {17, -3.640, -5.525, 0.510, -1.571},   // 中段 左
+        {18, -3.230, -5.525, 0.510, -1.571},   // 中段 中
+        {19, -2.820, -5.525, 0.510, -1.571},   // 中段 右
+        {20, -3.640, -5.525, 0.050, -1.571},   // 下段 左
+        {21, -3.230, -5.525, 0.050, -1.571},   // 下段 中
+        {22, -2.820, -5.525, 0.050, -1.571},   // 下段 右
 
-        // GAME3 ゴールエリアポスト
-        {23,  0.950, -5.510, 0.120,  1.571},
-        {24,  0.950, -5.510, 0.850,  1.571},
-        {25, -0.750, -5.510, 0.120,  1.571},
-        {26, -0.750, -5.510, 0.850,  1.571}
+        // GAME3 ゴールエリアポスト (南向き -Y 方向に反転)
+        {23,  0.950, -5.510, 0.120, -1.571},
+        {24,  0.950, -5.510, 0.850, -1.571},
+        {25, -0.750, -5.510, 0.120, -1.571},
+        {26, -0.750, -5.510, 0.850, -1.571}
       };
 
       for (const auto & tag : all_tags) {
@@ -314,7 +314,7 @@ private:
         const double px = tag.x + forward_offset * nx;
         const double py = tag.y + forward_offset * ny;
 
-        // 1. Tag プレート本体 (黒枠)
+        // 1. Tag プレート本体
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -357,7 +357,7 @@ private:
         tag_inner.color.a = 0.95f;
         msg.markers.push_back(tag_inner);
 
-        // 3. タグプレートの【真ん中ど真ん中】に前面刻印される黒太文字 ID (04, 18, etc.)
+        // 3. タグプレートの真ん中に前面刻印される黒太文字 ID
         visualization_msgs::msg::Marker on_tag_text;
         on_tag_text.header.frame_id = map_frame_;
         on_tag_text.header.stamp = now_stamp;
@@ -367,18 +367,18 @@ private:
         on_tag_text.action = visualization_msgs::msg::Marker::ADD;
         on_tag_text.pose.position.x = px + 0.025 * nx;
         on_tag_text.pose.position.y = py + 0.025 * ny;
-        on_tag_text.pose.position.z = tag.z; // タグのど真ん中
-        on_tag_text.scale.z = 0.11; // プレートいっぱいの特大数字
+        on_tag_text.pose.position.z = tag.z;
+        on_tag_text.scale.z = 0.11;
         on_tag_text.color.r = 0.05f;
         on_tag_text.color.g = 0.05f;
         on_tag_text.color.b = 0.05f;
-        on_tag_text.color.a = 1.00f; // くっきり黒文字
+        on_tag_text.color.a = 1.00f;
         char buf[32];
         std::snprintf(buf, sizeof(buf), "%d", tag.id);
         on_tag_text.text = buf;
         msg.markers.push_back(on_tag_text);
 
-        // 4. タグ上空に浮かぶ発光 HUD バッジ [TAG 04] (遠景・引きカメラ視点用)
+        // 4. タグ上空に浮かぶ発光 HUD バッジ
         visualization_msgs::msg::Marker hud_badge;
         hud_badge.header.frame_id = map_frame_;
         hud_badge.header.stamp = now_stamp;
@@ -388,11 +388,11 @@ private:
         hud_badge.action = visualization_msgs::msg::Marker::ADD;
         hud_badge.pose.position.x = tag.x;
         hud_badge.pose.position.y = tag.y;
-        hud_badge.pose.position.z = tag.z + 0.22; // 上空にクリアに浮遊
-        hud_badge.scale.z = 0.16; // 遠くからでも超特大
+        hud_badge.pose.position.z = tag.z + 0.22;
+        hud_badge.scale.z = 0.16;
         hud_badge.color.r = 0.00f;
         hud_badge.color.g = 1.00f;
-        hud_badge.color.b = 0.85f; // ネオンシアン発光
+        hud_badge.color.b = 0.85f;
         hud_badge.color.a = 1.00f;
         char hud_buf[32];
         std::snprintf(hud_buf, sizeof(hud_buf), "#%02d", tag.id);
