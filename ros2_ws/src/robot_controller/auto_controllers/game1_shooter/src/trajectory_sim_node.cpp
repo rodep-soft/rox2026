@@ -35,7 +35,7 @@ public:
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
     kp_linear_ = declare_parameter<double>("kp_linear", 1.0);     // 実機と同一
     kp_angular_ = declare_parameter<double>("kp_angular", 1.5);   // 実機と同一
-    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);   // 実機と同一
+    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);   // 実機と同一
     max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0); // 実機と同一 (旋回は控えめ)
     pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
     yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);

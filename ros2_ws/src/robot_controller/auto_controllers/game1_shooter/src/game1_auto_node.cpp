@@ -11,7 +11,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 {
   kp_linear_ = declare_parameter<double>("kp_linear", 1.0);
   kp_angular_ = declare_parameter<double>("kp_angular", 1.5);
-  max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);
+  max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);
   max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
   pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
