@@ -106,10 +106,12 @@ private:
   double max_angular_accel_{4.0}; // [rad/s^2]
   double target_distance_{4.0};
 
-  // Camera Optical / Physical Parameters
-  double camera_offset_x_{0.265};
-  double camera_offset_y_{0.035};
-  double camera_offset_z_{0.193};
+  // Camera Optical / Physical Parameters (base_link frame: kicker is +X, left is +Y)
+  double camera_offset_x_{-0.265}; // [m] 後方 -265mm
+  double camera_offset_y_{0.035};  // [m] 左 +35mm
+  double camera_offset_z_{0.193};  // [m] 上 +193mm
+  double shooter_offset_x_{-0.265}; // [m] フライホイール射出口 X (後方 -265mm)
+  double shooter_offset_y_{0.0};    // [m] フライホイール射出口 Y (中心線 0.0mm)
   double camera_image_width_{1920.0};
   double camera_image_height_{1080.0};
   double camera_fx_{800.0};
@@ -131,17 +133,21 @@ private:
   double open_duration_{0.3};
   double shoot_hold_duration_{0.8};
   double ball_settle_duration_{0.3};
+  double belt_spinup_duration_{0.5}; // [s] ベルトRPM変更後の回転数安定待ち時間
   double tag_lost_timeout_{0.5};
   double aligning_timeout_{10.0};
   double shooting_timeout_{3.0};
   double result_wait_duration_{1.0}; // [s] 射出後の飛翔・倒れ確認判定待ち時間
-  int max_shots_per_panel_{1};
+  int max_shots_per_panel_{0}; // 1枚あたりの最大射出回数 (0: 倒れるまで無制限リトライ)
   int max_total_balls_{15}; // 最大所持球数
-  bool enable_ball_limit_{true}; // true: max_total_balls球でシーケンス停止, false: 球数制限なし
+  bool enable_ball_limit_{false}; // true: max_total_balls球でシーケンス停止, false: 球数制限なし(全倒しまで継続)
   bool require_ball_detected_{true};
   bool test_alignment_only_{false};
   bool auto_advance_rows_{true};
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
+  bool prefer_same_row_first_{true}; // 同一段(同RPM)の残存パネルを最優先しベルト回転数変更を最小化
+  bool enable_vertical_sweep_{false}; // 同一列の残存パネルを垂直優先射出
+  bool enable_nearest_angle_search_{true}; // 最小角度変化(TSP近傍探索)でターゲットを選択
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
@@ -150,6 +156,7 @@ private:
   bool ball_detected_{false};
   int total_shots_fired_{0}; // 累計射出球数
   rclcpp::Time ball_detected_time_;
+  rclcpp::Time rpm_changed_time_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{0}; // 0: Bottom, 1: Middle, 2: Top
   int active_target_id_{-1};
@@ -160,6 +167,8 @@ private:
   double target_heading_err_{0.0};
   double target_underbelt_rpm_{0.0};
   double target_upperbelt_rpm_{0.0};
+  double last_target_underbelt_rpm_{0.0};
+  double last_target_upperbelt_rpm_{0.0};
   bool target_valid_{false};
   int locked_target_id_{-1};
   rclcpp::Time state_start_time_;

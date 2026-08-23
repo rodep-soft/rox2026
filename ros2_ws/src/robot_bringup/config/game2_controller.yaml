@@ -4,10 +4,16 @@ game2_auto_node:
     cmd_vel_topic: "/mecanum/cmd_vel_heading"
     target_distance: 4.0 # m
 
-    # ── カメラ物理・光学パラメータ ──
-    camera_offset_x: 0.265  # [m] 前方オフセット (実測値: 265mm)
-    camera_offset_y: -0.035 # [m] 右カメラオフセット (実測値: 35mm: 射出口より35mm右 = ROS座標系yはマイナス)
-    camera_offset_z: 0.193  # [m] 上方オフセット (実測値: 193mm)
+    # 座標系について
+    # 常にgame1, game2, game3でロボット座標系は固定
+    # バネ射出がある方が常に前、そこから見て左が常に正
+
+    # ── カメラ物理・光学パラメータ (base_link 基準: キッカー前+X, 左+Y, 上+Z) ──
+    camera_offset_x: -0.265 # [m] base_link基準: ロボット中心より後方へ 265mm
+    camera_offset_y: 0.035  # [m] base_link基準: ロボット中心より左へ 35mm (実測値そのまま)
+    camera_offset_z: 0.193  # [m] base_link基準: ロボット中心より上方へ 193mm
+    shooter_offset_x: -0.265 # [m] base_link基準: フライホイール射出口中心 X位置 (後方 265mm)
+    shooter_offset_y: 0.0    # [m] base_link基準: フライホイール射出口中心 Y位置 (ロボット中心線上)
     camera_image_width: 1920.0
     camera_image_height: 1080.0
     camera_fx: 723.47       # [px] 水平焦点距離 (実測 CameraInfo: 723.4666)
@@ -15,7 +21,7 @@ game2_auto_node:
     camera_cx: 746.35       # [px] 光学主点X (実測 CameraInfo: 746.3508)
     camera_cy: 578.43       # [px] 光学主点Y (実測 CameraInfo: 578.4283)
 
-    # ── 📐 パネル物理配置パラメータ (Tag中心間ピッチ) ──
+    # ── パネル物理配置パラメータ (Tag中心間ピッチ) ──
     tag_pitch_x: 0.40       # [m] 横方向中心間ピッチ (実測値: 400mm)
     tag_pitch_y: 0.43       # [m] 縦方向中心間ピッチ (実測値: 430mm)
 
@@ -40,6 +46,8 @@ game2_auto_node:
     test_alignment_only: false
 
     # ── 射出・ボール制御パラメータ ──
+    # 調整は手動でやるべき
+
     # ベルト上下個別の射出回転数 [RPM]
     # 下段パネル (Row 0)
     underbelt_rpm_bottom: 2050.0
@@ -50,19 +58,31 @@ game2_auto_node:
     # 上段パネル (Row 2)
     underbelt_rpm_top: 2700.0
     upperbelt_rpm_top: 2700.0
+
+
     open_duration: 0.3      # [s] アームOPEN展開所要時間
     shoot_hold_duration: 0.8 # [s] FEED押し込み保持時間
     ball_settle_duration: 0.3 # [s] ボール吸着安定待ち時間
+    belt_spinup_duration: 0.5 # [s] ベルトRPM変更後の回転数安定待ち時間 (初速のバラつき防止)
     tag_lost_timeout: 0.5   # [s] AprilTag見失い判定タイムアウト
     aligning_timeout: 10.0  # [s] 照準タイムアウト
     shooting_timeout: 3.0   # [s] 射出タイムアウト
     result_wait_duration: 1.0 # [s] 射出後の飛翔・着弾・倒れ確認判定待ち時間
-    enable_ball_limit: true # true: 指定球数(max_total_balls)で停止, false: 球数制限なし
+
+    enable_ball_limit: false # true: 指定球数(max_total_balls)で停止, false: 球数制限なし(全パネル倒すまで継続)
     max_total_balls: 15     # 最大所持球数 (enable_ball_limit: true 時に有効)
-    max_shots_per_panel: 1  # 1枚あたりの射出回数
+
+    max_shots_per_panel: 0  # 1枚あたりの射出回数 (0: 倒れるまで無制限リトライ, 1以上: 上限で次へ)
+
     require_ball_detected: true # true: ボール検知センサー必須, false: センサーなしでも照準完了で射出
+
     auto_advance_rows: true # true: 段内のタグを射出完了したら自動で上段へ移行
+
+
     enable_double_panel_midpoint_targeting: true # true: 2枚横連続時に中点を狙い1発2枚抜き (3枚残時は0&1中点->2直撃の2発全クリア)
+    enable_vertical_sweep: true # true: 同一列の垂直残存パネルを旋回0度(RPM昇降のみ)で連続射出（最優先: 旋回回数最小化）
+    enable_nearest_angle_search: true # true: 最小角度変化(TSP探索)で残存ターゲットを最短順序で選択
+    prefer_same_row_first: false # false: 旋回最小化(垂直スイープ/最小角度)を優先
 
     # ── シュートパネル AprilTag ID ──
     # [IMPORTANT]rox公式ルールブックより. 基本変えてはいけない.
