@@ -81,18 +81,18 @@ def generate_launch_description():
         arguments=["--x", "-5.50", "--y", "4.50", "--z", "0", "--yaw", "-1.57079", "--pitch", "0", "--roll", "0", "--frame-id", "map", "--child-frame-id", "odom"],
     )
 
-    static_tf_odom_base = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="static_tf_odom_to_base",
-        arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "odom", "--child-frame-id", "base_footprint"],
-    )
-
     field_viz = Node(
         package="robot_controller",
         executable="field_visualization_node",
         name="field_visualization_node",
         parameters=[{"map_frame": "map"}],
+        output="screen",
+    )
+
+    trajectory_sim = Node(
+        package="robot_controller",
+        executable="trajectory_sim_node",
+        name="trajectory_sim_node",
         output="screen",
     )
 
@@ -110,9 +110,8 @@ def generate_launch_description():
             gazebo_sim,
             bridge,
             robot_state_publisher,
-            static_tf_map_odom,
-            static_tf_odom_base,
             field_viz,
+            trajectory_sim,
             foxglove_bridge,
         ]
     )
