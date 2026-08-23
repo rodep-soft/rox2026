@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and correctly oriented AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and Ultra-High Visibility AprilTags to /field/markers");
   }
 
 private:
@@ -31,7 +31,7 @@ private:
     const auto now_stamp = this->now();
     int32_t id = 0;
 
-    // 1. フィールド床面 (ダークサイバーマット + センターライン)
+    // 1. フィールド床面
     {
       visualization_msgs::msg::Marker floor;
       floor.header.frame_id = map_frame_;
@@ -260,9 +260,7 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag 3D マーカー (SDF / Onshape CAD 実寸完全一致)
-    // 縦向きゲート: X=-4.50, Y=1.50 (支柱: Y=1.20〜1.80, バー: Z=0.80)
-    // 横向きゲート: X=-3.20, Y=3.80 (支柱: X=-3.50〜-2.90, バー: Z=0.80)
+    // 6. 全27枚の公式 AprilTag 3D マーカー (最前面 HUD フローティング表示)
     {
       struct TagData {
         int id;
@@ -310,13 +308,13 @@ private:
       };
 
       for (const auto & tag : all_tags) {
-        const double forward_offset = 0.05;
+        const double forward_offset = 0.04;
         const double nx = std::cos(tag.normal_yaw);
         const double ny = std::sin(tag.normal_yaw);
         const double px = tag.x + forward_offset * nx;
         const double py = tag.y + forward_offset * ny;
 
-        // 1. Tag プレート本体
+        // 1. Tag プレート本体 (黒枠)
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -335,51 +333,71 @@ private:
         tag_plate.color.r = 0.05f;
         tag_plate.color.g = 0.05f;
         tag_plate.color.b = 0.07f;
-        tag_plate.color.a = 1.0f;
+        tag_plate.color.a = 0.95f;
         msg.markers.push_back(tag_plate);
 
-        // 2. HUD バックプレートバッジ (タグの上側上空 Z+0.16m に正立配置)
-        visualization_msgs::msg::Marker badge;
-        badge.header.frame_id = map_frame_;
-        badge.header.stamp = now_stamp;
-        badge.ns = "hud_badges";
-        badge.id = id++;
-        badge.type = visualization_msgs::msg::Marker::CUBE;
-        badge.action = visualization_msgs::msg::Marker::ADD;
-        badge.pose.position.x = px + 0.02 * nx;
-        badge.pose.position.y = py + 0.02 * ny;
-        badge.pose.position.z = tag.z + 0.16;
-        badge.pose.orientation = tag_plate.pose.orientation;
-        badge.scale.x = 0.012;
-        badge.scale.y = 0.24;
-        badge.scale.z = 0.08;
-        badge.color.r = 0.02f;
-        badge.color.g = 0.10f;
-        badge.color.b = 0.20f;
-        badge.color.a = 0.92f;
-        msg.markers.push_back(badge);
+        // 2. タグ前面に直接刻印されるハイコントラスト白背景インナー枠
+        visualization_msgs::msg::Marker tag_inner;
+        tag_inner.header.frame_id = map_frame_;
+        tag_inner.header.stamp = now_stamp;
+        tag_inner.ns = "apriltags_inner";
+        tag_inner.id = id++;
+        tag_inner.type = visualization_msgs::msg::Marker::CUBE;
+        tag_inner.action = visualization_msgs::msg::Marker::ADD;
+        tag_inner.pose.position.x = px + 0.010 * nx;
+        tag_inner.pose.position.y = py + 0.010 * ny;
+        tag_inner.pose.position.z = tag.z;
+        tag_inner.pose.orientation = tag_plate.pose.orientation;
+        tag_inner.scale.x = 0.010;
+        tag_inner.scale.y = 0.14;
+        tag_inner.scale.z = 0.14;
+        tag_inner.color.r = 1.00f;
+        tag_inner.color.g = 1.00f;
+        tag_inner.color.b = 1.00f;
+        tag_inner.color.a = 0.95f;
+        msg.markers.push_back(tag_inner);
 
-        // 3. 最前面 HUD テキストラベル (TEXT_VIEW_FACING で常にカメラ正対・正立)
-        visualization_msgs::msg::Marker text_marker;
-        text_marker.header.frame_id = map_frame_;
-        text_marker.header.stamp = now_stamp;
-        text_marker.ns = "apriltag_hud_text";
-        text_marker.id = id++;
-        text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
-        text_marker.action = visualization_msgs::msg::Marker::ADD;
-        text_marker.pose.position.x = px + 0.04 * nx;
-        text_marker.pose.position.y = py + 0.04 * ny;
-        text_marker.pose.position.z = tag.z + 0.16;
-        text_marker.scale.z = 0.13;
-        text_marker.color.r = 0.00f;
-        text_marker.color.g = 1.00f;
-        text_marker.color.b = 0.85f;
-        text_marker.color.a = 1.00f;
-
+        // 3. タグプレートの【真ん中ど真ん中】に前面刻印される黒太文字 ID (04, 18, etc.)
+        visualization_msgs::msg::Marker on_tag_text;
+        on_tag_text.header.frame_id = map_frame_;
+        on_tag_text.header.stamp = now_stamp;
+        on_tag_text.ns = "apriltags_center_num";
+        on_tag_text.id = id++;
+        on_tag_text.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+        on_tag_text.action = visualization_msgs::msg::Marker::ADD;
+        on_tag_text.pose.position.x = px + 0.025 * nx;
+        on_tag_text.pose.position.y = py + 0.025 * ny;
+        on_tag_text.pose.position.z = tag.z; // タグのど真ん中
+        on_tag_text.scale.z = 0.11; // プレートいっぱいの特大数字
+        on_tag_text.color.r = 0.05f;
+        on_tag_text.color.g = 0.05f;
+        on_tag_text.color.b = 0.05f;
+        on_tag_text.color.a = 1.00f; // くっきり黒文字
         char buf[32];
-        std::snprintf(buf, sizeof(buf), "[ %02d ]", tag.id);
-        text_marker.text = buf;
-        msg.markers.push_back(text_marker);
+        std::snprintf(buf, sizeof(buf), "%d", tag.id);
+        on_tag_text.text = buf;
+        msg.markers.push_back(on_tag_text);
+
+        // 4. タグ上空に浮かぶ発光 HUD バッジ [TAG 04] (遠景・引きカメラ視点用)
+        visualization_msgs::msg::Marker hud_badge;
+        hud_badge.header.frame_id = map_frame_;
+        hud_badge.header.stamp = now_stamp;
+        hud_badge.ns = "apriltags_floating_hud";
+        hud_badge.id = id++;
+        hud_badge.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+        hud_badge.action = visualization_msgs::msg::Marker::ADD;
+        hud_badge.pose.position.x = tag.x;
+        hud_badge.pose.position.y = tag.y;
+        hud_badge.pose.position.z = tag.z + 0.22; // 上空にクリアに浮遊
+        hud_badge.scale.z = 0.16; // 遠くからでも超特大
+        hud_badge.color.r = 0.00f;
+        hud_badge.color.g = 1.00f;
+        hud_badge.color.b = 0.85f; // ネオンシアン発光
+        hud_badge.color.a = 1.00f;
+        char hud_buf[32];
+        std::snprintf(hud_buf, sizeof(hud_buf), "#%02d", tag.id);
+        hud_badge.text = hud_buf;
+        msg.markers.push_back(hud_badge);
       }
     }
 
