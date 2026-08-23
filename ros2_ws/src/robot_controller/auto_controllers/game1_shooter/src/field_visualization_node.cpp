@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and correct AprilTag markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing full field 3D structures and AprilTags to /field/markers");
   }
 
 private:
@@ -259,7 +259,98 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag (図面 2.3 完全一致: 左右を完全に反転補正)
+    // 6. GAME3 ゴール構造体 (リアルなゴールフレーム & 左右レール)
+    {
+      // ゴール上部バー (横幅 1.70m, 高さ 0.90m)
+      visualization_msgs::msg::Marker g3_top_bar;
+      g3_top_bar.header.frame_id = map_frame_;
+      g3_top_bar.header.stamp = now_stamp;
+      g3_top_bar.ns = "game3_goal_structure";
+      g3_top_bar.id = id++;
+      g3_top_bar.type = visualization_msgs::msg::Marker::CUBE;
+      g3_top_bar.action = visualization_msgs::msg::Marker::ADD;
+      g3_top_bar.pose.position.x = 0.10;
+      g3_top_bar.pose.position.y = -5.510;
+      g3_top_bar.pose.position.z = 0.850;
+      g3_top_bar.pose.orientation.w = 1.0;
+      g3_top_bar.scale.x = 1.70;
+      g3_top_bar.scale.y = 0.06;
+      g3_top_bar.scale.z = 0.06;
+      g3_top_bar.color.r = 1.00f;
+      g3_top_bar.color.g = 0.85f;
+      g3_top_bar.color.b = 0.10f;
+      g3_top_bar.color.a = 1.00f;
+      msg.markers.push_back(g3_top_bar);
+
+      // ゴール左支柱
+      visualization_msgs::msg::Marker g3_left_post = g3_top_bar;
+      g3_left_post.id = id++;
+      g3_left_post.pose.position.x = -0.750;
+      g3_left_post.pose.position.z = 0.425;
+      g3_left_post.scale.x = 0.06;
+      g3_left_post.scale.z = 0.85;
+      msg.markers.push_back(g3_left_post);
+
+      // ゴール右支柱
+      visualization_msgs::msg::Marker g3_right_post = g3_top_bar;
+      g3_right_post.id = id++;
+      g3_right_post.pose.position.x = 0.950;
+      g3_right_post.pose.position.z = 0.425;
+      g3_right_post.scale.x = 0.06;
+      g3_right_post.scale.z = 0.85;
+      msg.markers.push_back(g3_right_post);
+
+      // ゴール奥行きレール (左・右)
+      visualization_msgs::msg::Marker g3_left_rail = g3_top_bar;
+      g3_left_rail.id = id++;
+      g3_left_rail.pose.position.x = -0.750;
+      g3_left_rail.pose.position.y = -5.985;
+      g3_left_rail.pose.position.z = 0.050;
+      g3_left_rail.scale.x = 0.05;
+      g3_left_rail.scale.y = 0.95;
+      g3_left_rail.scale.z = 0.08;
+      g3_left_rail.color.r = 0.85f;
+      g3_left_rail.color.g = 0.85f;
+      g3_left_rail.color.b = 0.90f;
+      msg.markers.push_back(g3_left_rail);
+
+      visualization_msgs::msg::Marker g3_right_rail = g3_left_rail;
+      g3_right_rail.id = id++;
+      g3_right_rail.pose.position.x = 0.950;
+      msg.markers.push_back(g3_right_rail);
+    }
+
+    // 7. GAME2 3x3 シュートパネル構造体 (自陣・敵陣)
+    {
+      const std::vector<double> g2_xs = {-3.23, 3.63};
+      for (const double g2_x : g2_xs) {
+        for (int r = 0; r < 3; ++r) {
+          for (int c = 0; c < 3; ++c) {
+            visualization_msgs::msg::Marker panel;
+            panel.header.frame_id = map_frame_;
+            panel.header.stamp = now_stamp;
+            panel.ns = "game2_shoot_panels";
+            panel.id = id++;
+            panel.type = visualization_msgs::msg::Marker::CUBE;
+            panel.action = visualization_msgs::msg::Marker::ADD;
+            panel.pose.position.x = g2_x + (c - 1) * 0.41;
+            panel.pose.position.y = -5.525;
+            panel.pose.position.z = 0.05 + r * 0.46;
+            panel.pose.orientation.w = 1.0;
+            panel.scale.x = 0.36;
+            panel.scale.y = 0.03;
+            panel.scale.z = 0.36;
+            panel.color.r = 0.85f;
+            panel.color.g = 0.20f;
+            panel.color.b = 0.25f;
+            panel.color.a = 0.92f;
+            msg.markers.push_back(panel);
+          }
+        }
+      }
+    }
+
+    // 8. 全27枚の公式 AprilTag (図面 2.3 完全一致)
     {
       struct TagData {
         int id;
@@ -321,7 +412,7 @@ private:
         {21, -3.230, -5.525, 0.050,  1.5708},
         {20, -2.820, -5.525, 0.050,  1.5708},
 
-        // GAME3 ゴールエリア (左右を正しく反転)
+        // GAME3 ゴールエリア (正面ビュー, Y = -5.510m, コート正面北向き)
         // 左側 (X = -0.75m): 上 24, 下 26
         // 右側 (X = +0.95m): 上 23, 下 25
         {24, -0.750, -5.510, 0.850,  1.5708},
@@ -423,8 +514,6 @@ private:
         msg.markers.push_back(hud_badge);
       }
     }
-
-    // 7. GAME3 ゴールエリア & GAME2 パネル (GazeboのSDFメッシュと干渉・重複するダミーCUBEマーカーを削除)
 
     marker_pub_->publish(msg);
   }
