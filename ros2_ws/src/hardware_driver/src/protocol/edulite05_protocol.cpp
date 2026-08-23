@@ -600,6 +600,17 @@ bool Protocol::process_fault(const can_msgs::msg::Frame & message)
     return false;
   }
 
+  // 32-bit detailed fault code:
+  // bit 0 (0x0001): 未校准
+  // bit 4 (0x0010): 欠圧 (電源投入時や負荷時の軽微な電圧降下)
+  // bit 14 (0x4000): CAN通信タイムアウト (起動時や初期化中の未通信)
+  // これらは正常な起動シーケンスで一時的に立つため、致命的エラーとして中断しない
+  constexpr uint32_t NON_FATAL_MASK = 0x4011; // bits 0, 4, 14
+  if ((fault_code & ~NON_FATAL_MASK) == 0U) {
+    detailed_fault_code_ = fault_code;
+    return false;
+  }
+
   const auto current_time = Clock::now();
   feedback_connected_ = true;
   last_feedback_time_ = current_time;
