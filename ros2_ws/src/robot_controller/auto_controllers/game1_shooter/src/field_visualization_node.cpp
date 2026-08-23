@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout with Cyberpunk/HUD styling to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and correctly oriented AprilTags to /field/markers");
   }
 
 private:
@@ -31,7 +31,7 @@ private:
     const auto now_stamp = this->now();
     int32_t id = 0;
 
-    // 1. フィールド床面 (ダークサイバーマット + ネオングリッドライン)
+    // 1. フィールド床面
     {
       visualization_msgs::msg::Marker floor;
       floor.header.frame_id = map_frame_;
@@ -53,7 +53,6 @@ private:
       floor.color.a = 0.98f;
       msg.markers.push_back(floor);
 
-      // センターライン (発光ホワイト)
       visualization_msgs::msg::Marker cline;
       cline.header.frame_id = map_frame_;
       cline.header.stamp = now_stamp;
@@ -106,7 +105,7 @@ private:
       }
     }
 
-    // 3. スタートエリア (エメラルドグリーン & サイバーシアン)
+    // 3. スタートエリア
     {
       // GAME1 上側スタートエリア
       visualization_msgs::msg::Marker g1_start_a;
@@ -263,50 +262,58 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag 3D マーカー (スタイリッシュなHUDバッジデザイン)
+    // 6. 全27枚の公式 AprilTag 3D マーカー (法線向きを面法線に完全補正)
+    // CUBE marker の初期向きは X軸が法線（厚み0.02）、YZ面が 0.18m x 0.18m 正方形。
+    // yaw はプレートの法線ベクトル（どちらを向いて立っているか）を指定。
     {
       struct TagData {
         int id;
-        double x, y, z, yaw;
-        std::string category;
+        double x, y, z, normal_yaw;
+        bool is_wall_aligned_y; // true if plate lies in YZ plane (facing ±X), false if in XZ plane (facing ±Y)
       };
       const std::vector<TagData> all_tags = {
-        {0,  -6.495, -5.020, 0.420, -1.571, "WALL"},
-        {1,  -6.020, -5.495, 0.420, -3.142, "WALL"},
-        {2,  -6.500,  4.920, 0.320,  1.571, "START"},
-        {3,  -6.020,  5.495, 0.420, -3.142, "WALL"},
+        // コーナー・外壁
+        {0,  -6.495, -5.020, 0.420,  0.000, true},   // 左壁: 東(+X)向き
+        {1,  -6.020, -5.495, 0.420,  1.571, false},  // 下壁: 北(+Y)向き
+        {2,  -6.500,  4.920, 0.320,  0.000, true},   // 左壁: 東(+X)向き
+        {3,  -6.020,  5.495, 0.420, -1.571, false},  // 上壁: 南(-Y)向き
 
-        {4,  -4.505,  2.165, 0.922,  1.571, "GATE"},
-        {5,  -4.445,  2.165, 0.922,  1.571, "GATE"},
-        {6,  -4.475,  2.495, 0.122, -3.142, "GATE"},
-        {7,  -4.475,  1.835, 0.122, -3.142, "GATE"},
+        // GAME1 縦向きDFゲート (ゲート板は YZ 平面、法線は ±X)
+        {4,  -4.505,  2.165, 0.922,  0.000, true},   // バー表: 東(+X)向き
+        {5,  -4.445,  2.165, 0.922,  3.142, true},   // バー裏: 西(-X)向き
+        {6,  -4.475,  2.495, 0.122, -1.571, false},  // 上支柱: 南(-Y)向き
+        {7,  -4.475,  1.835, 0.122,  1.571, false},  // 下支柱: 北(+Y)向き
 
-        {8,  -3.165,  3.905, 0.922,  0.000, "GATE"},
-        {9,  -3.495,  3.875, 0.122,  1.571, "GATE"},
-        {10, -2.835,  3.875, 0.122,  1.571, "GATE"},
-        {11, -3.165,  3.845, 0.922,  0.000, "GATE"},
+        // GAME1 上側横向きDFゲート (ゲート板は XZ 平面、法線は ±Y)
+        {8,  -3.165,  3.905, 0.922, -1.571, false},  // バー表: 南(-Y)向き
+        {9,  -3.495,  3.875, 0.122,  0.000, true},   // 左支柱: 東(+X)向き
+        {10, -2.835,  3.875, 0.122,  3.142, true},   // 右支柱: 西(-X)向き
+        {11, -3.165,  3.845, 0.922,  1.571, false},  // バー裏: 北(+Y)向き
 
-        {12,  0.015,  0.750, 0.422,  1.571, "CENTER"},
-        {13,  0.015,  2.550, 0.422,  1.571, "CENTER"},
+        // センターラインポール
+        {12,  0.015,  0.750, 0.422,  3.142, true},   // センターポール: 自陣西(-X)向き
+        {13,  0.015,  2.550, 0.422,  3.142, true},   // センターポール: 自陣西(-X)向き
 
-        {14, -3.640, -5.525, 1.190, -3.142, "P14"},
-        {15, -3.230, -5.525, 1.190, -3.142, "P15"},
-        {16, -2.820, -5.525, 1.190, -3.142, "P16"},
-        {17, -3.640, -5.525, 0.730, -3.142, "P17"},
-        {18, -3.230, -5.525, 0.730, -3.142, "P18"},
-        {19, -2.820, -5.525, 0.730, -3.142, "P19"},
-        {20, -3.640, -5.525, 0.270, -3.142, "P20"},
-        {21, -3.230, -5.525, 0.270, -3.142, "P21"},
-        {22, -2.820, -5.525, 0.270, -3.142, "P22"},
+        // GAME2 3x3 シュートパネル (ゴールライン $Y = -5.525$ に立ち、北 +Y 方向を向く)
+        {14, -3.640, -5.525, 1.190,  1.571, false}, // 上段 左: 北(+Y)向き
+        {15, -3.230, -5.525, 1.190,  1.571, false}, // 上段 中: 北(+Y)向き
+        {16, -2.820, -5.525, 1.190,  1.571, false}, // 上段 右: 北(+Y)向き
+        {17, -3.640, -5.525, 0.730,  1.571, false}, // 中段 左: 北(+Y)向き
+        {18, -3.230, -5.525, 0.730,  1.571, false}, // 中段 中: 北(+Y)向き
+        {19, -2.820, -5.525, 0.730,  1.571, false}, // 中段 右: 北(+Y)向き
+        {20, -3.640, -5.525, 0.270,  1.571, false}, // 下段 左: 北(+Y)向き
+        {21, -3.230, -5.525, 0.270,  1.571, false}, // 下段 中: 北(+Y)向き
+        {22, -2.820, -5.525, 0.270,  1.571, false}, // 下段 右: 北(+Y)向き
 
-        {23,  0.850, -5.505, 0.120, -3.142, "GOAL"},
-        {24,  0.850, -5.505, 0.970, -3.142, "GOAL"},
-        {25, -0.850, -5.505, 0.120, -3.142, "GOAL"},
-        {26, -0.850, -5.505, 0.970, -3.142, "GOAL"}
+        // GAME3 ゴールエリアポスト (ゴール開口部・手前北 +Y 方向を向く)
+        {23,  0.850, -5.505, 0.120,  1.571, false}, // ゴールポスト右下: 北(+Y)向き
+        {24,  0.850, -5.505, 0.970,  1.571, false}, // ゴールポスト右上: 北(+Y)向き
+        {25, -0.850, -5.505, 0.120,  1.571, false}, // ゴールポスト左下: 北(+Y)向き
+        {26, -0.850, -5.505, 0.970,  1.571, false}  // ゴールポスト左上: 北(+Y)向き
       };
 
       for (const auto & tag : all_tags) {
-        // 1. Tag プレート本体 (ピアノブラック + 白枠)
+        // 1. Tag プレート本体
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -317,18 +324,18 @@ private:
         tag_plate.pose.position.x = tag.x;
         tag_plate.pose.position.y = tag.y;
         tag_plate.pose.position.z = tag.z;
-        tag_plate.pose.orientation.z = std::sin(tag.yaw / 2.0);
-        tag_plate.pose.orientation.w = std::cos(tag.yaw / 2.0);
-        tag_plate.scale.x = 0.02;
-        tag_plate.scale.y = 0.18;
-        tag_plate.scale.z = 0.18;
+        tag_plate.pose.orientation.z = std::sin(tag.normal_yaw / 2.0);
+        tag_plate.pose.orientation.w = std::cos(tag.normal_yaw / 2.0);
+        tag_plate.scale.x = 0.02; // 厚み（法線方向）
+        tag_plate.scale.y = 0.18; // 幅
+        tag_plate.scale.z = 0.18; // 高さ
         tag_plate.color.r = 0.08f;
         tag_plate.color.g = 0.08f;
         tag_plate.color.b = 0.10f;
         tag_plate.color.a = 1.0f;
         msg.markers.push_back(tag_plate);
 
-        // 2. HUD バックプレートバッジ (半透明ネオンシアン / オレンジ)
+        // 2. HUD バックプレートバッジ
         visualization_msgs::msg::Marker badge;
         badge.header.frame_id = map_frame_;
         badge.header.stamp = now_stamp;
@@ -343,10 +350,10 @@ private:
         badge.scale.x = 0.015;
         badge.scale.y = 0.22;
         badge.scale.z = 0.07;
-        badge.color.r = 0.05f;
-        badge.color.g = 0.15f;
-        badge.color.b = 0.25f;
-        badge.color.a = 0.85f;
+        badge.color.r = 0.02f;
+        badge.color.g = 0.12f;
+        badge.color.b = 0.22f;
+        badge.color.a = 0.90f;
         msg.markers.push_back(badge);
 
         // 3. スタイリッシュな HUD テキストラベル [TAG-XX]
@@ -360,13 +367,12 @@ private:
         text_marker.pose.position.x = tag.x;
         text_marker.pose.position.y = tag.y;
         text_marker.pose.position.z = tag.z + 0.16;
-        text_marker.scale.z = 0.10; // 洗練されたタイポグラフィサイズ
+        text_marker.scale.z = 0.10;
         text_marker.color.r = 0.00f;
         text_marker.color.g = 0.95f;
-        text_marker.color.b = 1.00f; // ネオンシアン (Cyber Blue)
+        text_marker.color.b = 1.00f;
         text_marker.color.a = 1.00f;
 
-        // 見栄えの良いフォーマット: [ 04 ], [ 18 ] など
         char buf[32];
         std::snprintf(buf, sizeof(buf), "[ %02d ]", tag.id);
         text_marker.text = buf;
