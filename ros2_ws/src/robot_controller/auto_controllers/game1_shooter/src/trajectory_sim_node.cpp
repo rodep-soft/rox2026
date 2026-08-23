@@ -252,30 +252,38 @@ private:
     ball.color.b = 0.10f;
     ball.color.a = 1.0f;
 
+    const double target_ball_stop_x = waypoints_[3].x;
+    const double target_ball_stop_y = waypoints_[3].y;
+
     if (current_segment_ <= 1) {
       // 射出前: ロボット前方に保持
       ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
-      ball_vx_ = 0.0;
       ball_shot_time_ = 0.0;
-    } else if (current_segment_ == 2) {
-      // ゲート射出: バネで押し出されゲートを潜り抜けて転がり、摩擦で減速して出口(waypoints_[3].x)で停止
+      ball_is_caught_ = false;
+    } else if (!ball_is_caught_) {
+      // ゲート射出後: ボールはゲートを潜り抜け独立して X = ±2.70m まで転がり、そこで自然停止して待機
       ball_shot_time_ += dt;
       const double shoot_start_x = waypoints_[1].x;
-      const double shoot_target_x = waypoints_[3].x;
-      double roll_t = std::min(1.0, ball_shot_time_ / 1.2); // 1.2秒かけてゲートを転がり抜ける
+      double roll_t = std::min(1.0, ball_shot_time_ / 1.5);
       double smooth_roll = 1.0 - std::pow(1.0 - roll_t, 2.0); // 減速ローリング
-      ball_x_ = shoot_start_x + smooth_roll * (shoot_target_x - shoot_start_x);
+      ball_x_ = shoot_start_x + smooth_roll * (target_ball_stop_x - shoot_start_x);
       ball_y_ = waypoints_[1].y;
-    } else if (current_segment_ == 3) {
-      // ドリブルキャッチ中: ロボット前方に吸い寄せられて保持
+
+      // ロボットが実際にボールのすぐ近く (25cm 以内) に到達して初めてドリブルキャッチ判定
+      const double dist_robot_to_ball = std::hypot(curr_x_ - ball_x_, curr_y_ - ball_y_);
+      if (current_segment_ >= 3 && dist_robot_to_ball < 0.40) {
+        ball_is_caught_ = true;
+      }
+    } else if (current_segment_ == 3 || (current_segment_ == 4 && wp_wait_timer_ < 0.1)) {
+      // ドリブルキャッチ後: ロボット前方に保持されて一緒にパスエリアへ移動
       ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
     } else if (current_segment_ == 4) {
       // パスエリア外側停止 & ゆっくり射出: ボールがパスエリア内 (X = ±1.316m) へ静かに転がり進入
       double progress = std::min(1.0, wp_wait_timer_ / 0.8);
-      const double target_ball_x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
-      ball_x_ = (curr_x_ + 0.25 * std::cos(curr_yaw_)) + progress * (target_ball_x - (curr_x_ + 0.25 * std::cos(curr_yaw_)));
+      const double target_pass_x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
+      ball_x_ = (curr_x_ + 0.25 * std::cos(curr_yaw_)) + progress * (target_pass_x - (curr_x_ + 0.25 * std::cos(curr_yaw_)));
       ball_y_ = 1.500;
     } else {
       // パスエリア投下後: パスエリア内にボールが美しく静止
@@ -332,6 +340,7 @@ private:
   double ball_y_{4.950};
   double ball_vx_{0.0};
   double ball_shot_time_{0.0};
+  bool ball_is_caught_{false};
 
   double kp_linear_{1.2};
   double kp_angular_{2.0};
