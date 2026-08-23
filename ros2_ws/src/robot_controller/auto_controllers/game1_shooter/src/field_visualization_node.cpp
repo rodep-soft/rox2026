@@ -21,7 +21,7 @@ public:
       std::chrono::milliseconds(1000),
       std::bind(&FieldVisualizationNode::publish_field_markers, this));
 
-    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and correctly oriented AprilTags to /field/markers");
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing field layout and elevated HUD AprilTags to /field/markers");
   }
 
 private:
@@ -107,7 +107,6 @@ private:
 
     // 3. スタートエリア
     {
-      // GAME1 上側スタートエリア
       visualization_msgs::msg::Marker g1_start_a;
       g1_start_a.header.frame_id = map_frame_;
       g1_start_a.header.stamp = now_stamp;
@@ -136,7 +135,6 @@ private:
       g1_start_b.color.b = 1.00f;
       msg.markers.push_back(g1_start_b);
 
-      // GAME2 手前側スタートエリア
       visualization_msgs::msg::Marker start_a = g1_start_a;
       start_a.id = id++;
       start_a.pose.position.x = -3.20;
@@ -262,58 +260,62 @@ private:
       }
     }
 
-    // 6. 全27枚の公式 AprilTag 3D マーカー (法線向きを面法線に完全補正)
-    // CUBE marker の初期向きは X軸が法線（厚み0.02）、YZ面が 0.18m x 0.18m 正方形。
-    // yaw はプレートの法線ベクトル（どちらを向いて立っているか）を指定。
+    // 6. 全27枚の公式 AprilTag 3D マーカー (法線オフセット + 優先オーバーレイ表示)
     {
       struct TagData {
         int id;
         double x, y, z, normal_yaw;
-        bool is_wall_aligned_y; // true if plate lies in YZ plane (facing ±X), false if in XZ plane (facing ±Y)
       };
       const std::vector<TagData> all_tags = {
         // コーナー・外壁
-        {0,  -6.495, -5.020, 0.420,  0.000, true},   // 左壁: 東(+X)向き
-        {1,  -6.020, -5.495, 0.420,  1.571, false},  // 下壁: 北(+Y)向き
-        {2,  -6.500,  4.920, 0.320,  0.000, true},   // 左壁: 東(+X)向き
-        {3,  -6.020,  5.495, 0.420, -1.571, false},  // 上壁: 南(-Y)向き
+        {0,  -6.495, -5.020, 0.420,  0.000},   // 左壁
+        {1,  -6.020, -5.495, 0.420,  1.571},   // 下壁
+        {2,  -6.500,  4.920, 0.320,  0.000},   // 左壁
+        {3,  -6.020,  5.495, 0.420, -1.571},   // 上壁
 
-        // GAME1 縦向きDFゲート (ゲート板は YZ 平面、法線は ±X)
-        {4,  -4.505,  2.165, 0.922,  0.000, true},   // バー表: 東(+X)向き
-        {5,  -4.445,  2.165, 0.922,  3.142, true},   // バー裏: 西(-X)向き
-        {6,  -4.475,  2.495, 0.122, -1.571, false},  // 上支柱: 南(-Y)向き
-        {7,  -4.475,  1.835, 0.122,  1.571, false},  // 下支柱: 北(+Y)向き
+        // GAME1 縦向きDFゲート
+        {4,  -4.505,  2.165, 0.922,  0.000},   // バー表
+        {5,  -4.445,  2.165, 0.922,  3.142},   // バー裏
+        {6,  -4.475,  2.495, 0.122, -1.571},   // 上支柱
+        {7,  -4.475,  1.835, 0.122,  1.571},   // 下支柱
 
-        // GAME1 上側横向きDFゲート (ゲート板は XZ 平面、法線は ±Y)
-        {8,  -3.165,  3.905, 0.922, -1.571, false},  // バー表: 南(-Y)向き
-        {9,  -3.495,  3.875, 0.122,  0.000, true},   // 左支柱: 東(+X)向き
-        {10, -2.835,  3.875, 0.122,  3.142, true},   // 右支柱: 西(-X)向き
-        {11, -3.165,  3.845, 0.922,  1.571, false},  // バー裏: 北(+Y)向き
+        // GAME1 上側横向きDFゲート
+        {8,  -3.165,  3.905, 0.922, -1.571},   // バー表
+        {9,  -3.495,  3.875, 0.122,  0.000},   // 左支柱
+        {10, -2.835,  3.875, 0.122,  3.142},   // 右支柱
+        {11, -3.165,  3.845, 0.922,  1.571},   // バー裏
 
         // センターラインポール
-        {12,  0.015,  0.750, 0.422,  3.142, true},   // センターポール: 自陣西(-X)向き
-        {13,  0.015,  2.550, 0.422,  3.142, true},   // センターポール: 自陣西(-X)向き
+        {12,  0.015,  0.750, 0.422,  3.142},
+        {13,  0.015,  2.550, 0.422,  3.142},
 
-        // GAME2 3x3 シュートパネル (ゴールライン $Y = -5.525$ に立ち、北 +Y 方向を向く)
-        {14, -3.640, -5.525, 1.190,  1.571, false}, // 上段 左: 北(+Y)向き
-        {15, -3.230, -5.525, 1.190,  1.571, false}, // 上段 中: 北(+Y)向き
-        {16, -2.820, -5.525, 1.190,  1.571, false}, // 上段 右: 北(+Y)向き
-        {17, -3.640, -5.525, 0.730,  1.571, false}, // 中段 左: 北(+Y)向き
-        {18, -3.230, -5.525, 0.730,  1.571, false}, // 中段 中: 北(+Y)向き
-        {19, -2.820, -5.525, 0.730,  1.571, false}, // 中段 右: 北(+Y)向き
-        {20, -3.640, -5.525, 0.270,  1.571, false}, // 下段 左: 北(+Y)向き
-        {21, -3.230, -5.525, 0.270,  1.571, false}, // 下段 中: 北(+Y)向き
-        {22, -2.820, -5.525, 0.270,  1.571, false}, // 下段 右: 北(+Y)向き
+        // GAME2 3x3 シュートパネル (上段 14,15,16 / 中段 17,18,19 / 下段 20,21,22)
+        {14, -3.640, -5.525, 1.190,  1.571},
+        {15, -3.230, -5.525, 1.190,  1.571},
+        {16, -2.820, -5.525, 1.190,  1.571},
+        {17, -3.640, -5.525, 0.730,  1.571},
+        {18, -3.230, -5.525, 0.730,  1.571},
+        {19, -2.820, -5.525, 0.730,  1.571},
+        {20, -3.640, -5.525, 0.270,  1.571},
+        {21, -3.230, -5.525, 0.270,  1.571},
+        {22, -2.820, -5.525, 0.270,  1.571},
 
-        // GAME3 ゴールエリアポスト (ゴール開口部・手前北 +Y 方向を向く)
-        {23,  0.850, -5.505, 0.120,  1.571, false}, // ゴールポスト右下: 北(+Y)向き
-        {24,  0.850, -5.505, 0.970,  1.571, false}, // ゴールポスト右上: 北(+Y)向き
-        {25, -0.850, -5.505, 0.120,  1.571, false}, // ゴールポスト左下: 北(+Y)向き
-        {26, -0.850, -5.505, 0.970,  1.571, false}  // ゴールポスト左上: 北(+Y)向き
+        // GAME3 ゴールエリアポスト
+        {23,  0.850, -5.505, 0.120,  1.571},
+        {24,  0.850, -5.505, 0.970,  1.571},
+        {25, -0.850, -5.505, 0.120,  1.571},
+        {26, -0.850, -5.505, 0.970,  1.571}
       };
 
       for (const auto & tag : all_tags) {
-        // 1. Tag プレート本体
+        // 法線ベクトル方向に 0.06m 前面へオフセット（メッシュの奥に埋もれるのを完全に防止）
+        const double forward_offset = 0.06;
+        const double nx = std::cos(tag.normal_yaw);
+        const double ny = std::sin(tag.normal_yaw);
+        const double px = tag.x + forward_offset * nx;
+        const double py = tag.y + forward_offset * ny;
+
+        // 1. Tag プレート本体 (前面オフセット)
         visualization_msgs::msg::Marker tag_plate;
         tag_plate.header.frame_id = map_frame_;
         tag_plate.header.stamp = now_stamp;
@@ -321,21 +323,21 @@ private:
         tag_plate.id = id++;
         tag_plate.type = visualization_msgs::msg::Marker::CUBE;
         tag_plate.action = visualization_msgs::msg::Marker::ADD;
-        tag_plate.pose.position.x = tag.x;
-        tag_plate.pose.position.y = tag.y;
+        tag_plate.pose.position.x = px;
+        tag_plate.pose.position.y = py;
         tag_plate.pose.position.z = tag.z;
         tag_plate.pose.orientation.z = std::sin(tag.normal_yaw / 2.0);
         tag_plate.pose.orientation.w = std::cos(tag.normal_yaw / 2.0);
-        tag_plate.scale.x = 0.02; // 厚み（法線方向）
-        tag_plate.scale.y = 0.18; // 幅
-        tag_plate.scale.z = 0.18; // 高さ
-        tag_plate.color.r = 0.08f;
-        tag_plate.color.g = 0.08f;
-        tag_plate.color.b = 0.10f;
+        tag_plate.scale.x = 0.015;
+        tag_plate.scale.y = 0.18;
+        tag_plate.scale.z = 0.18;
+        tag_plate.color.r = 0.05f;
+        tag_plate.color.g = 0.05f;
+        tag_plate.color.b = 0.07f;
         tag_plate.color.a = 1.0f;
         msg.markers.push_back(tag_plate);
 
-        // 2. HUD バックプレートバッジ
+        // 2. HUD バックプレートバッジ (Tag プレートのさらに 0.03m 前面 & 上部)
         visualization_msgs::msg::Marker badge;
         badge.header.frame_id = map_frame_;
         badge.header.stamp = now_stamp;
@@ -343,20 +345,20 @@ private:
         badge.id = id++;
         badge.type = visualization_msgs::msg::Marker::CUBE;
         badge.action = visualization_msgs::msg::Marker::ADD;
-        badge.pose.position.x = tag.x;
-        badge.pose.position.y = tag.y;
-        badge.pose.position.z = tag.z + 0.16;
+        badge.pose.position.x = px + 0.03 * nx;
+        badge.pose.position.y = py + 0.03 * ny;
+        badge.pose.position.z = tag.z + 0.18; // メッシュ上端から完全に浮上
         badge.pose.orientation = tag_plate.pose.orientation;
-        badge.scale.x = 0.015;
-        badge.scale.y = 0.22;
-        badge.scale.z = 0.07;
+        badge.scale.x = 0.012;
+        badge.scale.y = 0.26;
+        badge.scale.z = 0.09;
         badge.color.r = 0.02f;
-        badge.color.g = 0.12f;
-        badge.color.b = 0.22f;
-        badge.color.a = 0.90f;
+        badge.color.g = 0.10f;
+        badge.color.b = 0.20f;
+        badge.color.a = 0.92f;
         msg.markers.push_back(badge);
 
-        // 3. スタイリッシュな HUD テキストラベル [TAG-XX]
+        // 3. 最前面 HUD テキストラベル (最優先でくっきり描画)
         visualization_msgs::msg::Marker text_marker;
         text_marker.header.frame_id = map_frame_;
         text_marker.header.stamp = now_stamp;
@@ -364,13 +366,13 @@ private:
         text_marker.id = id++;
         text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
         text_marker.action = visualization_msgs::msg::Marker::ADD;
-        text_marker.pose.position.x = tag.x;
-        text_marker.pose.position.y = tag.y;
-        text_marker.pose.position.z = tag.z + 0.16;
-        text_marker.scale.z = 0.10;
+        text_marker.pose.position.x = px + 0.05 * nx;
+        text_marker.pose.position.y = py + 0.05 * ny;
+        text_marker.pose.position.z = tag.z + 0.18;
+        text_marker.scale.z = 0.14; // くっきり大型フォント
         text_marker.color.r = 0.00f;
-        text_marker.color.g = 0.95f;
-        text_marker.color.b = 1.00f;
+        text_marker.color.g = 1.00f;
+        text_marker.color.b = 0.85f; // ネオンエメラルドシアン
         text_marker.color.a = 1.00f;
 
         char buf[32];
