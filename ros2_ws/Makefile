@@ -23,7 +23,7 @@ COLCON_ARGS = \
 
 build:
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
-	colcon --log-base log_ninja build build \
+	colcon --log-base log_ninja build \
 		$(COLCON_ARGS) \
 		--cmake-args $(CMAKE_ARGS) -DBUILD_TESTING=OFF
 
