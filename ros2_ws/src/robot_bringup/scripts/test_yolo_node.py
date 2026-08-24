@@ -22,7 +22,7 @@ class TestYoloNode(Node):
         super().__init__('test_yolo_node')
         self.image_topic = self.declare_parameter('image_topic', '/webcam/image_raw').value
         self.model_name = self.declare_parameter('model_name', '/root/ros2_ws/src/robot_bringup/config/molten_ball_best.pt').value
-        self.conf_thresh = self.declare_parameter('conf_thresh', 0.18).value
+        self.conf_thresh = self.declare_parameter('conf_thresh', 0.35).value
 
         self.get_logger().info(f"Loading YOLOv8 model: {self.model_name}...")
         if YOLO is not None:
@@ -48,7 +48,10 @@ class TestYoloNode(Node):
         self.fy = 1400.0
         self.cx = 960.0
         self.cy = 540.0
-        self.real_ball_diameter = 0.20 # 20cm
+        # 白飛び防止＆コントラスト補正用 LUT (Gamma = 1.4)
+        inv_gamma = 1.0 / 1.4
+        self.gamma_lut = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+        self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
     def image_callback(self, msg: Image):
         if self.model is None:
@@ -66,13 +69,20 @@ class TestYoloNode(Node):
         else:
             return
 
-        # 推論
-        results = self.model(frame, conf=self.conf_thresh, verbose=False)
+        # ── 1. 露出オーバー・白飛び抑制 ＆ コントラスト補正 (CLAHE + Gamma) ──
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv[:, :, 2] = self.clahe.apply(hsv[:, :, 2])
+        enhanced = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        enhanced = cv2.LUT(enhanced, self.gamma_lut)
+
+        # ── 2. YOLO推論 ──
+        results = self.model(enhanced, conf=self.conf_thresh, verbose=False)
         det_array = Detection2DArray()
         det_array.header = msg.header
 
         best_ball_pose = None
         min_ball_z = 999.0
+        frame_h, frame_w = frame.shape[:2]
 
         for r in results:
             boxes = r.boxes
@@ -85,15 +95,19 @@ class TestYoloNode(Node):
                 # ボール判定 (ball または sports ball)
                 is_ball = cls_name in ['ball', 'sports ball']
                 
-                # ── ボールの球体・幾何学妥当性フィルター (Geometric Sphere Filter) ──
+                # ── 3. 床面ROI ＆ 球体幾何学妥当性フィルター ──
                 bw = float(xywh[2])
                 bh = float(xywh[3])
+                cy = float(xywh[1])
                 aspect_ratio = bw / max(1.0, bh)
-                frame_h, frame_w = frame.shape[:2]
                 area_ratio = (bw * bh) / float(frame_w * frame_h)
 
-                # ボールは球体のため 0.70 <= aspect <= 1.40 かつ画面の半分以下 (壁や廊下の誤認を100%カット)
-                if not (0.70 <= aspect_ratio <= 1.40) or area_ratio > 0.45 or bw < 15:
+                # 画面上部 18% (天井・遠景背景) は除外
+                if cy < 0.18 * frame_h:
+                    continue
+
+                # ボールは球体のため 0.70 <= aspect <= 1.40 かつ画面の半分以下
+                if not (0.70 <= aspect_ratio <= 1.40) or area_ratio > 0.45 or bw < 20:
                     continue
 
                 det = Detection2D()
@@ -130,7 +144,7 @@ class TestYoloNode(Node):
                         min_ball_z = est_z
                         best_ball_pose = pose_msg
 
-                    # アノテーション描画
+                    # アノテーション描画 (補正後の鮮明画像または原画像に描画)
                     x1 = int(xywh[0] - bw / 2.0)
                     y1 = int(xywh[1] - bh / 2.0)
                     x2 = int(xywh[0] + bw / 2.0)
