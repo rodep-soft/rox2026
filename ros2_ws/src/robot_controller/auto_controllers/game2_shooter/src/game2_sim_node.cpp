@@ -153,19 +153,23 @@ private:
       const double t = std::min(1.0, it->elapsed / it->flight_duration);
 
       if (t >= 1.0) {
-        // 着弾判定: 狙った各タグについて命中判定
-        for (const int tid : it->target_tag_ids) {
-          auto p_it = grid.find(tid);
-          if (p_it != grid.end()) {
-            // パネル枠内判定 (±18cm)
-            if (std::abs(it->target_x - p_it->second.x) <= 0.20 &&
-                std::abs(it->target_z - p_it->second.z) <= 0.20)
-            {
-              p_it->second.shot_completed = true;
+        // ボール着弾物理判定 (ボール半径 R = 0.10m, パネル半幅 = 0.18m, 半高 = 0.18m)
+        // 中点に命中した場合、ボールの幅(直径20cm)が両側のパネルに同時に接触するため2枚同時に倒れる
+        const double ball_radius = 0.10;
+        const double panel_half_w = 0.18;
+        const double panel_half_h = 0.18;
+
+        for (auto & [id, p] : grid) {
+          if (!p.shot_completed) {
+            const double dx = std::abs(it->target_x - p.x);
+            const double dz = std::abs(it->target_z - p.z);
+            // ボール球体とパネル矩形の接触判定
+            if (dx <= (panel_half_w + ball_radius) && dz <= (panel_half_h + ball_radius)) {
+              p.shot_completed = true;
               RCLCPP_INFO(
                 get_logger(),
-                "[KNOCKDOWN!] Target Tag #%d (Row %d, Col %d) DOWN!",
-                tid, p_it->second.row, p_it->second.col);
+                "[PHYSICAL HIT!] Ball (R=10cm) struck Panel Tag #%d (Row %d, Col %d) -> KNOCKED DOWN!",
+                id, p.row, p.col);
             }
           }
         }
