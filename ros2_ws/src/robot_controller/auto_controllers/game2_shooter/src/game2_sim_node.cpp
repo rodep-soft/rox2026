@@ -307,19 +307,19 @@ private:
 
   void fire_current_ball()
   {
-    // 段 (Row) が上に行くほど RPM が上がり弾道ばらつき（標準偏差）が増大
-    // 下段 (Row 0): 横 std = 3cm (0.03m), 縦 std = 8cm (0.08m)
-    // 中段 (Row 1): 横 std = 4cm (0.04m), 縦 std = 11cm (0.11m)
-    // 上段 (Row 2): 横 std = 5cm (0.05m), 縦 std = 15cm (0.15m)
-    double cur_sigma_x = 0.03;
-    double cur_sigma_z = 0.08;
+    // 実機複合誤差モデル (射出機構ばらつき + 旋回残留角 4m レバーアーム + 射出反動ピッチ揺れ + 視覚量子化)
+    // 下段 (Row 0): 横 std = 5.0cm (0.050m), 縦 std = 10.0cm (0.100m) -> 命中率 約95%
+    // 中段 (Row 1): 横 std = 6.5cm (0.065m), 縦 std = 13.0cm (0.130m) -> 命中率 約88%
+    // 上段 (Row 2): 横 std = 8.0cm (0.080m), 縦 std = 18.0cm (0.180m) -> 命中率 約72% (たまに外れて再装填リトライ)
+    double cur_sigma_x = 0.050;
+    double cur_sigma_z = 0.100;
 
     if (active_row_ == 1) {
-      cur_sigma_x = 0.04;
-      cur_sigma_z = 0.11;
+      cur_sigma_x = 0.065;
+      cur_sigma_z = 0.130;
     } else if (active_row_ == 2) {
-      cur_sigma_x = 0.05;
-      cur_sigma_z = 0.15;
+      cur_sigma_x = 0.080;
+      cur_sigma_z = 0.180;
     }
 
     std::normal_distribution<double> dist_x(0.0, cur_sigma_x);
