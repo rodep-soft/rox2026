@@ -33,7 +33,7 @@ public:
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
     detections_pub_ = create_publisher<apriltag_msgs::msg::AprilTagDetectionArray>("/detections", 10);
-    ball_pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("/detection", 10);
+    ball_pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("/ball_pose", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──

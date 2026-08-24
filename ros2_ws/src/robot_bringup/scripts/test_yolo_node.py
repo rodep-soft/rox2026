@@ -39,7 +39,7 @@ class TestYoloNode(Node):
             10
         )
         self.pub_detections_ = self.create_publisher(Detection2DArray, '/yolo/detections', 10)
-        self.pub_ball_pose_ = self.create_publisher(geometry_msgs.msg.PoseStamped, '/detection', 10)
+        self.pub_ball_pose_ = self.create_publisher(geometry_msgs.msg.PoseStamped, '/ball_pose', 10)
         self.pub_annotated_ = self.create_publisher(Image, '/yolo/annotated_image', 10)
         self.bridge = CvBridge() if CvBridge else None
 

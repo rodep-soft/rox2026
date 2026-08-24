@@ -67,7 +67,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     std::bind(&Game1AutoNode::odom_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
-    "/detection", 10,
+    "/ball_pose", 10,
     std::bind(&Game1AutoNode::ball_detection_callback, this, std::placeholders::_1));
 
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
