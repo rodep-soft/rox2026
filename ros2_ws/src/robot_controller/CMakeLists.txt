@@ -133,6 +133,7 @@ ament_target_dependencies(
   geometry_msgs
   nav_msgs
   visualization_msgs
+  apriltag_msgs
   tf2
   tf2_ros)
 
