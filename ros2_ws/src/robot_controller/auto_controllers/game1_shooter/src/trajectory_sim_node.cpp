@@ -158,11 +158,19 @@ private:
 
       double target_vx_world = 0.0, target_vy_world = 0.0;
       if (dist > 1e-4) {
-        // ── 鋭いブレーキプロファイル (物理最適停止カーブ v = sqrt(2 * a_brake * dist)) ──
-        // だらだらしたPゲイン減速を廃止し、直前までハイスピードを維持してピタッと止まる
+        // ── セグメント別 安全速度制限 ──
+        // ゲート横回り込み (segment 2): 障害物接触を避けるため安全速度 1.8 m/s に抑制
+        // ボールキャッチ時 (segment 3): キャッチ直後はドリブル吸着安定化のため 2.0 m/s
+        double seg_speed_max = max_linear_vel_;
+        if (current_segment_ == 2) {
+          seg_speed_max = 1.80; // ゲート横安全通過速度
+        } else if (current_segment_ == 3 && !ball_is_caught_) {
+          seg_speed_max = 2.20; // ボールアプローチ減速
+        }
+
         constexpr double a_brake = 8.0; // m/s^2 (急制動減速度)
         const double brake_speed = std::sqrt(2.0 * a_brake * std::max(0.0, dist - 0.02));
-        const double speed_limit = is_fly_through ? max_linear_vel_ : std::clamp(brake_speed, 0.0, max_linear_vel_);
+        const double speed_limit = is_fly_through ? seg_speed_max : std::clamp(brake_speed, 0.0, seg_speed_max);
         target_vx_world = speed_limit * (dx_world / dist);
         target_vy_world = speed_limit * (dy_world / dist);
       }
@@ -187,12 +195,8 @@ private:
       vyaw_ += dvyaw;
 
       // ── 4輪メカナム逆運動学飽和チェック (4-Wheel Mecanum Kinematics Limit) ──
-      // wheel_radius = 0.075m, lx + ly = (0.355 + 0.353)/2 = 0.354m
-      // max_wheel_speed = 50.0 rad/s * 0.075m = 3.75 m/s
       constexpr double r = 0.075;
       constexpr double k = 0.354;
-      constexpr double max_wheel_linear_speed = 3.75;
-
       double w0 = (vx_body_ - vy_body_ - k * vyaw_) / r;
       double w1 = (vx_body_ + vy_body_ + k * vyaw_) / r;
       double w2 = (vx_body_ + vy_body_ - k * vyaw_) / r;
@@ -214,7 +218,18 @@ private:
       curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
 
       if (is_fly_through) {
-        if (dist <= arrive_threshold) { current_segment_++; }
+        if (current_segment_ == 3) {
+          // ボールキャッチ時: ドリブルローラーで巻き込んでしっかりホールドするまでの安定化時間 (0.35秒)
+          if (ball_is_caught_) {
+            ball_intake_timer_ += dt;
+            if (ball_intake_timer_ >= 0.35) {
+              current_segment_++;
+              ball_intake_timer_ = 0.0;
+            }
+          }
+        } else {
+          if (dist <= arrive_threshold) { current_segment_++; }
+        }
       } else {
         const double tolerance = (current_segment_ == 4) ? 0.25 : pos_tolerance_;
         if (dist <= tolerance) {
@@ -461,6 +476,7 @@ private:
   double segment_elapsed_{0.0};
   double current_time_{0.0};
   double wp_wait_timer_{0.0};
+  double ball_intake_timer_{0.0};
   double mirror_x_{1.0};
 
   double curr_x_{-5.925};
