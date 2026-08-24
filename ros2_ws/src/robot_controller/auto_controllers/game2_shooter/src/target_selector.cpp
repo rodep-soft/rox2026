@@ -114,54 +114,42 @@ std::optional<TargetCandidate> TargetSelector::select_best_target(
 
   const TargetCandidate * chosen = nullptr;
 
-  // 戦略A: 垂直スイープ (直前の照準方向と同方位に未射出パネルがあれば、旋回0度・段のみ移行で即撃ち)
-  if (config.enable_vertical_sweep && !current_target_tag_ids.empty()) {
-    for (const auto & cand : candidates) {
-      if (std::abs(cand.heading_err - current_target_heading_err) < (config.yaw_tolerance * 1.5)) {
-        chosen = &cand;
-        RCLCPP_INFO_THROTTLE(
-          logger, *clock, 500,
-          "[Vertical Sweep: ZERO TURNING] Selected vertical target: %s (Heading Diff: %.2f deg)",
-          cand.desc.c_str(), std::abs(cand.heading_err - current_target_heading_err) * 180.0 / M_PI);
-        break;
-      }
-    }
-  }
-
-  // 戦略B: TSP最小角度移動 (現在の方位から最も近い方位のターゲットを選択して旋回量を最小化)
-  if (!chosen && config.enable_nearest_angle_search) {
-    double min_delta_angle = 1e9;
-    for (const auto & cand : candidates) {
-      const double delta = std::abs(cand.heading_err - current_target_heading_err);
-      if (delta < min_delta_angle) {
-        min_delta_angle = delta;
-        chosen = &cand;
-      }
-    }
-  }
-
-  // 戦略C: 同一段・同RPM優先
-  if (!chosen && config.prefer_same_row_first && !current_target_tag_ids.empty()) {
-    std::vector<const TargetCandidate *> same_row_candidates;
-    for (const auto & cand : candidates) {
-      if (cand.row == current_active_row) {
-        same_row_candidates.push_back(&cand);
-      }
-    }
-
-    if (!same_row_candidates.empty()) {
-      double min_delta_angle = 1e9;
-      for (const auto * cand : same_row_candidates) {
-        const double delta = std::abs(cand->heading_err - current_target_heading_err);
-        if (delta < min_delta_angle) {
-          min_delta_angle = delta;
-          chosen = cand;
+  // 1. 直前と同じ方位 (垂直スイープ: 旋回0度) のターゲットがあれば、段昇順 (下->中->上) で連続射出
+  if (!current_target_tag_ids.empty()) {
+    for (int r = 0; r <= 2; ++r) {
+      for (const auto & cand : candidates) {
+        if (cand.row == r && std::abs(cand.heading_err - current_target_heading_err) < (config.yaw_tolerance * 2.0)) {
+          chosen = &cand;
+          RCLCPP_INFO_THROTTLE(
+            logger, *clock, 500,
+            "[Vertical Column Sweep: 0 DEG ROTATION] Selected vertical target: %s (Row %d)",
+            cand.desc.c_str(), cand.row);
+          return *chosen;
         }
       }
     }
   }
 
-  // 戦略D: フォールバック（リスト先頭）
+  // 2. 左側中点ペア (Row 0 -> Row 1 -> Row 2) が残っていれば、左側中点の下段から順に最優先で射出開始
+  for (int r = 0; r <= 2; ++r) {
+    for (const auto & cand : candidates) {
+      if (cand.is_pair && cand.row == r) {
+        chosen = &cand;
+        return *chosen;
+      }
+    }
+  }
+
+  // 3. 左側中点が終わったら、残り (右側単独など) のうち下段から順に選択 (Row 0 -> 1 -> 2)
+  for (int r = 0; r <= 2; ++r) {
+    for (const auto & cand : candidates) {
+      if (cand.row == r) {
+        chosen = &cand;
+        return *chosen;
+      }
+    }
+  }
+
   if (!chosen) {
     chosen = &candidates.front();
   }
