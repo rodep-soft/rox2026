@@ -13,6 +13,15 @@
     wp_test_y: 2.50
     wp_test_yaw: 0.0
 
+    ## 6.283 < -- 2pi
+
+    # ros2 launch robot_bringup kokura.launch.py     
+    # ros2 launch robot_bringup game1.launch.py   
+    # r1ボタン
+    # or
+    # ros2 topic pub --once /game1/command_start std_msgs/msg/Bool "{data: true}"               
+
+
     # ── Game 1 共通ウェイポイント設定 [x (m), y (m), yaw (rad)] ──
     # 全区間で yaw=0.0 (ゲート射出方向: X軸正方向) を完全固定。旋回ゼロで全方向ホロノミック移動
     # 1. ゲート外側シュート位置 (縦向きゲート: X=-4.600, Y=2.165 の自陣側 X=-5.925 で射出)
