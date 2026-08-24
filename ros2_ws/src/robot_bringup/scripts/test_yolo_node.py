@@ -48,6 +48,8 @@ class TestYoloNode(Node):
         self.fy = 1400.0
         self.cx = 960.0
         self.cy = 540.0
+        self.real_ball_diameter = 0.20  # 20cm
+
         # 白飛び防止＆コントラスト補正用 LUT (Gamma = 1.4)
         inv_gamma = 1.0 / 1.4
         self.gamma_lut = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
