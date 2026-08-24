@@ -208,20 +208,25 @@ private:
     }
     current_path_pub_->publish(executed_path_);
 
-    // 3. ロボット車体フットプリント (0.65m x 0.50m)
+    // 3. ロボット車体フットプリント (0.65m x 0.50m) - base_footprintフレームに直結してTFと100%完全同期
     visualization_msgs::msg::MarkerArray fp_array;
     visualization_msgs::msg::Marker fp;
     fp.header.stamp = now_stamp;
-    fp.header.frame_id = "map";
+    fp.header.frame_id = "base_footprint";
     fp.ns = "robot_footprint";
     fp.id = 0;
     fp.type = visualization_msgs::msg::Marker::CUBE;
     fp.action = visualization_msgs::msg::Marker::ADD;
-    fp.pose = ps.pose;
-    fp.pose.position.z = 0.15;
+    fp.pose.position.x = 0.0;
+    fp.pose.position.y = 0.0;
+    fp.pose.position.z = 0.10;
+    fp.pose.orientation.w = 1.0;
+    fp.pose.orientation.x = 0.0;
+    fp.pose.orientation.y = 0.0;
+    fp.pose.orientation.z = 0.0;
     fp.scale.x = 0.65;
     fp.scale.y = 0.50;
-    fp.scale.z = 0.25;
+    fp.scale.z = 0.20;
     fp.color.r = 0.2f;
     fp.color.g = 0.8f;
     fp.color.b = 1.0f;
