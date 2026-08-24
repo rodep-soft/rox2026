@@ -25,6 +25,7 @@ def generate_launch_description():
         "controllers/spring_controller.launch.py",
         "controllers/led_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
+        "ekf.launch.py",
     ]
 
     return LaunchDescription(
