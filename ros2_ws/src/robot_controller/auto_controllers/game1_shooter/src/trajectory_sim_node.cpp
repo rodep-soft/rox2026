@@ -143,7 +143,16 @@ private:
       const double dx_world = target.x - curr_x_;
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
-      const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
+
+      // ── ボール追従フェーズ (ゲート横回り込み〜キャッチ): 常に転がるボールへ正面 (Yaw) を向け続ける ──
+      double dynamic_target_yaw = target.yaw;
+      if ((current_segment_ == 2 || current_segment_ == 3) && !ball_is_caught_) {
+        const double to_ball_dx = ball_x_ - curr_x_;
+        const double to_ball_dy = ball_y_ - curr_y_;
+        dynamic_target_yaw = std::atan2(to_ball_dy, to_ball_dx);
+      }
+
+      const double yaw_err = std::remainder(dynamic_target_yaw - curr_yaw_, 2.0 * M_PI);
       const bool is_fly_through = (current_segment_ == 1 || current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
       const double arrive_threshold = (current_segment_ == 1 || current_segment_ == 3) ? 0.35 : (is_fly_through ? 0.35 : pos_tolerance_);
 
