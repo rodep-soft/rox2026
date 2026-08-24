@@ -14,6 +14,7 @@ rosidl_generate_interfaces(
   "msg/BeltMode.msg"
   "msg/ArmPosition.msg"
   "msg/ShotCycleState.msg"
+  "msg/SpringOperationState.msg"
   "msg/BeltStatus.msg"
   "msg/Game2State.msg"
   DEPENDENCIES

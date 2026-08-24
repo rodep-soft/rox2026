@@ -24,7 +24,6 @@ CAN受信購読にはContent Filterを適用し、設定されたVESCのStatus 1
 |---|---|
 | `logical_id` | ROS側で使用する一意なID |
 | `controller_id` | VESC CAN ID |
-| `command_timeout_ms` | 指令断で0 RPMへ移る時間 |
 | `feedback_timeout_ms` | 接続切れと判定する時間 |
 | `max_rpm` | 機械RPM指令の絶対値上限 |
 | `rpm_slew_rate` | 1秒あたりの機械RPM変化量 |

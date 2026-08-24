@@ -16,11 +16,8 @@
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
-    # ドリブル逆回転 (ボタン割り当て解除: -1)
-    dribble_reverse_button: -1
     # L1でスプリングゆっくり射出 (逆回転・正方向押し出し)
     slow_fire_button: 4
-    slow_fire_arm_restore_delay_ms: 6000  # [ms] ゆっくり射出後、アームをDRIBBLEへ自動復帰させる最大待機時間
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 

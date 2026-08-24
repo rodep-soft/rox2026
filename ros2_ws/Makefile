@@ -1,8 +1,12 @@
 .PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
 BUILD_JOBS ?= 2
-PARALLEL_WORKERS ?= 1
-EXECUTOR ?= sequential
+PARALLEL_WORKERS ?= 4
+EXECUTOR ?= parallel
+
+# BUILD_JOBS ?= 8
+# PARALLEL_WORKERS ?= 1
+# EXECUTOR ?= sequential
 
 CMAKE_ARGS = \
 	-G Ninja \

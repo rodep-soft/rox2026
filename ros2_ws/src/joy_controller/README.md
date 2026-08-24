@@ -180,7 +180,6 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/shot_cycle/request` | `std_msgs/msg/Bool` |
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
-| publish | `/dribble/command_reverse` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
 | publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |

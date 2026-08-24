@@ -17,12 +17,10 @@ public:
   LedControllerNode();
 
 private:
-  enum class DisplayMode : uint8_t
-  {
+  enum class DisplayMode : uint8_t {
     STARTUP = 0,
     READY = 1,
     EMERGENCY_STOP = 2,
-    SHOT_OPENING = 3,
     LOADING = 4,
     FIRING = 5,
     RETURNING = 6,

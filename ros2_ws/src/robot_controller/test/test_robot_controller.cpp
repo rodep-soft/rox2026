@@ -274,18 +274,12 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
 
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
-  const auto rev_rpm_update =
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", 750));
-  ASSERT_TRUE(rev_rpm_update.successful);
-  const auto ramp_sec_update =
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_ramp_sec", 1.5));
-  ASSERT_TRUE(ramp_sec_update.successful);
+  const auto slow_fire_rpm_update = dribble_node->set_parameter(
+      rclcpp::Parameter("slow_fire_dribble_rpm", -750));
+  ASSERT_TRUE(slow_fire_rpm_update.successful);
   EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1)).successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_rpm", -1)).successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("dribble_reverse_ramp_sec", -0.5)).successful);
+      dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1))
+          .successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
   EXPECT_TRUE(
@@ -385,10 +379,10 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   EXPECT_NEAR(last_position_rad, 1.3f, 0.01f);
 }
 
-TEST_F(RobotControllerTest, DribbleControllerShotCycleTestModeTest)
-{
+TEST_F(RobotControllerTest, DribbleControllerShotCycleTimeoutTest) {
   auto dribble_node = std::make_shared<DribbleControllerNode>();
-  auto test_node = std::make_shared<rclcpp::Node>("test_dribble_test_mode_client");
+  auto test_node =
+      std::make_shared<rclcpp::Node>("test_dribble_shot_timeout_client");
 
   float last_position_rad = 999.0f;
   auto position_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
@@ -423,11 +417,12 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleTestModeTest)
   }
   EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
 
-  // test_mode を true に設定
-  const auto param_res = dribble_node->set_parameter(rclcpp::Parameter("test_mode", true));
+  // 実測RPMが来ない場合もタイムアウト後にFEEDへ進む。
+  const auto param_res = dribble_node->set_parameter(
+      rclcpp::Parameter("belt_spinup_timeout_sec", 0.0));
   ASSERT_TRUE(param_res.successful);
 
-  // beltがSTOPのままでも、test_mode=trueならBELT_SPINUPを経由せず即座にFEED (1.3 rad) へ向かう
+  // ベルトを自動起動し、タイムアウト後にFEEDへ向かう。
   std_msgs::msg::Bool shot_msg;
   shot_msg.data = true;
   pub_shot_cycle->publish(shot_msg);
@@ -452,8 +447,8 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleTestModeTest)
   }
   EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
 
-  // test_mode のため自動起動・自動停止コマンドは発行されない
-  EXPECT_NE(last_published_belt_mode, robot_msgs::msg::BeltMode::STOP);
+  // 自動起動したベルトはシーケンス完了時に停止する。
+  EXPECT_EQ(last_published_belt_mode, robot_msgs::msg::BeltMode::STOP);
 }
 
 TEST_F(RobotControllerTest, MecanumControllerKinematicsAndEmergencyStopTest)
