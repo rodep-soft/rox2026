@@ -39,10 +39,13 @@ private:
     bool affects_trajectory;
   };
   std::vector<ParameterBinding> parameter_bindings();
+  static bool parameter_value_is_valid(ParameterConstraint constraint,
+                                       double value);
   void declare_binding(ParameterBinding &binding);
   static bool apply_binding(const ParameterBinding &binding,
                             const rclcpp::Parameter &parameter);
   void restart_active_trajectory();
+  void load_parameters();
 
   void
   position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg);
