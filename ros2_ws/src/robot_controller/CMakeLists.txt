@@ -141,6 +141,7 @@ ament_target_dependencies(
   game2_sim_node
   rclcpp
   geometry_msgs
+  nav_msgs
   std_msgs
   visualization_msgs
   tf2
