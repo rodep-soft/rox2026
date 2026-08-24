@@ -137,39 +137,64 @@ std::optional<TargetCandidate> TargetSelector::select_best_target(
     return std::nullopt;
   }
 
-  // 【最優先ルール: 垂直スイープ / 旋回0度ロック】
-  // 一度射出した方向と同じ縦列 (heading_err 差が 0.08 rad 以内) に未撃破パネルがあれば、
-  // 他の段へ絶対に旋回せず、その列の残存パネルを RPM 変更のみで全て撃ち尽くす (旋回回数最小化)
+  // 【最優先ルール 1: 垂直スイープ / 旋回0度ロック】
+  // 直前と同じ方位 (差が0.08rad以内) に未撃破ターゲットがあれば、旋回0度・RPM変更のみで連続射出
   if (!current_target_tag_ids.empty()) {
+    // A. 同じ縦列のペア (2枚抜き) を最優先
     for (const auto & cand : candidates) {
-      if (std::abs(cand.heading_err - current_target_heading_err) < 0.08) {
+      if (cand.is_pair && std::abs(cand.heading_err - current_target_heading_err) < 0.08) {
         RCLCPP_INFO(
           logger,
-          "[VERTICAL LOCK - ZERO TURN] Continuing same column: %s (Row %d) -> Changing RPM only!",
+          "[VERTICAL LOCK - 2-PANEL PAIR] Same column: %s (Row %d) -> RPM only!",
+          cand.desc.c_str(), cand.row);
+        return cand;
+      }
+    }
+    // B. 同じ縦列の単独パネル
+    for (const auto & cand : candidates) {
+      if (!cand.is_pair && std::abs(cand.heading_err - current_target_heading_err) < 0.08) {
+        RCLCPP_INFO(
+          logger,
+          "[VERTICAL LOCK - SINGLE] Same column: %s (Row %d) -> RPM only!",
           cand.desc.c_str(), cand.row);
         return cand;
       }
     }
   }
 
-  // 【第二優先: 最も近い方位（最小旋回角）の未撃破ターゲットを選択】
-  // 現在向いている方位から最も少ない旋回角で狙える縦列・ターゲットへ1回だけ旋回
-  double min_turn_angle = 1e9;
-  const TargetCandidate * chosen = nullptr;
+  // 【最優先ルール 2: 2枚抜き (is_pair = true) の中点を最優先で選択】
+  // ペアが存在する限り、単独パネルは狙わず必ず2枚抜きの中点から開始
+  double min_pair_turn = 1e9;
+  const TargetCandidate * chosen_pair = nullptr;
+  for (const auto & cand : candidates) {
+    if (cand.is_pair) {
+      const double turn_cost = std::abs(cand.heading_err - current_target_heading_err);
+      if (turn_cost < min_pair_turn) {
+        min_pair_turn = turn_cost;
+        chosen_pair = &cand;
+      }
+    }
+  }
+  if (chosen_pair) {
+    return *chosen_pair;
+  }
 
+  // 【最優先ルール 3: ペアが全て倒れた後、残りの単独パネルを最小旋回角で選択】
+  double min_turn_angle = 1e9;
+  const TargetCandidate * chosen_single = nullptr;
   for (const auto & cand : candidates) {
     const double turn_cost = std::abs(cand.heading_err - current_target_heading_err);
     if (turn_cost < min_turn_angle) {
       min_turn_angle = turn_cost;
-      chosen = &cand;
+      chosen_single = &cand;
     }
   }
 
-  if (!chosen) {
-    chosen = &candidates.front();
+  if (chosen_single) {
+    return *chosen_single;
   }
 
-  return *chosen;
+  return candidates.front();
 }
 
 }  // namespace robot_controller
