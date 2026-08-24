@@ -3,7 +3,7 @@ project(robot_bringup)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY config launch scripts models world urdf meshes DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch scripts models world urdf DESTINATION share/${PROJECT_NAME})
 
 install(PROGRAMS
   scripts/test_yolo_node.py

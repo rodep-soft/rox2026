@@ -87,6 +87,11 @@ def generate_launch_description():
                 description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
+                "model_name",
+                default_value="yolov5s",
+                description="YOLO model name (e.g. yolov5s, yolov8n)",
+            ),
+            DeclareLaunchArgument(
                 "game",
                 default_value="all",
                 description="Selected game mode: 'all' (default: all nodes/controllers/cams ON for testing), 'game1' (webcam, spring, EKF ON, belt OFF), 'game2' (belt, spring hold, vision ON, EKF/webcam OFF), 'game3' (all vision/cameras/EKF/belt OFF, manual/dribble/spring only)",
