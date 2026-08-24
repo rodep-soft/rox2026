@@ -24,11 +24,11 @@
     dribbling_max_acceleration_rad_s2: 12.0
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 270             # DRIBBLE姿勢 (ボール保持中) の回転数
-    slow_fire_dribble_rpm: -200     # スロー発射中の回転数（負値で逆回転）
+    dribble_on_rpm: 200             # DRIBBLE姿勢 (ボール保持中) の回転数
+    slow_fire_dribble_rpm: -100     # スロー発射中の回転数（負値で逆回転）
     shot_cycle_opening_rpm: 1000    # ベルト発射準備時のローラ回転数
     shot_cycle_feeding_rpm: 1000       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
-    shot_cycle_returning_rpm: 270  # FEED -> DRIBBLE
+    shot_cycle_returning_rpm: 200  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
     ball_detection_threshold_a: 4.2 # 1.7A 以上でボール保持(BALL DETECTED)と判定
@@ -48,9 +48,9 @@
     cmd_vel_acceleration_lpf_alpha: 0.2
     enable_motion_compensation: true          # 運動補正の有効化
 
-    backward_velocity_boost_rpm_per_mps: 60.0
-    backward_acceleration_rpm_per_mps2: 20.0
-    max_boost_rpm: 400
+    backward_velocity_boost_rpm_per_mps: 100.0
+    backward_acceleration_rpm_per_mps2: 30.0
+    max_boost_rpm: 250
 
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)

@@ -16,15 +16,15 @@
     fire_increment_rad: -43.9822971
     
     # ── ゆっくり射出 ──
-    slow_fire_target_position_rad: 11.5  # ゼロ点基準。standby_offsetとの差8.0 radを現在の累積位置へ加算
-    slow_fire_base_velocity_rad_s: 20.0
-    slow_fire_velocity_gain_rad_per_m: 2.0  # 前進速度1 m/sあたりの押し出し速度加算量[rad/s]
+    slow_fire_target_position_rad: 20.0  # ゼロ点基準。standby_offsetとの差8.0 radを現在の累積位置へ加算
+    slow_fire_base_velocity_rad_s: 15.0
+    slow_fire_velocity_gain_rad_per_m: 5.0  # 前進速度1 m/sあたりの押し出し速度加算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0
-    slow_fire_max_velocity_rad_s: 20.0
+    slow_fire_max_velocity_rad_s: 30.0
     cmd_vel_topic: "/mecanum/cmd_vel_heading"  # IMU補正後の速度指令
     cmd_vel_timeout_sec: 0.2
     slow_fire_return_velocity_rad_s: 28.0
-    slow_fire_settle_timeout_sec: 1.5       # [s] 目標送信完了後に実機の到達を待つ猶予
+    slow_fire_settle_timeout_sec: 3.0       # [s] 目標送信完了後に実機の到達を待つ猶予
     
     # [rad/s] 未原点時に目標位置を負方向へずらす速度
     homing_velocity_rad_s: 4.0
