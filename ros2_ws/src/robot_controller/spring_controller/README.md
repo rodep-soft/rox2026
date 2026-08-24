@@ -2,7 +2,7 @@
 
 ばね用EduLite 05を一方向のProfile Position制御で動かすノード。
 起動時とEduLite再接続時にリミットスイッチで原点を取り、通常運転では
-発射要求ごとに累積位置目標へ1周分の負角度を加算する。
+発射要求ごとに累積位置目標へ1周分の負角度を減算する。
 
 ## 関連ファイル
 
@@ -81,10 +81,10 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 |---|---|
 | `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
 | `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
-| `fire_increment_rad` | 発射要求1回で加算する回転角度[rad] |
+| `fire_increment_rad` | 発射要求1回で減算する回転角度[rad] |
 | `slow_fire_target_position_rad` | 低速発射のゼロ点基準ピーク位置[rad]。通常発射の累積回転数を維持したまま、`standby_offset_rad`との差分をストロークとして使用 |
 | `slow_fire_base_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
-| `slow_fire_velocity_gain_rad_per_m` | IMU補正後cmd_velの前進速度1 m/sあたりに加算する押し出し速度[rad/s] |
+| `slow_fire_velocity_gain_rad_per_m` | IMU補正後cmd_velの前進速度1 m/sあたりに減算する押し出し速度[rad/s] |
 | `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |
 | `cmd_vel_topic` | スロー発射速度補正に使うIMU補正後の速度指令トピック |
 | `cmd_vel_timeout_sec` | 速度指令が途絶えた場合に補正を無効化するまでの時間[s] |

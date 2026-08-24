@@ -12,13 +12,13 @@
     # [rad] 待機位置・目標位置到達判定の許容誤差
     position_tolerance_rad: 0.05
 
-    # [rad/request] 発射要求1回で累積目標へ加算する角度
+    # [rad/request] 発射要求1回で累積目標へ減算する角度
     fire_increment_rad: -43.9822971
     
     # ── ゆっくり射出 ──
-    slow_fire_target_position_rad: 13.0  # ゼロ点基準。standby_offsetとの差8.0 radを現在の累積位置へ加算
+    slow_fire_target_position_rad: 13.0  # ゼロ点基準。standby_offsetとの差8.0 radを現在の累積位置へ減算
     slow_fire_base_velocity_rad_s: 15.0
-    slow_fire_velocity_gain_rad_per_m: 5.0  # 前進速度1 m/sあたりの押し出し速度加算量[rad/s]
+    slow_fire_velocity_gain_rad_per_m: 5.0  # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0
     slow_fire_max_velocity_rad_s: 30.0
     cmd_vel_topic: "/mecanum/cmd_vel_heading"  # IMU補正後の速度指令

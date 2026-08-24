@@ -372,9 +372,12 @@ void SpringEduliteController::actuator_state_callback(
     const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();
     const double stroke_rad =
         std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
+    // Forward-speed compensation can reduce the extension velocity. Use the
+    // configured minimum for the timeout estimate so valid slow motion is not
+    // treated as a failure.
     const double expected_duration_sec =
-        (slow_fire_base_velocity_rad_s_ > 0.0)
-            ? (stroke_rad / slow_fire_base_velocity_rad_s_)
+        (slow_fire_min_velocity_rad_s_ > 0.0)
+            ? (stroke_rad / slow_fire_min_velocity_rad_s_)
             : 1.0;
 
     if (elapsed_sec >= expected_duration_sec + slow_fire_settle_timeout_sec_) {
@@ -489,7 +492,7 @@ void SpringEduliteController::control_timer_callback() {
     const double forward_speed =
         cmd_vel_fresh ? commanded_forward_speed_m_s_ : 0.0;
     const double extension_velocity = std::clamp(
-        slow_fire_base_velocity_rad_s_ +
+        slow_fire_base_velocity_rad_s_ -
             forward_speed * slow_fire_velocity_gain_rad_per_m_,
         slow_fire_min_velocity_rad_s_, slow_fire_max_velocity_rad_s_);
     target_position_rad_ += extension_velocity * period_sec;
