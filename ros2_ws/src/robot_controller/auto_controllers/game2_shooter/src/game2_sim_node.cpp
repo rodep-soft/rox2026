@@ -228,9 +228,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        // アーム展開 (OPEN: 0.3s)
+        // 次弾装填・アーム展開・ボール安定化 (約1.0秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::OPEN;
-        if (state_timer_ >= 0.3) {
+        if (state_timer_ >= 1.0) {
           state_ = robot_msgs::msg::Game2State::SHOOTING;
           state_timer_ = 0.0;
           fire_current_ball();
@@ -239,9 +239,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::SHOOTING: {
-        // ボール送り込み (FEED: 0.8s)
+        // フライホイール送り込み・発射 (約0.6秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::FEED;
-        if (state_timer_ >= 0.8) {
+        if (state_timer_ >= 0.6) {
           state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
           state_timer_ = 0.0;
         }
@@ -249,9 +249,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        // 飛翔・着弾判定待ち (1.0s)
+        // 飛翔・着弾・パネル倒れ確認判定 (約0.9秒 -> 1サイクル計2.5秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-        if (state_timer_ >= 1.0) {
+        if (state_timer_ >= 0.9) {
           state_ = robot_msgs::msg::Game2State::SEARCHING;
           state_timer_ = 0.0;
         }
