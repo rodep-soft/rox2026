@@ -85,8 +85,8 @@ public:
     // waypoints_[0] は初期開始地点なので、目標は 1 からスタート
     curr_x_ = waypoints_[0].x;
     curr_y_ = waypoints_[0].y;
-    // 初期向き: yaw=0.0 (ゲート射出方向)。帰還も同じyawなので次サイクルに旋回不要
-    curr_yaw_ = 0.0;
+    // 初期向き: yaw = -π/2 (ゲート方向: -Y)。スタート時も帰還時もゲートを向いており、そのまま発進
+    curr_yaw_ = -M_PI / 2.0;
     current_segment_ = 1;
 
     publish_static_planned_path();
@@ -273,15 +273,17 @@ private:
       ball_x_ = shoot_start_x + smooth_roll * (target_ball_stop_x - shoot_start_x);
       ball_y_ = waypoints_[1].y;
 
-      // ロボットが実際にボールのすぐ近く (25cm 以内) に到達して初めてドリブルキャッチ判定
+      // ロボットがボールに接触した段階でドリブルキャッチ判定
       const double dist_robot_to_ball = std::hypot(curr_x_ - ball_x_, curr_y_ - ball_y_);
-      if (current_segment_ >= 3 && dist_robot_to_ball < 0.40) {
+      if (current_segment_ >= 3 && dist_robot_to_ball < 0.35) {
         ball_is_caught_ = true;
       }
     } else if (current_segment_ == 3 || (current_segment_ == 4 && wp_wait_timer_ < 0.1)) {
-      // ドリブルキャッチ後: ロボット前方に保持されて一緒にパスエリアへ移動
-      ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
-      ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
+      // ドリブルキャッチ後: ロボット前方の保持位置へワープせず滑らかに吸着追従 (1階遅れで手元へスッと収まる)
+      const double target_hold_x = curr_x_ + 0.25 * std::cos(curr_yaw_);
+      const double target_hold_y = curr_y_ + 0.25 * std::sin(curr_yaw_);
+      ball_x_ += (target_hold_x - ball_x_) * std::min(1.0, 15.0 * dt);
+      ball_y_ += (target_hold_y - ball_y_) * std::min(1.0, 15.0 * dt);
     } else if (current_segment_ == 4) {
       // パスエリアぶつけ停止 & L1ゆっくり押し出し: アームからパスエリア中心 (X = ±1.316m, Y = 1.641m) へボールを優しく置く
       double progress = std::min(1.0, wp_wait_timer_ / 0.7);
