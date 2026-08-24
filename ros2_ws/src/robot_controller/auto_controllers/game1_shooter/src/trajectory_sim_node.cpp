@@ -321,29 +321,30 @@ private:
       if (current_segment_ >= 3 && dist_robot_to_ball < 0.40 && curr_x_ < ball_x_) {
         ball_is_caught_ = true;
       }
-    } else if (ball_is_caught_ && (current_segment_ == 3 || (current_segment_ == 4 && wp_wait_timer_ < 0.05))) {
-      // 3. キャッチ後〜パスエリア到達: ロボット前方に吸着保持されて一緒に移動
-      const double target_hold_x = curr_x_ + 0.25 * std::cos(curr_yaw_);
-      const double target_hold_y = curr_y_ + 0.25 * std::sin(curr_yaw_);
-      ball_x_ += (target_hold_x - ball_x_) * std::min(1.0, 25.0 * dt);
-      ball_y_ += (target_hold_y - ball_y_) * std::min(1.0, 25.0 * dt);
+    } else if (ball_is_caught_ && current_segment_ == 3) {
+      // 3. キャッチ後: ロボット前方に吸着保持されて一緒に移動
+      ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
+      ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
     } else if (current_segment_ == 4) {
-      // 4. パスエリア先端ぶつかり停止: ぶつかった瞬間にボールを即座にパスエリア内へ置いて手放す
-      const double target_pass_x = (mirror_x_ < 0.0) ? 1.350 : -1.350;
-      ball_x_ = target_pass_x;
-      ball_y_ = 1.641;
+      // 4. パスエリアへ運搬中: ロボット前方に吸着保持されたまま一緒に走行し、停止した瞬間にリリース
+      const double dist_to_pass = std::hypot(waypoints_[4].x - curr_x_, waypoints_[4].y - curr_y_);
+      if (dist_to_pass <= 0.30 || wp_wait_timer_ > 0.0) {
+        // パスエリア先端に到達して手放す
+        ball_x_ = (curr_x_ + 0.25 * std::cos(curr_yaw_));
+        ball_y_ = (curr_y_ + 0.25 * std::sin(curr_yaw_));
+      } else {
+        // 運搬中: ロボット正面にピタッと吸着保持
+        ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
+        ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
+      }
     } else if (current_segment_ == 5 || current_segment_ == 6) {
-      // 5. スタートへ帰還中: パスエリア内にボールが静止
-      ball_x_ = (mirror_x_ < 0.0) ? 1.350 : -1.350;
-      ball_y_ = 1.641;
+      // 5. スタートへ帰還中: 手放した位置 (パスエリア境界内) にボールが静止
+      // (パスエリア内の静止位置を維持)
     } else {
       // 6. スタート待機中 (サイクル境界): 人がボールを装填 (0.5s後にロボット手前に出現)
       if (wp_wait_timer_ > 0.5) {
         ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
         ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
-      } else {
-        ball_x_ = (mirror_x_ < 0.0) ? 1.350 : -1.350;
-        ball_y_ = 1.641;
       }
     }
 
