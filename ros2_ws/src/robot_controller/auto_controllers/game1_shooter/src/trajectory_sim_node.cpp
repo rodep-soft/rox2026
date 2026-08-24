@@ -60,7 +60,7 @@ public:
     const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
     const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
-    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.750) * mirror_x;
+    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -2.030) * mirror_x;
     const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.641);
     const double wp_pass_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_pass_area_yaw", 0.0);
 
