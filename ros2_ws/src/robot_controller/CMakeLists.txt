@@ -136,7 +136,12 @@ ament_target_dependencies(
   tf2
   tf2_ros)
 
-add_executable(game2_sim_node auto_controllers/game2_shooter/src/game2_sim_node.cpp)
+add_executable(game2_sim_node
+  auto_controllers/game2_shooter/src/game2_sim_node.cpp
+  auto_controllers/game2_shooter/src/vision_tracker.cpp
+  auto_controllers/game2_shooter/src/target_selector.cpp)
+target_include_directories(game2_sim_node
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/auto_controllers/game2_shooter/include)
 ament_target_dependencies(
   game2_sim_node
   rclcpp
@@ -148,7 +153,6 @@ ament_target_dependencies(
   apriltag_msgs
   tf2
   tf2_ros)
-target_link_libraries(game2_sim_node PRIVATE game2_auto_node_implementation)
 
 list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node field_visualization_node trajectory_sim_node game2_sim_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
