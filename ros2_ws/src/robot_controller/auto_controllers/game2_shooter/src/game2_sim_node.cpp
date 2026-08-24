@@ -2,6 +2,7 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <vector>
@@ -46,8 +47,16 @@ public:
 
     mirror_x_ = (field_side_ == "right" || field_side_ == "blue") ? -1.0 : 1.0;
 
-    marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+    // Foxglove既存パネルでそのまま見られる共通トピック名に配信
+    footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+      "/robot/footprint_marker", rclcpp::QoS(10));
+    ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+      "/sim/ball_marker", rclcpp::QoS(10));
+    g2_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
       "/game2_sim/markers", rclcpp::QoS(10));
+    odom_pub_ = create_publisher<nav_msgs::msg::Odometry>(
+      "/odom/simulated", rclcpp::QoS(10));
+
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // パネル配置初期化 (3x3 パネル)
@@ -64,8 +73,8 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "Game2SimNode initialized! Robot at (%.2f, %.2f) facing panel at (%.2f, %.2f), Dist=%.1fm, Sigma_X=%.2fm, Sigma_Z=%.2fm",
-      robot_x_, robot_y_, panel_center_x_, panel_center_y_, target_dist_, sigma_x_, sigma_z_);
+      "Game2SimNode running! Robot at (%.2f, %.2f) facing panel at (%.2f, %.2f)",
+      robot_x_, robot_y_, panel_center_x_, panel_center_y_);
   }
 
 private:
@@ -75,10 +84,6 @@ private:
     panel_center_x_ = (mirror_x_ > 0.0) ? -3.23 : 3.63;
     panel_center_y_ = -5.525;
 
-    // AprilTag ID:
-    // Top (Row 2): 16(L), 15(C), 14(R)
-    // Middle (Row 1): 19(L), 18(C), 17(R)
-    // Bottom (Row 0): 22(L), 21(C), 20(R)
     const int tag_ids[3][3] = {
       {22, 21, 20}, // Row 0 (Bottom)
       {19, 18, 17}, // Row 1 (Middle)
@@ -106,7 +111,7 @@ private:
     state_timer_ += dt;
     const auto now_stamp = this->now();
 
-    // TF 配信 (map -> base_footprint)
+    // 1. TF 配信 (map -> base_footprint)
     geometry_msgs::msg::TransformStamped tf_msg;
     tf_msg.header.stamp = now_stamp;
     tf_msg.header.frame_id = "map";
@@ -118,19 +123,29 @@ private:
     tf_msg.transform.rotation.w = std::cos(robot_yaw_ / 2.0);
     tf_broadcaster_->sendTransform(tf_msg);
 
-    // 自動射出シーケンス (下段 -> 中段 -> 上段、または残存パネルへ1.2秒おきに射出)
+    // 2. オドメトリ配信
+    nav_msgs::msg::Odometry odom;
+    odom.header.stamp = now_stamp;
+    odom.header.frame_id = "map";
+    odom.child_frame_id = "base_footprint";
+    odom.pose.pose.position.x = robot_x_;
+    odom.pose.pose.position.y = robot_y_;
+    odom.pose.pose.position.z = 0.05;
+    odom.pose.pose.orientation = tf_msg.transform.rotation;
+    odom_pub_->publish(odom);
+
+    // 3. 自動射出シーケンス (1.2秒おきに射出)
     if (state_timer_ >= 1.2) {
       state_timer_ = 0.0;
       shoot_next_ball();
     }
 
-    // 飛翔中のボールの物理シミュレーション & 着弾判定
+    // 4. 飛翔中のボールの物理シミュレーション & 着弾判定
     for (auto it = active_balls_.begin(); it != active_balls_.end(); ) {
       it->elapsed += dt;
       const double t = std::min(1.0, it->elapsed / it->flight_duration);
 
       if (t >= 1.0) {
-        // 着弾判定
         if (it->is_hit && it->target_panel_idx >= 0 && it->target_panel_idx < static_cast<int>(panels_.size())) {
           panels_[it->target_panel_idx].is_knocked_down = true;
           RCLCPP_INFO(
@@ -146,7 +161,7 @@ private:
       }
     }
 
-    // 全パネル倒れたら3秒後にリセットしてサイクルを継続
+    // 全パネル倒れたらリセット
     bool all_cleared = true;
     for (const auto & p : panels_) {
       if (!p.is_knocked_down) { all_cleared = false; break; }
@@ -156,17 +171,15 @@ private:
       if (reset_timer_ > 3.0) {
         init_panels();
         reset_timer_ = 0.0;
-        RCLCPP_INFO(get_logger(), "All 9 Panels cleared! Resetting panels for next practice cycle.");
       }
     }
 
-    // RViz / Foxglove 可視化マーカー配信
-    publish_markers(now_stamp);
+    // 5. 各種マーカー配信
+    publish_all_markers(now_stamp);
   }
 
   void shoot_next_ball()
   {
-    // 未撃破のパネルを探索 (下段 -> 中段 -> 上段)
     int target_idx = -1;
     for (size_t i = 0; i < panels_.size(); ++i) {
       if (!panels_[i].is_knocked_down) {
@@ -174,14 +187,11 @@ private:
         break;
       }
     }
-
-    if (target_idx < 0) { return; } // 全て倒れている
+    if (target_idx < 0) { return; }
 
     const auto & target_panel = panels_[target_idx];
 
-    // 正規分布（ガウス分布）による射出ばらつきシミュレーション
-    // 横方向 (X): std = 5cm (0.05m)
-    // 縦方向 (Z): std = 10-15cm (0.125m)
+    // ガウス分布によるばらつき
     std::normal_distribution<double> dist_x(0.0, sigma_x_);
     std::normal_distribution<double> dist_z(0.0, sigma_z_);
 
@@ -192,26 +202,23 @@ private:
     const double impact_y = target_panel.y;
     const double impact_z = target_panel.z + offset_z;
 
-    // パネルサイズ (36cm x 36cm = ±0.18m) への命中判定
     const bool is_hit = (std::abs(impact_x - target_panel.x) <= 0.18) &&
                         (std::abs(impact_z - target_panel.z) <= 0.18);
 
-    // 飛翔オブジェクト生成 (初速約15m/s -> 4mを約0.28秒で着弾)
     InFlightBall ball;
     ball.start_x = robot_x_;
     ball.start_y = robot_y_ - 0.25;
-    ball.start_z = 0.35; // 射出口高さ
+    ball.start_z = 0.35;
     ball.target_x = impact_x;
     ball.target_y = impact_y;
     ball.target_z = impact_z;
-    ball.flight_duration = 0.30; // 0.30秒
+    ball.flight_duration = 0.30;
     ball.elapsed = 0.0;
     ball.target_panel_idx = target_idx;
     ball.is_hit = is_hit;
 
     active_balls_.push_back(ball);
 
-    // 着弾履歴マーカー用に保存
     HitRecord hr;
     hr.x = impact_x;
     hr.y = impact_y;
@@ -221,26 +228,18 @@ private:
     if (hit_history_.size() > 30) {
       hit_history_.erase(hit_history_.begin());
     }
-
-    RCLCPP_INFO(
-      get_logger(),
-      "Shooting ball -> Panel #%d (Row %d) | Error: dx=%+.1fcm, dz=%+.1fcm -> %s",
-      target_panel.id, target_panel.row, offset_x * 100.0, offset_z * 100.0,
-      is_hit ? "HIT" : "MISS");
   }
 
-  void publish_markers(const rclcpp::Time & now_stamp)
+  void publish_all_markers(const rclcpp::Time & now_stamp)
   {
-    visualization_msgs::msg::MarkerArray msg;
-    int32_t id = 0;
-
-    // 1. ロボット車体マーカー (base_footprintフレーム直結)
+    // A. /robot/footprint_marker (ロボット車体)
     {
+      visualization_msgs::msg::MarkerArray fp_msg;
       visualization_msgs::msg::Marker fp;
       fp.header.stamp = now_stamp;
       fp.header.frame_id = "base_footprint";
-      fp.ns = "g2_robot";
-      fp.id = id++;
+      fp.ns = "robot_footprint";
+      fp.id = 0;
       fp.type = visualization_msgs::msg::Marker::CUBE;
       fp.action = visualization_msgs::msg::Marker::ADD;
       fp.pose.position.z = 0.10;
@@ -251,102 +250,132 @@ private:
       fp.color.r = 0.2f;
       fp.color.g = 0.8f;
       fp.color.b = 1.0f;
-      fp.color.a = 0.60f;
-      msg.markers.push_back(fp);
+      fp.color.a = 0.70f;
+      fp_msg.markers.push_back(fp);
+      footprint_pub_->publish(fp_msg);
     }
 
-    // 2. 3x3 パネルマーカー (倒れたパネルは倒れるアニメーション)
-    for (const auto & p : panels_) {
-      visualization_msgs::msg::Marker panel_m;
-      panel_m.header.stamp = now_stamp;
-      panel_m.header.frame_id = "map";
-      panel_m.ns = "g2_panels";
-      panel_m.id = id++;
-      panel_m.type = visualization_msgs::msg::Marker::CUBE;
-      panel_m.action = visualization_msgs::msg::Marker::ADD;
-      panel_m.pose.position.x = p.x;
-      panel_m.pose.position.y = p.y;
-      panel_m.pose.position.z = p.z;
+    // B. /sim/ball_marker (飛翔ボール＆待機ボール)
+    {
+      visualization_msgs::msg::MarkerArray ball_msg;
+      int32_t b_id = 0;
 
-      if (p.is_knocked_down) {
-        // 倒れたパネル: 後ろへ90度倒れる
-        panel_m.pose.position.y -= 0.18;
-        panel_m.pose.position.z -= 0.18;
-        panel_m.pose.orientation.x = 0.7071;
-        panel_m.pose.orientation.w = 0.7071;
-        panel_m.color.r = 0.3f;
-        panel_m.color.g = 0.3f;
-        panel_m.color.b = 0.3f;
-        panel_m.color.a = 0.30f;
-      } else {
-        panel_m.pose.orientation.w = 1.0;
-        panel_m.color.r = 0.90f;
-        panel_m.color.g = 0.15f;
-        panel_m.color.b = 0.20f;
-        panel_m.color.a = 0.95f;
+      // 飛翔中ボール
+      for (const auto & b : active_balls_) {
+        const double t = std::min(1.0, b.elapsed / b.flight_duration);
+        const double cur_x = b.start_x + t * (b.target_x - b.start_x);
+        const double cur_y = b.start_y + t * (b.target_y - b.start_y);
+        const double arc_h = 4.0 * 0.15 * t * (1.0 - t);
+        const double cur_z = b.start_z + t * (b.target_z - b.start_z) + arc_h;
+
+        visualization_msgs::msg::Marker bm;
+        bm.header.stamp = now_stamp;
+        bm.header.frame_id = "map";
+        bm.ns = "soccer_ball";
+        bm.id = b_id++;
+        bm.type = visualization_msgs::msg::Marker::SPHERE;
+        bm.action = visualization_msgs::msg::Marker::ADD;
+        bm.pose.position.x = cur_x;
+        bm.pose.position.y = cur_y;
+        bm.pose.position.z = cur_z;
+        bm.pose.orientation.w = 1.0;
+        bm.scale.x = 0.22;
+        bm.scale.y = 0.22;
+        bm.scale.z = 0.22;
+        bm.color.r = 1.0f;
+        bm.color.g = 0.85f;
+        bm.color.b = 0.10f;
+        bm.color.a = 1.0f;
+        ball_msg.markers.push_back(bm);
       }
-      panel_m.scale.x = 0.36;
-      panel_m.scale.y = 0.03;
-      panel_m.scale.z = 0.36;
-      msg.markers.push_back(panel_m);
+
+      // ロボット内部の待機ボール (発射口)
+      visualization_msgs::msg::Marker ready_ball;
+      ready_ball.header.stamp = now_stamp;
+      ready_ball.header.frame_id = "base_footprint";
+      ready_ball.ns = "ready_ball";
+      ready_ball.id = 999;
+      ready_ball.type = visualization_msgs::msg::Marker::SPHERE;
+      ready_ball.action = visualization_msgs::msg::Marker::ADD;
+      ready_ball.pose.position.x = 0.25;
+      ready_ball.pose.position.z = 0.15;
+      ready_ball.pose.orientation.w = 1.0;
+      ready_ball.scale.x = 0.22;
+      ready_ball.scale.y = 0.22;
+      ready_ball.scale.z = 0.22;
+      ready_ball.color.r = 1.0f;
+      ready_ball.color.g = 0.85f;
+      ready_ball.color.b = 0.10f;
+      ready_ball.color.a = 0.85f;
+      ball_msg.markers.push_back(ready_ball);
+
+      ball_pub_->publish(ball_msg);
     }
 
-    // 3. 飛翔中のボール
-    for (const auto & b : active_balls_) {
-      const double t = std::min(1.0, b.elapsed / b.flight_duration);
-      // 放物線弾道
-      const double cur_x = b.start_x + t * (b.target_x - b.start_x);
-      const double cur_y = b.start_y + t * (b.target_y - b.start_y);
-      const double arc_h = 4.0 * 0.15 * t * (1.0 - t); // 15cmの山なり
-      const double cur_z = b.start_z + t * (b.target_z - b.start_z) + arc_h;
+    // C. /game2_sim/markers (倒れるパネル＆着弾履歴)
+    {
+      visualization_msgs::msg::MarkerArray g2_msg;
+      int32_t p_id = 0;
 
-      visualization_msgs::msg::Marker ball_m;
-      ball_m.header.stamp = now_stamp;
-      ball_m.header.frame_id = "map";
-      ball_m.ns = "g2_flight_balls";
-      ball_m.id = id++;
-      ball_m.type = visualization_msgs::msg::Marker::SPHERE;
-      ball_m.action = visualization_msgs::msg::Marker::ADD;
-      ball_m.pose.position.x = cur_x;
-      ball_m.pose.position.y = cur_y;
-      ball_m.pose.position.z = cur_z;
-      ball_m.pose.orientation.w = 1.0;
-      ball_m.scale.x = 0.22;
-      ball_m.scale.y = 0.22;
-      ball_m.scale.z = 0.22;
-      ball_m.color.r = 1.0f;
-      ball_m.color.g = 0.85f;
-      ball_m.color.b = 0.10f;
-      ball_m.color.a = 1.0f;
-      msg.markers.push_back(ball_m);
-    }
+      for (const auto & p : panels_) {
+        visualization_msgs::msg::Marker pm;
+        pm.header.stamp = now_stamp;
+        pm.header.frame_id = "map";
+        pm.ns = "g2_panels";
+        pm.id = p_id++;
+        pm.type = visualization_msgs::msg::Marker::CUBE;
+        pm.action = visualization_msgs::msg::Marker::ADD;
+        pm.pose.position.x = p.x;
+        pm.pose.position.y = p.y;
+        pm.pose.position.z = p.z;
 
-    // 4. 着弾履歴・ばらつき分布マーカー (緑: HIT, 赤: MISS)
-    for (size_t i = 0; i < hit_history_.size(); ++i) {
-      const auto & hr = hit_history_[i];
-      visualization_msgs::msg::Marker hit_m;
-      hit_m.header.stamp = now_stamp;
-      hit_m.header.frame_id = "map";
-      hit_m.ns = "g2_hit_dispersion";
-      hit_m.id = id++;
-      hit_m.type = visualization_msgs::msg::Marker::SPHERE;
-      hit_m.action = visualization_msgs::msg::Marker::ADD;
-      hit_m.pose.position.x = hr.x;
-      hit_m.pose.position.y = hr.y + 0.02; // パネルの直前
-      hit_m.pose.position.z = hr.z;
-      hit_m.pose.orientation.w = 1.0;
-      hit_m.scale.x = 0.08;
-      hit_m.scale.y = 0.02;
-      hit_m.scale.z = 0.08;
-      if (hr.is_hit) {
-        hit_m.color.r = 0.0f; hit_m.color.g = 1.0f; hit_m.color.b = 0.3f; hit_m.color.a = 0.8f;
-      } else {
-        hit_m.color.r = 1.0f; hit_m.color.g = 0.1f; hit_m.color.b = 0.1f; hit_m.color.a = 0.8f;
+        if (p.is_knocked_down) {
+          pm.pose.position.y -= 0.18;
+          pm.pose.position.z -= 0.18;
+          pm.pose.orientation.x = 0.7071;
+          pm.pose.orientation.w = 0.7071;
+          pm.color.r = 0.3f;
+          pm.color.g = 0.3f;
+          pm.color.b = 0.3f;
+          pm.color.a = 0.35f;
+        } else {
+          pm.pose.orientation.w = 1.0;
+          pm.color.r = 0.90f;
+          pm.color.g = 0.15f;
+          pm.color.b = 0.20f;
+          pm.color.a = 0.95f;
+        }
+        pm.scale.x = 0.36;
+        pm.scale.y = 0.03;
+        pm.scale.z = 0.36;
+        g2_msg.markers.push_back(pm);
       }
-      msg.markers.push_back(hit_m);
-    }
 
-    marker_pub_->publish(msg);
+      for (size_t i = 0; i < hit_history_.size(); ++i) {
+        const auto & hr = hit_history_[i];
+        visualization_msgs::msg::Marker hm;
+        hm.header.stamp = now_stamp;
+        hm.header.frame_id = "map";
+        hm.ns = "g2_hit_dispersion";
+        hm.id = 100 + static_cast<int32_t>(i);
+        hm.type = visualization_msgs::msg::Marker::SPHERE;
+        hm.action = visualization_msgs::msg::Marker::ADD;
+        hm.pose.position.x = hr.x;
+        hm.pose.position.y = hr.y + 0.02;
+        hm.pose.position.z = hr.z;
+        hm.pose.orientation.w = 1.0;
+        hm.scale.x = 0.08;
+        hm.scale.y = 0.02;
+        hm.scale.z = 0.08;
+        if (hr.is_hit) {
+          hm.color.r = 0.0f; hm.color.g = 1.0f; hm.color.b = 0.3f; hm.color.a = 0.85f;
+        } else {
+          hm.color.r = 1.0f; hm.color.g = 0.1f; hm.color.b = 0.1f; hm.color.a = 0.85f;
+        }
+        g2_msg.markers.push_back(hm);
+      }
+      g2_marker_pub_->publish(g2_msg);
+    }
   }
 
   struct HitRecord {
@@ -354,7 +383,10 @@ private:
     bool is_hit;
   };
 
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr footprint_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ball_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr g2_marker_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
