@@ -49,6 +49,10 @@ SpringEduliteController::SpringEduliteController()
       declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
   slow_fire_settle_timeout_sec_ =
       declare_double_parameter("slow_fire_settle_timeout_sec", 3.0);
+  slow_fire_move_spring_ =
+      declare_parameter<bool>("slow_fire_move_spring", true);
+  slow_fire_arm_only_duration_sec_ =
+      declare_double_parameter("slow_fire_arm_only_duration_sec", 0.5);
   homing_velocity_rad_s_ =
       declare_double_parameter("homing_velocity_rad_s", 0.5);
   homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
@@ -70,7 +74,8 @@ SpringEduliteController::SpringEduliteController()
   const auto cmd_vel_topic = declare_parameter<std::string>(
       "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
-  if (belt_clearance_ready_travel_rad_ < 0.0 || logical_id < 0 ||
+  if (belt_clearance_ready_travel_rad_ < 0.0 ||
+      slow_fire_arm_only_duration_sec_ < 0.0 || logical_id < 0 ||
       logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
       set_position_service.empty() || cmd_vel_topic.empty()) {
     throw std::runtime_error("Invalid parameter configurations");
@@ -190,6 +195,17 @@ void SpringEduliteController::slow_fire_request_callback(
     return;
   }
 
+  if (!slow_fire_move_spring_) {
+    state_ = State::SLOW_FIRE_ARM_ONLY;
+    slow_fire_phase_start_time_ = now();
+    publish_operation_state();
+    RCLCPP_INFO(get_logger(),
+                "Arm-only slow fire started for %.3f s; spring target remains "
+                "at %.3f rad.",
+                slow_fire_arm_only_duration_sec_, target_position_rad_);
+    return;
+  }
+
   // Normal firing accumulates the multi-turn position. Keep that accumulated
   // revolution as the base and apply the configured zero-referenced slow-fire
   // stroke relative to it. Returning to the absolute standby offset here would
@@ -218,7 +234,8 @@ void SpringEduliteController::emergency_stop_callback(
 
   emergency_stop_active_ = msg->data;
   const bool slow_fire_interrupted = state_ == State::SLOW_FIRING_EXTENDING ||
-                                     state_ == State::SLOW_FIRING_RETURNING;
+                                     state_ == State::SLOW_FIRING_RETURNING ||
+                                     state_ == State::SLOW_FIRE_ARM_ONLY;
   if (!emergency_stop_active_ &&
       (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP)) {
     homing_start_time_ = now();
@@ -363,7 +380,8 @@ void SpringEduliteController::actuator_state_callback(
       emergency_stop_active_ &&
       (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP ||
        state_ == State::SLOW_FIRING_EXTENDING ||
-       state_ == State::SLOW_FIRING_RETURNING);
+       state_ == State::SLOW_FIRING_RETURNING ||
+       state_ == State::SLOW_FIRE_ARM_ONLY);
   if (emergency_motion_paused) {
     return;
   }
@@ -525,7 +543,8 @@ void SpringEduliteController::control_timer_callback() {
       emergency_stop_active_ &&
       (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP ||
        state_ == State::SLOW_FIRING_EXTENDING ||
-       state_ == State::SLOW_FIRING_RETURNING);
+       state_ == State::SLOW_FIRING_RETURNING ||
+       state_ == State::SLOW_FIRE_ARM_ONLY);
   if (emergency_motion_paused) {
     return;
   }
@@ -552,6 +571,16 @@ void SpringEduliteController::control_timer_callback() {
       target_position_rad_ -= homing_velocity_rad_s_ * period_sec;
       publish_target(target_position_rad_);
     }
+  } else if (state_ == State::SLOW_FIRE_ARM_ONLY) {
+    if ((now() - slow_fire_phase_start_time_).seconds() >=
+        slow_fire_arm_only_duration_sec_) {
+      state_ = State::READY;
+      publish_operation_state();
+      RCLCPP_INFO(get_logger(),
+                  "Arm-only slow fire complete; spring remained at %.3f rad.",
+                  target_position_rad_);
+    }
+    publish_target(target_position_rad_);
   } else if (state_ == State::SLOW_FIRING_EXTENDING) {
     const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
     const bool cmd_vel_fresh =
@@ -669,7 +698,8 @@ void SpringEduliteController::publish_operation_state() {
   } else if (state_ == State::FIRING) {
     operation = robot_msgs::msg::SpringOperationState::NORMAL_FIRE;
   } else if (state_ == State::SLOW_FIRING_EXTENDING ||
-             state_ == State::SLOW_FIRING_RETURNING) {
+             state_ == State::SLOW_FIRING_RETURNING ||
+             state_ == State::SLOW_FIRE_ARM_ONLY) {
     operation = robot_msgs::msg::SpringOperationState::SLOW_FIRE;
   } else if (belt_clearance_requested_ && state_ == State::READY) {
     // BELT_CLEARANCE means the configured retraction travel has been reached,
@@ -746,6 +776,30 @@ SpringEduliteController::parameters_callback(
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         fire_increment_rad_ = param.as_double();
       }
+    } else if (name == "slow_fire_move_spring") {
+      if (param.get_type() != rclcpp::ParameterType::PARAMETER_BOOL) {
+        result.successful = false;
+        result.reason = "slow_fire_move_spring must be a boolean";
+        return result;
+      }
+      slow_fire_move_spring_ = param.as_bool();
+    } else if (name == "slow_fire_arm_only_duration_sec") {
+      double value = 0.0;
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        value = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        value = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "slow_fire_arm_only_duration_sec must be a number";
+        return result;
+      }
+      if (value < 0.0) {
+        result.successful = false;
+        result.reason = "slow_fire_arm_only_duration_sec must be non-negative";
+        return result;
+      }
+      slow_fire_arm_only_duration_sec_ = value;
     } else if (name == "slow_fire_target_position_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         slow_fire_target_position_rad_ = param.as_double();

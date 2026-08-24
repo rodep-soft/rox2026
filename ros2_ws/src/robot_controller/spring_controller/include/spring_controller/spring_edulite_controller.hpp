@@ -28,6 +28,7 @@ private:
     FIRING,
     SLOW_FIRING_EXTENDING,
     SLOW_FIRING_RETURNING,
+    SLOW_FIRE_ARM_ONLY,
     ERROR,
   };
 
@@ -56,6 +57,7 @@ private:
   bool emergency_stop_active_{true};
   bool fire_request_active_{false};
   bool slow_fire_request_active_{false};
+  bool slow_fire_move_spring_{true};
   bool limit_switch_active_{false};
   bool actuator_ready_{false};
   bool position_reference_set_{false};
@@ -80,6 +82,7 @@ private:
   double slow_fire_min_velocity_rad_s_{1.0};
   double slow_fire_max_velocity_rad_s_{20.0};
   double slow_fire_settle_timeout_sec_{3.0};
+  double slow_fire_arm_only_duration_sec_{0.5};
   double slow_fire_return_velocity_rad_s_{6.0};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
