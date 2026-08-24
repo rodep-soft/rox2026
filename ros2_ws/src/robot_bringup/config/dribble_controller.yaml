@@ -10,7 +10,7 @@
     slow_fire_dribble_position_rad: -1.2
     
     # [s] 自動シュートサイクルのタイミング
-    belt_spinup_timeout_sec: 0.0       # 実測RPM未到達時の最大待機
+    belt_spinup_timeout_sec: 0.5       # 実測RPM未到達時の最大待機
     belt_spinup_min_delay_sec: 0.1      # 実測RPM到達後も確保する最短待機
     belt_ready_ratio: 0.9                # 目標RPMに対する実測RPMの完了比率
     prepare_from_open_delay_sec: 0.1     # OPENからDRIBBLEへ戻った後の待機
@@ -18,16 +18,16 @@
     
     # [rad/s] 区間ごとの最大角速度
     opening_max_acceleration_rad_s2: 15.0
-    feeding_max_acceleration_rad_s2: 15.0
-    returning_max_acceleration_rad_s2: 18.0
+    feeding_max_acceleration_rad_s2: 10.0
+    returning_max_acceleration_rad_s2: 20.0
     dribbling_max_velocity_rad_s: 3.0
     dribbling_max_acceleration_rad_s2: 12.0
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 200             # DRIBBLE姿勢 (ボール保持中) の回転数
     slow_fire_dribble_rpm: -100     # スロー発射中の回転数（負値で逆回転）
-    shot_cycle_opening_rpm: 1000    # ベルト発射準備時のローラ回転数
-    shot_cycle_feeding_rpm: 1000       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
+    shot_cycle_opening_rpm: 800    # ベルト発射準備時のローラ回転数
+    shot_cycle_feeding_rpm: 800       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 200  # FEED -> DRIBBLE
     
     # [A] 電流値によるボール検知しきい値
