@@ -260,8 +260,8 @@ private:
         const double wz = std::clamp(4.0 * yaw_err, -1.80, 1.80);
         robot_yaw_ = std::remainder(robot_yaw_ + wz * dt, 2.0 * M_PI);
 
-        // 角度許容誤差 0.015 rad (約0.85度) ＆ ベルト回転数安定待ち (0.5s)
-        if (std::abs(yaw_err) < target_config_.yaw_tolerance && state_timer_ >= 0.5) {
+        // 角度許容誤差 0.015 rad (約0.85度)
+        if (std::abs(yaw_err) < target_config_.yaw_tolerance && state_timer_ >= 0.2) {
           state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
           state_timer_ = 0.0;
         }
@@ -269,9 +269,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        // 次弾装填・アーム展開・ボール安定化 (2.0秒)
+        // 装填・アーム展開・ボール安定化 (前弾から発射まで計2.0秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::OPEN;
-        if (state_timer_ >= 2.0) {
+        if (state_timer_ >= 1.2) {
           state_ = robot_msgs::msg::Game2State::SHOOTING;
           state_timer_ = 0.0;
           fire_current_ball();
@@ -280,9 +280,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::SHOOTING: {
-        // フライホイール送り込み・発射 (約0.6秒)
+        // フライホイール送り込み・発射 (0.3秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::FEED;
-        if (state_timer_ >= 0.6) {
+        if (state_timer_ >= 0.3) {
           state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
           state_timer_ = 0.0;
         }
@@ -290,9 +290,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        // 飛翔・着弾・パネル倒れ確認判定 (約0.9秒 -> 1発計2.5秒)
+        // 飛翔・着弾判定待ち (0.3秒 -> 発射〜次発射までちょうど 2.0 秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-        if (state_timer_ >= 0.9) {
+        if (state_timer_ >= 0.3) {
           state_ = robot_msgs::msg::Game2State::SEARCHING;
           state_timer_ = 0.0;
         }
