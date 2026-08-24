@@ -259,12 +259,14 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_AROUND_GATE: {
-        // 3. ロボットはゲートの横を通って向こう側へ回り込む
+        // 3. ロボットはゲートの横を通ってボール背後 (wp_ball_: X=-3.20m, Y=2.165m) へノンストップで回り込む
         cmd = compute_holonomic_pursuit(wp_around_gate_);
-        if ((now() - state_start_time_).seconds() > 3.0) {
+        const double dist_around = std::hypot(wp_around_gate_.x - current_x_, wp_around_gate_.y - current_y_);
+        // 回り込み中間点を高速フライスルー (35cm以内通過で即座にボール背後追従へ)
+        if (dist_around <= 0.35 || (now() - state_start_time_).seconds() > 2.0) {
           RCLCPP_INFO(
             get_logger(),
-            "Around gate complete. Searching and catching ball dynamically with DRIBBLE ON (backspin).");
+            "Bypassed gate. Sweeping into position behind ball facing forward with DRIBBLE ON.");
           state_ = Game1State::SEARCH_AND_CATCH_BALL;
           state_start_time_ = now();
         }
@@ -272,7 +274,7 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::SEARCH_AND_CATCH_BALL: {
-        // 4. カメラ(YOLO)で転がったボールの位置を認識して動的追従キャッチ＋ドリブルON
+        // 4. 正面 (yaw=0.0) を向けたままボール背後から前進してボールをキャッチ＋ドリブルON
         dribble_enabled = true; // バックスピンでボールをしっかり吸い寄せる
         arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
@@ -286,18 +288,17 @@ void Game1AutoNode::control_loop()
             cmd.linear.x = ball_speed * (detected_ball_x_ / ball_dist);
             cmd.linear.y = ball_speed * (detected_ball_y_ / ball_dist);
           }
-          // 正面をボールに向ける旋回制御
-          const double ball_heading_err = std::atan2(detected_ball_y_, detected_ball_x_);
-          cmd.angular.z = std::clamp(
-            kp_angular_ * ball_heading_err, -max_angular_vel_,
-            max_angular_vel_);
+          // 正面 (yaw=0.0) を維持
+          cmd.angular.z = std::clamp(kp_angular_ * std::remainder(wp_ball_.yaw - current_yaw_, 2.0 * M_PI), -max_angular_vel_, max_angular_vel_);
         } else {
           // ボール未検出：予想ターゲット位置へ向かってホロノミック追従走行
           cmd = compute_holonomic_pursuit(wp_ball_);
         }
 
-        if ((now() - state_start_time_).seconds() > 4.0) {
-          RCLCPP_INFO(get_logger(), "Ball caught! Navigating to Pass Area.");
+        const double dist_to_ball_wp = std::hypot(wp_ball_.x - current_x_, wp_ball_.y - current_y_);
+        // ボール位置に到達またはタイムアウトでキャッチ成立 -> 止まらずそのままパスエリアへ
+        if (dist_to_ball_wp <= 0.35 || (now() - state_start_time_).seconds() > 2.5) {
+          RCLCPP_INFO(get_logger(), "Ball caught! Sweeping directly to Pass Area keeping forward orientation.");
           state_ = Game1State::NAV_TO_PASS_AREA;
           state_start_time_ = now();
         }
@@ -305,14 +306,14 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_TO_PASS_AREA: {
-        // 5. ボール保持のままパスエリア射出位置へ移動 (ぶつける勢いで突っ込み、位置がある程度寄れば即射出へ)
+        // 5. ボール保持のままパスエリア射出位置へ前向き平行移動
         cmd = compute_holonomic_pursuit(wp_pass_area_);
         dribble_enabled = true;
         arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
         const double dist_to_pass = std::hypot(wp_pass_area_.x - current_x_, wp_pass_area_.y - current_y_);
-        if (dist_to_pass <= 0.25 || elapsed > 3.0) {
-          RCLCPP_INFO(get_logger(), "Arrived at Pass Area (bump/close). Opening arm for Slow Fire (L1 behavior)...");
+        if (dist_to_pass <= 0.15 || elapsed > 3.0) {
+          RCLCPP_INFO(get_logger(), "Arrived at Pass Area boundary flush. Opening arm for Slow Fire (L1 behavior)...");
           state_ = Game1State::FIRE_PASS_SPRING;
           state_start_time_ = now();
         }
@@ -328,8 +329,8 @@ void Game1AutoNode::control_loop()
         // アームが展開する時間 (0.3秒後) にゆっくり射出リクエストを発行
         bool spring_slow_fire = (elapsed >= 0.3);
 
-        if (elapsed > 1.2) {
-          RCLCPP_INFO(get_logger(), "Pass Area Slow Fire Complete. Returning to Start position.");
+        if (elapsed > 0.8) {
+          RCLCPP_INFO(get_logger(), "Pass Area Slow Fire Complete. Returning straight to Start position (zero spin).");
           state_ = Game1State::NAV_TO_START;
           state_start_time_ = now();
         }
@@ -338,11 +339,12 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_TO_START: {
-        // 6. スタート位置へ自動復帰
+        // 6. スタート位置へ正面(yaw=0.0)をキープしたまま直線斜め自動復帰
         cmd = compute_holonomic_pursuit(wp_start_);
         arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
-        if ((now() - state_start_time_).seconds() > 4.0) {
-          RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED!");
+        const double dist_to_start = std::hypot(wp_start_.x - current_x_, wp_start_.y - current_y_);
+        if (dist_to_start <= pos_tolerance_ || (now() - state_start_time_).seconds() > 4.0) {
+          RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED! Ready for reload.");
           state_ = Game1State::COMPLETED;
         }
         break;
