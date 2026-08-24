@@ -60,13 +60,13 @@ public:
     const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
     const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
-    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -2.050) * mirror_x;
-    const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.500);
+    const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -1.750) * mirror_x;
+    const double wp_pass_y = declare_parameter<double>("wp_pass_area_y", 1.641);
     const double wp_pass_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_pass_area_yaw", 0.0);
 
     const double wp_apex_x = declare_parameter<double>("wp_return_apex_x", -3.800) * mirror_x;
-    const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 2.800);
-    const double wp_apex_yaw = (mirror_x < 0.0) ? (M_PI - 2.200) : declare_parameter<double>("wp_return_apex_yaw", 2.200);
+    const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 3.200);
+    const double wp_apex_yaw = (mirror_x < 0.0) ? 0.0 : declare_parameter<double>("wp_return_apex_yaw", 0.0);
 
     // game1.yaml の全パラメータから完全構築
     // 帰還時も前向き (ゲート方向 = -π/2) で戻る → そのまま次サイクルに発進できる
@@ -283,15 +283,15 @@ private:
       ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
     } else if (current_segment_ == 4) {
-      // パスエリア外側停止 & ゆっくり射出: ボールがパスエリア内 (X = ±1.316m) へ静かに転がり進入
-      double progress = std::min(1.0, wp_wait_timer_ / 0.8);
+      // パスエリアぶつけ停止 & L1ゆっくり押し出し: アームからパスエリア中心 (X = ±1.316m, Y = 1.641m) へボールを優しく置く
+      double progress = std::min(1.0, wp_wait_timer_ / 0.7);
       const double target_pass_x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
       ball_x_ = (curr_x_ + 0.25 * std::cos(curr_yaw_)) + progress * (target_pass_x - (curr_x_ + 0.25 * std::cos(curr_yaw_)));
-      ball_y_ = 1.500;
+      ball_y_ = 1.641;
     } else {
-      // パスエリア投下後: パスエリア内にボールが美しく静止
+      // パスエリア投下完了後: パスエリア内にボールが静止
       ball_x_ = (mirror_x_ < 0.0) ? 1.316 : -1.316;
-      ball_y_ = 1.500;
+      ball_y_ = 1.641;
     }
 
     ball.pose.position.x = ball_x_;
