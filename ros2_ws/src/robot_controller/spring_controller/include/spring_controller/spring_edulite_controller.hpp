@@ -36,6 +36,8 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void
   belt_clearance_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void start_belt_clearance_motion();
+  void finish_belt_clearance_motion();
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void actuator_state_callback(
@@ -61,6 +63,7 @@ private:
   bool actuator_position_received_{false};
   bool homing_required_{true};
   bool belt_clearance_requested_{false};
+  bool belt_clearance_request_pending_{false};
 
   int limit_switch_bit_offset_{0};
   int command_period_ms_{10};

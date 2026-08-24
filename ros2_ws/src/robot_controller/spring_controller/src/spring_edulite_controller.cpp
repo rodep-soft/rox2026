@@ -244,32 +244,54 @@ void SpringEduliteController::emergency_stop_callback(
 
 void SpringEduliteController::belt_clearance_request_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
-  if (msg->data == belt_clearance_requested_) {
+  if (msg->data) {
+    if (belt_clearance_requested_ || belt_clearance_request_pending_) {
+      return;
+    }
+    if (state_ != State::READY && state_ != State::MOVING_TO_STANDBY) {
+      belt_clearance_request_pending_ = true;
+      RCLCPP_INFO(
+          get_logger(),
+          "Belt-shot spring retraction queued until the current operation "
+          "reaches READY");
+      return;
+    }
+    start_belt_clearance_motion();
     return;
   }
 
-  belt_clearance_requested_ = msg->data;
-  if (state_ != State::READY && state_ != State::MOVING_TO_STANDBY) {
+  belt_clearance_request_pending_ = false;
+  if (!belt_clearance_requested_) {
     return;
   }
+  finish_belt_clearance_motion();
+}
 
-  if (belt_clearance_requested_) {
-    belt_clearance_return_position_rad_ = target_position_rad_;
-    belt_clearance_position_rad_ =
-        belt_clearance_return_position_rad_ - standby_offset_rad_;
-    target_position_rad_ = belt_clearance_position_rad_;
-  } else {
-    target_position_rad_ = belt_clearance_return_position_rad_;
-  }
+void SpringEduliteController::start_belt_clearance_motion() {
+  belt_clearance_request_pending_ = false;
+  belt_clearance_requested_ = true;
+  belt_clearance_return_position_rad_ = target_position_rad_;
+  belt_clearance_position_rad_ =
+      belt_clearance_return_position_rad_ - standby_offset_rad_;
+  target_position_rad_ = belt_clearance_position_rad_;
   state_ = State::MOVING_TO_STANDBY;
   stable_feedback_count_ = 0;
   publish_target(target_position_rad_);
   RCLCPP_INFO(get_logger(),
-              "Moving spring to %.3f rad for belt-shot clearance: %s "
-              "(return: %.3f rad)",
-              target_position_rad_,
-              belt_clearance_requested_ ? "requested" : "released",
-              belt_clearance_return_position_rad_);
+              "Retracting spring for belt shot: %.3f -> %.3f rad "
+              "(offset: %.3f rad)",
+              belt_clearance_return_position_rad_, belt_clearance_position_rad_,
+              standby_offset_rad_);
+}
+
+void SpringEduliteController::finish_belt_clearance_motion() {
+  belt_clearance_requested_ = false;
+  target_position_rad_ = belt_clearance_return_position_rad_;
+  state_ = State::MOVING_TO_STANDBY;
+  stable_feedback_count_ = 0;
+  publish_target(target_position_rad_);
+  RCLCPP_INFO(get_logger(), "Returning spring after belt shot: target %.3f rad",
+              target_position_rad_);
 }
 
 void SpringEduliteController::cmd_vel_callback(
@@ -375,6 +397,12 @@ void SpringEduliteController::actuator_state_callback(
       state_ = State::READY;
       stable_feedback_count_ = 0;
     }
+  }
+
+  // A belt-shot request may arrive just before normal firing reaches READY.
+  // Compute its coordinates only now, from the completed accumulated target.
+  if (state_ == State::READY && belt_clearance_request_pending_) {
+    start_belt_clearance_motion();
   }
 
   // ゆっくり射出: 前進完了判定 (SLOW_FIRING_EXTENDING -> SLOW_FIRING_RETURNING)
