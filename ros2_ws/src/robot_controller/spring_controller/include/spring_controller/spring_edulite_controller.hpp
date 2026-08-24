@@ -14,12 +14,14 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
-class SpringEduliteController : public rclcpp::Node {
+class SpringEduliteController : public rclcpp::Node
+{
 public:
   SpringEduliteController();
 
 private:
-  enum class State : uint8_t {
+  enum class State : uint8_t
+  {
     UNINITIALIZED,
     HOMING,
     WAITING_FOR_STOP,
@@ -28,6 +30,7 @@ private:
     FIRING,
     SLOW_FIRING_EXTENDING,
     SLOW_FIRING_RETURNING,
+    SLOW_FIRE_ARM_ONLY,
     ERROR,
   };
 
@@ -41,21 +44,23 @@ private:
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void actuator_state_callback(
-      const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+    const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void control_timer_callback();
 
   void start_homing();
   void request_zero_reference();
-  void enter_error_with_position_hold(double current_position_rad,
-                                      const char *reason);
+  void enter_error_with_position_hold(
+    double current_position_rad,
+    const char * reason);
   void publish_target(double target_rad, bool force = false);
   void publish_operation_state();
-  bool update_settled(const actuator_msgs::msg::ActuatorState &feedback);
+  bool update_settled(const actuator_msgs::msg::ActuatorState & feedback);
 
   State state_{State::UNINITIALIZED};
   bool emergency_stop_active_{true};
   bool fire_request_active_{false};
   bool slow_fire_request_active_{false};
+  bool slow_fire_move_spring_{true};
   bool limit_switch_active_{false};
   bool actuator_ready_{false};
   bool position_reference_set_{false};
@@ -72,6 +77,7 @@ private:
   int required_stable_feedback_count_{3};
 
   double standby_offset_rad_{0.0};
+  double belt_clearance_ready_travel_rad_{3.0};
   double position_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
   double slow_fire_target_position_rad_{13.5};
@@ -80,6 +86,7 @@ private:
   double slow_fire_min_velocity_rad_s_{1.0};
   double slow_fire_max_velocity_rad_s_{20.0};
   double slow_fire_settle_timeout_sec_{3.0};
+  double slow_fire_arm_only_duration_sec_{0.5};
   double slow_fire_return_velocity_rad_s_{6.0};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
@@ -98,29 +105,29 @@ private:
   uint16_t logical_id_{4};
 
   rcl_interfaces::msg::SetParametersResult
-  parameters_callback(const std::vector<rclcpp::Parameter> &parameters);
+  parameters_callback(const std::vector<rclcpp::Parameter> & parameters);
 
   rclcpp::Time homing_start_time_;
   rclcpp::Time slow_fire_phase_start_time_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
-      params_callback_handle_;
+    params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Publisher<robot_msgs::msg::SpringOperationState>::SharedPtr
-      operation_state_pub_;
+    operation_state_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr slow_fire_request_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      belt_clearance_request_sub_;
+    belt_clearance_request_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
-      actuator_state_sub_;
+    actuator_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-      position_command_pub_;
+    position_command_pub_;
   rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedPtr
-      set_position_client_;
+    set_position_client_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };
 

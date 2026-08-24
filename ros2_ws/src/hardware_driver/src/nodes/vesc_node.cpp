@@ -78,7 +78,7 @@ public:
       const auto prefix = name + ".";
       const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
       const auto controller_id =
-          declare_parameter<int64_t>(prefix + "controller_id", -1);
+        declare_parameter<int64_t>(prefix + "controller_id", -1);
       const auto feedback_timeout_ms = declare_parameter<int64_t>(
         prefix + "feedback_timeout_ms",
         500);
@@ -94,7 +94,8 @@ public:
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
       }
 
-      motors_.emplace_back(MotorConfig{
+      motors_.emplace_back(
+        MotorConfig{
           static_cast<uint16_t>(logical_id),
           static_cast<uint8_t>(controller_id), max_rpm, rpm_slew_rate,
           startup_current_a, rpm_control_threshold_rpm,
@@ -138,10 +139,11 @@ public:
       std::bind(&Node::state_timer_callback, this));
   }
 
-  ~Node() override {
-    for (const auto &motor : motors_) {
+  ~Node() override
+  {
+    for (const auto & motor : motors_) {
       can_publisher_->publish(
-          protocol::make_set_current_frame(motor.config.controller_id, 0.0));
+        protocol::make_set_current_frame(motor.config.controller_id, 0.0));
     }
   }
 
