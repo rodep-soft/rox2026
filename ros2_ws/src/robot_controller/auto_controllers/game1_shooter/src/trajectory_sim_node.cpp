@@ -3,6 +3,8 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <apriltag_msgs/msg/april_tag_detection_array.hpp>
+#include <apriltag_msgs/msg/april_tag_detection.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <cmath>
@@ -30,6 +32,7 @@ public:
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom/simulated", 10);
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
+    detections_pub_ = create_publisher<apriltag_msgs::msg::AprilTagDetectionArray>("/detections", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
@@ -314,7 +317,59 @@ private:
     odom.header.frame_id = "map";
     odom.child_frame_id = "base_footprint";
     odom.pose.pose = ps.pose;
-    odom_pub_->publish(odom);
+    // 5. Game 1 フィールド AprilTag リアルタイムカメラ視覚シミュレーション (/detections 配信)
+    publish_simulated_apriltags(now_stamp);
+  }
+
+  void publish_simulated_apriltags(const rclcpp::Time & now_stamp)
+  {
+    const double fx = 1400.0;
+    const double fy = 1400.0;
+    const double cx = 960.0;
+    const double cy = 540.0;
+
+    apriltag_msgs::msg::AprilTagDetectionArray det_array;
+    det_array.header.stamp = now_stamp;
+    det_array.header.frame_id = "camera_color_optical_frame";
+
+    struct TagLocation { int id; double x; double y; double z; };
+    std::vector<TagLocation> field_tags = {
+      {0, -4.500 * mirror_x_, 1.500, 0.45}, // ゲート柱 A
+      {1, -4.500 * mirror_x_, 1.500, 0.70}, // ゲート中央 A
+      {2, -4.500 * mirror_x_, 0.500, 0.45}, // ゲート下 A
+      {3,  4.500 * mirror_x_, 1.500, 0.45}, // ゲート柱 B
+      {4,  4.500 * mirror_x_, 1.500, 0.70}, // ゲート中央 B
+      {5,  4.500 * mirror_x_, 0.500, 0.45}, // ゲート下 B
+      {10, -2.150 * mirror_x_, 1.641, 0.30}, // パスエリア境界タグ A
+      {11,  2.150 * mirror_x_, 1.641, 0.30}, // パスエリア境界タグ B
+    };
+
+    for (const auto & tag : field_tags) {
+      const double dx = tag.x - curr_x_;
+      const double dy = tag.y - curr_y_;
+      const double local_x =  std::cos(curr_yaw_) * dx + std::sin(curr_yaw_) * dy;
+      const double local_y = -std::sin(curr_yaw_) * dx + std::cos(curr_yaw_) * dy;
+      const double local_z = tag.z - 0.35;
+
+      if (local_x > 0.5 && local_x < 6.0) {
+        const double u = cx - (local_y * fx / local_x);
+        const double v = cy - (local_z * fy / local_x);
+
+        if (u >= 0 && u <= 1920 && v >= 0 && v <= 1080) {
+          apriltag_msgs::msg::AprilTagDetection det;
+          det.id = tag.id;
+          det.centre.x = u;
+          det.centre.y = v;
+          det.corners[0].x = u - 15; det.corners[0].y = v - 15;
+          det.corners[1].x = u + 15; det.corners[1].y = v - 15;
+          det.corners[2].x = u + 15; det.corners[2].y = v + 15;
+          det.corners[3].x = u - 15; det.corners[3].y = v + 15;
+          det_array.detections.push_back(det);
+        }
+      }
+    }
+
+    detections_pub_->publish(det_array);
   }
 
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
@@ -322,6 +377,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ball_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr footprint_pub_;
+  rclcpp::Publisher<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
