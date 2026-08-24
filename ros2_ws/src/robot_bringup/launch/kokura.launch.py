@@ -3,9 +3,9 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -214,7 +214,7 @@ def generate_launch_description():
                 ),
                 condition=IfCondition(LaunchConfiguration("enable_vision")),
             ),
-            # --- 9. USB Webカメラ (V4L2 + AprilTag) ---
+            # --- 9. USB Webカメラ (V4L2 + AprilTag: Game 1 で自動起動、Game 2 では自動OFF) ---
             include(
                 "webcam_launch.py",
                 launch_arguments=list(
@@ -223,7 +223,17 @@ def generate_launch_description():
                         "enable_apriltag": "true",
                     }.items()
                 ),
-                condition=IfCondition(LaunchConfiguration("enable_webcam")),
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "'",
+                            LaunchConfiguration("enable_webcam"),
+                            "' == 'true' and '",
+                            LaunchConfiguration("game"),
+                            "' != 'game2'",
+                        ]
+                    )
+                ),
             ),
         ]
     )
