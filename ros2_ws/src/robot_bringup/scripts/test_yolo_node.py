@@ -123,17 +123,44 @@ class TestYoloNode(Node):
                     pose_msg.pose.orientation.w = 1.0
                     self.pub_ball_pose_.publish(pose_msg)
 
+                    # アノテーション描画
+                    x1 = int(xywh[0] - bw / 2.0)
+                    y1 = int(xywh[1] - bh / 2.0)
+                    x2 = int(xywh[0] + bw / 2.0)
+                    y2 = int(xywh[1] + bh / 2.0)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                    cv2.putText(
+                        frame,
+                        f"ball {conf:.2f} (Z={est_z:.2f}m)",
+                        (x1, max(25, y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 0),
+                        2,
+                    )
+
                     self.get_logger().info(
                         f"[BALL 3D DETECTED] {cls_name} ({conf*100:.1f}%) -> 3D Pos: (X={est_x:.2f}m, Y={est_y:.2f}m, Dist Z={est_z:.2f}m)"
                     )
 
         self.pub_detections_.publish(det_array)
 
+        # /yolo/annotated_image 配信 (Foxglove 可視化用)
+        ann_msg = Image()
+        ann_msg.header = msg.header
+        ann_msg.height = msg.height
+        ann_msg.width = msg.width
+        ann_msg.encoding = 'bgr8'
+        ann_msg.is_bigendian = 0
+        ann_msg.step = msg.width * 3
+        ann_msg.data = frame.tobytes()
+        self.pub_annotated_.publish(ann_msg)
+
 def main(args=None):
-    rclcpp.init(args=args)
+    rclpy.init(args=args)
     node = TestYoloNode()
-    rclcpp.spin(node)
-    rclcpp.shutdown()
+    rclpy.spin(node)
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
