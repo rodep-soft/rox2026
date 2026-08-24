@@ -14,8 +14,6 @@ CMAKE_ARGS = \
 	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 COLCON_ARGS = \
-	--build-base build_ninja \
-	--install-base install_ninja \
 	--executor $(EXECUTOR) \
 	--parallel-workers $(PARALLEL_WORKERS) \
 	--symlink-install \
@@ -23,7 +21,7 @@ COLCON_ARGS = \
 
 build:
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
-	colcon --log-base log_ninja build \
+	colcon build \
 		$(COLCON_ARGS) \
 		--cmake-args $(CMAKE_ARGS) -DBUILD_TESTING=OFF
 
