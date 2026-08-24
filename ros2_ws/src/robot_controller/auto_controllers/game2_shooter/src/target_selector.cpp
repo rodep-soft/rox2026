@@ -37,19 +37,30 @@ std::vector<TargetCandidate> TargetSelector::build_candidates(
     }
 
     if (config.enable_double_panel_midpoint_targeting) {
-      // 3枚残存時: 左側2枚(0&1)の中点狙い
+      // 3枚残存時: 左側2枚(0&1)の中点ペア + 右側1枚(2)の単独候補
       if (p0 && p1 && p2) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {p0->tag_id, p1->tag_id};
-        c.x = (p0->x + p1->x) * 0.5;
-        c.y = (p0->y + p1->y) * 0.5;
-        c.z = (p0->z + p1->z) * 0.5;
-        c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
-        c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p0->tag_id) +
+        TargetCandidate c_pair;
+        c_pair.row = row;
+        c_pair.tag_ids = {p0->tag_id, p1->tag_id};
+        c_pair.x = (p0->x + p1->x) * 0.5;
+        c_pair.y = (p0->y + p1->y) * 0.5;
+        c_pair.z = (p0->z + p1->z) * 0.5;
+        c_pair.heading_err = compute_heading_error(c_pair.x, c_pair.y, config.shooter_offset_x, config.shooter_offset_y);
+        c_pair.is_pair = true;
+        c_pair.desc = "Row " + std::to_string(row) + " Left-Midpoint #" + std::to_string(p0->tag_id) +
           " & #" + std::to_string(p1->tag_id);
-        candidates.push_back(c);
+        candidates.push_back(c_pair);
+
+        TargetCandidate c_single;
+        c_single.row = row;
+        c_single.tag_ids = {p2->tag_id};
+        c_single.x = p2->x;
+        c_single.y = p2->y;
+        c_single.z = p2->z;
+        c_single.heading_err = compute_heading_error(c_single.x, c_single.y, config.shooter_offset_x, config.shooter_offset_y);
+        c_single.is_pair = false;
+        c_single.desc = "Row " + std::to_string(row) + " Right-Single Tag #" + std::to_string(p2->tag_id);
+        candidates.push_back(c_single);
       } else if (p0 && p1) {
         TargetCandidate c;
         c.row = row;
@@ -59,7 +70,7 @@ std::vector<TargetCandidate> TargetSelector::build_candidates(
         c.z = (p0->z + p1->z) * 0.5;
         c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
         c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p0->tag_id) +
+        c.desc = "Row " + std::to_string(row) + " Left-Midpoint #" + std::to_string(p0->tag_id) +
           " & #" + std::to_string(p1->tag_id);
         candidates.push_back(c);
       } else if (p1 && p2) {
@@ -71,26 +82,40 @@ std::vector<TargetCandidate> TargetSelector::build_candidates(
         c.z = (p1->z + p2->z) * 0.5;
         c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
         c.is_pair = true;
-        c.desc = "Row " + std::to_string(row) + " Midpoint #" + std::to_string(p1->tag_id) +
+        c.desc = "Row " + std::to_string(row) + " Right-Midpoint #" + std::to_string(p1->tag_id) +
           " & #" + std::to_string(p2->tag_id);
         candidates.push_back(c);
+      } else {
+        // 単独残存
+        const PanelTagInfo * single = p0 ? p0 : (p1 ? p1 : p2);
+        if (single) {
+          TargetCandidate c;
+          c.row = row;
+          c.tag_ids = {single->tag_id};
+          c.x = single->x;
+          c.y = single->y;
+          c.z = single->z;
+          c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
+          c.is_pair = false;
+          c.desc = "Row " + std::to_string(row) + " Single Tag #" + std::to_string(single->tag_id);
+          candidates.push_back(c);
+        }
       }
-    }
-
-    // 単独残存候補 (ペアが作れなかった、または単独のパネル)
-    if (candidates.empty() || candidates.back().row != row) {
-      const PanelTagInfo * single = p1 ? p1 : (p0 ? p0 : p2);
-      if (single) {
-        TargetCandidate c;
-        c.row = row;
-        c.tag_ids = {single->tag_id};
-        c.x = single->x;
-        c.y = single->y;
-        c.z = single->z;
-        c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
-        c.is_pair = false;
-        c.desc = "Row " + std::to_string(row) + " Single Tag #" + std::to_string(single->tag_id);
-        candidates.push_back(c);
+    } else {
+      // 中点無効時: 全ての未撃破パネルを個別登録
+      for (const auto * p : {p0, p1, p2}) {
+        if (p) {
+          TargetCandidate c;
+          c.row = row;
+          c.tag_ids = {p->tag_id};
+          c.x = p->x;
+          c.y = p->y;
+          c.z = p->z;
+          c.heading_err = compute_heading_error(c.x, c.y, config.shooter_offset_x, config.shooter_offset_y);
+          c.is_pair = false;
+          c.desc = "Row " + std::to_string(row) + " Single Tag #" + std::to_string(p->tag_id);
+          candidates.push_back(c);
+        }
       }
     }
   }
