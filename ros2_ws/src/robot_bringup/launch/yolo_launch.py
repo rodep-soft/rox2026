@@ -41,20 +41,19 @@ def launch_setup(context, *args, **kwargs):
                 "dnn_node_sample not found. Falling back to standard ROS 2 yolo node."
             )
 
-    # 標準 ROS 2 YOLO ノード (yolo_ros / ultralytics)
+    # 学習済みモルテンボール検出ノード (test_yolo_node.py)
+    trained_model_path = os.path.join(bringup_share, "config", "molten_ball_best.pt")
     yolo_node = Node(
-        package="yolo_ros",
-        executable="yolo_node",
-        name="yolo_ball_detector",
+        package="robot_bringup",
+        executable="test_yolo_node.py",
+        name="test_yolo_node",
         output="screen",
         parameters=[
             {
-                "model": model_name,
-                "score_threshold": score_threshold,
+                "image_topic": image_topic,
+                "model_name": trained_model_path,
+                "conf_thresh": score_threshold,
             }
-        ],
-        remappings=[
-            ("image_raw", image_topic),
         ],
     )
 

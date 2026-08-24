@@ -16,11 +16,11 @@
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
-    # ドリブル逆回転 (ボタン割り当て解除: -1)
-    dribble_reverse_button: -1
+    # L3 + R3 (両スティック押し込み) で Game 1 自動モード / テスト走行 START
+    left_stick_button: 10
+    right_stick_button: 11
     # L1でスプリングゆっくり射出 (逆回転・正方向押し出し)
     slow_fire_button: 4
-    slow_fire_arm_restore_delay_ms: 6000  # [ms] ゆっくり射出後、アームをDRIBBLEへ自動復帰させる最大待機時間
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
@@ -40,8 +40,8 @@
     # slow_turn_scale: 旋回速度倍率 (0.5で通常の1/2)
     # slow_linear_scale: 並進線速度倍率 (0.5で通常の1/2)
     slow_turn_button: 7
-    slow_turn_scale: 0.5
-    slow_linear_scale: 0.5
+    slow_turn_scale: 0.3
+    slow_linear_scale: 0.2
 
     # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
@@ -58,11 +58,11 @@
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 50.0
-    linear_y_acceleration_limit: 50.0
-    angular_z_acceleration_limit: 100.0
+    linear_x_acceleration_limit: 2.5
+    linear_y_acceleration_limit: 2.5
+    angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 150.0
-    linear_y_deceleration_limit: 150.0
-    angular_z_deceleration_limit: 150.0
+    linear_x_deceleration_limit: 3.75
+    linear_y_deceleration_limit: 3.75
+    angular_z_deceleration_limit: 15.0

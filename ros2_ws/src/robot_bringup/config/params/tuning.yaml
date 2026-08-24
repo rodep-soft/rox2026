@@ -1,0 +1,19 @@
+# Control Tuning Parameters
+# Experts only: Deep tuning for high-performance stabilization.
+
+/imu_stabilizer:
+  ros__parameters:
+    enable_lock: true
+    gyro_alpha: 0.3      # Low-pass filter for raw gyro
+
+    heading_pid:
+      p: 3.0
+      i: 0.5
+      d: 0.0
+      i_clamp: 1.0
+
+    rate_pid:
+      p: 0.5
+      i: 0.0
+      d: 0.05
+      i_clamp: 0.5

@@ -14,8 +14,10 @@ mecanum_odometry_node:
     publish_period_ms: 20.0
     feedback_timeout_ms: 250.0
 
-    # ── 📐 実測スケール補正 & 共分散チューニング ──
+    # ── 実測スケール補正 & 共分散チューニング ──
     # 詳細な決め方手順: ros2_ws/src/robot_bringup/docs/ODOMETRY_TUNING_GUIDE.md
+
+    # [IMPORTANT]チューニング必須
     velocity_scale_x: 1.0     # 前後実測スケール補正 (目標1m走らせた実測平均値)
     velocity_scale_y: 1.0     # 左右カニ歩き実測スケール補正
     velocity_scale_yaw: 1.0   # 旋回スケール補正
@@ -26,7 +28,7 @@ mecanum_odometry_node:
       acceleration_threshold_x_m_s2: 1.2        # [m/s^2] 前後急加減速しきい値
       acceleration_threshold_y_m_s2: 0.6        # [m/s^2] 左右横滑りしきい値 (メカナムの横滑りを高感度検知)
       angular_acceleration_threshold_rad_s2: 2.5 # [rad/s^2] 旋回角加減速しきい値
-      maximum_covariance_multiplier: 40.0       # ★スリップ検知時の共分散膨張倍率 (10 -> 40に強化)
+      maximum_covariance_multiplier: 40.0       # スリップ検知時の共分散膨張倍率 (10 -> 40に強化)
 
     # --- Covariance tuning (EKF入力前提) ---
     # twist_covariance_x / y / yaw: ホイール速度計測の不確かさ (observation noise)。
@@ -34,9 +36,9 @@ mecanum_odometry_node:
     pose_covariance_x: 0.02
     pose_covariance_y: 0.05
     pose_covariance_yaw: 0.10
-    twist_covariance_x: 0.03       # ★前後(X)ベース速度共分散 (グリップ良好)
-    twist_covariance_y: 0.10       # ★左右(Y)ベース速度共分散 (メカナムローラ滑り考慮)
-    twist_covariance_yaw: 0.15     # ★旋回角速度共分散 (IMUジャイロを最優先)
+    twist_covariance_x: 0.03       # 前後(X)ベース速度共分散 (グリップ良好)
+    twist_covariance_y: 0.10       # 左右(Y)ベース速度共分散 (メカナムローラ滑り考慮)
+    twist_covariance_yaw: 0.15     # 旋回角速度共分散 (IMUジャイロを最優先)
     odom_drift_rate: 0.03
 
 #can_imu_node:

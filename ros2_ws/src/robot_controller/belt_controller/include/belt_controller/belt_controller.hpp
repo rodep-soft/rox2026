@@ -25,6 +25,8 @@ private:
   void load_parameters();
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
+  void underbelt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
+  void upperbelt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void vesc_state_callback(const actuator_msgs::msg::ActuatorStateArray::SharedPtr msg);
   void command_timer_callback();
@@ -36,7 +38,10 @@ private:
   bool emergency_stop_active_{false};
   uint8_t belt_mode_{robot_msgs::msg::BeltMode::STOP};
   int direct_target_rpm_{0};
+  int direct_underbelt_target_rpm_{0};
+  int direct_upperbelt_target_rpm_{0};
   bool use_direct_target_rpm_{false};
+  bool use_individual_direct_target_rpm_{false};
 
   float underbelt_measured_rpm_{0.0f};
   float upperbelt_measured_rpm_{0.0f};
@@ -55,6 +60,8 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr belt_target_rpm_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr underbelt_target_rpm_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr upperbelt_target_rpm_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorStateArray>::SharedPtr vesc_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTargetArray>::SharedPtr target_array_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltStatus>::SharedPtr status_pub_;

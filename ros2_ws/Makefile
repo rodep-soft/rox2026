@@ -1,8 +1,12 @@
 .PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
 BUILD_JOBS ?= 2
-PARALLEL_WORKERS ?= 1
-EXECUTOR ?= sequential
+PARALLEL_WORKERS ?= 4
+EXECUTOR ?= parallel
+
+# BUILD_JOBS ?= 8
+# PARALLEL_WORKERS ?= 1
+# EXECUTOR ?= sequential
 
 CMAKE_ARGS = \
 	-G Ninja \
@@ -32,6 +36,8 @@ PACKAGE ?= $(pkg)
 
 build-package:
 	@test -n "$(PACKAGE)" || (echo "Usage: make build-package PACKAGE=<package> (or pkg=<package>)" && exit 1)
+	@echo "🧹 Cleaning install/$(PACKAGE) and build/$(PACKAGE)..."
+	rm -rf install/$(PACKAGE) build/$(PACKAGE)
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
 	colcon build \
 		$(COLCON_ARGS) \

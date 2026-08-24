@@ -112,7 +112,7 @@ def launch_setup(context, *args, **kwargs):
 
     if enable_apriltag:
         # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
-        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
+        # 📐 base_link -> default_cam (CSIカメラ位置 TF: 後方 -0.265m, 左 +0.035m, 上 +0.193m, 向き: 後方射出方向 yaw=pi)
         from launch_ros.actions import Node
 
         camera_tf_node = Node(
@@ -121,7 +121,7 @@ def launch_setup(context, *args, **kwargs):
             name="base_to_camera_tf",
             arguments=[
                 "--x",
-                "0.265",
+                "-0.265",
                 "--y",
                 "0.035",
                 "--z",
@@ -131,7 +131,7 @@ def launch_setup(context, *args, **kwargs):
                 "--pitch",
                 "0.0",
                 "--yaw",
-                "0.0",
+                "3.141592653589793",
                 "--frame-id",
                 "base_link",
                 "--child-frame-id",

@@ -77,6 +77,25 @@ launch-game1:
 launch-game2:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup robot.launch.py enable_game2:=true
 
+# ── 🧠 YOLO ボール学習・アノテーション・推論パイプライン (uv 使用) ──
+UV := $(HOME)/.local/bin/uv
+
+yolo-annotate:
+	@echo "🪄 yolo_ball_pipeline/raw_images の画像を自動アノテーション中..."
+	cd yolo_ball_pipeline && $(UV) run auto_annotate.py
+
+yolo-train:
+	@echo "🚀 YOLOv8 ボール専用モデルの学習を開始中..."
+	cd yolo_ball_pipeline && $(UV) run train.py
+
+yolo-eval:
+	@echo "🎯 テスト推論を実行中..."
+	cd yolo_ball_pipeline && $(UV) run test_inference.py
+
+yolo-all: yolo-annotate yolo-train yolo-eval
+	@echo "🎉 [アノテーション -> 学習 -> テスト推論] 全パイプライン完了！"
+	@echo "   モデル出力先: yolo_ball_pipeline/models/molten_ball_best.pt"
+
 # ── 🧪 センサー・単体テスト一発起動 ──
 test-cam:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup webcam_launch.py
@@ -85,7 +104,7 @@ test-apriltag:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup apriltag_launch.py
 
 test-yolo:
-	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup vision_launch.py
+	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup yolo_test.launch.py
 
 test-imu:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup bno055.launch.py
@@ -104,9 +123,13 @@ help:
 	@echo "  make launch-manual                : Launch manual control mode"
 	@echo "  make launch-game1                 : Launch robot with Game1 Auto mode"
 	@echo "  make launch-game2                 : Launch robot with Game2 Auto mode"
+	@echo "  make yolo-all                     : Run full YOLO pipeline (Auto Annotate -> Train -> Eval)"
+	@echo "  make yolo-annotate                : Auto-annotate raw images in yolo_ball_pipeline/raw_images"
+	@echo "  make yolo-train                   : Train YOLOv8 on prepared dataset"
+	@echo "  make yolo-eval                    : Test inference with best.pt and output annotated images"
+	@echo "  make test-yolo                    : Launch real-time YOLOv8 detector node with camera"
 	@echo "  make test-cam                     : Test webcam stream (/image_raw)"
 	@echo "  make test-apriltag                : Test AprilTag detection"
-	@echo "  make test-yolo                    : Test YOLO ball detection"
 	@echo "  make test-imu                     : Test BNO055 IMU sensor"
 	@echo "  make test-ekf                     : Test EKF sensor fusion"
 

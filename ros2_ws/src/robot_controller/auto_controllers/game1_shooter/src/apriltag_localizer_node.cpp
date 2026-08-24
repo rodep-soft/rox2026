@@ -72,7 +72,7 @@ private:
     if (mirror < 0.0) {
       RCLCPP_INFO(
         get_logger(),
-        "🔄 [Localizer] RIGHT/BLUE Field Side! Auto-mirroring Tag Y positions and Yaw orientations.");
+        "[Localizer] RIGHT/BLUE Field Side! Auto-mirroring Tag Y positions and Yaw orientations.");
     }
 
     const auto active_ids = declare_parameter<std::vector<int64_t>>("active_tag_ids", {0, 1, 2, 3});
@@ -87,7 +87,7 @@ private:
       entry.yaw = declare_parameter<double>(prefix + "yaw", 0.0) * mirror;
       tag_map_[static_cast<int>(id)] = entry;
       RCLCPP_INFO(
-        get_logger(), "📍 [Field Map Tag #%d] Pos: (%.3f, %.3f), Heading: %+.2f rad (%.1f deg)",
+        get_logger(), "[Field Map Tag #%d] Pos: (%.3f, %.3f), Heading: %+.2f rad (%.1f deg)",
         entry.id, entry.x, entry.y, entry.yaw, entry.yaw * 180.0 / M_PI);
     }
   }
@@ -119,7 +119,7 @@ private:
 
       const auto & field_tag = it->second;
 
-      // ── 📐 1. 検出Tagのピクセル寸法からカメラ距離 Z_cam を高精度逆算 ──
+      // ── 1. 検出Tagのピクセル寸法からカメラ距離 Z_cam を高精度逆算 ──
       double tag_pixel_width = 0.0;
       if (det.corners.size() >= 4) {
         const double dx1 = det.corners[0].x - det.corners[1].x;
@@ -140,12 +140,12 @@ private:
 
       const double y_cam_left = -(det.centre.x - camera_cx_) * z_cam / camera_fx_;
 
-      // ── 📐 2. ロボット中心 (base_link) から見た Tag 相対位置 ──
+      // ── 2. ロボット中心 (base_link) から見た Tag 相対位置 ──
       const double x_rel = z_cam + camera_offset_x_;
       const double y_rel = y_cam_left + camera_offset_y_;
       const double heading_to_tag = std::atan2(y_rel, x_rel);
 
-      // ── 📐 3. マップ上のロボット絶対姿勢 & 位置逆算 ──
+      // ── 3. マップ上のロボット絶対姿勢 & 位置逆算 ──
       // ロボットがTag正面を向いているとき robot_yaw = field_tag.yaw - π
       const double robot_yaw = std::remainder(field_tag.yaw + M_PI - heading_to_tag, 2.0 * M_PI);
 
@@ -154,13 +154,13 @@ private:
       const double robot_x = field_tag.x - (x_rel * cos_yaw - y_rel * sin_yaw);
       const double robot_y = field_tag.y - (x_rel * sin_yaw + y_rel * cos_yaw);
 
-      // ── 📐 4. 距離に応じた適応的共分散スケーリング (遠いほど不確かさを上げる) ──
+      // ── 4. 距離に応じた適応的共分散スケーリング (遠いほど不確かさを上げる) ──
       // 距離比 (z / 2.0m)^2 に比例して共分散を拡大
       const double dist_factor = std::max(1.0, (z_cam / 2.0) * (z_cam / 2.0));
       const double current_pos_cov = base_pos_cov_ * dist_factor;
       const double current_yaw_cov = base_yaw_cov_ * dist_factor;
 
-      // ── 🚀 5. EKF (/apriltag/pose) への高信頼度配信 ──
+      // ── 5. EKF (/apriltag/pose) への高信頼度配信 ──
       geometry_msgs::msg::PoseWithCovarianceStamped pose_msg;
       pose_msg.header.stamp = now_stamp;
       pose_msg.header.frame_id = map_frame_;
@@ -185,7 +185,7 @@ private:
 
       RCLCPP_INFO_THROTTLE(
         get_logger(), *get_clock(), 500,
-        "📍 [EKF Reset by Tag #%d] Map Pos: (%.3f, %.3f), Yaw: %+.2f deg (Dist: %.2fm, Cov: %.4f)",
+        "[EKF Reset by Tag #%d] Map Pos: (%.3f, %.3f), Yaw: %+.2f deg (Dist: %.2fm, Cov: %.4f)",
         tag_id, robot_x, robot_y, robot_yaw * 180.0 / M_PI, z_cam, current_pos_cov);
     }
   }

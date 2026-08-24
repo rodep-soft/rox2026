@@ -22,6 +22,14 @@ BeltControllerNode::BeltControllerNode()
     "/belt/command_rpm", command_qos,
     std::bind(&BeltControllerNode::belt_target_rpm_callback, this, std::placeholders::_1));
 
+  underbelt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
+    "/belt/command_underbelt_rpm", command_qos,
+    std::bind(&BeltControllerNode::underbelt_target_rpm_callback, this, std::placeholders::_1));
+
+  upperbelt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
+    "/belt/command_upperbelt_rpm", command_qos,
+    std::bind(&BeltControllerNode::upperbelt_target_rpm_callback, this, std::placeholders::_1));
+
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos,
     std::bind(&BeltControllerNode::emergency_stop_callback, this, std::placeholders::_1));
@@ -87,6 +95,7 @@ void BeltControllerNode::load_parameters()
 void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg)
 {
   use_direct_target_rpm_ = false;
+  use_individual_direct_target_rpm_ = false;
   belt_mode_ = msg->mode <=
     robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
   publish_command();
@@ -94,6 +103,7 @@ void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::Sha
 
 void BeltControllerNode::belt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
+  use_individual_direct_target_rpm_ = false;
   if (msg->data > 0.0f) {
     use_direct_target_rpm_ = true;
     direct_target_rpm_ = static_cast<int>(msg->data);
@@ -101,6 +111,22 @@ void BeltControllerNode::belt_target_rpm_callback(const std_msgs::msg::Float32::
     use_direct_target_rpm_ = false;
     direct_target_rpm_ = 0;
   }
+  publish_command();
+}
+
+void BeltControllerNode::underbelt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
+{
+  use_direct_target_rpm_ = false;
+  use_individual_direct_target_rpm_ = true;
+  direct_underbelt_target_rpm_ = std::max(0, static_cast<int>(msg->data));
+  publish_command();
+}
+
+void BeltControllerNode::upperbelt_target_rpm_callback(const std_msgs::msg::Float32::SharedPtr msg)
+{
+  use_direct_target_rpm_ = false;
+  use_individual_direct_target_rpm_ = true;
+  direct_upperbelt_target_rpm_ = std::max(0, static_cast<int>(msg->data));
   publish_command();
 }
 
@@ -237,7 +263,10 @@ void BeltControllerNode::publish_command()
   int upperbelt_rpm = 0;
 
   if (!emergency_stop_active_) {
-    if (use_direct_target_rpm_) {
+    if (use_individual_direct_target_rpm_) {
+      underbelt_rpm = direct_underbelt_target_rpm_;
+      upperbelt_rpm = direct_upperbelt_target_rpm_;
+    } else if (use_direct_target_rpm_) {
       underbelt_rpm = direct_target_rpm_;
       upperbelt_rpm = direct_target_rpm_;
     } else {

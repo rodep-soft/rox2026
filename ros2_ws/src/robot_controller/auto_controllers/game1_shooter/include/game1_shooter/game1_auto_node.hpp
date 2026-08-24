@@ -60,7 +60,8 @@ private:
     const geometry_msgs::msg::Twist & cmd_vel,
     bool dribble_enabled,
     uint8_t arm_position,
-    bool spring_fire);
+    bool spring_fire,
+    bool spring_slow_fire = false);
 
   // メカナム特化型 全方位ホロノミック追従制御 (Field-Oriented to Body-Frame)
   geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target);
@@ -77,6 +78,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_slow_fire_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 

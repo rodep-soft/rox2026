@@ -10,9 +10,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 : Node("game1_auto_node", options)
 {
   kp_linear_ = declare_parameter<double>("kp_linear", 1.0);
-  kp_angular_ = declare_parameter<double>("kp_angular", 1.5);
-  max_linear_vel_ = declare_parameter<double>("max_linear_vel", 1.5);
-  max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
+  kp_angular_ = declare_parameter<double>("kp_angular", 2.0);
+  max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);
+  max_angular_vel_ = declare_parameter<double>("max_angular_vel", 3.5);
   pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
@@ -24,35 +24,35 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
 
   // フィールドサイド設定 ("left" or "right" / 左右反転フィールド対応)
   std::string field_side = declare_parameter<std::string>("field_side", "left");
-  const double mirror = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
-  if (mirror < 0.0) {
+  const double mirror_x = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+  if (mirror_x < 0.0) {
     RCLCPP_INFO(
       get_logger(),
-      "🔄 [Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring Y coordinates and Yaw angles.");
+      "[Game 1] RIGHT/BLUE Field Side selected! Auto-mirroring X coordinates and flipping Yaw angles.");
   } else {
-    RCLCPP_INFO(get_logger(), "🚩 [Game 1] LEFT/RED Field Side selected (Standard orientation).");
+    RCLCPP_INFO(get_logger(), "[Game 1] LEFT/RED Field Side selected (Standard orientation).");
   }
 
-  // YAML からの Waypoint 読み込み (フィールド反転を自動適用)
-  wp_gate_.x = declare_parameter<double>("wp_gate_x", 1.5);
-  wp_gate_.y = declare_parameter<double>("wp_gate_y", 0.0) * mirror;
-  wp_gate_.yaw = declare_parameter<double>("wp_gate_yaw", 0.0) * mirror;
+  // YAML からの Waypoint 読み込み (左右陣営のX軸反転と進行方向Yaw反転を自動適用)
+  wp_gate_.x = declare_parameter<double>("wp_gate_x", -5.925) * mirror_x;
+  wp_gate_.y = declare_parameter<double>("wp_gate_y", 1.500);
+  wp_gate_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_gate_yaw", 0.0);
 
-  wp_around_gate_.x = declare_parameter<double>("wp_around_gate_x", 2.5);
-  wp_around_gate_.y = declare_parameter<double>("wp_around_gate_y", 1.0) * mirror;
-  wp_around_gate_.yaw = declare_parameter<double>("wp_around_gate_yaw", 0.0) * mirror;
+  wp_around_gate_.x = declare_parameter<double>("wp_around_gate_x", -4.500) * mirror_x;
+  wp_around_gate_.y = declare_parameter<double>("wp_around_gate_y", 0.500);
+  wp_around_gate_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_around_gate_yaw", 0.0);
 
-  wp_ball_.x = declare_parameter<double>("wp_ball_x", 3.5);
-  wp_ball_.y = declare_parameter<double>("wp_ball_y", 0.0) * mirror;
-  wp_ball_.yaw = declare_parameter<double>("wp_ball_yaw", 0.0) * mirror;
+  wp_ball_.x = declare_parameter<double>("wp_ball_x", -2.700) * mirror_x;
+  wp_ball_.y = declare_parameter<double>("wp_ball_y", 1.500);
+  wp_ball_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
-  wp_pass_area_.x = declare_parameter<double>("wp_pass_area_x", 2.0);
-  wp_pass_area_.y = declare_parameter<double>("wp_pass_area_y", -1.0) * mirror;
-  wp_pass_area_.yaw = declare_parameter<double>("wp_pass_area_yaw", -1.5708) * mirror;
+  wp_pass_area_.x = declare_parameter<double>("wp_pass_area_x", -2.050) * mirror_x;
+  wp_pass_area_.y = declare_parameter<double>("wp_pass_area_y", 1.500);
+  wp_pass_area_.yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_pass_area_yaw", 0.0);
 
-  wp_start_.x = declare_parameter<double>("wp_start_x", 0.0);
-  wp_start_.y = declare_parameter<double>("wp_start_y", 0.0) * mirror;
-  wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0) * mirror;
+  wp_start_.x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
+  wp_start_.y = declare_parameter<double>("wp_start_y", 4.950);
+  wp_start_.yaw = declare_parameter<double>("wp_start_yaw", 0.0);
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game1/command_start", 10,
@@ -67,7 +67,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     std::bind(&Game1AutoNode::odom_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
-    "/detection", 10,
+    "/ball_pose", 10,
     std::bind(&Game1AutoNode::ball_detection_callback, this, std::placeholders::_1));
 
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
@@ -79,6 +79,7 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   arm_position_pub_ =
     create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", 10);
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>("/spring/fire_request", 10);
+  spring_slow_fire_pub_ = create_publisher<std_msgs::msg::Bool>("/spring/slow_fire_request", 10);
   completed_pub_ = create_publisher<std_msgs::msg::Bool>("/game1/completed", 10);
 
   // 20 Hz 制御ループ
@@ -232,12 +233,13 @@ void Game1AutoNode::control_loop()
 
   switch (state_) {
     case Game1State::NAV_TO_GATE: {
-        // 1. ゲート射出位置へ全方位追従移動
+        // 1. ゲート射出位置へ全方位追従移動 (走りながら通過＆射出)
         cmd = compute_holonomic_pursuit(wp_gate_);
-        // 位置差分 pos_tolerance 以下 ＆ 角度差分 yaw_tolerance (ゲート方向向いた) 以下で射出許可 (タイムアウト5秒)
-        if (is_aligned_to_target(wp_gate_) || elapsed > 5.0) {
+        const double dist_to_gate = std::hypot(wp_gate_.x - current_x_, wp_gate_.y - current_y_);
+        // ゲート前方に近接（距離35cm以内）した瞬間に停止せず走りながら射出リクエストを発行
+        if (dist_to_gate <= 0.35 || elapsed > 3.0) {
           RCLCPP_INFO(
-            get_logger(), "Aligned at Gate shooting position (yaw aligned!). Firing 1st Spring!");
+            get_logger(), "Passing Gate shooting position (shoot on the move!). Firing 1st Spring!");
           state_ = Game1State::FIRE_GATE_SPRING;
           state_start_time_ = now();
         }
@@ -245,10 +247,11 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::FIRE_GATE_SPRING: {
-        // 2. ゲートへスプリング発射 (1発目)
+        // 2. 走りながらゲート横回り込みへ滑らかに移行
+        cmd = compute_holonomic_pursuit(wp_around_gate_);
         spring_fire = true;
-        if ((now() - state_start_time_).seconds() > 1.0) {
-          RCLCPP_INFO(get_logger(), "Gate Shot Complete. Navigating AROUND gate (free area).");
+        if ((now() - state_start_time_).seconds() > 0.3) {
+          RCLCPP_INFO(get_logger(), "Gate Shot fired on the move. Continuing around gate.");
           state_ = Game1State::NAV_AROUND_GATE;
           state_start_time_ = now();
         }
@@ -256,12 +259,14 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_AROUND_GATE: {
-        // 3. ロボットはゲートの横を通って向こう側へ回り込む
+        // 3. ロボットはゲートの横を通ってボール背後 (wp_ball_: X=-3.20m, Y=2.165m) へノンストップで回り込む
         cmd = compute_holonomic_pursuit(wp_around_gate_);
-        if ((now() - state_start_time_).seconds() > 3.0) {
+        const double dist_around = std::hypot(wp_around_gate_.x - current_x_, wp_around_gate_.y - current_y_);
+        // 回り込み中間点を高速フライスルー (35cm以内通過で即座にボール背後追従へ)
+        if (dist_around <= 0.35 || (now() - state_start_time_).seconds() > 2.0) {
           RCLCPP_INFO(
             get_logger(),
-            "Around gate complete. Searching and catching ball dynamically with DRIBBLE ON (backspin).");
+            "Bypassed gate. Sweeping into position behind ball facing forward with DRIBBLE ON.");
           state_ = Game1State::SEARCH_AND_CATCH_BALL;
           state_start_time_ = now();
         }
@@ -269,7 +274,7 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::SEARCH_AND_CATCH_BALL: {
-        // 4. カメラ(YOLO)で転がったボールの位置を認識して動的追従キャッチ＋ドリブルON
+        // 4. 正面 (yaw=0.0) を向けたままボール背後から前進してボールをキャッチ＋ドリブルON
         dribble_enabled = true; // バックスピンでボールをしっかり吸い寄せる
         arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
@@ -283,18 +288,17 @@ void Game1AutoNode::control_loop()
             cmd.linear.x = ball_speed * (detected_ball_x_ / ball_dist);
             cmd.linear.y = ball_speed * (detected_ball_y_ / ball_dist);
           }
-          // 正面をボールに向ける旋回制御
-          const double ball_heading_err = std::atan2(detected_ball_y_, detected_ball_x_);
-          cmd.angular.z = std::clamp(
-            kp_angular_ * ball_heading_err, -max_angular_vel_,
-            max_angular_vel_);
+          // 正面 (yaw=0.0) を維持
+          cmd.angular.z = std::clamp(kp_angular_ * std::remainder(wp_ball_.yaw - current_yaw_, 2.0 * M_PI), -max_angular_vel_, max_angular_vel_);
         } else {
           // ボール未検出：予想ターゲット位置へ向かってホロノミック追従走行
           cmd = compute_holonomic_pursuit(wp_ball_);
         }
 
-        if ((now() - state_start_time_).seconds() > 4.0) {
-          RCLCPP_INFO(get_logger(), "Ball caught! Navigating to Pass Area.");
+        const double dist_to_ball_wp = std::hypot(wp_ball_.x - current_x_, wp_ball_.y - current_y_);
+        // ボール位置に到達またはタイムアウトでキャッチ成立 -> 止まらずそのままパスエリアへ
+        if (dist_to_ball_wp <= 0.35 || (now() - state_start_time_).seconds() > 2.5) {
+          RCLCPP_INFO(get_logger(), "Ball caught! Sweeping directly to Pass Area keeping forward orientation.");
           state_ = Game1State::NAV_TO_PASS_AREA;
           state_start_time_ = now();
         }
@@ -302,13 +306,14 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_TO_PASS_AREA: {
-        // 5. ボール保持のままパスエリア射出位置へ移動
+        // 5. ボール保持のままパスエリア射出位置へ前向き平行移動
         cmd = compute_holonomic_pursuit(wp_pass_area_);
         dribble_enabled = true;
-        arm_pos = robot_msgs::msg::ArmPosition::OPEN; // 射出前にアームを開く
+        arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
-        if (is_aligned_to_target(wp_pass_area_) || elapsed > 5.0) {
-          RCLCPP_INFO(get_logger(), "Arrived & Yaw-Aligned at Pass Area. Firing 2nd Spring!");
+        const double dist_to_pass = std::hypot(wp_pass_area_.x - current_x_, wp_pass_area_.y - current_y_);
+        if (dist_to_pass <= 0.15 || elapsed > 3.0) {
+          RCLCPP_INFO(get_logger(), "Arrived at Pass Area boundary flush. Opening arm for Slow Fire (L1 behavior)...");
           state_ = Game1State::FIRE_PASS_SPRING;
           state_start_time_ = now();
         }
@@ -316,22 +321,30 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::FIRE_PASS_SPRING: {
-        // 5. パスエリアへスプリング発射 (2発目)
-        arm_pos = robot_msgs::msg::ArmPosition::FEED; // ベルトへボールを押し込む
-        spring_fire = true;
-        if ((now() - state_start_time_).seconds() > 1.0) {
-          RCLCPP_INFO(get_logger(), "Pass Area Shot Complete. Returning to Start position.");
+        // 5. パスエリアへスプリングゆっくり射出 (L1方式: ドリブルOFF, アームOPEN, slow_fire_request)
+        cmd = geometry_msgs::msg::Twist{};
+        dribble_enabled = false;
+        arm_pos = robot_msgs::msg::ArmPosition::OPEN;
+
+        // アームが展開する時間 (0.3秒後) にゆっくり射出リクエストを発行
+        bool spring_slow_fire = (elapsed >= 0.3);
+
+        if (elapsed > 0.8) {
+          RCLCPP_INFO(get_logger(), "Pass Area Slow Fire Complete. Returning straight to Start position (zero spin).");
           state_ = Game1State::NAV_TO_START;
           state_start_time_ = now();
         }
-        break;
+        publish_commands(cmd, dribble_enabled, arm_pos, false, spring_slow_fire);
+        return;
       }
 
     case Game1State::NAV_TO_START: {
-        // 6. スタート位置へ自動復帰
+        // 6. スタート位置へ正面(yaw=0.0)をキープしたまま直線斜め自動復帰
         cmd = compute_holonomic_pursuit(wp_start_);
-        if ((now() - state_start_time_).seconds() > 4.0) {
-          RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED!");
+        arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
+        const double dist_to_start = std::hypot(wp_start_.x - current_x_, wp_start_.y - current_y_);
+        if (dist_to_start <= pos_tolerance_ || (now() - state_start_time_).seconds() > 4.0) {
+          RCLCPP_INFO(get_logger(), "Game 1 Auto Sequence COMPLETED! Ready for reload.");
           state_ = Game1State::COMPLETED;
         }
         break;
@@ -359,14 +372,15 @@ void Game1AutoNode::control_loop()
       break;
   }
 
-  publish_commands(cmd, dribble_enabled, arm_pos, spring_fire);
+  publish_commands(cmd, dribble_enabled, arm_pos, spring_fire, false);
 }
 
 void Game1AutoNode::publish_commands(
   const geometry_msgs::msg::Twist & cmd_vel,
   bool dribble_enabled,
   uint8_t arm_position,
-  bool spring_fire)
+  bool spring_fire,
+  bool spring_slow_fire)
 {
   cmd_vel_pub_->publish(cmd_vel);
 
@@ -381,6 +395,10 @@ void Game1AutoNode::publish_commands(
   std_msgs::msg::Bool spring_msg;
   spring_msg.data = spring_fire;
   spring_fire_pub_->publish(spring_msg);
+
+  std_msgs::msg::Bool slow_spring_msg;
+  slow_spring_msg.data = spring_slow_fire;
+  spring_slow_fire_pub_->publish(slow_spring_msg);
 }
 
 }  // namespace robot_controller
