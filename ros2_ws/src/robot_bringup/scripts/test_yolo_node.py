@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import rclcpp
-from rclcpp.node import Node
+import rclpy
+from rclpy.node import Node
 from sensor_msgs.msg import Image
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
 import geometry_msgs.msg
