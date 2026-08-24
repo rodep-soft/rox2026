@@ -1,8 +1,12 @@
 .PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
-BUILD_JOBS ?= 3
-PARALLEL_WORKERS ?= 2
-EXECUTOR ?= parallel
+# BUILD_JOBS ?= 2
+# PARALLEL_WORKERS ?= 4
+# EXECUTOR ?= parallel
+
+BUILD_JOBS ?= 8
+PARALLEL_WORKERS ?= 1
+EXECUTOR ?= sequential
 
 CMAKE_ARGS = \
 	-G Ninja \
@@ -10,6 +14,9 @@ CMAKE_ARGS = \
 	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 COLCON_ARGS = \
+	--log-base log_ninja build \
+	--build-base build_ninja \
+	--install-base install_ninja \
 	--executor $(EXECUTOR) \
 	--parallel-workers $(PARALLEL_WORKERS) \
 	--symlink-install \
