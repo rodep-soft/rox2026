@@ -63,11 +63,6 @@ DribbleControllerNode::DribbleControllerNode()
       std::bind(&DribbleControllerNode::dribble_enabled_callback, this,
                 std::placeholders::_1));
 
-  dribble_reverse_sub_ = create_subscription<std_msgs::msg::Bool>(
-      "/dribble/command_reverse", command_qos,
-      std::bind(&DribbleControllerNode::dribble_reverse_callback, this,
-                std::placeholders::_1));
-
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
       "/dribble/shot_cycle_request", command_qos,
       std::bind(&DribbleControllerNode::shot_cycle_callback, this,
@@ -78,14 +73,9 @@ DribbleControllerNode::DribbleControllerNode()
       std::bind(&DribbleControllerNode::emergency_stop_callback, this,
                 std::placeholders::_1));
 
-  opening_rpm_sub_ = create_subscription<std_msgs::msg::Int32>(
-      "/dribble/command_opening_rpm", command_qos,
-      std::bind(&DribbleControllerNode::opening_rpm_callback, this,
-                std::placeholders::_1));
-
-  actuator_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(
+  edulite_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(
       "/edulite/state", command_qos,
-      std::bind(&DribbleControllerNode::actuator_state_callback, this,
+      std::bind(&DribbleControllerNode::edulite_state_callback, this,
                 std::placeholders::_1));
 
   vesc_state_sub_ = create_subscription<actuator_msgs::msg::ActuatorState>(
@@ -136,20 +126,6 @@ void DribbleControllerNode::position_mode_callback(
 void DribbleControllerNode::dribble_enabled_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
   dribble_enabled_ = msg->data;
-}
-
-void DribbleControllerNode::dribble_reverse_callback(
-    const std_msgs::msg::Bool::SharedPtr msg) {
-  if (emergency_stop_active_) {
-    return;
-  }
-
-  if (msg->data != dribble_reverse_enabled_) {
-    dribble_reverse_enabled_ = msg->data;
-    reverse_transition_active_ = true;
-    reverse_transition_start_time_ = now();
-    reverse_transition_start_rpm_ = current_filtered_roller_rpm_;
-  }
 }
 
 void DribbleControllerNode::shot_cycle_callback(
@@ -213,7 +189,7 @@ void DribbleControllerNode::emergency_stop_callback(
 
   if (emergency_stop_active_) {
     startup_emergency_seen_active_ = true;
-    emergency_hold_position_rad_ = arm_state_received_
+    emergency_hold_position_rad_ = edulite_state_received_
                                        ? current_arm_position_rad_
                                        : last_position_command_rad_;
     last_position_command_rad_ = emergency_hold_position_rad_;
@@ -230,7 +206,7 @@ void DribbleControllerNode::emergency_stop_callback(
                   "Initial emergency stop released: moving to DRIBBLE posture");
     }
 
-    const double resume_position_rad = arm_state_received_
+    const double resume_position_rad = edulite_state_received_
                                            ? current_arm_position_rad_
                                            : emergency_hold_position_rad_;
 
@@ -246,11 +222,6 @@ void DribbleControllerNode::emergency_stop_callback(
       manual_transition_start_time_ = now();
       manual_transition_start_rpm_ = 0;
     }
-    if (dribble_reverse_enabled_) {
-      reverse_transition_active_ = true;
-      reverse_transition_start_time_ = now();
-      reverse_transition_start_rpm_ = 0;
-    }
     last_position_command_rad_ = resume_position_rad;
     RCLCPP_INFO(
         get_logger(),
@@ -260,18 +231,7 @@ void DribbleControllerNode::emergency_stop_callback(
   control_timer_callback();
 }
 
-void DribbleControllerNode::opening_rpm_callback(
-    const std_msgs::msg::Int32::SharedPtr msg) {
-  if (msg->data >= 0 && msg->data <= 5600) {
-    if (shot_cycle_opening_rpm_ != msg->data) {
-      shot_cycle_opening_rpm_ = msg->data;
-      RCLCPP_INFO(get_logger(), "Updated shot cycle opening RPM: %d RPM",
-                  shot_cycle_opening_rpm_);
-    }
-  }
-}
-
-void DribbleControllerNode::actuator_state_callback(
+void DribbleControllerNode::edulite_state_callback(
     const actuator_msgs::msg::ActuatorState::SharedPtr msg) {
   if (msg->logical_id != position_logical_id_) {
     return;
@@ -280,21 +240,22 @@ void DribbleControllerNode::actuator_state_callback(
   const bool ready =
       msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   if (!ready) {
-    if (arm_actuator_ready_) {
+    if (edulite_ready_) {
       RCLCPP_WARN_THROTTLE(
           get_logger(), *get_clock(), 10000,
           "Dribble EduLite disconnected; pausing position commands");
     }
+    edulite_ready_ = false;
     last_published_position_rad_.reset();
     return;
   }
 
-  const bool reconnected = arm_state_received_ && !arm_actuator_ready_;
-  arm_actuator_ready_ = true;
+  const bool reconnected = edulite_state_received_ && !edulite_ready_;
+  edulite_ready_ = true;
   current_arm_position_rad_ = msg->position;
 
-  if (!arm_state_received_) {
-    arm_state_received_ = true;
+  if (!edulite_state_received_) {
+    edulite_state_received_ = true;
     last_position_command_rad_ = msg->position;
     emergency_hold_position_rad_ = msg->position;
     position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
@@ -447,19 +408,6 @@ void DribbleControllerNode::update_and_publish_roller_command() {
   const int target_rpm = roller_target_rpm();
   if (emergency_stop_active_) {
     current_filtered_roller_rpm_ = 0;
-    reverse_transition_active_ = false;
-  } else if (reverse_transition_active_) {
-    const double elapsed_sec =
-        (now() - reverse_transition_start_time_).seconds();
-    const double ramp_duration = std::max(0.001, dribble_reverse_ramp_sec_);
-    const double progress = std::clamp(elapsed_sec / ramp_duration, 0.0, 1.0);
-    current_filtered_roller_rpm_ = static_cast<int>(
-        std::round(reverse_transition_start_rpm_ +
-                   (target_rpm - reverse_transition_start_rpm_) * progress));
-    if (elapsed_sec >= ramp_duration) {
-      reverse_transition_active_ = false;
-      current_filtered_roller_rpm_ = target_rpm;
-    }
   } else if (manual_transition_active_ && !shot_cycle_active_ &&
              dribble_enabled_ &&
              spring_operation_state_ !=
@@ -553,7 +501,7 @@ void DribbleControllerNode::control_timer_callback() {
   update_motion_compensation();
   update_and_publish_roller_command();
 
-  if (!arm_actuator_ready_) {
+  if (!edulite_ready_) {
     return;
   }
 
@@ -686,10 +634,6 @@ int DribbleControllerNode::roller_target_rpm() const {
   if (spring_operation_state_ ==
       robot_msgs::msg::SpringOperationState::SLOW_FIRE) {
     return slow_fire_dribble_rpm_;
-  }
-  if (dribble_reverse_enabled_) {
-    // 逆回転モード: 一定の逆回転RPMを出力
-    return -std::abs(dribble_reverse_rpm_);
   }
   if (shot_cycle_active_) {
     switch (shot_cycle_phase_) {
@@ -868,8 +812,6 @@ DribbleControllerNode::parameter_bindings() {
        C::POSITIVE, true},
       {"dribbling_max_acceleration_rad_s2", &dribbling_max_acceleration_rad_s2_,
        C::POSITIVE, true},
-      {"dribble_reverse_ramp_sec", &dribble_reverse_ramp_sec_, C::NONNEGATIVE,
-       false},
       {"ball_detection_threshold_a", &ball_detection_threshold_a_,
        C::NONNEGATIVE, false},
       {"ball_lost_threshold_a", &ball_lost_threshold_a_, C::NONNEGATIVE, false},
@@ -882,8 +824,7 @@ DribbleControllerNode::parameter_bindings() {
       {"backward_acceleration_rpm_per_mps2",
        &backward_acceleration_rpm_per_mps2_, C::NONNEGATIVE, false},
       {"dribble_on_rpm", &dribble_on_rpm_, C::NONNEGATIVE, false},
-      {"slow_fire_dribble_rpm", &slow_fire_dribble_rpm_, C::NONNEGATIVE, false},
-      {"dribble_reverse_rpm", &dribble_reverse_rpm_, C::NONNEGATIVE, false},
+      {"slow_fire_dribble_rpm", &slow_fire_dribble_rpm_, C::NONE, false},
       {"shot_cycle_opening_rpm", &shot_cycle_opening_rpm_, C::NONNEGATIVE,
        false},
       {"shot_cycle_feeding_rpm", &shot_cycle_feeding_rpm_, C::NONNEGATIVE,

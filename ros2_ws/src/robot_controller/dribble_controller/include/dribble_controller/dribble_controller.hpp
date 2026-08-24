@@ -18,7 +18,6 @@
 #include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "robot_msgs/msg/spring_operation_state.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/int32.hpp"
 
 class DribbleControllerNode : public rclcpp::Node {
 public:
@@ -48,13 +47,11 @@ private:
   void
   position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg);
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_shot_cycle();
   void publish_belt_clearance_request(bool requested);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
-  void actuator_state_callback(
+  void edulite_state_callback(
       const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void
   vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
@@ -101,8 +98,6 @@ private:
   double ball_lost_threshold_a_{2.2};
   double current_lpf_alpha_{0.07};
   int dribble_on_rpm_{400};
-  int dribble_reverse_rpm_{800};
-  double dribble_reverse_ramp_sec_{2.0};
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
@@ -112,7 +107,7 @@ private:
   double belt_spinup_min_delay_sec_{0.1};
   double prepare_from_open_delay_sec_{0.1};
   double slow_fire_dribble_position_rad_{-0.8};
-  int slow_fire_dribble_rpm_{500};
+  int slow_fire_dribble_rpm_{-500};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
   uint16_t upper_belt_logical_id_{10};
@@ -130,13 +125,9 @@ private:
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_{false};
-  bool dribble_reverse_enabled_{false};
-  bool reverse_transition_active_{false};
-  rclcpp::Time reverse_transition_start_time_;
-  int reverse_transition_start_rpm_{0};
   bool emergency_stop_active_{false};
-  bool arm_state_received_{false};
-  bool arm_actuator_ready_{false};
+  bool edulite_state_received_{false};
+  bool edulite_ready_{false};
   bool startup_waiting_for_emergency_release_{true};
   bool startup_emergency_seen_active_{false};
   double emergency_hold_position_rad_{0.0};
@@ -187,12 +178,10 @@ private:
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr
       position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_reverse_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
-      actuator_state_sub_;
+      edulite_state_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
       vesc_state_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;

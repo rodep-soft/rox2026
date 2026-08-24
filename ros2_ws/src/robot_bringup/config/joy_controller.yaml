@@ -16,8 +16,6 @@
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
-    # ドリブル逆回転 (ボタン割り当て解除: -1)
-    dribble_reverse_button: -1
     # L1でスプリングゆっくり射出 (逆回転・正方向押し出し)
     slow_fire_button: 4
     # DPAD上/下でbelt levelを上げ下げする

@@ -7,7 +7,6 @@
 | 種別 | topic | 内容 |
 |---|---|---|
 | sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
-| sub | `/dribble/command_reverse` | ローラー逆転ON/OFF |
 | sub | `/dribble/position_mode` | `DRIBBLE``OPEN``FEED` 姿勢 |
 | sub | `/dribble/command_position` | `DRIBBLE``OPEN``FEED` 姿勢 |
 | sub | `/dribble/shot_cycle_request` | `FEED → DRIBBLE` 自動射出動作 |
@@ -61,8 +60,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ## 実行中に変更できるparameter
 
 - `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
-- `dribble_reverse_rpm`（逆回転時の一定RPM）
-- `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]デフォルト 2.0s）
+- `slow_fire_dribble_rpm`（スロー発射中のRPM。負値で逆回転）
 - `ball_detection_threshold_a`（ボール検知閾値[A]デフォルト1.7）
 - `ball_lost_threshold_a`（ボール喪失閾値[A]デフォルト1.0）
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数デフォルト0.3）
@@ -77,7 +75,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `opening_max_acceleration_rad_s2`
 - `dribbling_max_acceleration_rad_s2`
 
-更新値はまとめて検証される。位置は有限値保持時間とRPMは0以上区間速度は正の
+更新値はまとめて検証される。位置は有限値保持時間と通常RPMは0以上（`slow_fire_dribble_rpm`のみ符号付き）区間速度は正の
 有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は現在の
 指令角度を始点として軌道を再計算する。
 

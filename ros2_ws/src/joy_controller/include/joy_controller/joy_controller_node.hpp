@@ -14,7 +14,6 @@
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/int32.hpp"
 
 class JoyControllerNode : public rclcpp::Node {
 public:
@@ -32,8 +31,6 @@ private:
   void publish_belt_mode(uint8_t mode);
   void publish_arm_position(uint8_t position);
   void publish_dribble_enabled(bool enabled);
-  void publish_dribble_reverse(bool reversed);
-  void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
   void publish_limited_velocity(double target_x_m_s, double target_y_m_s,
@@ -71,7 +68,6 @@ private:
   int home_button_{13};
   int circle_button_{2};
   int dribble_enable_button_{5};
-  int dribble_reverse_button_{-1};
   int game2_start_button_{9};
   int heading_hold_toggle_button_{8};
   int slow_turn_button_{7};
@@ -95,9 +91,7 @@ private:
 
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
-  int shot_cycle_opening_rpm_{1500};
   bool dribble_enabled_{false};
-  bool dribble_reversed_{false};
   bool dribble_enabled_before_spring_{false};
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{150};
@@ -124,11 +118,9 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr slow_fire_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_reverse_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr
       arm_position_mode_pub_;
-  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr

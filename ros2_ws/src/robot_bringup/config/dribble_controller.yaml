@@ -24,11 +24,9 @@
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 320             # DRIBBLE姿勢 (ボール保持中) の回転数
-    dribble_reverse_rpm: 800        # 逆回転時の一定回転数 (正の値で指定、内部で逆回転出力)
-    dribble_reverse_ramp_sec: 2.0   # [s] 逆回転への移行・復帰にかける時間 (2.0秒で滑らかに遷移)
     slow_fire_dribble_position_rad: -0.8
-    slow_fire_dribble_rpm: 500
-    shot_cycle_opening_rpm: 1500    # DRIBBLE -> OPEN (真下に下がるまでの高回転数)
+    slow_fire_dribble_rpm: -500     # スロー発射中の回転数（負値で逆回転）
+    shot_cycle_opening_rpm: 1500    # ベルト発射準備時のローラ回転数
     shot_cycle_feeding_rpm: 1500       # OPEN -> FEED (押し込み完了時に0 RPMへ滑らか減速)
     shot_cycle_returning_rpm: 360  # FEED -> DRIBBLE
     

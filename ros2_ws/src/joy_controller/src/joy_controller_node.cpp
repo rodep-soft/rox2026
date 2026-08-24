@@ -36,8 +36,6 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
-  dribble_reverse_button_ =
-      declare_parameter<int>("dribble_reverse_button", -1);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
       declare_parameter<int>("heading_hold_toggle_button", 8);
@@ -107,17 +105,11 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
       "/dribble/command_enabled", command_qos);
 
-  dribble_reverse_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/dribble/command_reverse", command_qos);
-
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
       "/dribble/shot_cycle_request", command_qos);
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
       "/dribble/command_position", command_qos);
-
-  opening_rpm_pub_ = create_publisher<std_msgs::msg::Int32>(
-      "/dribble/command_opening_rpm", command_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
       "/game2/command_start", command_qos);
@@ -174,16 +166,14 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     // パラメータ値の適用 (int / double 自動分岐)
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
-      if (val < 0 && name != "joy_timeout_ms" &&
-          name != "dribble_reverse_button" && name != "slow_turn_button" &&
+      if (val < 0 && name != "joy_timeout_ms" && name != "slow_turn_button" &&
           name != "slow_fire_button") {
         result.successful = false;
         result.reason = name + " must be non-negative";
         return result;
       }
       if (val < -1 &&
-          (name == "dribble_reverse_button" || name == "slow_turn_button" ||
-           name == "slow_fire_button")) {
+          (name == "slow_turn_button" || name == "slow_fire_button")) {
         result.successful = false;
         result.reason = name + " must be >= -1";
         return result;
@@ -200,8 +190,6 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         circle_button_ = val;
       } else if (name == "dribble_enable_button") {
         dribble_enable_button_ = val;
-      } else if (name == "dribble_reverse_button") {
-        dribble_reverse_button_ = val;
       } else if (name == "game2_start_button") {
         game2_start_button_ = val;
       } else if (name == "heading_hold_toggle_button") {
@@ -334,26 +322,9 @@ void JoyControllerNode::loop_callback() {
   // 3. ドリブル回転ON/OFF (R1)
   if (is_button_just_pressed(joy_msg_, dribble_enable_button_)) {
     dribble_enabled_ = !dribble_enabled_;
-    if (dribble_enabled_) {
-      dribble_reversed_ = false;
-      publish_dribble_reverse(false);
-    }
     RCLCPP_INFO(get_logger(), "Dribble toggled: %s",
                 dribble_enabled_ ? "ON" : "OFF");
     publish_dribble_enabled(dribble_enabled_);
-  }
-
-  // 3b. ドリブル逆回転ON/OFF (未割り当てでない場合)
-  if (dribble_reverse_button_ >= 0 &&
-      is_button_just_pressed(joy_msg_, dribble_reverse_button_)) {
-    dribble_reversed_ = !dribble_reversed_;
-    if (dribble_reversed_) {
-      dribble_enabled_ = false;
-      publish_dribble_enabled(false);
-    }
-    RCLCPP_INFO(get_logger(), "Dribble reverse toggled: %s",
-                dribble_reversed_ ? "ON" : "OFF");
-    publish_dribble_reverse(dribble_reversed_);
   }
 
   // 4. 前後反転 (PS)
@@ -501,23 +472,7 @@ void JoyControllerNode::loop_callback() {
 
   was_spring_ready_ = spring_actuator_ready_;
 
-  // 9. DPAD 左右で自動シュート OPEN 動作時のドリブル回転数を変更 (+200 / -200
-  // RPM, R2非押下時)
-  if (!is_r2_active) {
-    if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
-      shot_cycle_opening_rpm_ = std::min(2500, shot_cycle_opening_rpm_ + 200);
-      publish_opening_rpm(shot_cycle_opening_rpm_);
-      RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM",
-                  shot_cycle_opening_rpm_);
-    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
-      shot_cycle_opening_rpm_ = std::max(0, shot_cycle_opening_rpm_ - 200);
-      publish_opening_rpm(shot_cycle_opening_rpm_);
-      RCLCPP_INFO(get_logger(), "Shot cycle opening RPM set to: %d RPM",
-                  shot_cycle_opening_rpm_);
-    }
-  }
-
-  // 10. アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
+  // アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
   if (!game2_active_) {
     double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
     double raw_vy = get_axis_value(joy_msg_, left_stick_x_axis_);
@@ -582,7 +537,6 @@ void JoyControllerNode::state_publish_timer_callback() {
   publish_emergency_stop(is_emergency_stop_);
   publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
-  publish_dribble_reverse(dribble_reversed_);
   publish_drive_reversed(is_drive_reversed_);
 }
 
@@ -610,18 +564,6 @@ void JoyControllerNode::publish_dribble_enabled(bool enabled) {
   dribble_enabled_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_dribble_reverse(bool reversed) {
-  std_msgs::msg::Bool msg;
-  msg.data = reversed;
-  dribble_reverse_pub_->publish(msg);
-}
-
-void JoyControllerNode::publish_opening_rpm(int rpm) {
-  std_msgs::msg::Int32 msg;
-  msg.data = rpm;
-  opening_rpm_pub_->publish(msg);
-}
-
 void JoyControllerNode::publish_drive_reversed(bool reversed) {
   std_msgs::msg::Bool msg;
   msg.data = reversed;
@@ -645,9 +587,6 @@ void JoyControllerNode::publish_stop_commands() {
 
   dribble_enabled_ = false;
   publish_dribble_enabled(dribble_enabled_);
-
-  dribble_reversed_ = false;
-  publish_dribble_reverse(dribble_reversed_);
 }
 
 void JoyControllerNode::publish_limited_velocity(
