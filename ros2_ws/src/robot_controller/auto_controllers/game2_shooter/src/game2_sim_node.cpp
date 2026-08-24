@@ -290,7 +290,7 @@ private:
     ball.target_x = impact_x;
     ball.target_y = impact_y;
     ball.target_z = impact_z;
-    ball.flight_duration = 0.30;
+    ball.flight_duration = 0.65; // 自然で目で追いやすい飛翔速度 (約0.65秒で4m着弾)
     ball.elapsed = 0.0;
     ball.target_panel_idx = current_target_idx_;
     ball.is_hit = is_hit;
