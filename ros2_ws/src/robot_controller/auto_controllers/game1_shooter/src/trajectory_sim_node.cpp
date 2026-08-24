@@ -256,51 +256,47 @@ private:
     ball.color.b = 0.10f;
     ball.color.a = 1.0f;
 
-    const double target_ball_stop_x = waypoints_[3].x;
-    const double target_ball_stop_y = waypoints_[3].y;
+    const double target_ball_stop_x = -2.700 * mirror_x_;
+    const double target_ball_stop_y = waypoints_[1].y;
 
     if (current_segment_ >= static_cast<int>(waypoints_.size())) {
-      // スタート待機中: 人がボールをロボットに渡すアニメーション (0.7s後にボールがロボット前方に現れる)
+      // スタート待機中: 人がボールをロボットに渡すアニメーション (0.7s後にロボット前方に装填)
       if (wp_wait_timer_ > 0.7) {
         ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
         ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
       }
-      // 0.7s未満はパスエリアのボールがフェードせず残る（前サイクルの投下位置）
     } else if (current_segment_ <= 1) {
-      // 射出前: ロボット前方に保持 (スタート時から保持済み)
+      // 射出前: ロボット前方に保持
       ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
       ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
       ball_shot_time_ = 0.0;
       ball_is_caught_ = false;
     } else if (!ball_is_caught_) {
-      // ゲート射出後: 実機のバネ力に合わせた適度な初速でゲートを潜り抜け、芝/床摩擦で自然にスーッと減速停止 (2.5秒かけてゆっくり転がる)
+      // ゲート射出後: ボールはX=-2.70mまでゆっくり独立して転がる
       ball_shot_time_ += dt;
       const double shoot_start_x = waypoints_[1].x;
       double roll_t = std::min(1.0, ball_shot_time_ / 2.6);
-      // 3次イージング曲線（初速が穏やかで、徐々に滑らかに減速停止）
       double smooth_roll = 1.0 - std::pow(1.0 - roll_t, 3.0);
       ball_x_ = shoot_start_x + smooth_roll * (target_ball_stop_x - shoot_start_x);
-      ball_y_ = waypoints_[1].y;
+      ball_y_ = target_ball_stop_y;
 
-      // ロボットがボールに接触した段階でドリブルキャッチ判定
+      // ロボットがボール背後から正面で接触した瞬間にキャッチ成立
       const double dist_robot_to_ball = std::hypot(curr_x_ - ball_x_, curr_y_ - ball_y_);
-      if (current_segment_ >= 3 && dist_robot_to_ball < 0.35) {
+      if (dist_robot_to_ball < 0.40 && curr_x_ < ball_x_) {
         ball_is_caught_ = true;
       }
     } else if (current_segment_ == 3 || (current_segment_ == 4 && wp_wait_timer_ < 0.1)) {
-      // ドリブルキャッチ後: ロボット前方の保持位置へワープせず滑らかに吸着追従 (1階遅れで手元へスッと収まる)
-      const double target_hold_x = curr_x_ + 0.25 * std::cos(curr_yaw_);
-      const double target_hold_y = curr_y_ + 0.25 * std::sin(curr_yaw_);
-      ball_x_ += (target_hold_x - ball_x_) * std::min(1.0, 15.0 * dt);
-      ball_y_ += (target_hold_y - ball_y_) * std::min(1.0, 15.0 * dt);
+      // ドリブルキャッチ後: ロボット前方にピタリと保持され、パスエリアまで正面をキープして運ぶ
+      ball_x_ = curr_x_ + 0.25 * std::cos(curr_yaw_);
+      ball_y_ = curr_y_ + 0.25 * std::sin(curr_yaw_);
     } else if (current_segment_ == 4) {
-      // パスエリアぶつけ停止 & L1ゆっくり押し出し: アームからパスエリア中心 (X = ±1.316m, Y = 1.641m) へボールを優しく置く
+      // パスエリア停止 & L1ゆっくり押し出し: アームからパスエリア中心 (X = ±1.316m, Y = 1.641m) へ優しく置く
       double progress = std::min(1.0, wp_wait_timer_ / 0.7);
       const double target_pass_x = (mirror_x_ < 0.0) ? 1.316 : -1.316;
       ball_x_ = (curr_x_ + 0.25 * std::cos(curr_yaw_)) + progress * (target_pass_x - (curr_x_ + 0.25 * std::cos(curr_yaw_)));
       ball_y_ = 1.641;
     } else {
-      // パスエリア投下完了後: パスエリア内にボールが静止
+      // パスエリア投下後: パスエリア内にボールが静止
       ball_x_ = (mirror_x_ < 0.0) ? 1.316 : -1.316;
       ball_y_ = 1.641;
     }
