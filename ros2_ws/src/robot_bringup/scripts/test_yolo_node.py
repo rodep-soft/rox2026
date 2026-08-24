@@ -3,6 +3,7 @@ import rclcpp
 from rclcpp.node import Node
 from sensor_msgs.msg import Image
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
+import geometry_msgs.msg
 import cv2
 import numpy as np
 
@@ -38,8 +39,16 @@ class TestYoloNode(Node):
             10
         )
         self.pub_detections_ = self.create_publisher(Detection2DArray, '/yolo/detections', 10)
+        self.pub_ball_pose_ = self.create_publisher(geometry_msgs.msg.PoseStamped, '/detection', 10)
         self.pub_annotated_ = self.create_publisher(Image, '/yolo/annotated_image', 10)
         self.bridge = CvBridge() if CvBridge else None
+
+        # カメラ内部パラメータ (実機 CSI カメラ / 1080p 焦点距離)
+        self.fx = 1400.0
+        self.fy = 1400.0
+        self.cx = 960.0
+        self.cy = 540.0
+        self.real_ball_diameter = 0.20 # 20cm
 
     def image_callback(self, msg: Image):
         if self.model is None:
@@ -70,7 +79,9 @@ class TestYoloNode(Node):
                 conf = float(box.conf[0].item())
                 xywh = box.xywh[0].tolist()
 
-                # ボール（sports ball / ball）または全物体
+                # ボール判定 (ball または sports ball)
+                is_ball = cls_name in ['ball', 'sports ball', 'cell phone'] # 移行期対応
+
                 det = Detection2D()
                 det.header = msg.header
                 det.bbox.center.position.x = float(xywh[0])
@@ -84,7 +95,26 @@ class TestYoloNode(Node):
                 det.results.append(hyp)
                 det_array.detections.push_back(det)
 
-                self.get_logger().info(f"[YOLO Detected] {cls_name} ({conf*100:.1f}%) at center=({xywh[0]:.1f}, {xywh[1]:.1f}), size=({xywh[2]:.1f}x{xywh[3]:.1f})")
+                # ボールの場合: 3D実空間位置を計算して /detection にパブリッシュ
+                if is_ball and xywh[2] > 10:
+                    # ピクセル幅から実距離 Z をピンホール推定 (Z = f * W_real / w_pixel)
+                    pixel_size = (xywh[2] + xywh[3]) / 2.0
+                    est_z = (self.fx * self.real_ball_diameter) / pixel_size
+                    est_x = ((xywh[0] - self.cx) * est_z) / self.fx
+                    est_y = ((xywh[1] - self.cy) * est_z) / self.fy
+
+                    pose_msg = geometry_msgs.msg.PoseStamped()
+                    pose_msg.header = msg.header
+                    pose_msg.header.frame_id = "camera_color_optical_frame"
+                    pose_msg.pose.position.x = float(est_x)
+                    pose_msg.pose.position.y = float(est_y)
+                    pose_msg.pose.position.z = float(est_z)
+                    pose_msg.pose.orientation.w = 1.0
+                    self.pub_ball_pose_.publish(pose_msg)
+
+                    self.get_logger().info(
+                        f"[BALL 3D DETECTED] {cls_name} ({conf*100:.1f}%) -> 3D Pos: (X={est_x:.2f}m, Y={est_y:.2f}m, Dist Z={est_z:.2f}m)"
+                    )
 
         self.pub_detections_.publish(det_array)
 
