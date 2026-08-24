@@ -7,7 +7,7 @@
     open_position_rad: -1.35       # OPEN姿勢 (ボールを出すときの姿勢)
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.9        # FEED姿勢(発射機構に押し込む姿勢)
-    slow_fire_dribble_position_rad: -1.25
+    slow_fire_dribble_position_rad: -1.35
     
     # [s] 自動シュートサイクルのタイミング
     belt_shot_delay_sec: 0.0          # ばね収納完了後、待たずにFEEDを開始
