@@ -16,6 +16,9 @@
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
+    # L3 + R3 (両スティック押し込み) で Game 1 自動モード / テスト走行 START
+    left_stick_button: 10
+    right_stick_button: 11
     # L1でスプリングゆっくり射出 (逆回転・正方向押し出し)
     slow_fire_button: 4
     # DPAD上/下でbelt levelを上げ下げする

@@ -101,6 +101,16 @@ def generate_launch_description():
                 default_value="/dev/video0",
                 description="V4L2 video device path for webcam",
             ),
+            DeclareLaunchArgument(
+                "enable_game1",
+                default_value="true",
+                description="Enable Game 1 auto shooter/passer node",
+            ),
+            DeclareLaunchArgument(
+                "enable_game2",
+                default_value="true",
+                description="Enable Game 2 auto tactics node",
+            ),
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
                 "hardware.launch.py",
@@ -159,7 +169,29 @@ def generate_launch_description():
                     {"map_frame": "map"},
                 ],
             ),
-            # --- 7. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
+            # --- 7. Game 1 & Game 2 自律戦術ノード (ボタン即応・デフォルト起動) ---
+            Node(
+                package="robot_controller",
+                executable="game1_auto_node",
+                name="game1_auto_node",
+                output="screen",
+                parameters=[
+                    os.path.join(bringup_share, "config", "game1.yaml"),
+                    {"field_side": LaunchConfiguration("side")},
+                ],
+                condition=IfCondition(LaunchConfiguration("enable_game1")),
+            ),
+            Node(
+                package="robot_controller",
+                executable="game2_auto_node",
+                name="game2_auto_node",
+                output="screen",
+                parameters=[
+                    {"field_side": LaunchConfiguration("side")},
+                ],
+                condition=IfCondition(LaunchConfiguration("enable_game2")),
+            ),
+            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
             include(
                 "vision_launch.py",
                 launch_arguments=list(
@@ -181,7 +213,7 @@ def generate_launch_description():
                 ),
                 condition=IfCondition(LaunchConfiguration("enable_vision")),
             ),
-            # --- 8. USB Webカメラ (V4L2 + AprilTag) ---
+            # --- 9. USB Webカメラ (V4L2 + AprilTag) ---
             include(
                 "webcam_launch.py",
                 launch_arguments=list(

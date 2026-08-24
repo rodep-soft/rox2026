@@ -39,6 +39,9 @@ JoyControllerNode::JoyControllerNode()
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
+  game1_start_button_ = declare_parameter<int>("game1_start_button", 10);
+  left_stick_button_ = declare_parameter<int>("left_stick_button", 10);
+  right_stick_button_ = declare_parameter<int>("right_stick_button", 11);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
     declare_parameter<int>("heading_hold_toggle_button", 8);
@@ -75,8 +78,7 @@ JoyControllerNode::JoyControllerNode()
     deceleration_y_m_s2_ <= 0.0 || !std::isfinite(deceleration_yaw_rad_s2_) ||
     deceleration_yaw_rad_s2_ <= 0.0)
   {
-    throw std::runtime_error(
-            "velocity limits must be nonnegative and rate limits positive");
+    throw std::runtime_error("Velocity and acceleration limits must be positive finite values");
   }
   update_acceleration_limits();
 
@@ -116,6 +118,9 @@ JoyControllerNode::JoyControllerNode()
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
     "/dribble/command_position", command_qos);
+
+  game1_start_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/game1/command_start", command_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/command_start", command_qos);
@@ -380,6 +385,20 @@ void JoyControllerNode::loop_callback()
     std_msgs::msg::Bool req;
     req.data = true;
     shot_cycle_request_pub_->publish(req);
+  }
+
+  // 5b. Game 1 自動戦術モード / テスト走行 START (L3 + R3 両スティック押し込み同時押し)
+  const bool l3_down = is_button_down(joy_msg_, left_stick_button_);
+  const bool r3_down = is_button_down(joy_msg_, right_stick_button_);
+  const bool was_l3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), left_stick_button_);
+  const bool was_r3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), right_stick_button_);
+  const bool both_sticks_just_pressed = (l3_down && r3_down) && !(was_l3_down && was_r3_down);
+
+  if (both_sticks_just_pressed || is_button_just_pressed(joy_msg_, game1_start_button_)) {
+    RCLCPP_INFO(get_logger(), "=== [JoyController] Game 1 AUTO / TEST MODE TRIGGERED (L3+R3) ===");
+    std_msgs::msg::Bool game1_msg;
+    game1_msg.data = true;
+    game1_start_pub_->publish(game1_msg);
   }
 
   // 6. Game 2 自動戦術モード切替 (OPTIONS)
