@@ -7,6 +7,8 @@
 #include <std_msgs/msg/float32.hpp>
 #include <robot_msgs/msg/game2_state.hpp>
 #include <robot_msgs/msg/arm_position.hpp>
+#include <apriltag_msgs/msg/april_tag_detection_array.hpp>
+#include <apriltag_msgs/msg/april_tag_detection.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 
 #include "game2_shooter/panel_types.hpp"
@@ -67,6 +69,8 @@ public:
       "/odom/simulated", rclcpp::QoS(10));
     state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
       "/game2/state", rclcpp::QoS(1).reliable().transient_local());
+    detections_pub_ = create_publisher<apriltag_msgs::msg::AprilTagDetectionArray>(
+      "/detections", rclcpp::QoS(10));
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -146,6 +150,9 @@ private:
     odom.pose.pose.position.z = 0.05;
     odom.pose.pose.orientation = tf_msg.transform.rotation;
     odom_pub_->publish(odom);
+
+    // 4. 4.0m 先の AprilTag リアルタイムカメラ検出シミュレーション (/detections 配信)
+    publish_simulated_apriltags(now_stamp);
 
     // 4. 飛翔中のボールの物理シミュレーション & 着弾判定
     auto & grid = vision_tracker_.get_panel_grid();
@@ -541,6 +548,66 @@ private:
     }
   }
 
+  void publish_simulated_apriltags(const rclcpp::Time & now_stamp)
+  {
+    // カメラパラメータ (1920x1080 FHD, 水平画角 約70度, fx=1400)
+    const double fx = 1400.0;
+    const double fy = 1400.0;
+    const double cx = 960.0;
+    const double cy = 540.0;
+
+    apriltag_msgs::msg::AprilTagDetectionArray det_array;
+    det_array.header.stamp = now_stamp;
+    det_array.header.frame_id = "camera_color_optical_frame";
+
+    auto & grid = vision_tracker_.get_panel_grid();
+    for (auto & [id, p] : grid) {
+      if (p.shot_completed) {
+        // 倒れたパネル (90度後傾) はカメラから見て斜め/不可視となり検出不可
+        p.detected = false;
+        continue;
+      }
+
+      // ロボット相対座標
+      const double dx = p.x - robot_x_;
+      const double dy = p.y - robot_y_;
+      const double local_x =  std::cos(robot_yaw_) * dx + std::sin(robot_yaw_) * dy;
+      const double local_y = -std::sin(robot_yaw_) * dx + std::cos(robot_yaw_) * dy;
+      const double local_z = p.z - 0.35; // カメラ高さ
+
+      // カメラ視野角内 (前方 +X, 左右 -Y) かつ 距離 1.0m〜6.0m
+      if (local_x > 1.0 && local_x < 6.0) {
+        // ピンホール投影
+        const double u = cx - (local_y * fx / local_x);
+        const double v = cy - (local_z * fy / local_x);
+
+        // 画面内 (1920x1080) かつ 角度許容内 (4mから確実に読み取れる精度)
+        if (u >= 0 && u <= 1920 && v >= 0 && v <= 1080) {
+          p.detected = true;
+          p.last_seen = now_stamp;
+          p.pixel_x = u;
+          p.pixel_y = v;
+
+          apriltag_msgs::msg::AprilTagDetection det;
+          det.id = id;
+          det.centre.x = u;
+          det.centre.y = v;
+          det.corners[0].x = u - 15; det.corners[0].y = v - 15;
+          det.corners[1].x = u + 15; det.corners[1].y = v - 15;
+          det.corners[2].x = u + 15; det.corners[2].y = v + 15;
+          det.corners[3].x = u - 15; det.corners[3].y = v + 15;
+          det_array.detections.push_back(det);
+        } else {
+          p.detected = false;
+        }
+      } else {
+        p.detected = false;
+      }
+    }
+
+    detections_pub_->publish(det_array);
+  }
+
   struct HitRecord {
     double x, y, z;
     bool is_hit;
@@ -551,6 +618,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr g2_marker_pub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
+  rclcpp::Publisher<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
