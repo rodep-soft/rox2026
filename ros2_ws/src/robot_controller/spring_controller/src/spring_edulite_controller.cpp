@@ -383,7 +383,15 @@ void SpringEduliteController::actuator_state_callback(
   // 待機位置への移動完了判定 (MOVING_TO_STANDBY) または 発射回転完了判定
   // (FIRING)
   if (state_ == State::MOVING_TO_STANDBY || state_ == State::FIRING) {
-    if (update_settled(*msg)) {
+    // During belt clearance, reaching the retracted position is sufficient to
+    // start the arm. Requiring the spring velocity to fall below the normal
+    // stopped threshold adds a visible delay while the motor finishes
+    // decelerating, even though the spring is already out of the arm path.
+    const bool belt_clearance_reached =
+        belt_clearance_requested_ && state_ == State::MOVING_TO_STANDBY &&
+        std::fabs(msg->position - target_position_rad_) <=
+            position_tolerance_rad_;
+    if (belt_clearance_reached || update_settled(*msg)) {
       if (state_ == State::MOVING_TO_STANDBY) {
         RCLCPP_INFO(get_logger(),
                     "Reached standby position (%.3f rad). Spring is READY.",
@@ -405,8 +413,8 @@ void SpringEduliteController::actuator_state_callback(
     start_belt_clearance_motion();
   }
 
-  // Notify dependent controllers immediately after settling. Waiting for the
-  // periodic control timer adds unnecessary latency before the dribble arm can
+  // Notify dependent controllers immediately after motion completion. Waiting
+  // for the periodic control timer adds unnecessary latency before the arm can
   // start moving. A pending clearance request changes the state from READY, so
   // it cannot publish a premature completion here.
   if (state_ == State::READY) {
@@ -650,8 +658,9 @@ void SpringEduliteController::publish_operation_state() {
              state_ == State::SLOW_FIRING_RETURNING) {
     operation = robot_msgs::msg::SpringOperationState::SLOW_FIRE;
   } else if (belt_clearance_requested_ && state_ == State::READY) {
-    // BELT_CLEARANCE means the zero-offset target has been reached and settled,
-    // not merely that a retraction request is active.
+    // BELT_CLEARANCE means the zero-offset target has been reached, not merely
+    // that a retraction request is active. The position remains commanded while
+    // the motor finishes decelerating.
     operation = robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
   } else if (state_ == State::ERROR) {
     operation = robot_msgs::msg::SpringOperationState::ERROR;
