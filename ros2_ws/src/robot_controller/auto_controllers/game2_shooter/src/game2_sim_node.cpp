@@ -213,19 +213,18 @@ private:
     switch (state_) {
       case robot_msgs::msg::Game2State::SEARCHING: {
         // TargetSelector で最適ターゲットを選択 (2枚抜き中点 / 垂直スイープ / 最小角度移動)
-        // base_link 座標系 (ロボット現在向き = 0 rad) で候補を評価し、旋回角が最小のターゲットを選択
+        // base_link 座標系 (ロボット前方+X, 左+Y, キッカー後方-X) に変換して評価
         std::unordered_map<int, PanelTagInfo> local_grid = grid;
         for (auto & [id, p] : local_grid) {
           const double dx = p.x - robot_x_;
           const double dy = p.y - robot_y_;
-          // ロボット正面を基準にしたローカル相対座標
+          // ロボット基準のローカル相対位置 (キッカーはロボット正面)
           p.x =  std::cos(robot_yaw_) * dx + std::sin(robot_yaw_) * dy;
           p.y = -std::sin(robot_yaw_) * dx + std::cos(robot_yaw_) * dy;
         }
 
-        // ロボット基準なので現在 heading error = 0.0 (現在向いている方向)
         auto best = target_selector_.select_best_target(
-          local_grid, active_row_, 0.0,
+          local_grid, active_row_, current_target_heading_err_,
           current_target_tag_ids_, target_config_, get_logger(), get_clock());
 
         if (best) {
