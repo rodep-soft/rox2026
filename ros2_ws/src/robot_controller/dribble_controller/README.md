@@ -64,6 +64,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `ball_detection_threshold_a`（ボール検知閾値[A]デフォルト1.7）
 - `ball_lost_threshold_a`（ボール喪失閾値[A]デフォルト1.0）
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数デフォルト0.3）
+- `cmd_vel_timeout_sec`（IMU補正後速度指令が途絶えたと判定する時間）
+- `cmd_vel_acceleration_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_spinup_timeout_sec`（beltが実測ローラRPMが届かない場合の最大待機時間[s]）
 - `dribble_position_rad``open_position_rad``feed_position_rad`

@@ -49,7 +49,7 @@ add_controller(
   std_msgs)
 add_controller(
   spring_controller_node spring_controller spring_edulite_controller.cpp
-  actuator_msgs nav_msgs rclcpp std_msgs robot_msgs)
+  actuator_msgs geometry_msgs rclcpp std_msgs robot_msgs)
 add_controller(
   belt_controller_node
   belt_controller
@@ -64,7 +64,7 @@ add_controller(
   dribble_controller
   dribble_controller.cpp
   actuator_msgs
-  nav_msgs
+  geometry_msgs
   rclcpp
   rcl_interfaces
   std_msgs

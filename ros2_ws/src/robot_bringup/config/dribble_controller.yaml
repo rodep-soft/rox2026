@@ -43,9 +43,9 @@
     qos_depth: 1
 
     # ── 高速移動時のボール保持安定化 (運動補正) ──
-    odometry_topic: "/wheel/odometry"       # 車輪実測オドメトリ
-    odometry_timeout_sec: 0.2              # 途絶時は補正を0に戻す
-    measured_acceleration_lpf_alpha: 0.2
+    cmd_vel_topic: "/mecanum/cmd_vel_heading"  # IMU補正後の速度指令
+    cmd_vel_timeout_sec: 0.2              # 途絶時は補正を0に戻す
+    cmd_vel_acceleration_lpf_alpha: 0.2
     enable_motion_compensation: true          # 運動補正の有効化
 
     backward_velocity_boost_rpm_per_mps: 60.0

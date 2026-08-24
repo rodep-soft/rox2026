@@ -54,7 +54,7 @@ SpringEduliteController::SpringEduliteController()
       declare_double_parameter("stopped_velocity_threshold_rad_s", 0.05);
   required_stable_feedback_count_ =
       declare_parameter<int>("required_stable_feedback_count", 3);
-  odometry_timeout_sec_ = declare_double_parameter("odometry_timeout_sec", 0.2);
+  cmd_vel_timeout_sec_ = declare_double_parameter("cmd_vel_timeout_sec", 0.2);
   command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
 
   const auto qos_depth = declare_parameter<int>("qos_depth", 1);
@@ -65,9 +65,12 @@ SpringEduliteController::SpringEduliteController()
       declare_parameter<std::string>("state_topic", "/edulite/state");
   const auto set_position_service = declare_parameter<std::string>(
       "set_position_service", "/edulite/set_position");
+  const auto cmd_vel_topic = declare_parameter<std::string>(
+      "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
   if (logical_id < 0 || logical_id > 65535 || target_topic.empty() ||
-      state_topic.empty() || set_position_service.empty()) {
+      state_topic.empty() || set_position_service.empty() ||
+      cmd_vel_topic.empty()) {
     throw std::runtime_error("Invalid parameter configurations");
   }
 
@@ -95,9 +98,9 @@ SpringEduliteController::SpringEduliteController()
       std::bind(&SpringEduliteController::belt_clearance_request_callback, this,
                 std::placeholders::_1));
 
-  odometry_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-      "/wheel/odometry", rclcpp::SensorDataQoS(),
-      std::bind(&SpringEduliteController::odometry_callback, this,
+  cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
+      cmd_vel_topic, command_qos,
+      std::bind(&SpringEduliteController::cmd_vel_callback, this,
                 std::placeholders::_1));
 
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
@@ -260,11 +263,10 @@ void SpringEduliteController::belt_clearance_request_callback(
               belt_clearance_requested_ ? "requested" : "released");
 }
 
-void SpringEduliteController::odometry_callback(
-    const nav_msgs::msg::Odometry::SharedPtr msg) {
-  measured_chassis_speed_m_s_ =
-      std::hypot(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
-  last_odometry_time_ = now();
+void SpringEduliteController::cmd_vel_callback(
+    const geometry_msgs::msg::Twist::SharedPtr msg) {
+  commanded_forward_speed_m_s_ = std::max(0.0, msg->linear.x);
+  last_cmd_vel_time_ = now();
 }
 
 void SpringEduliteController::limit_switch_callback(
@@ -481,14 +483,14 @@ void SpringEduliteController::control_timer_callback() {
     }
   } else if (state_ == State::SLOW_FIRING_EXTENDING) {
     const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
-    const bool odometry_fresh =
-        last_odometry_time_.nanoseconds() > 0 &&
-        (now() - last_odometry_time_).seconds() <= odometry_timeout_sec_;
-    const double chassis_speed =
-        odometry_fresh ? measured_chassis_speed_m_s_ : 0.0;
+    const bool cmd_vel_fresh =
+        last_cmd_vel_time_.nanoseconds() > 0 &&
+        (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
+    const double forward_speed =
+        cmd_vel_fresh ? commanded_forward_speed_m_s_ : 0.0;
     const double extension_velocity = std::clamp(
         slow_fire_base_velocity_rad_s_ +
-            chassis_speed * slow_fire_velocity_gain_rad_per_m_,
+            forward_speed * slow_fire_velocity_gain_rad_per_m_,
         slow_fire_min_velocity_rad_s_, slow_fire_max_velocity_rad_s_);
     target_position_rad_ += extension_velocity * period_sec;
     if (target_position_rad_ >= slow_fire_peak_rad_) {
@@ -677,9 +679,9 @@ SpringEduliteController::parameters_callback(
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         slow_fire_settle_timeout_sec_ = param.as_double();
       }
-    } else if (name == "odometry_timeout_sec") {
+    } else if (name == "cmd_vel_timeout_sec") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        odometry_timeout_sec_ = param.as_double();
+        cmd_vel_timeout_sec_ = param.as_double();
       }
     } else if (name == "homing_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {

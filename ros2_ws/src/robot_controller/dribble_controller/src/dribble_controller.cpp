@@ -83,9 +83,9 @@ DribbleControllerNode::DribbleControllerNode()
       std::bind(&DribbleControllerNode::vesc_state_callback, this,
                 std::placeholders::_1));
 
-  odometry_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-      odometry_topic_, rclcpp::SensorDataQoS(),
-      std::bind(&DribbleControllerNode::odometry_callback, this,
+  cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
+      cmd_vel_topic_, command_qos,
+      std::bind(&DribbleControllerNode::cmd_vel_callback, this,
                 std::placeholders::_1));
   spring_operation_state_sub_ =
       create_subscription<robot_msgs::msg::SpringOperationState>(
@@ -351,22 +351,23 @@ void DribbleControllerNode::vesc_state_callback(
   }
 }
 
-void DribbleControllerNode::odometry_callback(
-    const nav_msgs::msg::Odometry::SharedPtr msg) {
+void DribbleControllerNode::cmd_vel_callback(
+    const geometry_msgs::msg::Twist::SharedPtr msg) {
   const auto current_time = now();
-  const double current_vx = msg->twist.twist.linear.x;
-  if (last_odometry_time_.nanoseconds() > 0) {
-    const double dt = (current_time - last_odometry_time_).seconds();
+  const double current_vx = msg->linear.x;
+  if (last_cmd_vel_time_.nanoseconds() > 0) {
+    const double dt = (current_time - last_cmd_vel_time_).seconds();
     if (dt > 0.001 && dt < 0.5) {
-      const double raw_acceleration = (current_vx - last_measured_vx_m_s_) / dt;
-      measured_ax_m_s2_ =
-          measured_acceleration_lpf_alpha_ * raw_acceleration +
-          (1.0 - measured_acceleration_lpf_alpha_) * measured_ax_m_s2_;
+      const double raw_acceleration =
+          (current_vx - last_commanded_vx_m_s_) / dt;
+      commanded_ax_m_s2_ =
+          cmd_vel_acceleration_lpf_alpha_ * raw_acceleration +
+          (1.0 - cmd_vel_acceleration_lpf_alpha_) * commanded_ax_m_s2_;
     }
   }
-  measured_vx_m_s_ = current_vx;
-  last_measured_vx_m_s_ = current_vx;
-  last_odometry_time_ = current_time;
+  commanded_vx_m_s_ = current_vx;
+  last_commanded_vx_m_s_ = current_vx;
+  last_cmd_vel_time_ = current_time;
 }
 
 void DribbleControllerNode::spring_operation_state_callback(
@@ -386,17 +387,17 @@ void DribbleControllerNode::spring_operation_state_callback(
 }
 
 void DribbleControllerNode::update_motion_compensation() {
-  const bool odometry_fresh =
-      last_odometry_time_.nanoseconds() > 0 &&
-      (now() - last_odometry_time_).seconds() <= odometry_timeout_sec_;
+  const bool cmd_vel_fresh =
+      last_cmd_vel_time_.nanoseconds() > 0 &&
+      (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
   if (!enable_motion_compensation_ || emergency_stop_active_ ||
-      !odometry_fresh) {
+      !cmd_vel_fresh) {
     current_motion_boost_rpm_ = 0;
     return;
   }
 
-  const double backward_speed = std::max(0.0, -measured_vx_m_s_);
-  const double backward_acceleration = std::max(0.0, -measured_ax_m_s2_);
+  const double backward_speed = std::max(0.0, -commanded_vx_m_s_);
+  const double backward_acceleration = std::max(0.0, -commanded_ax_m_s2_);
   const double raw_boost =
       backward_speed * backward_velocity_boost_rpm_per_mps_ +
       backward_acceleration * backward_acceleration_rpm_per_mps2_;
@@ -816,8 +817,8 @@ DribbleControllerNode::parameter_bindings() {
        C::NONNEGATIVE, false},
       {"ball_lost_threshold_a", &ball_lost_threshold_a_, C::NONNEGATIVE, false},
       {"current_lpf_alpha", &current_lpf_alpha_, C::UNIT_INTERVAL, false},
-      {"odometry_timeout_sec", &odometry_timeout_sec_, C::POSITIVE, false},
-      {"measured_acceleration_lpf_alpha", &measured_acceleration_lpf_alpha_,
+      {"cmd_vel_timeout_sec", &cmd_vel_timeout_sec_, C::POSITIVE, false},
+      {"cmd_vel_acceleration_lpf_alpha", &cmd_vel_acceleration_lpf_alpha_,
        C::UNIT_INTERVAL, false},
       {"backward_velocity_boost_rpm_per_mps",
        &backward_velocity_boost_rpm_per_mps_, C::NONNEGATIVE, false},
@@ -934,8 +935,8 @@ void DribbleControllerNode::load_parameters() {
     declare_binding(binding);
   }
 
-  odometry_topic_ =
-      declare_parameter<std::string>("odometry_topic", odometry_topic_);
+  cmd_vel_topic_ =
+      declare_parameter<std::string>("cmd_vel_topic", cmd_vel_topic_);
   const auto load_id = [this](const char *name, uint16_t default_value) {
     const int value = declare_parameter<int>(name, default_value);
     if (value < 0 || value > 65535) {
@@ -965,7 +966,7 @@ DribbleControllerNode::parameter_callback(
       "position_logical_id",   "roller_logical_id",
       "upper_belt_logical_id", "under_belt_logical_id",
       "position_target_topic", "roller_target_topic",
-      "odometry_topic"};
+      "cmd_vel_topic"};
   auto bindings = parameter_bindings();
 
   for (const auto &parameter : parameters) {

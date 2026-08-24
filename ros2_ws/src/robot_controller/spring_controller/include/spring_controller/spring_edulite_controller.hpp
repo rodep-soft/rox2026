@@ -8,7 +8,7 @@
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
 #include "actuator_msgs/srv/set_position.hpp"
-#include "nav_msgs/msg/odometry.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/spring_operation_state.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -36,7 +36,7 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void
   belt_clearance_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg);
   void actuator_state_callback(
       const actuator_msgs::msg::ActuatorState::SharedPtr msg);
@@ -84,9 +84,9 @@ private:
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
   double actuator_position_rad_{0.0};
-  double measured_chassis_speed_m_s_{0.0};
-  double odometry_timeout_sec_{0.2};
-  rclcpp::Time last_odometry_time_{0, 0, RCL_ROS_TIME};
+  double commanded_forward_speed_m_s_{0.0};
+  double cmd_vel_timeout_sec_{0.2};
+  rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
   std::optional<double> last_published_target_rad_;
   uint8_t last_published_operation_state_{255};
   uint16_t logical_id_{4};
@@ -107,7 +107,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
       belt_clearance_request_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
       actuator_state_sub_;

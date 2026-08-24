@@ -10,7 +10,7 @@
 
 #include "actuator_msgs/msg/actuator_state.hpp"
 #include "actuator_msgs/msg/actuator_target.hpp"
-#include "nav_msgs/msg/odometry.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
@@ -58,7 +58,7 @@ private:
       const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void
   vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
-  void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void spring_operation_state_callback(
       const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void control_timer_callback();
@@ -120,10 +120,10 @@ private:
   bool enable_motion_compensation_{true};
   double backward_velocity_boost_rpm_per_mps_{500.0};
   double backward_acceleration_rpm_per_mps2_{200.0};
-  double measured_acceleration_lpf_alpha_{0.2};
-  double odometry_timeout_sec_{0.2};
+  double cmd_vel_acceleration_lpf_alpha_{0.2};
+  double cmd_vel_timeout_sec_{0.2};
   int max_boost_rpm_{1200};
-  std::string odometry_topic_{"/wheel/odometry"};
+  std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
 
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
@@ -136,10 +136,10 @@ private:
   double emergency_hold_position_rad_{0.0};
 
   // 運動補正用の一時変数
-  double measured_vx_m_s_{0.0};
-  double measured_ax_m_s2_{0.0};
-  double last_measured_vx_m_s_{0.0};
-  rclcpp::Time last_odometry_time_{0, 0, RCL_ROS_TIME};
+  double commanded_vx_m_s_{0.0};
+  double commanded_ax_m_s2_{0.0};
+  double last_commanded_vx_m_s_{0.0};
+  rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
   int current_motion_boost_rpm_{0};
 
   bool manual_transition_active_{false};
@@ -187,7 +187,7 @@ private:
       edulite_state_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
       vesc_state_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<robot_msgs::msg::SpringOperationState>::SharedPtr
       spring_operation_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
