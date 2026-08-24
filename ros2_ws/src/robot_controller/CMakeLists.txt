@@ -137,6 +137,7 @@ ament_target_dependencies(
   tf2_ros)
 
 add_executable(game2_sim_node auto_controllers/game2_shooter/src/game2_sim_node.cpp)
+target_link_libraries(game2_sim_node PRIVATE game2_auto_node_implementation)
 ament_target_dependencies(
   game2_sim_node
   rclcpp
@@ -145,6 +146,7 @@ ament_target_dependencies(
   std_msgs
   robot_msgs
   visualization_msgs
+  apriltag_msgs
   tf2
   tf2_ros)
 

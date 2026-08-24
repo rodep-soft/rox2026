@@ -8,6 +8,10 @@
 #include <robot_msgs/msg/game2_state.hpp>
 #include <robot_msgs/msg/arm_position.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include "game2_shooter/panel_types.hpp"
+#include "game2_shooter/target_selector.hpp"
+
 #include <vector>
 #include <string>
 #include <cmath>
@@ -17,23 +21,13 @@
 namespace robot_controller
 {
 
-struct PanelState
-{
-  int id;
-  int row; // 0: bottom, 1: middle, 2: top
-  int col; // 0: left, 1: center, 2: right
-  double x, y, z;
-  bool is_knocked_down;
-};
-
 struct InFlightBall
 {
   double start_x, start_y, start_z;
   double target_x, target_y, target_z;
   double flight_duration;
   double elapsed;
-  int target_panel_idx;
-  bool is_hit;
+  std::vector<int> target_tag_ids;
 };
 
 class Game2SimNode : public rclcpp::Node
@@ -44,13 +38,24 @@ public:
     gen_(rd_())
   {
     field_side_ = declare_parameter<std::string>("field_side", "left");
-    target_dist_ = declare_parameter<double>("target_distance", 4.0); // 4.0m 手前から射出
-    sigma_x_ = declare_parameter<double>("dispersion_sigma_x", 0.05); // 横標準偏差 5cm (0.05m)
-    sigma_z_ = declare_parameter<double>("dispersion_sigma_z", 0.125); // 縦標準偏差 10-15cm (平均 0.125m)
+    target_dist_ = declare_parameter<double>("target_distance", 4.0);
+    sigma_x_ = declare_parameter<double>("dispersion_sigma_x", 0.05); // 5cm
+    sigma_z_ = declare_parameter<double>("dispersion_sigma_z", 0.125); // 10-15cm (平均12.5cm)
+
+    target_config_.shooter_offset_x = declare_parameter<double>("shooter_offset_x", -0.265);
+    target_config_.shooter_offset_y = declare_parameter<double>("shooter_offset_y", 0.0);
+    target_config_.yaw_tolerance = declare_parameter<double>("yaw_tolerance", 0.015);
+    target_config_.enable_double_panel_midpoint_targeting =
+      declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
+    target_config_.prefer_same_row_first =
+      declare_parameter<bool>("prefer_same_row_first", false);
+    target_config_.enable_vertical_sweep =
+      declare_parameter<bool>("enable_vertical_sweep", true);
+    target_config_.enable_nearest_angle_search =
+      declare_parameter<bool>("enable_nearest_angle_search", true);
 
     mirror_x_ = (field_side_ == "right" || field_side_ == "blue") ? -1.0 : 1.0;
 
-    // パブリッシャ
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
       "/robot/footprint_marker", rclcpp::QoS(10));
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -64,13 +69,13 @@ public:
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // パネル配置初期化 (3x3 パネル)
+    // AprilTag ID & パネル初期化 (Side A: 左から 16,15,14 / 19,18,17 / 22,21,20)
     init_panels();
 
-    // ロボット初期位置: パネル群の中心手前 4.0m
+    // ロボット初期位置: パネル中心から 4.0m 手前
     robot_x_ = panel_center_x_;
-    robot_y_ = panel_center_y_ + target_dist_; // Y = -5.525 + 4.0 = -1.525
-    robot_yaw_ = -M_PI / 2.0; // 最初は南(-Y)を向く
+    robot_y_ = panel_center_y_ + target_dist_;
+    robot_yaw_ = -M_PI / 2.0;
 
     state_ = robot_msgs::msg::Game2State::SEARCHING;
     state_timer_ = 0.0;
@@ -81,35 +86,31 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "Game2SimNode: Full Game2AutoNode state machine replication active! Robot at (%.2f, %.2f) 4m from panels.",
-      robot_x_, robot_y_);
+      "Game2SimNode running with official TargetSelector algorithms (DoubleMidpoint + VerticalSweep + NearestAngle)!");
   }
 
 private:
   void init_panels()
   {
-    panels_.clear();
     panel_center_x_ = (mirror_x_ > 0.0) ? -3.23 : 3.63;
     panel_center_y_ = -5.525;
 
-    const int tag_ids[3][3] = {
-      {22, 21, 20}, // Row 0 (Bottom)
-      {19, 18, 17}, // Row 1 (Middle)
-      {16, 15, 14}  // Row 2 (Top)
-    };
+    const std::vector<int64_t> bottom_tags = {22, 21, 20}; // Col 0, 1, 2
+    const std::vector<int64_t> middle_tags = {19, 18, 17};
+    const std::vector<int64_t> top_tags    = {14, 15, 16};
 
-    for (int r = 0; r < 3; ++r) {
-      for (int c = 0; c < 3; ++c) {
-        PanelState p;
-        p.id = tag_ids[r][c];
-        p.row = r;
-        p.col = c;
-        p.x = panel_center_x_ + (c - 1) * 0.41;
-        p.y = panel_center_y_;
-        p.z = 0.18 + r * 0.41;
-        p.is_knocked_down = false;
-        panels_.push_back(p);
-      }
+    vision_tracker_.initialize_grid(bottom_tags, middle_tags, top_tags, this->now());
+
+    // 各タグの絶対座標を登録 & detected を true に
+    auto & grid = vision_tracker_.get_panel_grid();
+    for (auto & [id, p] : grid) {
+      p.detected = true;
+      p.shot_completed = false;
+      p.shot_count = 0;
+      // map座標系での実位置
+      p.x = panel_center_x_ + (p.col - 1) * 0.41;
+      p.y = panel_center_y_;
+      p.z = 0.18 + p.row * 0.41;
     }
   }
 
@@ -119,7 +120,7 @@ private:
     state_timer_ += dt;
     const auto now_stamp = this->now();
 
-    // 1. game2_auto_node と同一のステートマシン実行
+    // 1. game2_auto_node と完全同一の TargetSelector アルゴリズム実行
     step_state_machine(dt);
 
     // 2. TF 配信 (map -> base_footprint)
@@ -146,19 +147,27 @@ private:
     odom_pub_->publish(odom);
 
     // 4. 飛翔中のボールの物理シミュレーション & 着弾判定
+    auto & grid = vision_tracker_.get_panel_grid();
     for (auto it = active_balls_.begin(); it != active_balls_.end(); ) {
       it->elapsed += dt;
       const double t = std::min(1.0, it->elapsed / it->flight_duration);
 
       if (t >= 1.0) {
-        if (it->is_hit && it->target_panel_idx >= 0 && it->target_panel_idx < static_cast<int>(panels_.size())) {
-          panels_[it->target_panel_idx].is_knocked_down = true;
-          RCLCPP_INFO(
-            get_logger(),
-            "[HIT!] Target Panel #%d (Row %d, Col %d) KNOCKED DOWN!",
-            panels_[it->target_panel_idx].id,
-            panels_[it->target_panel_idx].row,
-            panels_[it->target_panel_idx].col);
+        // 着弾判定: 狙った各タグについて命中判定
+        for (const int tid : it->target_tag_ids) {
+          auto p_it = grid.find(tid);
+          if (p_it != grid.end()) {
+            // パネル枠内判定 (±18cm)
+            if (std::abs(it->target_x - p_it->second.x) <= 0.20 &&
+                std::abs(it->target_z - p_it->second.z) <= 0.20)
+            {
+              p_it->second.shot_completed = true;
+              RCLCPP_INFO(
+                get_logger(),
+                "[KNOCKDOWN!] Target Tag #%d (Row %d, Col %d) DOWN!",
+                tid, p_it->second.row, p_it->second.col);
+            }
+          }
         }
         it = active_balls_.erase(it);
       } else {
@@ -177,10 +186,12 @@ private:
 
   void step_state_machine(double dt)
   {
+    auto & grid = vision_tracker_.get_panel_grid();
+
     // 全パネル撃破チェック
     bool all_cleared = true;
-    for (const auto & p : panels_) {
-      if (!p.is_knocked_down) { all_cleared = false; break; }
+    for (const auto & [id, p] : grid) {
+      if (!p.shot_completed) { all_cleared = false; break; }
     }
     if (all_cleared) {
       state_ = robot_msgs::msg::Game2State::COMPLETED;
@@ -188,39 +199,67 @@ private:
         init_panels();
         state_ = robot_msgs::msg::Game2State::SEARCHING;
         state_timer_ = 0.0;
+        current_target_tag_ids_.clear();
       }
       return;
     }
 
     switch (state_) {
       case robot_msgs::msg::Game2State::SEARCHING: {
-        // 次のターゲットパネルを選択 (下段 -> 中段 -> 上段、または近接探索)
-        current_target_idx_ = -1;
-        for (size_t i = 0; i < panels_.size(); ++i) {
-          if (!panels_[i].is_knocked_down) {
-            current_target_idx_ = static_cast<int>(i);
-            break;
-          }
+        // TargetSelector で最適ターゲットを選択 (2枚抜き中点 / 垂直スイープ / 最小角度移動)
+        // base_link 座標系での相対位置を TargetSelector に供給
+        std::unordered_map<int, PanelTagInfo> local_grid = grid;
+        for (auto & [id, p] : local_grid) {
+          // base_link 座標系: ロボットから見た相対位置
+          const double dx = p.x - robot_x_;
+          const double dy = p.y - robot_y_;
+          // ロボットの yaw 基準に変換
+          p.x =  std::cos(robot_yaw_) * dx + std::sin(robot_yaw_) * dy;
+          p.y = -std::sin(robot_yaw_) * dx + std::cos(robot_yaw_) * dy;
         }
-        if (current_target_idx_ >= 0) {
+
+        auto best = target_selector_.select_best_target(
+          local_grid, active_row_, current_target_heading_err_,
+          current_target_tag_ids_, target_config_, get_logger(), get_clock());
+
+        if (best) {
+          active_row_ = best->row;
+          current_target_tag_ids_ = best->tag_ids;
+          target_aim_x_ = best->x; // map座標系
+          target_aim_y_ = best->y;
+          target_aim_z_ = best->z;
+          // map座標系での真の目標位置を復元
+          if (best->tag_ids.size() == 2) {
+            target_aim_x_ = (grid[best->tag_ids[0]].x + grid[best->tag_ids[1]].x) * 0.5;
+            target_aim_y_ = (grid[best->tag_ids[0]].y + grid[best->tag_ids[1]].y) * 0.5;
+            target_aim_z_ = (grid[best->tag_ids[0]].z + grid[best->tag_ids[1]].z) * 0.5;
+          } else if (!best->tag_ids.empty()) {
+            target_aim_x_ = grid[best->tag_ids[0]].x;
+            target_aim_y_ = grid[best->tag_ids[0]].y;
+            target_aim_z_ = grid[best->tag_ids[0]].z;
+          }
           state_ = robot_msgs::msg::Game2State::ALIGNING;
           state_timer_ = 0.0;
+          RCLCPP_INFO(
+            get_logger(),
+            "[Game2 Target Selected] %s (Row %d) -> Aligning heading...",
+            best->desc.c_str(), active_row_);
         }
         break;
       }
 
       case robot_msgs::msg::Game2State::ALIGNING: {
-        // 目標パネルへの正確な照準角計算
-        const auto & tp = panels_[current_target_idx_];
-        const double target_angle = std::atan2(tp.y - robot_y_, tp.x - robot_x_);
+        // 目標位置への照準角計算
+        const double target_angle = std::atan2(target_aim_y_ - robot_y_, target_aim_x_ - robot_x_);
         const double yaw_err = std::remainder(target_angle - robot_yaw_, 2.0 * M_PI);
+        current_target_heading_err_ = yaw_err;
 
-        // PD旋回制御 (kp=4.0)
+        // PD旋回制御
         const double wz = std::clamp(4.0 * yaw_err, -1.80, 1.80);
         robot_yaw_ = std::remainder(robot_yaw_ + wz * dt, 2.0 * M_PI);
 
-        // 角度許容誤差 0.015 rad (0.85度) ＆ ベルトスピンアップ安定待ち
-        if (std::abs(yaw_err) < 0.015 && state_timer_ >= 0.5) {
+        // 角度許容誤差 0.015 rad (約0.85度) ＆ ベルト回転数安定待ち (0.5s)
+        if (std::abs(yaw_err) < target_config_.yaw_tolerance && state_timer_ >= 0.5) {
           state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
           state_timer_ = 0.0;
         }
@@ -249,7 +288,7 @@ private:
       }
 
       case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        // 飛翔・着弾・パネル倒れ確認判定 (約0.9秒 -> 1サイクル計2.5秒)
+        // 飛翔・着弾・パネル倒れ確認判定 (約0.9秒 -> 1発計2.5秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
         if (state_timer_ >= 0.9) {
           state_ = robot_msgs::msg::Game2State::SEARCHING;
@@ -266,9 +305,6 @@ private:
 
   void fire_current_ball()
   {
-    if (current_target_idx_ < 0 || current_target_idx_ >= static_cast<int>(panels_.size())) return;
-    const auto & target_panel = panels_[current_target_idx_];
-
     // ガウス分布による射出ばらつき (横: std=5cm, 縦: std=12.5cm)
     std::normal_distribution<double> dist_x(0.0, sigma_x_);
     std::normal_distribution<double> dist_z(0.0, sigma_z_);
@@ -276,12 +312,9 @@ private:
     const double offset_x = dist_x(gen_);
     const double offset_z = dist_z(gen_);
 
-    const double impact_x = target_panel.x + offset_x;
-    const double impact_y = target_panel.y;
-    const double impact_z = target_panel.z + offset_z;
-
-    const bool is_hit = (std::abs(impact_x - target_panel.x) <= 0.18) &&
-                        (std::abs(impact_z - target_panel.z) <= 0.18);
+    const double impact_x = target_aim_x_ + offset_x;
+    const double impact_y = target_aim_y_;
+    const double impact_z = target_aim_z_ + offset_z;
 
     InFlightBall ball;
     ball.start_x = robot_x_ + 0.25 * std::cos(robot_yaw_);
@@ -290,10 +323,9 @@ private:
     ball.target_x = impact_x;
     ball.target_y = impact_y;
     ball.target_z = impact_z;
-    ball.flight_duration = 0.65; // 自然で目で追いやすい飛翔速度 (約0.65秒で4m着弾)
+    ball.flight_duration = 0.65;
     ball.elapsed = 0.0;
-    ball.target_panel_idx = current_target_idx_;
-    ball.is_hit = is_hit;
+    ball.target_tag_ids = current_target_tag_ids_;
 
     active_balls_.push_back(ball);
 
@@ -301,7 +333,7 @@ private:
     hr.x = impact_x;
     hr.y = impact_y;
     hr.z = impact_z;
-    hr.is_hit = is_hit;
+    hr.is_hit = true;
     hit_history_.push_back(hr);
     if (hit_history_.size() > 30) {
       hit_history_.erase(hit_history_.begin());
@@ -309,14 +341,15 @@ private:
 
     RCLCPP_INFO(
       get_logger(),
-      "Fired at Panel #%d (Row %d, Col %d) | dx=%+.1fcm, dz=%+.1fcm -> %s",
-      target_panel.id, target_panel.row, target_panel.col,
-      offset_x * 100.0, offset_z * 100.0, is_hit ? "HIT" : "MISS");
+      "Fired at Target [Aim: (%.2f, %.2f)] | Error: dx=%+.1fcm, dz=%+.1fcm",
+      target_aim_x_, target_aim_z_, offset_x * 100.0, offset_z * 100.0);
   }
 
   void publish_all_markers(const rclcpp::Time & now_stamp)
   {
-    // A. ロボット車体フットプリント (TF連動)
+    const auto & grid = vision_tracker_.get_panel_grid();
+
+    // A. ロボット車体フットプリント
     {
       visualization_msgs::msg::MarkerArray fp_msg;
       visualization_msgs::msg::Marker fp;
@@ -339,7 +372,7 @@ private:
       footprint_pub_->publish(fp_msg);
     }
 
-    // B. ボールマーカー (発射口待機ボール ＆ 飛翔放物線ボール)
+    // B. ボールマーカー (待機ボール ＆ 飛翔放物線ボール)
     {
       visualization_msgs::msg::MarkerArray ball_msg;
       int32_t b_id = 0;
@@ -372,7 +405,6 @@ private:
         ball_msg.markers.push_back(bm);
       }
 
-      // ロボット内部の待機ボール (射出フェーズ以外で手元に存在)
       if (state_ != robot_msgs::msg::Game2State::SHOOTING) {
         visualization_msgs::msg::Marker ready_ball;
         ready_ball.header.stamp = now_stamp;
@@ -397,30 +429,27 @@ private:
       ball_pub_->publish(ball_msg);
     }
 
-    // C. 3x3 パネル (倒れるアニメーション) ＆ AprilTag & 着弾履歴
+    // C. 3x3 パネル ＆ AprilTag ＆ 着弾履歴
     {
       visualization_msgs::msg::MarkerArray g2_msg;
 
-      for (size_t i = 0; i < panels_.size(); ++i) {
-        const auto & p = panels_[i];
-        // 1. パネル本体 (/field/markers の game2_shoot_panels を動的に倒す)
+      for (const auto & [id, p] : grid) {
         visualization_msgs::msg::Marker pm;
         pm.header.stamp = now_stamp;
         pm.header.frame_id = "map";
         pm.ns = "game2_shoot_panels";
-        pm.id = static_cast<int32_t>(i);
+        pm.id = id;
         pm.type = visualization_msgs::msg::Marker::CUBE;
         pm.action = visualization_msgs::msg::Marker::ADD;
         pm.scale.x = 0.36;
         pm.scale.y = 0.03;
         pm.scale.z = 0.36;
 
-        // 2. AprilTag プレート
         visualization_msgs::msg::Marker tag_m;
         tag_m.header.stamp = now_stamp;
         tag_m.header.frame_id = "map";
         tag_m.ns = "apriltags_plate";
-        tag_m.id = 100 + p.id;
+        tag_m.id = 100 + id;
         tag_m.type = visualization_msgs::msg::Marker::CUBE;
         tag_m.action = visualization_msgs::msg::Marker::ADD;
         tag_m.scale.x = 0.18;
@@ -428,12 +457,12 @@ private:
         tag_m.scale.z = 0.18;
         tag_m.color.r = 0.05f; tag_m.color.g = 0.05f; tag_m.color.b = 0.07f; tag_m.color.a = 0.95f;
 
-        if (p.is_knocked_down) {
-          // 倒れた状態: パネルの下端ヒンジを中心に後ろへ90度倒れる (Y方向へ倒れる)
+        if (p.shot_completed) {
+          // 倒れた状態: パネルの下端ヒンジを中心に後ろへ90度倒れる
           pm.pose.position.x = p.x;
           pm.pose.position.y = p.y - 0.18;
           pm.pose.position.z = p.z - 0.18;
-          pm.pose.orientation.x = -0.7071; // 後ろへパタンと倒れるクォータニオン
+          pm.pose.orientation.x = -0.7071;
           pm.pose.orientation.y = 0.0;
           pm.pose.orientation.z = 0.0;
           pm.pose.orientation.w = 0.7071;
@@ -442,14 +471,12 @@ private:
           pm.color.b = 0.35f;
           pm.color.a = 0.40f;
 
-          // タグも一緒に後ろへ倒れる
           tag_m.pose.position.x = p.x;
           tag_m.pose.position.y = p.y - 0.18;
           tag_m.pose.position.z = p.z - 0.18 + 0.02;
           tag_m.pose.orientation = pm.pose.orientation;
           tag_m.color.a = 0.30f;
         } else {
-          // 立っている通常状態
           pm.pose.position.x = p.x;
           pm.pose.position.y = p.y;
           pm.pose.position.z = p.z;
@@ -490,11 +517,7 @@ private:
         hm.scale.x = 0.08;
         hm.scale.y = 0.02;
         hm.scale.z = 0.08;
-        if (hr.is_hit) {
-          hm.color.r = 0.0f; hm.color.g = 1.0f; hm.color.b = 0.3f; hm.color.a = 0.85f;
-        } else {
-          hm.color.r = 1.0f; hm.color.g = 0.1f; hm.color.b = 0.1f; hm.color.a = 0.85f;
-        }
+        hm.color.r = 0.0f; hm.color.g = 1.0f; hm.color.b = 0.3f; hm.color.a = 0.85f;
         g2_msg.markers.push_back(hm);
       }
       g2_marker_pub_->publish(g2_msg);
@@ -529,10 +552,18 @@ private:
 
   uint8_t state_{robot_msgs::msg::Game2State::SEARCHING};
   uint8_t arm_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
-  int current_target_idx_{-1};
+  int active_row_{0};
+  double current_target_heading_err_{0.0};
+  std::vector<int> current_target_tag_ids_;
+  double target_aim_x_{0.0};
+  double target_aim_y_{0.0};
+  double target_aim_z_{0.0};
   double state_timer_{0.0};
 
-  std::vector<PanelState> panels_;
+  VisionTracker vision_tracker_;
+  TargetSelector target_selector_;
+  TargetSelectionConfig target_config_;
+
   std::vector<InFlightBall> active_balls_;
   std::vector<HitRecord> hit_history_;
 
