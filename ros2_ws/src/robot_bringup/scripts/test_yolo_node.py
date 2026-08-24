@@ -22,7 +22,7 @@ class TestYoloNode(Node):
         super().__init__('test_yolo_node')
         self.image_topic = self.declare_parameter('image_topic', '/webcam/image_raw').value
         self.model_name = self.declare_parameter('model_name', '/root/ros2_ws/src/robot_bringup/config/molten_ball_best.pt').value
-        self.conf_thresh = self.declare_parameter('conf_thresh', 0.35).value
+        self.conf_thresh = self.declare_parameter('conf_thresh', 0.22).value
 
         self.get_logger().info(f"Loading YOLOv8 model: {self.model_name}...")
         if YOLO is not None:
@@ -145,26 +145,27 @@ class TestYoloNode(Node):
                     if est_z < min_ball_z:
                         min_ball_z = est_z
                         best_ball_pose = pose_msg
+                        best_ball_info = (xywh, conf, est_z)
 
-                    # アノテーション描画 (補正後の鮮明画像または原画像に描画)
-                    x1 = int(xywh[0] - bw / 2.0)
-                    y1 = int(xywh[1] - bh / 2.0)
-                    x2 = int(xywh[0] + bw / 2.0)
-                    y2 = int(xywh[1] + bh / 2.0)
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                    cv2.putText(
-                        frame,
-                        f"ball {conf:.2f} (Z={est_z:.2f}m)",
-                        (x1, max(25, y1 - 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
-
-        # 最も近いボールの3次元座標を /ball_pose に配信
+        # 最も近いボールの3次元座標を /ball_pose に配信 & 画面に単一ロックオン描画
         if best_ball_pose is not None:
             self.pub_ball_pose_.publish(best_ball_pose)
+            xywh, conf, est_z = best_ball_info
+            bw, bh = xywh[2], xywh[3]
+            x1 = int(xywh[0] - bw / 2.0)
+            y1 = int(xywh[1] - bh / 2.0)
+            x2 = int(xywh[0] + bw / 2.0)
+            y2 = int(xywh[1] + bh / 2.0)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
+            cv2.putText(
+                frame,
+                f"ball {conf:.2f} (Z={est_z:.2f}m)",
+                (x1, max(25, y1 - 10)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2,
+            )
             self.get_logger().info(
                 f"[CLOSEST BALL TARGET] 3D Pos: (X={best_ball_pose.pose.position.x:.2f}m, Y={best_ball_pose.pose.position.y:.2f}m, Dist Z={best_ball_pose.pose.position.z:.2f}m)"
             )
