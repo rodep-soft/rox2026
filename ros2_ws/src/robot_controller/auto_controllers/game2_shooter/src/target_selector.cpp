@@ -112,41 +112,31 @@ std::optional<TargetCandidate> TargetSelector::select_best_target(
     return std::nullopt;
   }
 
+  // 【最優先ルール: 垂直スイープ / 旋回0度ロック】
+  // 一度射出した方向と同じ縦列 (heading_err 差が 0.08 rad 以内) に未撃破パネルがあれば、
+  // 他の段へ絶対に旋回せず、その列の残存パネルを RPM 変更のみで全て撃ち尽くす (旋回回数最小化)
+  if (!current_target_tag_ids.empty()) {
+    for (const auto & cand : candidates) {
+      if (std::abs(cand.heading_err - current_target_heading_err) < 0.08) {
+        RCLCPP_INFO(
+          logger,
+          "[VERTICAL LOCK - ZERO TURN] Continuing same column: %s (Row %d) -> Changing RPM only!",
+          cand.desc.c_str(), cand.row);
+        return cand;
+      }
+    }
+  }
+
+  // 【第二優先: 最も近い方位（最小旋回角）の未撃破ターゲットを選択】
+  // 現在向いている方位から最も少ない旋回角で狙える縦列・ターゲットへ1回だけ旋回
+  double min_turn_angle = 1e9;
   const TargetCandidate * chosen = nullptr;
 
-  // 1. 直前と同じ方位 (垂直スイープ: 旋回0度) のターゲットがあれば、段昇順 (下->中->上) で連続射出
-  if (!current_target_tag_ids.empty()) {
-    for (int r = 0; r <= 2; ++r) {
-      for (const auto & cand : candidates) {
-        if (cand.row == r && std::abs(cand.heading_err - current_target_heading_err) < (config.yaw_tolerance * 2.0)) {
-          chosen = &cand;
-          RCLCPP_INFO_THROTTLE(
-            logger, *clock, 500,
-            "[Vertical Column Sweep: 0 DEG ROTATION] Selected vertical target: %s (Row %d)",
-            cand.desc.c_str(), cand.row);
-          return *chosen;
-        }
-      }
-    }
-  }
-
-  // 2. 左側中点ペア (Row 0 -> Row 1 -> Row 2) が残っていれば、左側中点の下段から順に最優先で射出開始
-  for (int r = 0; r <= 2; ++r) {
-    for (const auto & cand : candidates) {
-      if (cand.is_pair && cand.row == r) {
-        chosen = &cand;
-        return *chosen;
-      }
-    }
-  }
-
-  // 3. 左側中点が終わったら、残り (右側単独など) のうち下段から順に選択 (Row 0 -> 1 -> 2)
-  for (int r = 0; r <= 2; ++r) {
-    for (const auto & cand : candidates) {
-      if (cand.row == r) {
-        chosen = &cand;
-        return *chosen;
-      }
+  for (const auto & cand : candidates) {
+    const double turn_cost = std::abs(cand.heading_err - current_target_heading_err);
+    if (turn_cost < min_turn_angle) {
+      min_turn_angle = turn_cost;
+      chosen = &cand;
     }
   }
 
