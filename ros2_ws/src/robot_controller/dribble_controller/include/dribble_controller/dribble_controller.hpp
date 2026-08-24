@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <string>
+#include <variant>
 #include <vector>
 
 #include "actuator_msgs/msg/actuator_state.hpp"
@@ -23,7 +25,25 @@ public:
   DribbleControllerNode();
 
 private:
-  void load_parameters();
+  enum class ParameterConstraint {
+    NONE,
+    NONNEGATIVE,
+    POSITIVE,
+    UNIT_INTERVAL,
+    BELT_LEVEL,
+  };
+  using ParameterValue = std::variant<bool *, int *, double *>;
+  struct ParameterBinding {
+    const char *name;
+    ParameterValue value;
+    ParameterConstraint constraint;
+    bool affects_trajectory;
+  };
+  std::vector<ParameterBinding> parameter_bindings();
+  void declare_binding(ParameterBinding &binding);
+  static bool apply_binding(const ParameterBinding &binding,
+                            const rclcpp::Parameter &parameter);
+  void restart_active_trajectory();
 
   void
   position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg);
@@ -86,7 +106,7 @@ private:
   int shot_cycle_opening_rpm_{800};
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
-  uint8_t shot_cycle_belt_spinup_level_{1};
+  int shot_cycle_belt_spinup_level_{1};
   double belt_spinup_delay_sec_{2.0};
   double belt_ready_ratio_{0.9};
   double belt_spinup_min_delay_sec_{0.1};
