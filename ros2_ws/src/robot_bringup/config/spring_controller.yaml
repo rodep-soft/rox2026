@@ -7,7 +7,7 @@
     qos_depth: 3
 
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 0.0   # 4.0
+    standby_offset_rad: 3.5   # 3.5
 
     # [rad] 待機位置・目標位置到達判定の許容誤差
     standby_position_tolerance_rad: 0.05
@@ -16,9 +16,9 @@
     fire_increment_rad: -43.9822971
     
     # ── ゆっくり射出 (逆回転・正方向押し出し) ──
-    slow_fire_target_rad: 13.5             # [rad] ゆっくり射出時の目標角度 (正方向・13.5 rad)
-    slow_fire_velocity_rad_s: 15.0          # [rad/s] 前進（押し出し）速度
-    slow_fire_return_velocity_rad_s: 25.0    # [rad/s] 待機位置への復帰速度
+    slow_fire_target_rad: 11.5             # [rad] ゆっくり射出時の目標角度 (正方向・13.5 rad)
+    slow_fire_velocity_rad_s: 20.0          # [rad/s] 前進（押し出し）速度
+    slow_fire_return_velocity_rad_s: 28.0    # [rad/s] 待機位置への復帰速度
     slow_fire_settle_timeout_sec: 1.5       # [s] 目標送信完了後に実機の到達を待つ猶予
     
     # [rad/s] 未原点時に目標位置を負方向へずらす速度

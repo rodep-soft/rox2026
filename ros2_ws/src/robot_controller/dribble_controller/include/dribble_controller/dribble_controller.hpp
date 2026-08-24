@@ -29,6 +29,8 @@ private:
   void dribble_reverse_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void spring_decel_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void start_shot_cycle();
+  void publish_belt_clearance_request(bool requested);
   void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
@@ -162,6 +164,7 @@ private:
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ball_detected_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr belt_clearance_request_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };

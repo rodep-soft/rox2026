@@ -75,6 +75,12 @@ SpringEduliteController::SpringEduliteController()
     "/system/emergency_stop", emergency_stop_qos,
     std::bind(&SpringEduliteController::emergency_stop_callback, this, std::placeholders::_1));
 
+  belt_clearance_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/spring/belt_clearance_request", command_qos,
+    std::bind(
+      &SpringEduliteController::belt_clearance_request_callback, this,
+      std::placeholders::_1));
+
   limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
     "/hardware/limit_switches", command_qos,
     std::bind(&SpringEduliteController::limit_switch_callback, this, std::placeholders::_1));
@@ -114,10 +120,10 @@ void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::S
 
   if (!rising_edge) {return;}
 
-  if (emergency_stop_active_ || state_ != State::READY) {
+  if (emergency_stop_active_ || belt_clearance_requested_ || state_ != State::READY) {
     RCLCPP_WARN(
       get_logger(),
-      "Fire request rejected: emergency stop active or state is not READY.");
+      "Fire request rejected: emergency stop, belt clearance, or non-READY state.");
     return;
   }
 
@@ -139,10 +145,10 @@ void SpringEduliteController::slow_fire_request_callback(const std_msgs::msg::Bo
 
   if (!rising_edge) {return;}
 
-  if (emergency_stop_active_ || state_ != State::READY) {
+  if (emergency_stop_active_ || belt_clearance_requested_ || state_ != State::READY) {
     RCLCPP_WARN(
       get_logger(),
-      "Slow fire request rejected: emergency stop active or state is not READY.");
+      "Slow fire request rejected: emergency stop, belt clearance, or non-READY state.");
     return;
   }
 
@@ -195,6 +201,23 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
     target_position_rad_);
 }
 
+void SpringEduliteController::belt_clearance_request_callback(
+  const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data == belt_clearance_requested_) {return;}
+
+  belt_clearance_requested_ = msg->data;
+  if (state_ != State::READY && state_ != State::MOVING_TO_STANDBY) {return;}
+
+  target_position_rad_ = belt_clearance_requested_ ? 0.0 : standby_offset_rad_;
+  state_ = State::MOVING_TO_STANDBY;
+  stopped_count_ = 0;
+  publish_target(target_position_rad_);
+  RCLCPP_INFO(
+    get_logger(), "Moving spring to %.3f rad for belt-shot clearance: %s",
+    target_position_rad_, belt_clearance_requested_ ? "requested" : "released");
+}
+
 void SpringEduliteController::limit_switch_callback(const std_msgs::msg::UInt8::SharedPtr msg)
 {
   limit_switch_active_ = ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
@@ -210,7 +233,8 @@ void SpringEduliteController::actuator_state_callback(
   const bool actuator_state_is_ready =
     msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   std_msgs::msg::Bool ready_msg;
-  ready_msg.data = (actuator_state_is_ready && state_ == State::READY);
+  ready_msg.data =
+    (actuator_state_is_ready && state_ == State::READY && !belt_clearance_requested_);
   actuator_ready_pub_->publish(ready_msg);
 
   if (!actuator_state_is_ready) {
@@ -239,6 +263,15 @@ void SpringEduliteController::actuator_state_callback(
   }
   // Feedback remains useful for the release position, but state completion and timeout checks
   // must stay paused until emergency stop is released.
+  if (state_ == State::READY && belt_clearance_requested_ &&
+    std::fabs(target_position_rad_) > standby_position_tolerance_rad_)
+  {
+    target_position_rad_ = 0.0;
+    state_ = State::MOVING_TO_STANDBY;
+    stopped_count_ = 0;
+    publish_target(target_position_rad_);
+  }
+
   const bool emergency_motion_paused = emergency_stop_active_ &&
     (state_ == State::HOMING || state_ == State::WAITING_FOR_STOP ||
     state_ == State::SLOW_FIRING_EXTENDING || state_ == State::SLOW_FIRING_RETURNING);
@@ -444,7 +477,7 @@ void SpringEduliteController::request_zero_reference()
         RCLCPP_INFO(get_logger(), "Spring position successfully zeroed to 0.0 rad.");
         homing_required_ = false;
         if (std::fabs(standby_offset_rad_) > 1e-4) {
-          target_position_rad_ = standby_offset_rad_;
+          target_position_rad_ = belt_clearance_requested_ ? 0.0 : standby_offset_rad_;
           state_ = State::MOVING_TO_STANDBY;
           stopped_count_ = 0;
           publish_target(target_position_rad_);
@@ -508,7 +541,7 @@ rcl_interfaces::msg::SetParametersResult SpringEduliteController::parameters_cal
 
       // READY または MOVING_TO_STANDBY 状態であれば、即座に新しい待機位置へ移動
       if (state_ == State::READY || state_ == State::MOVING_TO_STANDBY) {
-        target_position_rad_ = standby_offset_rad_;
+        target_position_rad_ = belt_clearance_requested_ ? 0.0 : standby_offset_rad_;
         stopped_count_ = 0;
         state_ = State::MOVING_TO_STANDBY;
         publish_target(target_position_rad_);

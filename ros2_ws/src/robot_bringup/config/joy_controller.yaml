@@ -40,8 +40,8 @@
     # slow_turn_scale: 旋回速度倍率 (0.5で通常の1/2)
     # slow_linear_scale: 並進線速度倍率 (0.5で通常の1/2)
     slow_turn_button: 7
-    slow_turn_scale: 0.5
-    slow_linear_scale: 0.5
+    slow_turn_scale: 0.3
+    slow_linear_scale: 0.2
 
     # スティック中心ずれを無効化するデッドゾーン
     axis_deadzone: 0.05
@@ -56,11 +56,11 @@
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 50.0
-    linear_y_acceleration_limit: 50.0
-    angular_z_acceleration_limit: 100.0
+    linear_x_acceleration_limit: 2.5
+    linear_y_acceleration_limit: 2.5
+    angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 150.0
-    linear_y_deceleration_limit: 150.0
-    angular_z_deceleration_limit: 150.0
+    linear_x_deceleration_limit: 3.75
+    linear_y_deceleration_limit: 3.75
+    angular_z_deceleration_limit: 15.0

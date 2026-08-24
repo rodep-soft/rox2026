@@ -46,6 +46,8 @@ DribbleControllerNode::DribbleControllerNode()
     roller_target_topic, command_qos);
   shot_cycle_state_pub_ = create_publisher<robot_msgs::msg::ShotCycleState>(
     "/dribble/shot_cycle_state", rclcpp::QoS(1).reliable().transient_local());
+  belt_clearance_request_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/spring/belt_clearance_request", rclcpp::QoS(1).reliable().transient_local());
 
   ball_detected_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/ball_detected", command_qos);
@@ -116,6 +118,7 @@ void DribbleControllerNode::position_mode_callback(
 
   if (target_mode != position_mode_ || shot_cycle_active_) {
     shot_cycle_active_ = false;
+    publish_belt_clearance_request(false);
     manual_transition_active_ = true;
     manual_transition_start_time_ = now();
     manual_transition_start_position_rad_ = last_position_command_rad_;
@@ -153,8 +156,22 @@ void DribbleControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::
 
 void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (!msg->data || emergency_stop_active_) {return;}
+  if (!msg->data || emergency_stop_active_ || shot_cycle_active_) {return;}
 
+  publish_belt_clearance_request(true);
+  RCLCPP_INFO(get_logger(), "Belt shot requested: retracting spring and firing immediately");
+  start_shot_cycle();
+}
+
+void DribbleControllerNode::publish_belt_clearance_request(bool requested)
+{
+  std_msgs::msg::Bool request;
+  request.data = requested;
+  belt_clearance_request_pub_->publish(request);
+}
+
+void DribbleControllerNode::start_shot_cycle()
+{
   RCLCPP_INFO(get_logger(), "Starting Auto Shot Cycle: FEED -> DRIBBLE");
   manual_transition_active_ = false;
   shot_cycle_active_ = true;
@@ -630,6 +647,7 @@ void DribbleControllerNode::control_timer_callback()
             std::isfinite(under_belt_min_shot_rpm_) ? under_belt_min_shot_rpm_ : 0.0f);
         } else {
           shot_cycle_active_ = false;
+          publish_belt_clearance_request(false);
           has_ball_ = false;
           ball_detected_counter_ = 0;
           ball_lost_counter_ = ball_detection_debounce_count_;
