@@ -104,7 +104,7 @@ class TestYoloNode(Node):
                 hyp.hypothesis.class_id = cls_name
                 hyp.hypothesis.score = conf
                 det.results.append(hyp)
-                det_array.detections.push_back(det)
+                det_array.detections.append(det)
 
                 # ボールの場合: 3D実空間位置を計算して /ball_pose にパブリッシュ
                 if is_ball:
