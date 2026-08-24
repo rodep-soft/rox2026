@@ -71,6 +71,7 @@ private:
   int required_stable_feedback_count_{3};
 
   double standby_offset_rad_{0.0};
+  double belt_clearance_ready_travel_rad_{3.0};
   double position_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
   double slow_fire_target_position_rad_{13.5};

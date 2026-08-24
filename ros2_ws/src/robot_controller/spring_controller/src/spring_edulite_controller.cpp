@@ -27,6 +27,8 @@ SpringEduliteController::SpringEduliteController()
   };
 
   standby_offset_rad_ = declare_double_parameter("standby_offset_rad", 0.0);
+  belt_clearance_ready_travel_rad_ =
+      declare_double_parameter("belt_clearance_ready_travel_rad", 3.0);
   position_tolerance_rad_ =
       declare_double_parameter("position_tolerance_rad", 0.05);
   limit_switch_bit_offset_ =
@@ -68,9 +70,9 @@ SpringEduliteController::SpringEduliteController()
   const auto cmd_vel_topic = declare_parameter<std::string>(
       "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
-  if (logical_id < 0 || logical_id > 65535 || target_topic.empty() ||
-      state_topic.empty() || set_position_service.empty() ||
-      cmd_vel_topic.empty()) {
+  if (belt_clearance_ready_travel_rad_ < 0.0 || logical_id < 0 ||
+      logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
+      set_position_service.empty() || cmd_vel_topic.empty()) {
     throw std::runtime_error("Invalid parameter configurations");
   }
 
@@ -315,8 +317,8 @@ void SpringEduliteController::actuator_state_callback(
   const bool actuator_state_is_ready =
       msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   std_msgs::msg::Bool ready_msg;
-  ready_msg.data =
-    actuator_state_is_ready && state_ == State::READY && !belt_clearance_requested_;
+  ready_msg.data = actuator_state_is_ready && state_ == State::READY &&
+                   !belt_clearance_requested_;
   actuator_ready_pub_->publish(ready_msg);
 
   if (!actuator_state_is_ready) {
@@ -387,12 +389,24 @@ void SpringEduliteController::actuator_state_callback(
     // start the arm. Requiring the spring velocity to fall below the normal
     // stopped threshold adds a visible delay while the motor finishes
     // decelerating, even though the spring is already out of the arm path.
+    const double clearance_delta_rad =
+        belt_clearance_position_rad_ - belt_clearance_return_position_rad_;
+    const double clearance_direction = clearance_delta_rad < 0.0 ? -1.0 : 1.0;
+    const double clearance_travel_rad =
+        (msg->position - belt_clearance_return_position_rad_) *
+        clearance_direction;
+    const double required_clearance_travel_rad = std::min(
+        belt_clearance_ready_travel_rad_, std::fabs(clearance_delta_rad));
     const bool belt_clearance_reached =
         belt_clearance_requested_ && state_ == State::MOVING_TO_STANDBY &&
-        std::fabs(msg->position - target_position_rad_) <=
-            position_tolerance_rad_;
+        clearance_travel_rad >= required_clearance_travel_rad;
     if (belt_clearance_reached || update_settled(*msg)) {
-      if (state_ == State::MOVING_TO_STANDBY) {
+      if (belt_clearance_reached) {
+        RCLCPP_INFO(
+            get_logger(),
+            "Spring belt clearance ready after %.3f rad of %.3f rad travel.",
+            clearance_travel_rad, std::fabs(clearance_delta_rad));
+      } else if (state_ == State::MOVING_TO_STANDBY) {
         RCLCPP_INFO(get_logger(),
                     "Reached standby position (%.3f rad). Spring is READY.",
                     target_position_rad_);
@@ -658,9 +672,9 @@ void SpringEduliteController::publish_operation_state() {
              state_ == State::SLOW_FIRING_RETURNING) {
     operation = robot_msgs::msg::SpringOperationState::SLOW_FIRE;
   } else if (belt_clearance_requested_ && state_ == State::READY) {
-    // BELT_CLEARANCE means the zero-offset target has been reached, not merely
-    // that a retraction request is active. The position remains commanded while
-    // the motor finishes decelerating.
+    // BELT_CLEARANCE means the configured retraction travel has been reached,
+    // not merely that a request is active. The final position remains commanded
+    // while the spring completes the remaining motion.
     operation = robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
   } else if (state_ == State::ERROR) {
     operation = robot_msgs::msg::SpringOperationState::ERROR;
@@ -707,6 +721,23 @@ SpringEduliteController::parameters_callback(
         RCLCPP_INFO(get_logger(), "Applying new standby position: %.3f rad.",
                     target_position_rad_);
       }
+    } else if (name == "belt_clearance_ready_travel_rad") {
+      double value = 0.0;
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        value = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        value = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "belt_clearance_ready_travel_rad must be a number";
+        return result;
+      }
+      if (value < 0.0) {
+        result.successful = false;
+        result.reason = "belt_clearance_ready_travel_rad must be non-negative";
+        return result;
+      }
+      belt_clearance_ready_travel_rad_ = value;
     } else if (name == "position_tolerance_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         position_tolerance_rad_ = param.as_double();

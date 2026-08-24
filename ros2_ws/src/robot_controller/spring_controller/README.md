@@ -81,6 +81,7 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 | parameter | 内容 |
 |---|---|
 | `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
+| `belt_clearance_ready_travel_rad` | ベルト収納開始位置からアーム動作を許可するまでの収納回転量[rad] |
 | `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
 | `fire_increment_rad` | 発射要求1回で減算する回転角度[rad] |
 | `slow_fire_target_position_rad` | 低速発射のゼロ点基準ピーク位置[rad]。通常発射の累積回転数を維持したまま、`standby_offset_rad`との差分をストロークとして使用 |
