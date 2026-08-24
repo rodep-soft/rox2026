@@ -88,13 +88,13 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "game",
-                default_value="game1",
-                description="Selected game mode: 'game1' (webcam, spring, EKF ON), 'game2' (belt, spring hold, vision ON, EKF OFF), 'game3' (all vision/cameras/EKF/belt OFF, manual/dribble/spring only)",
+                default_value="all",
+                description="Selected game mode: 'all' (default: all nodes/controllers/cams ON for testing), 'game1' (webcam, spring, EKF ON, belt OFF), 'game2' (belt, spring hold, vision ON, EKF/webcam OFF), 'game3' (all vision/cameras/EKF/belt OFF, manual/dribble/spring only)",
             ),
             DeclareLaunchArgument(
                 "enable_webcam",
                 default_value="true",
-                description="Enable USB webcam launch (v4l2_camera). Default true for Game 1.",
+                description="Enable USB webcam launch (v4l2_camera). Default true.",
             ),
             DeclareLaunchArgument(
                 "video_device",
@@ -114,7 +114,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "enable_belt",
                 default_value="auto",
-                description="Enable belt controller (auto: true for game2, false for game1/game3)",
+                description="Enable belt controller (auto: true for all/game2, false for game1/game3)",
             ),
             DeclareLaunchArgument(
                 "enable_spring",
@@ -124,7 +124,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "enable_ekf",
                 default_value="auto",
-                description="Enable EKF node (auto: true for game1, false for game2/game3)",
+                description="Enable EKF node (auto: true for all/game1, false for game2/game3)",
             ),
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
@@ -134,7 +134,7 @@ def generate_launch_description():
             # --- 2. 操作系 & Foxglove Bridge ---
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-            # --- 3. アーム・射出・LED 各種コントローラ (Game1: ばねON/ベルトOFF, Game2: ベルトON/ばねOFF) ---
+            # --- 3. アーム・射出・LED 各種コントローラ (all/game2: ベルトON, game1/game3: ベルトOFF) ---
             include(
                 "controllers/belt_controller.launch.py",
                 condition=IfCondition(
@@ -146,7 +146,7 @@ def generate_launch_description():
                             LaunchConfiguration("enable_belt"),
                             "' == 'auto' and '",
                             LaunchConfiguration("game"),
-                            "' == 'game2')",
+                            "' in ['all', 'game2'])",
                         ]
                     )
                 ),
@@ -177,7 +177,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-            # --- 6. 拡張カルマンフィルタ (EKF: Game 1 で使用、Game 2 / Game 3 では OFF) ---
+            # --- 6. 拡張カルマンフィルタ (EKF: all / Game 1 で使用、Game 2 / Game 3 では OFF) ---
             include(
                 "ekf.launch.py",
                 condition=IfCondition(
@@ -189,7 +189,7 @@ def generate_launch_description():
                             LaunchConfiguration("enable_ekf"),
                             "' == 'auto' and '",
                             LaunchConfiguration("game"),
-                            "' == 'game1')",
+                            "' in ['all', 'game1'])",
                         ]
                     )
                 ),
@@ -208,7 +208,7 @@ def generate_launch_description():
                         [
                             "'",
                             LaunchConfiguration("game"),
-                            "' == 'game1'",
+                            "' in ['all', 'game1']",
                         ]
                     )
                 ),
@@ -266,7 +266,7 @@ def generate_launch_description():
                     )
                 ),
             ),
-            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO (Game 1 / Game 2 で使用、Game 3 では全OFF) ---
+            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO (Game 3 以外で起動) ---
             include(
                 "vision_launch.py",
                 launch_arguments=list(
@@ -298,7 +298,7 @@ def generate_launch_description():
                     )
                 ),
             ),
-            # --- 9. USB Webカメラ (V4L2 + AprilTag: Game 1 で自動起動、Game 2 / Game 3 では自動OFF) ---
+            # --- 9. USB Webカメラ (V4L2 + AprilTag: all / Game 1 で自動起動、Game 2 / Game 3 では自動OFF) ---
             include(
                 "webcam_launch.py",
                 launch_arguments=list(
@@ -314,7 +314,7 @@ def generate_launch_description():
                             LaunchConfiguration("enable_webcam"),
                             "' == 'true' and '",
                             LaunchConfiguration("game"),
-                            "' == 'game1'",
+                            "' in ['all', 'game1']",
                         ]
                     )
                 ),
