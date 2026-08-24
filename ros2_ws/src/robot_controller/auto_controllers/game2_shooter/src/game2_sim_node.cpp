@@ -27,6 +27,7 @@ struct InFlightBall
   double target_x, target_y, target_z;
   double flight_duration;
   double elapsed;
+  int target_row;
   std::vector<int> target_tag_ids;
 };
 
@@ -154,17 +155,18 @@ private:
 
       if (t >= 1.0) {
         // ボール着弾物理判定 (ボール半径 R = 0.10m, パネル半幅 = 0.18m, 半高 = 0.18m)
-        // 中点に命中した場合、ボールの幅(直径20cm)が両側のパネルに同時に接触するため2枚同時に倒れる
+        // 横方向の中点のみ2枚同時倒れを許可し、上下段の巻き込み倒れは物理構造上完全排除 (同一rowのみ倒れる)
         const double ball_radius = 0.10;
         const double panel_half_w = 0.18;
         const double panel_half_h = 0.18;
 
         for (auto & [id, p] : grid) {
-          if (!p.shot_completed) {
+          // 同一の段 (row) のみ判定（上下段が同時に倒れることは構造上あり得ない）
+          if (!p.shot_completed && p.row == it->target_row) {
             const double dx = std::abs(it->target_x - p.x);
             const double dz = std::abs(it->target_z - p.z);
-            // ボール球体とパネル矩形の接触判定
-            if (dx <= (panel_half_w + ball_radius) && dz <= (panel_half_h + ball_radius)) {
+            // 横方向の接触判定 (横中点なら左右2枚とも接触)
+            if (dx <= (panel_half_w + ball_radius) && dz <= (panel_half_h + 0.05)) {
               p.shot_completed = true;
               RCLCPP_INFO(
                 get_logger(),
@@ -326,6 +328,7 @@ private:
     ball.target_z = impact_z;
     ball.flight_duration = 0.65;
     ball.elapsed = 0.0;
+    ball.target_row = active_row_;
     ball.target_tag_ids = current_target_tag_ids_;
 
     active_balls_.push_back(ball);
