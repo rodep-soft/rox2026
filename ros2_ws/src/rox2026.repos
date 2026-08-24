@@ -2,7 +2,7 @@ repositories:
   libbno055-linux:
     type: git
     url: https://github.com/lazytatzv/libbno055-linux.git
-    version: main
+    version: c47e998dd83ff226895602d9af80a4fdaf750f9a
   zenoh_joy_rs:
     type: git
     url: https://github.com/lazytatzv/zenoh_joy_rs.git
