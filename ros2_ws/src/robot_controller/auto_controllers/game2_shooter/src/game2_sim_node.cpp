@@ -307,9 +307,23 @@ private:
 
   void fire_current_ball()
   {
-    // ガウス分布による射出ばらつき (横: std=5cm, 縦: std=12.5cm)
-    std::normal_distribution<double> dist_x(0.0, sigma_x_);
-    std::normal_distribution<double> dist_z(0.0, sigma_z_);
+    // 段 (Row) が上に行くほど RPM が上がり弾道ばらつき（標準偏差）が増大
+    // 下段 (Row 0): 横 std = 3cm (0.03m), 縦 std = 8cm (0.08m)
+    // 中段 (Row 1): 横 std = 4cm (0.04m), 縦 std = 11cm (0.11m)
+    // 上段 (Row 2): 横 std = 5cm (0.05m), 縦 std = 15cm (0.15m)
+    double cur_sigma_x = 0.03;
+    double cur_sigma_z = 0.08;
+
+    if (active_row_ == 1) {
+      cur_sigma_x = 0.04;
+      cur_sigma_z = 0.11;
+    } else if (active_row_ == 2) {
+      cur_sigma_x = 0.05;
+      cur_sigma_z = 0.15;
+    }
+
+    std::normal_distribution<double> dist_x(0.0, cur_sigma_x);
+    std::normal_distribution<double> dist_z(0.0, cur_sigma_z);
 
     const double offset_x = dist_x(gen_);
     const double offset_z = dist_z(gen_);
