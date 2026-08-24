@@ -185,10 +185,14 @@ void SpringEduliteController::slow_fire_request_callback(
     return;
   }
 
-  // 13.5 rad を超えないように絶対的なハード安全リミット（13.5 rad上限）を適用
-  slow_fire_base_rad_ = standby_offset_rad_;
-  slow_fire_peak_rad_ =
-      std::max(slow_fire_base_rad_, slow_fire_target_position_rad_);
+  // Normal firing accumulates the multi-turn position. Keep that accumulated
+  // revolution as the base and apply the configured zero-referenced slow-fire
+  // stroke relative to it. Returning to the absolute standby offset here would
+  // command many reverse turns after repeated normal shots.
+  slow_fire_base_rad_ = target_position_rad_;
+  const double slow_fire_stroke_rad =
+      std::max(0.0, slow_fire_target_position_rad_ - standby_offset_rad_);
+  slow_fire_peak_rad_ = slow_fire_base_rad_ + slow_fire_stroke_rad;
   state_ = State::SLOW_FIRING_EXTENDING;
   stable_feedback_count_ = 0;
   slow_fire_phase_start_time_ = now();
