@@ -211,27 +211,24 @@ private:
     switch (state_) {
       case robot_msgs::msg::Game2State::SEARCHING: {
         // TargetSelector で最適ターゲットを選択 (2枚抜き中点 / 垂直スイープ / 最小角度移動)
-        // base_link 座標系での相対位置を TargetSelector に供給
+        // base_link 座標系 (ロボット現在向き = 0 rad) で候補を評価し、旋回角が最小のターゲットを選択
         std::unordered_map<int, PanelTagInfo> local_grid = grid;
         for (auto & [id, p] : local_grid) {
-          // base_link 座標系: ロボットから見た相対位置
           const double dx = p.x - robot_x_;
           const double dy = p.y - robot_y_;
-          // ロボットの yaw 基準に変換
+          // ロボット正面を基準にしたローカル相対座標
           p.x =  std::cos(robot_yaw_) * dx + std::sin(robot_yaw_) * dy;
           p.y = -std::sin(robot_yaw_) * dx + std::cos(robot_yaw_) * dy;
         }
 
+        // ロボット基準なので現在 heading error = 0.0 (現在向いている方向)
         auto best = target_selector_.select_best_target(
-          local_grid, active_row_, current_target_heading_err_,
+          local_grid, active_row_, 0.0,
           current_target_tag_ids_, target_config_, get_logger(), get_clock());
 
         if (best) {
           active_row_ = best->row;
           current_target_tag_ids_ = best->tag_ids;
-          target_aim_x_ = best->x; // map座標系
-          target_aim_y_ = best->y;
-          target_aim_z_ = best->z;
           // map座標系での真の目標位置を復元
           if (best->tag_ids.size() == 2) {
             target_aim_x_ = (grid[best->tag_ids[0]].x + grid[best->tag_ids[1]].x) * 0.5;
