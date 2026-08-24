@@ -19,12 +19,14 @@
 #include "robot_msgs/msg/spring_operation_state.hpp"
 #include "std_msgs/msg/bool.hpp"
 
-class DribbleControllerNode : public rclcpp::Node {
+class DribbleControllerNode : public rclcpp::Node
+{
 public:
   DribbleControllerNode();
 
 private:
-  enum class ParameterConstraint {
+  enum class ParameterConstraint
+  {
     NONE,
     NONNEGATIVE,
     POSITIVE,
@@ -32,18 +34,21 @@ private:
     BELT_LEVEL,
   };
   using ParameterValue = std::variant<bool *, int *, double *>;
-  struct ParameterBinding {
-    const char *name;
+  struct ParameterBinding
+  {
+    const char * name;
     ParameterValue value;
     ParameterConstraint constraint;
     bool affects_trajectory;
   };
   std::vector<ParameterBinding> parameter_bindings();
-  static bool parameter_value_is_valid(ParameterConstraint constraint,
-                                       double value);
-  void declare_binding(ParameterBinding &binding);
-  static bool apply_binding(const ParameterBinding &binding,
-                            const rclcpp::Parameter &parameter);
+  static bool parameter_value_is_valid(
+    ParameterConstraint constraint,
+    double value);
+  void declare_binding(ParameterBinding & binding);
+  static bool apply_binding(
+    const ParameterBinding & binding,
+    const rclcpp::Parameter & parameter);
   void restart_active_trajectory();
   void load_parameters();
 
@@ -55,12 +60,12 @@ private:
   void publish_belt_clearance_request(bool requested);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void edulite_state_callback(
-      const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+    const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void
   vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void spring_operation_state_callback(
-      const robot_msgs::msg::SpringOperationState::SharedPtr msg);
+    const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void control_timer_callback();
   void update_motion_compensation();
   void update_and_publish_roller_command();
@@ -69,19 +74,21 @@ private:
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult
-  parameter_callback(const std::vector<rclcpp::Parameter> &parameters);
+  parameter_callback(const std::vector<rclcpp::Parameter> & parameters);
 
   double target_position_rad() const;
   double manual_transition_max_velocity_rad_s() const;
   double manual_transition_max_acceleration_rad_s2() const;
-  struct TrajectorySample {
+  struct TrajectorySample
+  {
     double position_rad;
     double duration_sec;
   };
-  TrajectorySample sample_trajectory(double start_rad, double target_rad,
-                                     double elapsed_sec,
-                                     double max_velocity_rad_s,
-                                     double max_acceleration_rad_s2) const;
+  TrajectorySample sample_trajectory(
+    double start_rad, double target_rad,
+    double elapsed_sec,
+    double max_velocity_rad_s,
+    double max_acceleration_rad_s2) const;
 
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{-0.86};
@@ -170,35 +177,35 @@ private:
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{
-      12}; // 連続12回(約240ms)の判定で発進・停止時のスパイクを除外
+    12};   // 連続12回(約240ms)の判定で発進・停止時のスパイクを除外
   int ball_lost_debounce_count_{
-      12}; // 連続12回(約240ms)の判定で停止時のバウンド誤解除を防止
+    12};   // 連続12回(約240ms)の判定で停止時のバウンド誤解除を防止
 
   // ── ROS インタフェース ──────────────────────────────
   rclcpp::Subscription<robot_msgs::msg::ArmPosition>::SharedPtr
-      position_mode_sub_;
+    position_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_enabled_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
-      edulite_state_sub_;
+    edulite_state_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
-      vesc_state_sub_;
+    vesc_state_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<robot_msgs::msg::SpringOperationState>::SharedPtr
-      spring_operation_state_sub_;
+    spring_operation_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-      position_command_pub_;
+    position_command_pub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-      roller_command_pub_;
+    roller_command_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::ShotCycleState>::SharedPtr
-      shot_cycle_state_pub_;
+    shot_cycle_state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr ball_detected_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr belt_clearance_request_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
-      parameter_callback_handle_;
+    parameter_callback_handle_;
 };
 
 #endif // DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_

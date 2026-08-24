@@ -253,11 +253,11 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   const auto rpm_update = dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", 900));
   ASSERT_TRUE(rpm_update.successful);
   const auto slow_fire_rpm_update = dribble_node->set_parameter(
-      rclcpp::Parameter("slow_fire_dribble_rpm", -750));
+    rclcpp::Parameter("slow_fire_dribble_rpm", -750));
   ASSERT_TRUE(slow_fire_rpm_update.successful);
   EXPECT_FALSE(
-      dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1))
-          .successful);
+    dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1))
+    .successful);
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
   EXPECT_TRUE(
@@ -360,7 +360,7 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
 TEST_F(RobotControllerTest, DribbleControllerShotCycleDelayTest) {
   auto dribble_node = std::make_shared<DribbleControllerNode>();
   auto test_node =
-      std::make_shared<rclcpp::Node>("test_dribble_shot_timeout_client");
+    std::make_shared<rclcpp::Node>("test_dribble_shot_timeout_client");
 
   float last_position_rad = 999.0f;
   auto position_sub = test_node->create_subscription<actuator_msgs::msg::ActuatorTarget>(
@@ -381,9 +381,9 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleDelayTest) {
   auto pub_shot_cycle = test_node->create_publisher<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", 1);
   auto spring_state_pub =
-      test_node->create_publisher<robot_msgs::msg::SpringOperationState>(
-          "/spring/operation_state",
-          rclcpp::QoS(1).reliable().transient_local());
+    test_node->create_publisher<robot_msgs::msg::SpringOperationState>(
+    "/spring/operation_state",
+    rclcpp::QoS(1).reliable().transient_local());
 
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(dribble_node);
@@ -401,7 +401,7 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleDelayTest) {
 
   // 設定したローラ待機時間の経過後にFEEDへ進む。
   const auto param_res = dribble_node->set_parameter(
-      rclcpp::Parameter("belt_shot_delay_sec", 0.0));
+    rclcpp::Parameter("belt_shot_delay_sec", 0.0));
   ASSERT_TRUE(param_res.successful);
 
   // ベルトとローラを自動起動し、ばね収納完了後にFEEDへ向かう。
