@@ -158,7 +158,11 @@ private:
 
       double target_vx_world = 0.0, target_vy_world = 0.0;
       if (dist > 1e-4) {
-        const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, std::max(0.35, kp_linear_ * dist));
+        // ── 鋭いブレーキプロファイル (物理最適停止カーブ v = sqrt(2 * a_brake * dist)) ──
+        // だらだらしたPゲイン減速を廃止し、直前までハイスピードを維持してピタッと止まる
+        constexpr double a_brake = 8.0; // m/s^2 (急制動減速度)
+        const double brake_speed = std::sqrt(2.0 * a_brake * std::max(0.0, dist - 0.02));
+        const double speed_limit = is_fly_through ? max_linear_vel_ : std::clamp(brake_speed, 0.0, max_linear_vel_);
         target_vx_world = speed_limit * (dx_world / dist);
         target_vy_world = speed_limit * (dy_world / dist);
       }
@@ -170,9 +174,9 @@ private:
       const double target_vx_body =  cos_y * target_vx_world + sin_y * target_vy_world;
       const double target_vy_body = -sin_y * target_vx_world + cos_y * target_vy_world;
 
-      // ── 実機モーター加速度リミット (Max Linear Accel: 6.0 m/s², Max Angular Accel: 10.0 rad/s²) ──
-      constexpr double max_accel_lin = 6.0; // m/s^2 (EduLite モーター最大トルク特性)
-      constexpr double max_accel_ang = 10.0; // rad/s^2
+      // ── 実機モーター加減速リミット (Max Linear: 9.0 m/s², Max Angular: 12.0 rad/s²) ──
+      constexpr double max_accel_lin = 9.0; // m/s^2 (強力な回生ブレーキ・急制動)
+      constexpr double max_accel_ang = 12.0; // rad/s^2
 
       const double dvx = std::clamp(target_vx_body - vx_body_, -max_accel_lin * dt, max_accel_lin * dt);
       const double dvy = std::clamp(target_vy_body - vy_body_, -max_accel_lin * dt, max_accel_lin * dt);
