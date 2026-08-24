@@ -147,7 +147,9 @@ private:
 
       double target_vx = 0.0, target_vy = 0.0;
       if (dist > 1e-4) {
-        const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, kp_linear_ * dist);
+        // パスエリア (segment 4) も減速せずトップスピードで突っ込んで境界にぶつける
+        const bool use_max_speed = is_fly_through || (current_segment_ == 4);
+        const double speed_limit = use_max_speed ? max_linear_vel_ : std::min(max_linear_vel_, kp_linear_ * dist);
         target_vx = speed_limit * (dx_world / dist);
         target_vy = speed_limit * (dy_world / dist);
       }
@@ -161,25 +163,27 @@ private:
       curr_y_ += vy_ * dt;
       curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
 
-      // パスエリア境界侵入防止ガード (Side A: X <= -2.030m, Side B: X >= +2.030m で厳格に物理クランプ)
+      // パスエリア境界ぶつけストッパー (Side A: X=-2.030m, Side B: X=+2.030m にドンとぶつかって停止)
+      bool bumped_pass_area = false;
       if (current_segment_ == 4) {
-        if (mirror_x_ > 0.0 && curr_x_ > -2.050) {
-          curr_x_ = -2.050;
-          vx_ = 0.0;
-        } else if (mirror_x_ < 0.0 && curr_x_ < 2.050) {
-          curr_x_ = 2.050;
-          vx_ = 0.0;
+        if (mirror_x_ > 0.0 && curr_x_ >= -2.030) {
+          curr_x_ = -2.030;
+          vx_ = 0.0; vy_ = 0.0;
+          bumped_pass_area = true;
+        } else if (mirror_x_ < 0.0 && curr_x_ <= 2.030) {
+          curr_x_ = 2.030;
+          vx_ = 0.0; vy_ = 0.0;
+          bumped_pass_area = true;
         }
       }
 
       if (is_fly_through) {
         if (dist <= arrive_threshold) { current_segment_++; }
       } else {
-        // パスエリア (segment 4) は接近した段階 (0.15m以内) で確実に判定
-        const double tolerance = (current_segment_ == 4) ? 0.15 : pos_tolerance_;
-        if (dist <= tolerance && (current_segment_ == 4 || std::abs(yaw_err) <= yaw_tolerance_)) {
+        // パスエリア (segment 4) は境界にぶつかった瞬間、位置合わせなしで即座に投下カウント開始
+        if (bumped_pass_area || dist <= 0.25) {
           wp_wait_timer_ += dt;
-          const double wait_time = (current_segment_ == 4) ? 0.8 : 0.0;
+          const double wait_time = (current_segment_ == 4) ? 0.6 : 0.0;
           if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }
         } else {
           wp_wait_timer_ = 0.0;
