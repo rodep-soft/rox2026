@@ -397,43 +397,81 @@ private:
       ball_pub_->publish(ball_msg);
     }
 
-    // C. 3x3 パネル ＆ 着弾履歴マーカー
+    // C. 3x3 パネル (倒れるアニメーション) ＆ AprilTag & 着弾履歴
     {
       visualization_msgs::msg::MarkerArray g2_msg;
-      int32_t p_id = 0;
 
-      for (const auto & p : panels_) {
+      for (size_t i = 0; i < panels_.size(); ++i) {
+        const auto & p = panels_[i];
+        // 1. パネル本体 (/field/markers の game2_shoot_panels を動的に倒す)
         visualization_msgs::msg::Marker pm;
         pm.header.stamp = now_stamp;
         pm.header.frame_id = "map";
-        pm.ns = "g2_panels";
-        pm.id = p_id++;
+        pm.ns = "game2_shoot_panels";
+        pm.id = static_cast<int32_t>(i);
         pm.type = visualization_msgs::msg::Marker::CUBE;
         pm.action = visualization_msgs::msg::Marker::ADD;
-        pm.pose.position.x = p.x;
-        pm.pose.position.y = p.y;
-        pm.pose.position.z = p.z;
+        pm.scale.x = 0.36;
+        pm.scale.y = 0.03;
+        pm.scale.z = 0.36;
+
+        // 2. AprilTag プレート
+        visualization_msgs::msg::Marker tag_m;
+        tag_m.header.stamp = now_stamp;
+        tag_m.header.frame_id = "map";
+        tag_m.ns = "apriltags_plate";
+        tag_m.id = 100 + p.id;
+        tag_m.type = visualization_msgs::msg::Marker::CUBE;
+        tag_m.action = visualization_msgs::msg::Marker::ADD;
+        tag_m.scale.x = 0.18;
+        tag_m.scale.y = 0.012;
+        tag_m.scale.z = 0.18;
+        tag_m.color.r = 0.05f; tag_m.color.g = 0.05f; tag_m.color.b = 0.07f; tag_m.color.a = 0.95f;
 
         if (p.is_knocked_down) {
-          pm.pose.position.y -= 0.18;
-          pm.pose.position.z -= 0.18;
-          pm.pose.orientation.x = 0.7071;
+          // 倒れた状態: パネルの下端ヒンジを中心に後ろへ90度倒れる (Y方向へ倒れる)
+          pm.pose.position.x = p.x;
+          pm.pose.position.y = p.y - 0.18;
+          pm.pose.position.z = p.z - 0.18;
+          pm.pose.orientation.x = -0.7071; // 後ろへパタンと倒れるクォータニオン
+          pm.pose.orientation.y = 0.0;
+          pm.pose.orientation.z = 0.0;
           pm.pose.orientation.w = 0.7071;
-          pm.color.r = 0.3f;
-          pm.color.g = 0.3f;
-          pm.color.b = 0.3f;
-          pm.color.a = 0.35f;
+          pm.color.r = 0.35f;
+          pm.color.g = 0.35f;
+          pm.color.b = 0.35f;
+          pm.color.a = 0.40f;
+
+          // タグも一緒に後ろへ倒れる
+          tag_m.pose.position.x = p.x;
+          tag_m.pose.position.y = p.y - 0.18;
+          tag_m.pose.position.z = p.z - 0.18 + 0.02;
+          tag_m.pose.orientation = pm.pose.orientation;
+          tag_m.color.a = 0.30f;
         } else {
+          // 立っている通常状態
+          pm.pose.position.x = p.x;
+          pm.pose.position.y = p.y;
+          pm.pose.position.z = p.z;
           pm.pose.orientation.w = 1.0;
+          pm.pose.orientation.x = 0.0;
+          pm.pose.orientation.y = 0.0;
+          pm.pose.orientation.z = 0.0;
           pm.color.r = 0.90f;
           pm.color.g = 0.15f;
           pm.color.b = 0.20f;
           pm.color.a = 0.95f;
+
+          tag_m.pose.position.x = p.x;
+          tag_m.pose.position.y = p.y + 0.025;
+          tag_m.pose.position.z = p.z;
+          tag_m.pose.orientation.w = 1.0;
+          tag_m.pose.orientation.x = 0.0;
+          tag_m.pose.orientation.y = 0.0;
+          tag_m.pose.orientation.z = 0.0;
         }
-        pm.scale.x = 0.36;
-        pm.scale.y = 0.03;
-        pm.scale.z = 0.36;
         g2_msg.markers.push_back(pm);
+        g2_msg.markers.push_back(tag_m);
       }
 
       for (size_t i = 0; i < hit_history_.size(); ++i) {
@@ -442,7 +480,7 @@ private:
         hm.header.stamp = now_stamp;
         hm.header.frame_id = "map";
         hm.ns = "g2_hit_dispersion";
-        hm.id = 100 + static_cast<int32_t>(i);
+        hm.id = 500 + static_cast<int32_t>(i);
         hm.type = visualization_msgs::msg::Marker::SPHERE;
         hm.action = visualization_msgs::msg::Marker::ADD;
         hm.pose.position.x = hr.x;
