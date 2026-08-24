@@ -144,24 +144,58 @@ private:
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
       const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
-      // フライスルー判定: 1=Gate(走りながら射出), 2=Around(gate bypass), 3=Ball(走りながらキャッチ), 5=Apex(return)
-      // 停止・減速調整を一切挟まず、パスエリア (segment 4) までノンストップで滑らかに直行
       const bool is_fly_through = (current_segment_ == 1 || current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
       const double arrive_threshold = (current_segment_ == 1 || current_segment_ == 3) ? 0.35 : (is_fly_through ? 0.35 : pos_tolerance_);
 
-      double target_vx = 0.0, target_vy = 0.0;
+      double target_vx_world = 0.0, target_vy_world = 0.0;
       if (dist > 1e-4) {
-        // パスエリアは適度なスピードで寄せて自然に停止 (カクつき/暴れを防止)
-        const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, std::max(0.4, kp_linear_ * dist));
-        target_vx = speed_limit * (dx_world / dist);
-        target_vy = speed_limit * (dy_world / dist);
+        const double speed_limit = is_fly_through ? max_linear_vel_ : std::min(max_linear_vel_, std::max(0.35, kp_linear_ * dist));
+        target_vx_world = speed_limit * (dx_world / dist);
+        target_vy_world = speed_limit * (dy_world / dist);
       }
       const double target_vyaw = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
-      const double alpha_lin = dt / 0.30;
-      const double alpha_ang = dt / 0.25;
-      vx_ += (target_vx - vx_) * std::min(1.0, alpha_lin);
-      vy_ += (target_vy - vy_) * std::min(1.0, alpha_lin);
-      vyaw_ += (target_vyaw - vyaw_) * std::min(1.0, alpha_ang);
+
+      // ── 実機メカナム車体座標系 (Body-Centric) への変換 ──
+      const double cos_y = std::cos(curr_yaw_);
+      const double sin_y = std::sin(curr_yaw_);
+      const double target_vx_body =  cos_y * target_vx_world + sin_y * target_vy_world;
+      const double target_vy_body = -sin_y * target_vx_world + cos_y * target_vy_world;
+
+      // ── 実機モーター加速度リミット (Max Linear Accel: 6.0 m/s², Max Angular Accel: 10.0 rad/s²) ──
+      constexpr double max_accel_lin = 6.0; // m/s^2 (EduLite モーター最大トルク特性)
+      constexpr double max_accel_ang = 10.0; // rad/s^2
+
+      const double dvx = std::clamp(target_vx_body - vx_body_, -max_accel_lin * dt, max_accel_lin * dt);
+      const double dvy = std::clamp(target_vy_body - vy_body_, -max_accel_lin * dt, max_accel_lin * dt);
+      const double dvyaw = std::clamp(target_vyaw - vyaw_, -max_accel_ang * dt, max_accel_ang * dt);
+
+      vx_body_ += dvx;
+      vy_body_ += dvy;
+      vyaw_ += dvyaw;
+
+      // ── 4輪メカナム逆運動学飽和チェック (4-Wheel Mecanum Kinematics Limit) ──
+      // wheel_radius = 0.075m, lx + ly = (0.355 + 0.353)/2 = 0.354m
+      // max_wheel_speed = 50.0 rad/s * 0.075m = 3.75 m/s
+      constexpr double r = 0.075;
+      constexpr double k = 0.354;
+      constexpr double max_wheel_linear_speed = 3.75;
+
+      double w0 = (vx_body_ - vy_body_ - k * vyaw_) / r;
+      double w1 = (vx_body_ + vy_body_ + k * vyaw_) / r;
+      double w2 = (vx_body_ + vy_body_ - k * vyaw_) / r;
+      double w3 = (vx_body_ - vy_body_ + k * vyaw_) / r;
+
+      const double max_wheel_w = std::max({std::abs(w0), std::abs(w1), std::abs(w2), std::abs(w3)});
+      if (max_wheel_w > 50.0) {
+        const double scale = 50.0 / max_wheel_w;
+        vx_body_ *= scale;
+        vy_body_ *= scale;
+        vyaw_ *= scale;
+      }
+
+      // ワールド座標への積分
+      vx_ =  cos_y * vx_body_ - sin_y * vy_body_;
+      vy_ =  sin_y * vx_body_ + cos_y * vy_body_;
       curr_x_ += vx_ * dt;
       curr_y_ += vy_ * dt;
       curr_yaw_ = std::remainder(curr_yaw_ + vyaw_ * dt, 2.0 * M_PI);
@@ -169,11 +203,10 @@ private:
       if (is_fly_through) {
         if (dist <= arrive_threshold) { current_segment_++; }
       } else {
-        // パスエリア (segment 4) は接近した段階 (0.25m以内) で即座に投下フェーズへ移行
         const double tolerance = (current_segment_ == 4) ? 0.25 : pos_tolerance_;
         if (dist <= tolerance) {
           wp_wait_timer_ += dt;
-          const double wait_time = (current_segment_ == 4) ? 0.6 : 0.0;
+          const double wait_time = (current_segment_ == 4) ? 0.5 : 0.0;
           if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }
         } else {
           wp_wait_timer_ = 0.0;
@@ -421,6 +454,8 @@ private:
   double curr_yaw_{-1.5708};
   double vx_{0.0};
   double vy_{0.0};
+  double vx_body_{0.0};
+  double vy_body_{0.0};
   double vyaw_{0.0};
 
   double ball_x_{-5.925};
