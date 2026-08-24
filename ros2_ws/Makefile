@@ -14,7 +14,6 @@ CMAKE_ARGS = \
 	-DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 COLCON_ARGS = \
-	--log-base log_ninja build \
 	--build-base build_ninja \
 	--install-base install_ninja \
 	--executor $(EXECUTOR) \
@@ -24,7 +23,7 @@ COLCON_ARGS = \
 
 build:
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
-	colcon build \
+	colcon --log-base log_ninja build build \
 		$(COLCON_ARGS) \
 		--cmake-args $(CMAKE_ARGS) -DBUILD_TESTING=OFF
 
