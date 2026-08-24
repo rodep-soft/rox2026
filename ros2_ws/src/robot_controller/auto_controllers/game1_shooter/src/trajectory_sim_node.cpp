@@ -166,9 +166,11 @@ private:
       if (is_fly_through) {
         if (dist <= arrive_threshold) { current_segment_++; }
       } else {
-        if (dist <= pos_tolerance_ && (current_segment_ == 4 || std::abs(yaw_err) <= yaw_tolerance_)) {
+        // パスエリア (segment 4) はぶつける勢いで寄せるだけなので許容半径0.25mで即時判定
+        const double tolerance = (current_segment_ == 4) ? 0.25 : pos_tolerance_;
+        if (dist <= tolerance && (current_segment_ == 4 || std::abs(yaw_err) <= yaw_tolerance_)) {
           wp_wait_timer_ += dt;
-          const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 1.2 : 0.0;
+          const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 0.8 : 0.0;
           if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }
         } else {
           wp_wait_timer_ = 0.0;

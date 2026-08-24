@@ -303,13 +303,14 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::NAV_TO_PASS_AREA: {
-        // 5. ボール保持のままパスエリア射出位置へ移動
+        // 5. ボール保持のままパスエリア射出位置へ移動 (ぶつける勢いで突っ込み、位置がある程度寄れば即射出へ)
         cmd = compute_holonomic_pursuit(wp_pass_area_);
         dribble_enabled = true;
         arm_pos = robot_msgs::msg::ArmPosition::DRIBBLE;
 
-        if (is_aligned_to_target(wp_pass_area_) || elapsed > 5.0) {
-          RCLCPP_INFO(get_logger(), "Arrived at Pass Area. Opening arm for Slow Fire (L1 behavior)...");
+        const double dist_to_pass = std::hypot(wp_pass_area_.x - current_x_, wp_pass_area_.y - current_y_);
+        if (dist_to_pass <= 0.25 || elapsed > 3.0) {
+          RCLCPP_INFO(get_logger(), "Arrived at Pass Area (bump/close). Opening arm for Slow Fire (L1 behavior)...");
           state_ = Game1State::FIRE_PASS_SPRING;
           state_start_time_ = now();
         }

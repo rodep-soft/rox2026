@@ -125,6 +125,10 @@ std::string Protocol::initialization_diagnostic() const
   }
   std::ostringstream stream;
   stream << "step=" << step_name;
+  if (initialization_step_ == InitializationStep::ERROR && feedback_.fault_code != 0U) {
+    stream << " fault=0x" << std::hex << std::uppercase << feedback_.fault_code;
+    return stream.str();
+  }
   if (initialization_step_ == InitializationStep::READ_STARTUP_POSITION ||
     initialization_step_ == InitializationStep::WAIT_FOR_STARTUP_POSITION)
   {

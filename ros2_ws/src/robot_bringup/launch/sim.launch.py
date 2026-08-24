@@ -21,6 +21,20 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(launch_dir, "foxglove_bridge.launch.py"))
         ),
+
+        # Static TF (map -> odom -> base_footprint)
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="static_tf_map_to_odom",
+            arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "map", "--child-frame-id", "odom"],
+        ),
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="static_tf_odom_to_base",
+            arguments=["--x", "0", "--y", "0", "--z", "0", "--yaw", "0", "--pitch", "0", "--roll", "0", "--frame-id", "odom", "--child-frame-id", "base_footprint"],
+        ),
         
         # 2. 3D Field & Gate Visualizer (Official SDF layout)
         Node(
