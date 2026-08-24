@@ -68,9 +68,8 @@ public:
     const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 3.200);
     const double wp_apex_yaw = (mirror_x < 0.0) ? 0.0 : declare_parameter<double>("wp_return_apex_yaw", 0.0);
 
-    // game1.yaml の全パラメータから完全構築
-    // 帰還時も前向き (ゲート方向 = -π/2) で戻る → そのまま次サイクルに発進できる
-    const double return_yaw = -M_PI / 2.0;
+    // 帰還時・初期時ともに常にゲート射出方向 (yaw = 0.0) を向き、全行程で旋回ゼロ
+    const double return_yaw = 0.0;
     waypoints_ = {
       {wp_start_x,  wp_start_y,  wp_start_yaw,  "Start Area", 0.0},
       {wp_gate_x,   wp_gate_y,   wp_gate_yaw,   "Shoot Outside Gate", 1.78},
@@ -81,12 +80,11 @@ public:
       {wp_start_x,  wp_start_y,  return_yaw,    "Fast Straight Dash to Start", 1.50}
     };
 
-    // Waypoint リスト: Start(0) -> Gate(1:Stop) -> Around(2:Fly) -> Ball(3:Fly) -> Pass(4:Stop) -> Apex(5:Fly) -> Start(6:Stop)
-    // waypoints_[0] は初期開始地点なので、目標は 1 からスタート
+    // Waypoint リスト: Start(0) -> Gate(1:Fly) -> Around(2:Fly) -> Ball(3:Fly) -> Pass(4:Touch) -> Apex(5:Fly) -> Start(6:Stop)
     curr_x_ = waypoints_[0].x;
     curr_y_ = waypoints_[0].y;
-    // 初期向き: yaw = -π/2 (ゲート方向: -Y)。スタート時も帰還時もゲートを向いており、そのまま発進
-    curr_yaw_ = -M_PI / 2.0;
+    // 初期向き: ゲート正面 (yaw = 0.0)
+    curr_yaw_ = 0.0;
     current_segment_ = 1;
 
     publish_static_planned_path();
@@ -142,10 +140,10 @@ private:
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
       const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
-      // フライスルー判定: 1=Gate(走りながら射出), 2=Around(gate bypass), 5=Apex(return) は減速停止せずスムーズに通過
-      // 3=Ball, 4=Pass は目標位置で確実にタッチ/回収
-      const bool is_fly_through = (current_segment_ == 1 || current_segment_ == 2 || current_segment_ == 5);
-      const double arrive_threshold = (current_segment_ == 1) ? 0.35 : (is_fly_through ? 0.35 : pos_tolerance_);
+      // フライスルー判定: 1=Gate(走りながら射出), 2=Around(gate bypass), 3=Ball(走りながらキャッチ), 5=Apex(return)
+      // 停止・減速調整を一切挟まず、パスエリア (segment 4) までノンストップで滑らかに直行
+      const bool is_fly_through = (current_segment_ == 1 || current_segment_ == 2 || current_segment_ == 3 || current_segment_ == 5);
+      const double arrive_threshold = (current_segment_ == 1 || current_segment_ == 3) ? 0.35 : (is_fly_through ? 0.35 : pos_tolerance_);
 
       double target_vx = 0.0, target_vy = 0.0;
       if (dist > 1e-4) {
