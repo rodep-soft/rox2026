@@ -50,18 +50,18 @@ public:
 
     const double wp_start_x = declare_parameter<double>("wp_start_x", -5.925) * mirror_x;
     const double wp_start_y = declare_parameter<double>("wp_start_y", 4.950);
-    const double wp_start_yaw = (mirror_x < 0.0) ? -1.5708 : declare_parameter<double>("wp_start_yaw", -1.5708);
+    const double wp_start_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_start_yaw", 0.0);
 
     const double wp_gate_x = declare_parameter<double>("wp_gate_x", -5.925) * mirror_x;
-    const double wp_gate_y = declare_parameter<double>("wp_gate_y", 1.500);
+    const double wp_gate_y = declare_parameter<double>("wp_gate_y", 2.165);
     const double wp_gate_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_gate_yaw", 0.0);
 
-    const double wp_around_x = declare_parameter<double>("wp_around_gate_x", -4.500) * mirror_x;
-    const double wp_around_y = declare_parameter<double>("wp_around_gate_y", 0.500);
+    const double wp_around_x = declare_parameter<double>("wp_around_gate_x", -4.600) * mirror_x;
+    const double wp_around_y = declare_parameter<double>("wp_around_gate_y", 1.400);
     const double wp_around_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_around_gate_yaw", 0.0);
 
-    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -2.700) * mirror_x;
-    const double wp_ball_y = declare_parameter<double>("wp_ball_y", 1.500);
+    const double wp_ball_x = declare_parameter<double>("wp_ball_x", -3.200) * mirror_x;
+    const double wp_ball_y = declare_parameter<double>("wp_ball_y", 2.165);
     const double wp_ball_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_ball_yaw", 0.0);
 
     const double wp_pass_x = declare_parameter<double>("wp_pass_area_x", -2.150) * mirror_x;
@@ -70,18 +70,18 @@ public:
 
     const double wp_apex_x = declare_parameter<double>("wp_return_apex_x", -3.800) * mirror_x;
     const double wp_apex_y = declare_parameter<double>("wp_return_apex_y", 3.200);
-    const double wp_apex_yaw = (mirror_x < 0.0) ? 0.0 : declare_parameter<double>("wp_return_apex_yaw", 0.0);
+    const double wp_apex_yaw = (mirror_x < 0.0) ? M_PI : declare_parameter<double>("wp_return_apex_yaw", 0.0);
 
-    // 帰還時・初期時ともに常にゲート射出方向 (yaw = 0.0) を向き、全行程で旋回ゼロ
-    const double return_yaw = 0.0;
+    // 常にゲート正面 (yaw = 0.0: X軸+方向) を向いたまま全行程をホロノミック移動
+    const double return_yaw = (mirror_x < 0.0) ? M_PI : 0.0;
     waypoints_ = {
-      {wp_start_x,  wp_start_y,  wp_start_yaw,  "Start Area", 0.0},
-      {wp_gate_x,   wp_gate_y,   wp_gate_yaw,   "Shoot Outside Gate", 1.78},
-      {wp_around_x, wp_around_y, wp_around_yaw, "Bypass Gate Bottom", 1.40},
-      {wp_ball_x,   wp_ball_y,   wp_ball_yaw,   "Catch Ball & Dribble", 1.20},
-      {wp_pass_x,   wp_pass_y,   wp_pass_yaw,   "Pass Area Drop", 1.80},
-      {wp_apex_x,   wp_apex_y,   wp_apex_yaw,   "Optimal Clearance Apex", 1.30},
-      {wp_start_x,  wp_start_y,  return_yaw,    "Fast Straight Dash to Start", 1.50}
+      {wp_start_x,  wp_start_y,  return_yaw,  "Start Area", 0.0},
+      {wp_gate_x,   wp_gate_y,   return_yaw,  "Shoot Outside Gate", 1.78},
+      {wp_around_x, wp_around_y, return_yaw,  "Bypass Gate Bottom", 1.40},
+      {wp_ball_x,   wp_ball_y,   return_yaw,  "Approach Behind Ball", 1.20},
+      {wp_pass_x,   wp_pass_y,   return_yaw,  "Pass Area Drop", 1.80},
+      {wp_apex_x,   wp_apex_y,   return_yaw,  "Optimal Clearance Apex", 1.30},
+      {wp_start_x,  wp_start_y,  return_yaw,  "Fast Straight Dash to Start", 1.50}
     };
 
     // Waypoint リスト: Start(0) -> Gate(1:Fly) -> Around(2:Fly) -> Ball(3:Fly) -> Pass(4:Touch) -> Apex(5:Fly) -> Start(6:Stop)
