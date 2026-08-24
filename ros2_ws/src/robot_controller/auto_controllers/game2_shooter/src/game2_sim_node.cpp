@@ -276,8 +276,8 @@ private:
       }
 
       case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        // 装填・アーム展開・ボール安定化 (前弾から発射まで計2.0秒)
-        arm_mode_ = robot_msgs::msg::ArmPosition::OPEN;
+        // 装填・ドリブル吸着・ボール安定化 (常時 DRIBBLE モード保持)
+        arm_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
         if (state_timer_ >= 1.2) {
           state_ = robot_msgs::msg::Game2State::SHOOTING;
           state_timer_ = 0.0;
