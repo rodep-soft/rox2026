@@ -233,12 +233,13 @@ void Game1AutoNode::control_loop()
 
   switch (state_) {
     case Game1State::NAV_TO_GATE: {
-        // 1. ゲート射出位置へ全方位追従移動
+        // 1. ゲート射出位置へ全方位追従移動 (走りながら通過＆射出)
         cmd = compute_holonomic_pursuit(wp_gate_);
-        // 位置差分 pos_tolerance 以下 ＆ 角度差分 yaw_tolerance (ゲート方向向いた) 以下で射出許可 (タイムアウト5秒)
-        if (is_aligned_to_target(wp_gate_) || elapsed > 5.0) {
+        const double dist_to_gate = std::hypot(wp_gate_.x - current_x_, wp_gate_.y - current_y_);
+        // ゲート前方に近接（距離35cm以内）した瞬間に停止せず走りながら射出リクエストを発行
+        if (dist_to_gate <= 0.35 || elapsed > 3.0) {
           RCLCPP_INFO(
-            get_logger(), "Aligned at Gate shooting position (yaw aligned!). Firing 1st Spring!");
+            get_logger(), "Passing Gate shooting position (shoot on the move!). Firing 1st Spring!");
           state_ = Game1State::FIRE_GATE_SPRING;
           state_start_time_ = now();
         }
@@ -246,10 +247,11 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::FIRE_GATE_SPRING: {
-        // 2. ゲートへスプリング発射 (1発目) - 発射直後に少し間を置いてから走り出す (0.6s)
+        // 2. 走りながらゲート横回り込みへ滑らかに移行
+        cmd = compute_holonomic_pursuit(wp_around_gate_);
         spring_fire = true;
-        if ((now() - state_start_time_).seconds() > 0.6) {
-          RCLCPP_INFO(get_logger(), "Gate Shot Complete. Navigating AROUND gate (free area).");
+        if ((now() - state_start_time_).seconds() > 0.3) {
+          RCLCPP_INFO(get_logger(), "Gate Shot fired on the move. Continuing around gate.");
           state_ = Game1State::NAV_AROUND_GATE;
           state_start_time_ = now();
         }

@@ -142,10 +142,10 @@ private:
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
       const double yaw_err = std::remainder(target.yaw - curr_yaw_, 2.0 * M_PI);
-      // フライスルー判定: 2=Around(gate bypass), 5=Apex(return) のみ止まらない
-      // 3=Ball はちゃんと減速して拾う（flythrough解除でパスエリア突入の勢いも防ぐ）
-      const bool is_fly_through = (current_segment_ == 2 || current_segment_ == 5);
-      const double arrive_threshold = is_fly_through ? 0.35 : pos_tolerance_;
+      // フライスルー判定: 1=Gate(走りながら射出), 2=Around(gate bypass), 5=Apex(return) は減速停止せずスムーズに通過
+      // 3=Ball, 4=Pass は目標位置で確実にタッチ/回収
+      const bool is_fly_through = (current_segment_ == 1 || current_segment_ == 2 || current_segment_ == 5);
+      const double arrive_threshold = (current_segment_ == 1) ? 0.35 : (is_fly_through ? 0.35 : pos_tolerance_);
 
       double target_vx = 0.0, target_vy = 0.0;
       if (dist > 1e-4) {
@@ -170,7 +170,7 @@ private:
         const double tolerance = (current_segment_ == 4) ? 0.25 : pos_tolerance_;
         if (dist <= tolerance && (current_segment_ == 4 || std::abs(yaw_err) <= yaw_tolerance_)) {
           wp_wait_timer_ += dt;
-          const double wait_time = (current_segment_ == 1) ? 0.6 : (current_segment_ == 4) ? 0.8 : 0.0;
+          const double wait_time = (current_segment_ == 4) ? 0.8 : 0.0;
           if (wp_wait_timer_ >= wait_time) { current_segment_++; wp_wait_timer_ = 0.0; }
         } else {
           wp_wait_timer_ = 0.0;
