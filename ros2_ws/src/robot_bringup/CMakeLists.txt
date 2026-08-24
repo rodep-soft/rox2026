@@ -5,6 +5,12 @@ find_package(ament_cmake REQUIRED)
 
 install(DIRECTORY config launch scripts models world urdf meshes DESTINATION share/${PROJECT_NAME})
 
+install(PROGRAMS
+  scripts/test_yolo_node.py
+  scripts/video_streamer_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
