@@ -32,7 +32,6 @@ private:
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_shot_cycle();
   void publish_belt_clearance_request(bool requested);
-  void belt_mode_callback(const robot_msgs::msg::BeltMode::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void opening_rpm_callback(const std_msgs::msg::Int32::SharedPtr msg);
   void actuator_state_callback(
@@ -55,20 +54,20 @@ private:
   double target_position_rad() const;
   double manual_transition_max_velocity_rad_s() const;
   double manual_transition_max_acceleration_rad_s2() const;
-  double interpolated_position_rad(double start_rad, double target_rad,
-                                   double elapsed_sec, double max_vel_rad_s,
-                                   double max_acceleration_rad_s2) const;
-  double transition_duration_sec(double start_rad, double target_rad,
-                                 double max_vel_rad_s,
-                                 double max_acceleration_rad_s2) const;
+  struct TrajectorySample {
+    double position_rad;
+    double duration_sec;
+  };
+  TrajectorySample sample_trajectory(double start_rad, double target_rad,
+                                     double elapsed_sec,
+                                     double max_velocity_rad_s,
+                                     double max_acceleration_rad_s2) const;
 
   // ── パラメータ ──────────────────────────────────────
-  bool test_mode_{false};
   double dribble_position_rad_{-0.86};
   double open_position_rad_{-1.27};
   double bottom_position_rad_{0.0};
   double feed_position_rad_{1.3};
-  double open_duration_sec_{0.3};
   double feed_duration_sec_{0.6};
   double opening_max_velocity_rad_s_{4.0};
   double feeding_max_velocity_rad_s_{6.0};
@@ -78,9 +77,9 @@ private:
   double feeding_max_acceleration_rad_s2_{15.0};
   double returning_max_acceleration_rad_s2_{18.0};
   double dribbling_max_acceleration_rad_s2_{12.0};
-  double ball_detection_threshold_a_{1.7};
-  double ball_lost_threshold_a_{1.0};
-  double current_lpf_alpha_{0.3};
+  double ball_detection_threshold_a_{4.5};
+  double ball_lost_threshold_a_{2.2};
+  double current_lpf_alpha_{0.07};
   int dribble_on_rpm_{400};
   int dribble_reverse_rpm_{800};
   double dribble_reverse_ramp_sec_{2.0};
@@ -88,13 +87,12 @@ private:
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
   uint8_t shot_cycle_belt_spinup_level_{1};
-  double belt_spinup_delay_sec_{0.5};
+  double belt_spinup_delay_sec_{2.0};
   double belt_ready_ratio_{0.9};
   double belt_spinup_min_delay_sec_{0.1};
   double prepare_from_open_delay_sec_{0.1};
   double slow_fire_dribble_position_rad_{-0.8};
   int slow_fire_dribble_rpm_{500};
-  int roller_command_heartbeat_ms_{100};
   uint16_t position_logical_id_{5};
   uint16_t roller_logical_id_{12};
   uint16_t upper_belt_logical_id_{10};
@@ -149,10 +147,7 @@ private:
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
   float roller_measured_rpm_{0.0f};
-  float upper_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
-  float under_belt_min_shot_rpm_{std::numeric_limits<float>::infinity()};
 
-  uint8_t current_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   int current_filtered_roller_rpm_{0};
   bool belt_auto_started_{false};
   bool has_ball_{false};
@@ -161,7 +156,6 @@ private:
   std::optional<bool> last_published_ball_state_;
   std::optional<double> last_published_position_rad_;
   std::optional<int> last_published_roller_rpm_;
-  rclcpp::Time last_roller_command_publish_time_{0, 0, RCL_ROS_TIME};
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{
@@ -176,7 +170,6 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr dribble_reverse_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
-  rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr opening_rpm_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
       actuator_state_sub_;

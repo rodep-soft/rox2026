@@ -28,7 +28,6 @@ struct MotorConfig
   double rpm_slew_rate;
   double startup_current_a;
   double rpm_control_threshold_rpm;
-  std::chrono::milliseconds command_timeout;
   std::chrono::milliseconds feedback_timeout;
 };
 
@@ -47,7 +46,6 @@ struct Motor
   bool command_received{false};
   bool feedback_received{false};
   bool rpm_control_active{false};
-  std::chrono::steady_clock::time_point last_command_time{};
   std::chrono::steady_clock::time_point last_feedback_time{};
   std::chrono::steady_clock::time_point last_ramp_update_time{};
 };
@@ -79,9 +77,8 @@ public:
     for (const auto & name : motor_names) {
       const auto prefix = name + ".";
       const auto logical_id = declare_parameter<int64_t>(prefix + "logical_id", -1);
-      const auto controller_id = declare_parameter<int64_t>(prefix + "controller_id", -1);
-      const auto command_timeout_ms =
-        declare_parameter<int64_t>(prefix + "command_timeout_ms", 500);
+      const auto controller_id =
+          declare_parameter<int64_t>(prefix + "controller_id", -1);
       const auto feedback_timeout_ms = declare_parameter<int64_t>(
         prefix + "feedback_timeout_ms",
         500);
@@ -97,15 +94,10 @@ public:
         throw std::runtime_error(name + ": controller_id must be in [0, 255]");
       }
 
-      motors_.emplace_back(
-        MotorConfig{
+      motors_.emplace_back(MotorConfig{
           static_cast<uint16_t>(logical_id),
-          static_cast<uint8_t>(controller_id),
-          max_rpm,
-          rpm_slew_rate,
-          startup_current_a,
-          rpm_control_threshold_rpm,
-          std::chrono::milliseconds(command_timeout_ms),
+          static_cast<uint8_t>(controller_id), max_rpm, rpm_slew_rate,
+          startup_current_a, rpm_control_threshold_rpm,
           std::chrono::milliseconds(feedback_timeout_ms)});
     }
 
@@ -144,6 +136,13 @@ public:
     state_timer_ = create_wall_timer(
       std::chrono::milliseconds(state_array_publish_period_ms),
       std::bind(&Node::state_timer_callback, this));
+  }
+
+  ~Node() override {
+    for (const auto &motor : motors_) {
+      can_publisher_->publish(
+          protocol::make_set_current_frame(motor.config.controller_id, 0.0));
+    }
   }
 
 private:
@@ -218,7 +217,6 @@ private:
     if (stopping || starting_or_reversing) {
       motor.rpm_control_active = false;
     }
-    motor.last_command_time = std::chrono::steady_clock::now();
     motor.command_received = true;
   }
 
@@ -230,9 +228,8 @@ private:
     if (!motor.command_received) {
       return;
     }
-    const bool command_timed_out = now - motor.last_command_time > motor.config.command_timeout;
-    const auto desired_rpm = command_timed_out ? 0.0 : motor.target_rpm;
-    if (desired_rpm == 0.0) {//タイムアウトもしくは回転させない場合は電流値をゼロとして指令を送る
+    const auto desired_rpm = motor.target_rpm;
+    if (desired_rpm == 0.0) { // 停止指令
       motor.rpm_control_active = false;
       motor.rpm_command = 0.0;
       can_publisher_->publish(protocol::make_set_current_frame(motor.config.controller_id, 0.0));

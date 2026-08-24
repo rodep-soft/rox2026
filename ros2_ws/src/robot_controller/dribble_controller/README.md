@@ -8,24 +8,23 @@
 |---|---|---|
 | sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
 | sub | `/dribble/command_reverse` | ローラー逆転ON/OFF |
-| sub | `/dribble/position_mode` | `DRIBBLE`、`OPEN`、`FEED` 姿勢 |
-| sub | `/dribble/command_position` | `DRIBBLE`、`OPEN`、`FEED` 姿勢 |
+| sub | `/dribble/position_mode` | `DRIBBLE``OPEN``FEED` 姿勢 |
+| sub | `/dribble/command_position` | `DRIBBLE``OPEN``FEED` 姿勢 |
 | sub | `/dribble/shot_cycle_request` | `FEED → DRIBBLE` 自動射出動作 |
-| sub | `/belt/command_mode` | beltの現在モード把握（0=STOP、1〜4=LEVEL） |
-| sub | `/system/emergency_stop` | ローラー停止、安全姿勢復帰 |
+| sub | `/belt/command_mode` | beltの現在モード把握（0=STOP1〜4=LEVEL） |
+| sub | `/system/emergency_stop` | ローラー停止安全姿勢復帰 |
 | pub | `/vesc/target` | ローラー目標RPM |
 | pub | `/edulite/target` | 姿勢目標角度[rad] |
 | pub | `/belt/command_mode` | shot cycle時のbelt自動ON/OFF |
 | pub | `/dribble/shot_cycle_state` | サイクル進行フェーズ（LED通知用） |
 
 ## 各姿勢（Position Mode）の役割
-- `DRIBBLE`：通常ドリブル・ボール保持姿勢（角度: `-0.86 rad`、回転: `400 RPM`）。
-- `OPEN`：ボール排出用姿勢（角度: `-1.27 rad`、回転: `0 RPM`）。
+- `OPEN`：ボール排出用姿勢（角度: `-1.27 rad`回転: `0 RPM`）。
 - `FEED`：ベルト射出押し込み姿勢（角度: `0.5 rad`）。
 
 ## shot cycleの動作
 
-`/shot_cycle/request`にtrueが届くと、OPEN状態を経由せずに直接射出角度(FEED)へ移行してボールを射出する。
+`/shot_cycle/request`にtrueが届くとOPEN状態を経由せずに直接射出角度(FEED)へ移行してボールを射出する。
 
 ### beltがSTOPの場合（自動spin-up）
 
@@ -61,17 +60,16 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 
 ## 実行中に変更できるparameter
 
-- `test_mode`（テストモード：trueの場合、beltが既に正常回転しているとみなして即座にFEED動作を実行、デフォルト false）
 - `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
 - `dribble_reverse_rpm`（逆回転時の一定RPM）
-- `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]、デフォルト 2.0s）
-- `ball_detection_threshold_a`（ボール検知閾値[A]、デフォルト1.7）
-- `ball_lost_threshold_a`（ボール喪失閾値[A]、デフォルト1.0）
-- `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数、デフォルト0.3）
-- `shot_cycle_belt_spinup_level`（1〜4、shot cycle時にbeltをONするレベル）
+- `dribble_reverse_ramp_sec`（逆回転への移行・復帰時間[s]デフォルト 2.0s）
+- `ball_detection_threshold_a`（ボール検知閾値[A]デフォルト1.7）
+- `ball_lost_threshold_a`（ボール喪失閾値[A]デフォルト1.0）
+- `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数デフォルト0.3）
+- `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_spinup_timeout_sec`（beltが実測ローラRPMが届かない場合の最大待機時間[s]）
-- `dribble_position_rad`、`open_position_rad`、`feed_position_rad`
-- `open_duration_sec`、`feed_duration_sec`
+- `dribble_position_rad``open_position_rad``feed_position_rad`
+- feed_duration_sec
 - `opening_max_velocity_rad_s`
 - `feeding_max_velocity_rad_s`
 - `returning_max_velocity_rad_s`
@@ -79,8 +77,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `opening_max_acceleration_rad_s2`
 - `dribbling_max_acceleration_rad_s2`
 
-更新値はまとめて検証される。位置は有限値、保持時間とRPMは0以上、区間速度は正の
-有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は、現在の
+更新値はまとめて検証される。位置は有限値保持時間とRPMは0以上区間速度は正の
+有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は現在の
 指令角度を始点として軌道を再計算する。
 
 ```bash
@@ -98,5 +96,5 @@ ros2 param load /dribble_controller_node \
   ros2_ws/src/robot_bringup/config/dribble_controller.yaml
 ```
 
-topic、logical ID、QoS、指令周期はnode再起動が必要なparameterである。同じ値なら
-YAML全体の読み込みを許可し、変更されている場合だけ拒否する。
+topiclogical IDQoS指令周期はnode再起動が必要なparameterである。同じ値なら
+YAML全体の読み込みを許可し変更されている場合だけ拒否する。

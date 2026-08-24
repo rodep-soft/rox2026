@@ -4,13 +4,14 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace {
 constexpr int kMaxRollerRpmStepPerTick = 150;
-constexpr float kUnsetMinimumBeltRpm = std::numeric_limits<float>::infinity();
 } // namespace
 
 DribbleControllerNode::DribbleControllerNode()
@@ -50,11 +51,6 @@ DribbleControllerNode::DribbleControllerNode()
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
       "/belt/command_mode", command_qos);
-
-  belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
-      "/belt/command_mode", command_qos,
-      std::bind(&DribbleControllerNode::belt_mode_callback, this,
-                std::placeholders::_1));
 
   position_mode_sub_ = create_subscription<robot_msgs::msg::ArmPosition>(
       "/dribble/command_position", command_qos,
@@ -155,11 +151,6 @@ void DribbleControllerNode::dribble_reverse_callback(
   }
 }
 
-void DribbleControllerNode::belt_mode_callback(
-    const robot_msgs::msg::BeltMode::SharedPtr msg) {
-  current_belt_mode_ = msg->mode;
-}
-
 void DribbleControllerNode::shot_cycle_callback(
     const std_msgs::msg::Bool::SharedPtr msg) {
   if (!msg->data || emergency_stop_active_ || shot_cycle_active_ ||
@@ -199,10 +190,9 @@ void DribbleControllerNode::start_shot_cycle() {
 
   constexpr float stopped_threshold_rpm = 100.0f;
   const bool belt_is_stopped =
-      current_belt_mode_ == robot_msgs::msg::BeltMode::STOP ||
-      (std::abs(upper_belt_measured_rpm_) < stopped_threshold_rpm &&
-       std::abs(under_belt_measured_rpm_) < stopped_threshold_rpm);
-  belt_auto_started_ = !test_mode_ && belt_is_stopped;
+      std::abs(upper_belt_measured_rpm_) < stopped_threshold_rpm &&
+      std::abs(under_belt_measured_rpm_) < stopped_threshold_rpm;
+  belt_auto_started_ = belt_is_stopped;
   if (belt_auto_started_) {
     robot_msgs::msg::BeltMode belt_msg;
     belt_msg.mode = shot_cycle_belt_spinup_level_;
@@ -341,18 +331,8 @@ void DribbleControllerNode::vesc_state_callback(
     const actuator_msgs::msg::ActuatorState::SharedPtr msg) {
   if (msg->logical_id == upper_belt_logical_id_) {
     upper_belt_measured_rpm_ = msg->velocity;
-    if (shot_cycle_active_ &&
-        shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
-      upper_belt_min_shot_rpm_ =
-          std::min(upper_belt_min_shot_rpm_, std::abs(msg->velocity));
-    }
   } else if (msg->logical_id == under_belt_logical_id_) {
     under_belt_measured_rpm_ = msg->velocity;
-    if (shot_cycle_active_ &&
-        shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
-      under_belt_min_shot_rpm_ =
-          std::min(under_belt_min_shot_rpm_, std::abs(msg->velocity));
-    }
   }
 
   if (msg->logical_id == roller_logical_id_) {
@@ -490,12 +470,12 @@ void DribbleControllerNode::update_and_publish_roller_command() {
 
     const double elapsed_sec =
         (now() - manual_transition_start_time_).seconds();
-    const double move_duration_sec = transition_duration_sec(
-        manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s,
-        max_acceleration_rad_s2);
-    if (move_duration_sec > 0.0) {
+    const auto trajectory = sample_trajectory(
+        manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
+        max_vel_rad_s, max_acceleration_rad_s2);
+    if (trajectory.duration_sec > 0.0) {
       const double progress =
-          std::clamp(elapsed_sec / move_duration_sec, 0.0, 1.0);
+          std::clamp(elapsed_sec / trajectory.duration_sec, 0.0, 1.0);
       const double smooth_progress =
           progress * progress * progress * progress *
           (35.0 + progress * (-84.0 + progress * (70.0 - 20.0 * progress)));
@@ -516,12 +496,7 @@ void DribbleControllerNode::update_and_publish_roller_command() {
     }
   }
 
-  const auto publish_time = now();
-  const bool heartbeat_due =
-      last_roller_command_publish_time_.nanoseconds() == 0 ||
-      (publish_time - last_roller_command_publish_time_).nanoseconds() >=
-          static_cast<int64_t>(roller_command_heartbeat_ms_) * 1000000LL;
-  if (!heartbeat_due && last_published_roller_rpm_.has_value() &&
+  if (last_published_roller_rpm_.has_value() &&
       *last_published_roller_rpm_ == current_filtered_roller_rpm_) {
     return;
   }
@@ -531,7 +506,6 @@ void DribbleControllerNode::update_and_publish_roller_command() {
   roller_command.target = static_cast<float>(current_filtered_roller_rpm_);
   roller_command_pub_->publish(roller_command);
   last_published_roller_rpm_ = current_filtered_roller_rpm_;
-  last_roller_command_publish_time_ = publish_time;
 }
 
 double DribbleControllerNode::update_manual_position_command(
@@ -545,14 +519,11 @@ double DribbleControllerNode::update_manual_position_command(
   const double max_acceleration_rad_s2 =
       manual_transition_max_acceleration_rad_s2();
   const double elapsed_sec = (now() - manual_transition_start_time_).seconds();
-  const double move_duration_sec = transition_duration_sec(
-      manual_transition_start_position_rad_, mode_target_rad, max_vel_rad_s,
-      max_acceleration_rad_s2);
-
-  position_command_rad = interpolated_position_rad(
-      manual_transition_start_position_rad_, mode_target_rad, elapsed_sec,
-      max_vel_rad_s, max_acceleration_rad_s2);
-  if (elapsed_sec >= move_duration_sec) {
+  const auto trajectory =
+      sample_trajectory(manual_transition_start_position_rad_, mode_target_rad,
+                        elapsed_sec, max_vel_rad_s, max_acceleration_rad_s2);
+  position_command_rad = trajectory.position_rad;
+  if (elapsed_sec >= trajectory.duration_sec) {
     manual_transition_active_ = false;
     position_command_rad = mode_target_rad;
   }
@@ -635,8 +606,6 @@ void DribbleControllerNode::control_timer_callback() {
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
         position_mode_ = robot_msgs::msg::ArmPosition::FEED;
-        upper_belt_min_shot_rpm_ = kUnsetMinimumBeltRpm;
-        under_belt_min_shot_rpm_ = kUnsetMinimumBeltRpm;
         RCLCPP_INFO(
             get_logger(),
             "Shot Cycle: BELT_SPINUP -> FEED (roller %.1f / required %.1f RPM)",
@@ -651,12 +620,6 @@ void DribbleControllerNode::control_timer_callback() {
       double hold_duration_sec = 0.0;
 
       switch (shot_cycle_phase_) {
-      case robot_msgs::msg::ShotCycleState::OPENING:
-        position_mode_ = robot_msgs::msg::ArmPosition::OPEN;
-        phase_target_rad = open_position_rad_;
-        phase_max_vel_rad_s = opening_max_velocity_rad_s_;
-        hold_duration_sec = open_duration_sec_;
-        break;
       case robot_msgs::msg::ShotCycleState::FEEDING:
         position_mode_ = robot_msgs::msg::ArmPosition::FEED;
         phase_target_rad = feed_position_rad_;
@@ -674,38 +637,22 @@ void DribbleControllerNode::control_timer_callback() {
 
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
       double phase_max_acceleration_rad_s2 = returning_max_acceleration_rad_s2_;
-      if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::OPENING) {
-        phase_max_acceleration_rad_s2 = opening_max_acceleration_rad_s2_;
-      } else if (shot_cycle_phase_ ==
-                 robot_msgs::msg::ShotCycleState::FEEDING) {
+      if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
         phase_max_acceleration_rad_s2 = feeding_max_acceleration_rad_s2_;
       }
-      const double move_duration_sec = transition_duration_sec(
-          shot_cycle_start_position_rad_, phase_target_rad, phase_max_vel_rad_s,
-          phase_max_acceleration_rad_s2);
-      position_command_rad = interpolated_position_rad(
+      const auto trajectory = sample_trajectory(
           shot_cycle_start_position_rad_, phase_target_rad, elapsed_sec,
           phase_max_vel_rad_s, phase_max_acceleration_rad_s2);
+      position_command_rad = trajectory.position_rad;
 
-      if (elapsed_sec >= move_duration_sec + hold_duration_sec) {
+      if (elapsed_sec >= trajectory.duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
         shot_cycle_start_position_rad_ = phase_target_rad;
         shot_cycle_start_time_ = now();
 
-        if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::OPENING) {
-          shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
-          RCLCPP_INFO(get_logger(), "Shot Cycle: OPEN -> FEED");
-        } else if (shot_cycle_phase_ ==
-                   robot_msgs::msg::ShotCycleState::FEEDING) {
+        if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
-          RCLCPP_INFO(
-              get_logger(),
-              "Shot Cycle: FEED -> RETURNING | Shot Impact Min Belt RPM -> "
-              "Upper: %.1f RPM, Under: %.1f RPM",
-              std::isfinite(upper_belt_min_shot_rpm_) ? upper_belt_min_shot_rpm_
-                                                      : 0.0f,
-              std::isfinite(under_belt_min_shot_rpm_) ? under_belt_min_shot_rpm_
-                                                      : 0.0f);
+          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING");
         } else {
           shot_cycle_active_ = false;
           publish_belt_clearance_request(false);
@@ -746,8 +693,6 @@ int DribbleControllerNode::roller_target_rpm() const {
   if (shot_cycle_active_) {
     switch (shot_cycle_phase_) {
     case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
-      return shot_cycle_opening_rpm_;
-    case robot_msgs::msg::ShotCycleState::OPENING:
       return shot_cycle_opening_rpm_;
     case robot_msgs::msg::ShotCycleState::FEEDING: {
       // FEEDING 移動中、アーム角度が真下 (bottom_position_rad_)
@@ -853,12 +798,14 @@ DribbleControllerNode::manual_transition_max_acceleration_rad_s2() const {
   }
 }
 
-double DribbleControllerNode::interpolated_position_rad(
-    double start_rad, double target_rad, double elapsed_sec,
-    double max_velocity_rad_s, double max_acceleration_rad_s2) const {
+DribbleControllerNode::TrajectorySample
+DribbleControllerNode::sample_trajectory(double start_rad, double target_rad,
+                                         double elapsed_sec,
+                                         double max_velocity_rad_s,
+                                         double max_acceleration_rad_s2) const {
   const double distance = std::abs(target_rad - start_rad);
   if (distance <= 1e-9) {
-    return target_rad;
+    return {target_rad, 0.0};
   }
   const double acceleration = std::max(1e-6, max_acceleration_rad_s2);
   const double velocity = std::max(1e-6, max_velocity_rad_s);
@@ -869,8 +816,9 @@ double DribbleControllerNode::interpolated_position_rad(
       0.5 * acceleration * acceleration_time * acceleration_time;
   const double cruise_time =
       std::max(0.0, (distance - 2.0 * acceleration_distance) / peak_velocity);
-  const double total_time = 2.0 * acceleration_time + cruise_time;
-  const double time = std::clamp(elapsed_sec, 0.0, total_time);
+  const double duration = 2.0 * acceleration_time + cruise_time;
+  const double time = std::clamp(elapsed_sec, 0.0, duration);
+
   double traveled = 0.0;
   if (time < acceleration_time) {
     traveled = 0.5 * acceleration * time * time;
@@ -878,125 +826,88 @@ double DribbleControllerNode::interpolated_position_rad(
     traveled =
         acceleration_distance + peak_velocity * (time - acceleration_time);
   } else {
-    const double remaining = total_time - time;
+    const double remaining = duration - time;
     traveled = distance - 0.5 * acceleration * remaining * remaining;
   }
-  return start_rad + std::copysign(traveled, target_rad - start_rad);
-}
-
-double DribbleControllerNode::transition_duration_sec(
-    double start_rad, double target_rad, double max_velocity_rad_s,
-    double max_acceleration_rad_s2) const {
-  const double distance = std::abs(target_rad - start_rad);
-  if (distance <= 1e-9) {
-    return 0.0;
-  }
-  const double acceleration = std::max(1e-6, max_acceleration_rad_s2);
-  const double velocity = std::max(1e-6, max_velocity_rad_s);
-  const double acceleration_time =
-      std::min(velocity / acceleration, std::sqrt(distance / acceleration));
-  const double peak_velocity = acceleration * acceleration_time;
-  const double acceleration_distance =
-      0.5 * acceleration * acceleration_time * acceleration_time;
-  const double cruise_time =
-      std::max(0.0, (distance - 2.0 * acceleration_distance) / peak_velocity);
-  return 2.0 * acceleration_time + cruise_time;
+  return {start_rad + std::copysign(traveled, target_rad - start_rad),
+          duration};
 }
 
 void DribbleControllerNode::load_parameters() {
-  test_mode_ = declare_parameter<bool>("test_mode", false);
-  dribble_position_rad_ =
-      declare_parameter<double>("dribble_position_rad", -0.86);
-  open_position_rad_ = declare_parameter<double>("open_position_rad", -1.27);
-  bottom_position_rad_ = declare_parameter<double>("bottom_position_rad", 0.0);
-  feed_position_rad_ = declare_parameter<double>("feed_position_rad", 1.3);
-  slow_fire_dribble_position_rad_ =
-      declare_parameter<double>("slow_fire_dribble_position_rad", -0.8);
+  const auto load_double = [this](const char *name, double &value) {
+    value = declare_parameter<double>(name, value);
+  };
+  load_double("dribble_position_rad", dribble_position_rad_);
+  load_double("open_position_rad", open_position_rad_);
+  load_double("bottom_position_rad", bottom_position_rad_);
+  load_double("feed_position_rad", feed_position_rad_);
+  load_double("slow_fire_dribble_position_rad",
+              slow_fire_dribble_position_rad_);
+  load_double("feed_duration_sec", feed_duration_sec_);
+  load_double("belt_spinup_timeout_sec", belt_spinup_delay_sec_);
+  load_double("belt_spinup_min_delay_sec", belt_spinup_min_delay_sec_);
+  load_double("prepare_from_open_delay_sec", prepare_from_open_delay_sec_);
+  load_double("belt_ready_ratio", belt_ready_ratio_);
+  load_double("opening_max_velocity_rad_s", opening_max_velocity_rad_s_);
+  load_double("feeding_max_velocity_rad_s", feeding_max_velocity_rad_s_);
+  load_double("returning_max_velocity_rad_s", returning_max_velocity_rad_s_);
+  load_double("dribbling_max_velocity_rad_s", dribbling_max_velocity_rad_s_);
+  load_double("opening_max_acceleration_rad_s2",
+              opening_max_acceleration_rad_s2_);
+  load_double("feeding_max_acceleration_rad_s2",
+              feeding_max_acceleration_rad_s2_);
+  load_double("returning_max_acceleration_rad_s2",
+              returning_max_acceleration_rad_s2_);
+  load_double("dribbling_max_acceleration_rad_s2",
+              dribbling_max_acceleration_rad_s2_);
+  load_double("dribble_reverse_ramp_sec", dribble_reverse_ramp_sec_);
+  load_double("ball_detection_threshold_a", ball_detection_threshold_a_);
+  load_double("ball_lost_threshold_a", ball_lost_threshold_a_);
+  load_double("current_lpf_alpha", current_lpf_alpha_);
+  load_double("odometry_timeout_sec", odometry_timeout_sec_);
+  load_double("measured_acceleration_lpf_alpha",
+              measured_acceleration_lpf_alpha_);
+  load_double("backward_velocity_boost_rpm_per_mps",
+              backward_velocity_boost_rpm_per_mps_);
+  load_double("backward_acceleration_rpm_per_mps2",
+              backward_acceleration_rpm_per_mps2_);
 
-  open_duration_sec_ = declare_parameter<double>("open_duration_sec", 0.0);
-  feed_duration_sec_ = declare_parameter<double>("feed_duration_sec", 0.6);
-  belt_spinup_delay_sec_ =
-      declare_parameter<double>("belt_spinup_timeout_sec", 2.0);
-  belt_spinup_min_delay_sec_ =
-      declare_parameter<double>("belt_spinup_min_delay_sec", 0.1);
-  prepare_from_open_delay_sec_ =
-      declare_parameter<double>("prepare_from_open_delay_sec", 0.1);
-  belt_ready_ratio_ = declare_parameter<double>("belt_ready_ratio", 0.9);
+  const auto load_int = [this](const char *name, int &value) {
+    value = declare_parameter<int>(name, value);
+  };
+  load_int("dribble_on_rpm", dribble_on_rpm_);
+  load_int("slow_fire_dribble_rpm", slow_fire_dribble_rpm_);
+  load_int("dribble_reverse_rpm", dribble_reverse_rpm_);
+  load_int("shot_cycle_opening_rpm", shot_cycle_opening_rpm_);
+  load_int("shot_cycle_feeding_rpm", shot_cycle_feeding_rpm_);
+  load_int("shot_cycle_returning_rpm", shot_cycle_returning_rpm_);
+  load_int("ball_detection_debounce_count", ball_detection_debounce_count_);
+  load_int("ball_lost_debounce_count", ball_lost_debounce_count_);
+  load_int("max_boost_rpm", max_boost_rpm_);
 
-  opening_max_velocity_rad_s_ =
-      declare_parameter<double>("opening_max_velocity_rad_s", 4.0);
-  feeding_max_velocity_rad_s_ =
-      declare_parameter<double>("feeding_max_velocity_rad_s", 6.0);
-  returning_max_velocity_rad_s_ =
-      declare_parameter<double>("returning_max_velocity_rad_s", 4.0);
-  dribbling_max_velocity_rad_s_ =
-      declare_parameter<double>("dribbling_max_velocity_rad_s", 3.0);
-  opening_max_acceleration_rad_s2_ =
-      declare_parameter<double>("opening_max_acceleration_rad_s2", 15.0);
-  feeding_max_acceleration_rad_s2_ =
-      declare_parameter<double>("feeding_max_acceleration_rad_s2", 15.0);
-  returning_max_acceleration_rad_s2_ =
-      declare_parameter<double>("returning_max_acceleration_rad_s2", 18.0);
-  dribbling_max_acceleration_rad_s2_ =
-      declare_parameter<double>("dribbling_max_acceleration_rad_s2", 12.0);
-
-  dribble_on_rpm_ = declare_parameter<int>("dribble_on_rpm", 400);
-  slow_fire_dribble_rpm_ = declare_parameter<int>("slow_fire_dribble_rpm", 500);
-  dribble_reverse_rpm_ = declare_parameter<int>("dribble_reverse_rpm", 800);
-  shot_cycle_opening_rpm_ =
-      declare_parameter<int>("shot_cycle_opening_rpm", 800);
-  shot_cycle_feeding_rpm_ =
-      declare_parameter<int>("shot_cycle_feeding_rpm", 500);
-  shot_cycle_returning_rpm_ =
-      declare_parameter<int>("shot_cycle_returning_rpm", 800);
-  shot_cycle_belt_spinup_level_ = static_cast<uint8_t>(
-      declare_parameter<int>("shot_cycle_belt_spinup_level", 1));
-  dribble_reverse_ramp_sec_ =
-      declare_parameter<double>("dribble_reverse_ramp_sec", 2.0);
-  roller_command_heartbeat_ms_ =
-      declare_parameter<int>("roller_command_heartbeat_ms", 100);
-
-  ball_detection_threshold_a_ =
-      declare_parameter<double>("ball_detection_threshold_a", 4.5);
-  ball_lost_threshold_a_ =
-      declare_parameter<double>("ball_lost_threshold_a", 2.2);
-  current_lpf_alpha_ = declare_parameter<double>("current_lpf_alpha", 0.07);
-  ball_detection_debounce_count_ =
-      declare_parameter<int>("ball_detection_debounce_count", 12);
-  ball_lost_debounce_count_ =
-      declare_parameter<int>("ball_lost_debounce_count", 12);
-
+  shot_cycle_belt_spinup_level_ = static_cast<uint8_t>(declare_parameter<int>(
+      "shot_cycle_belt_spinup_level", shot_cycle_belt_spinup_level_));
   odometry_topic_ =
-      declare_parameter<std::string>("odometry_topic", "/wheel/odometry");
-  odometry_timeout_sec_ =
-      declare_parameter<double>("odometry_timeout_sec", 0.2);
-  measured_acceleration_lpf_alpha_ =
-      declare_parameter<double>("measured_acceleration_lpf_alpha", 0.2);
-  enable_motion_compensation_ =
-      declare_parameter<bool>("enable_motion_compensation", true);
-  backward_velocity_boost_rpm_per_mps_ =
-      declare_parameter<double>("backward_velocity_boost_rpm_per_mps", 500.0);
-  backward_acceleration_rpm_per_mps2_ =
-      declare_parameter<double>("backward_acceleration_rpm_per_mps2", 200.0);
-  max_boost_rpm_ = declare_parameter<int>("max_boost_rpm", 1200);
+      declare_parameter<std::string>("odometry_topic", odometry_topic_);
+  enable_motion_compensation_ = declare_parameter<bool>(
+      "enable_motion_compensation", enable_motion_compensation_);
 
-  const int position_id = declare_parameter<int>("position_logical_id", 5);
-  const int roller_id = declare_parameter<int>("roller_logical_id", 12);
-  const int upper_id = declare_parameter<int>("upper_belt_logical_id", 10);
-  const int under_id = declare_parameter<int>("under_belt_logical_id", 11);
-  if (position_id < 0 || position_id > 65535 || roller_id < 0 ||
-      roller_id > 65535 || upper_id < 0 || upper_id > 65535 || under_id < 0 ||
-      under_id > 65535) {
-    throw std::runtime_error("logical IDs must be in [0, 65535]");
-  }
-  position_logical_id_ = static_cast<uint16_t>(position_id);
-  roller_logical_id_ = static_cast<uint16_t>(roller_id);
-  upper_belt_logical_id_ = static_cast<uint16_t>(upper_id);
-  under_belt_logical_id_ = static_cast<uint16_t>(under_id);
+  const auto load_id = [this](const char *name, uint16_t default_value) {
+    const int value = declare_parameter<int>(name, default_value);
+    if (value < 0 || value > 65535) {
+      throw std::runtime_error(std::string(name) + " must be in [0, 65535]");
+    }
+    return static_cast<uint16_t>(value);
+  };
+  position_logical_id_ = load_id("position_logical_id", position_logical_id_);
+  roller_logical_id_ = load_id("roller_logical_id", roller_logical_id_);
+  upper_belt_logical_id_ =
+      load_id("upper_belt_logical_id", upper_belt_logical_id_);
+  under_belt_logical_id_ =
+      load_id("under_belt_logical_id", under_belt_logical_id_);
 
   if (shot_cycle_belt_spinup_level_ < 1 || shot_cycle_belt_spinup_level_ > 4 ||
-      roller_command_heartbeat_ms_ <= 0 || ball_detection_debounce_count_ < 1 ||
-      ball_lost_debounce_count_ < 1) {
+      ball_detection_debounce_count_ < 1 || ball_lost_debounce_count_ < 1) {
     throw std::runtime_error(
         "integer parameters are outside their valid ranges");
   }
@@ -1033,23 +944,23 @@ DribbleControllerNode::parameter_callback(
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   bool trajectory_changed = false;
+  const std::vector<std::string> restart_parameters{
+      "command_period_ms",     "qos_depth",
+      "position_logical_id",   "roller_logical_id",
+      "upper_belt_logical_id", "under_belt_logical_id",
+      "position_target_topic", "roller_target_topic",
+      "odometry_topic"};
 
   for (const auto &parameter : parameters) {
     const auto &name = parameter.get_name();
-    if (name == "command_period_ms" || name == "qos_depth" ||
-        name == "position_logical_id" || name == "roller_logical_id" ||
-        name == "upper_belt_logical_id" || name == "under_belt_logical_id" ||
-        name == "position_target_topic" || name == "roller_target_topic" ||
-        name == "odometry_topic") {
+    if (std::find(restart_parameters.begin(), restart_parameters.end(), name) !=
+        restart_parameters.end()) {
       result.successful = false;
       result.reason = name + " requires a node restart";
       return result;
     }
 
     if (parameter.get_type() == rclcpp::ParameterType::PARAMETER_BOOL) {
-      if (name == "test_mode") {
-        test_mode_ = parameter.as_bool();
-      }
       if (name == "enable_motion_compensation") {
         enable_motion_compensation_ = parameter.as_bool();
       }
@@ -1058,46 +969,35 @@ DribbleControllerNode::parameter_callback(
 
     if (parameter.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int value = static_cast<int>(parameter.as_int());
-      if (value < 0) {
+      const bool positive_count = name == "ball_detection_debounce_count" ||
+                                  name == "ball_lost_debounce_count";
+      if (value < 0 || (positive_count && value == 0) ||
+          (name == "shot_cycle_belt_spinup_level" &&
+           (value < 1 || value > 4))) {
         result.successful = false;
-        result.reason = name + " must be non-negative";
+        result.reason = name + " is outside its valid range";
         return result;
       }
-      if (name == "shot_cycle_belt_spinup_level" && (value < 1 || value > 4)) {
-        result.successful = false;
-        result.reason = name + " must be in [1, 4]";
-        return result;
-      }
-      if ((name == "roller_command_heartbeat_ms" ||
-           name == "ball_detection_debounce_count" ||
-           name == "ball_lost_debounce_count") &&
-          value < 1) {
-        result.successful = false;
-        result.reason = name + " must be at least 1";
-        return result;
-      }
-      if (name == "dribble_on_rpm") {
-        dribble_on_rpm_ = value;
-      } else if (name == "slow_fire_dribble_rpm") {
-        slow_fire_dribble_rpm_ = value;
-      } else if (name == "dribble_reverse_rpm") {
-        dribble_reverse_rpm_ = value;
-      } else if (name == "shot_cycle_opening_rpm") {
-        shot_cycle_opening_rpm_ = value;
-      } else if (name == "shot_cycle_feeding_rpm") {
-        shot_cycle_feeding_rpm_ = value;
-      } else if (name == "shot_cycle_returning_rpm") {
-        shot_cycle_returning_rpm_ = value;
-      } else if (name == "shot_cycle_belt_spinup_level") {
+      if (name == "shot_cycle_belt_spinup_level") {
         shot_cycle_belt_spinup_level_ = static_cast<uint8_t>(value);
-      } else if (name == "roller_command_heartbeat_ms") {
-        roller_command_heartbeat_ms_ = value;
-      } else if (name == "max_boost_rpm") {
-        max_boost_rpm_ = value;
-      } else if (name == "ball_detection_debounce_count") {
-        ball_detection_debounce_count_ = value;
-      } else if (name == "ball_lost_debounce_count") {
-        ball_lost_debounce_count_ = value;
+        continue;
+      }
+      const std::pair<const char *, int *> integer_parameters[] = {
+          {"dribble_on_rpm", &dribble_on_rpm_},
+          {"slow_fire_dribble_rpm", &slow_fire_dribble_rpm_},
+          {"dribble_reverse_rpm", &dribble_reverse_rpm_},
+          {"shot_cycle_opening_rpm", &shot_cycle_opening_rpm_},
+          {"shot_cycle_feeding_rpm", &shot_cycle_feeding_rpm_},
+          {"shot_cycle_returning_rpm", &shot_cycle_returning_rpm_},
+          {"max_boost_rpm", &max_boost_rpm_},
+          {"ball_detection_debounce_count", &ball_detection_debounce_count_},
+          {"ball_lost_debounce_count", &ball_lost_debounce_count_},
+      };
+      const auto entry = std::find_if(
+          std::begin(integer_parameters), std::end(integer_parameters),
+          [&name](const auto &candidate) { return name == candidate.first; });
+      if (entry != std::end(integer_parameters)) {
+        *entry->second = value;
       }
       continue;
     }
@@ -1106,11 +1006,6 @@ DribbleControllerNode::parameter_callback(
       continue;
     }
     const double value = parameter.as_double();
-    if (!std::isfinite(value)) {
-      result.successful = false;
-      result.reason = name + " must be finite";
-      return result;
-    }
     const bool positive =
         name.find("_max_velocity_rad_s") != std::string::npos ||
         name.find("_max_acceleration_rad_s2") != std::string::npos ||
@@ -1118,92 +1013,70 @@ DribbleControllerNode::parameter_callback(
     const bool unit_interval = name == "current_lpf_alpha" ||
                                name == "measured_acceleration_lpf_alpha" ||
                                name == "belt_ready_ratio";
-    if ((positive && value <= 0.0) ||
+    const bool signed_position =
+        name.find("_position_rad") != std::string::npos;
+    if (!std::isfinite(value) || (positive && value <= 0.0) ||
         (unit_interval && (value <= 0.0 || value > 1.0)) ||
-        (!positive && !unit_interval &&
-         name.find("_position_rad") == std::string::npos && value < 0.0)) {
+        (!positive && !unit_interval && !signed_position && value < 0.0)) {
       result.successful = false;
       result.reason = name + " is outside its valid range";
       return result;
     }
 
-    bool recognized = true;
-    if (name == "dribble_position_rad") {
-      dribble_position_rad_ = value;
-    } else if (name == "open_position_rad") {
-      open_position_rad_ = value;
-    } else if (name == "bottom_position_rad") {
-      bottom_position_rad_ = value;
-    } else if (name == "feed_position_rad") {
-      feed_position_rad_ = value;
-    } else if (name == "slow_fire_dribble_position_rad") {
-      slow_fire_dribble_position_rad_ = value;
-    } else if (name == "open_duration_sec") {
-      open_duration_sec_ = value;
-    } else if (name == "feed_duration_sec") {
-      feed_duration_sec_ = value;
-    } else if (name == "belt_spinup_timeout_sec") {
-      belt_spinup_delay_sec_ = value;
-    } else if (name == "belt_spinup_min_delay_sec") {
-      belt_spinup_min_delay_sec_ = value;
-    } else if (name == "prepare_from_open_delay_sec") {
-      prepare_from_open_delay_sec_ = value;
-    } else if (name == "belt_ready_ratio") {
-      belt_ready_ratio_ = value;
-    } else if (name == "opening_max_velocity_rad_s") {
-      opening_max_velocity_rad_s_ = value;
-    } else if (name == "feeding_max_velocity_rad_s") {
-      feeding_max_velocity_rad_s_ = value;
-    } else if (name == "returning_max_velocity_rad_s") {
-      returning_max_velocity_rad_s_ = value;
-    } else if (name == "dribbling_max_velocity_rad_s") {
-      dribbling_max_velocity_rad_s_ = value;
-    } else if (name == "opening_max_acceleration_rad_s2") {
-      opening_max_acceleration_rad_s2_ = value;
-    } else if (name == "feeding_max_acceleration_rad_s2") {
-      feeding_max_acceleration_rad_s2_ = value;
-    } else if (name == "returning_max_acceleration_rad_s2") {
-      returning_max_acceleration_rad_s2_ = value;
-    } else if (name == "dribbling_max_acceleration_rad_s2") {
-      dribbling_max_acceleration_rad_s2_ = value;
-    } else if (name == "dribble_reverse_ramp_sec") {
-      dribble_reverse_ramp_sec_ = value;
-    } else if (name == "ball_detection_threshold_a") {
-      ball_detection_threshold_a_ = value;
-    } else if (name == "ball_lost_threshold_a") {
-      ball_lost_threshold_a_ = value;
-    } else if (name == "current_lpf_alpha") {
-      current_lpf_alpha_ = value;
-    } else if (name == "odometry_timeout_sec") {
-      odometry_timeout_sec_ = value;
-    } else if (name == "measured_acceleration_lpf_alpha") {
-      measured_acceleration_lpf_alpha_ = value;
-    } else if (name == "backward_velocity_boost_rpm_per_mps") {
-      backward_velocity_boost_rpm_per_mps_ = value;
-    } else if (name == "backward_acceleration_rpm_per_mps2") {
-      backward_acceleration_rpm_per_mps2_ = value;
-    } else {
-      recognized = false;
-    }
-    if (!recognized) {
+    const std::pair<const char *, double *> double_parameters[] = {
+        {"dribble_position_rad", &dribble_position_rad_},
+        {"open_position_rad", &open_position_rad_},
+        {"bottom_position_rad", &bottom_position_rad_},
+        {"feed_position_rad", &feed_position_rad_},
+        {"slow_fire_dribble_position_rad", &slow_fire_dribble_position_rad_},
+        {"feed_duration_sec", &feed_duration_sec_},
+        {"belt_spinup_timeout_sec", &belt_spinup_delay_sec_},
+        {"belt_spinup_min_delay_sec", &belt_spinup_min_delay_sec_},
+        {"prepare_from_open_delay_sec", &prepare_from_open_delay_sec_},
+        {"belt_ready_ratio", &belt_ready_ratio_},
+        {"opening_max_velocity_rad_s", &opening_max_velocity_rad_s_},
+        {"feeding_max_velocity_rad_s", &feeding_max_velocity_rad_s_},
+        {"returning_max_velocity_rad_s", &returning_max_velocity_rad_s_},
+        {"dribbling_max_velocity_rad_s", &dribbling_max_velocity_rad_s_},
+        {"opening_max_acceleration_rad_s2", &opening_max_acceleration_rad_s2_},
+        {"feeding_max_acceleration_rad_s2", &feeding_max_acceleration_rad_s2_},
+        {"returning_max_acceleration_rad_s2",
+         &returning_max_acceleration_rad_s2_},
+        {"dribbling_max_acceleration_rad_s2",
+         &dribbling_max_acceleration_rad_s2_},
+        {"dribble_reverse_ramp_sec", &dribble_reverse_ramp_sec_},
+        {"ball_detection_threshold_a", &ball_detection_threshold_a_},
+        {"ball_lost_threshold_a", &ball_lost_threshold_a_},
+        {"current_lpf_alpha", &current_lpf_alpha_},
+        {"odometry_timeout_sec", &odometry_timeout_sec_},
+        {"measured_acceleration_lpf_alpha", &measured_acceleration_lpf_alpha_},
+        {"backward_velocity_boost_rpm_per_mps",
+         &backward_velocity_boost_rpm_per_mps_},
+        {"backward_acceleration_rpm_per_mps2",
+         &backward_acceleration_rpm_per_mps2_},
+    };
+    const auto entry = std::find_if(
+        std::begin(double_parameters), std::end(double_parameters),
+        [&name](const auto &candidate) { return name == candidate.first; });
+    if (entry == std::end(double_parameters)) {
       continue;
     }
-
-    const bool affects_trajectory =
-        name.find("_position_rad") != std::string::npos ||
+    *entry->second = value;
+    trajectory_changed =
+        trajectory_changed || signed_position ||
         name.find("_max_velocity_rad_s") != std::string::npos ||
         name.find("_max_acceleration_rad_s2") != std::string::npos ||
-        name == "open_duration_sec" || name == "feed_duration_sec";
-    trajectory_changed = trajectory_changed || affects_trajectory;
+        name == "feed_duration_sec";
   }
 
   if (trajectory_changed) {
+    const auto current_time = now();
     if (manual_transition_active_) {
-      manual_transition_start_time_ = now();
+      manual_transition_start_time_ = current_time;
       manual_transition_start_position_rad_ = last_position_command_rad_;
     }
     if (shot_cycle_active_) {
-      shot_cycle_start_time_ = now();
+      shot_cycle_start_time_ = current_time;
       shot_cycle_start_position_rad_ = last_position_command_rad_;
     }
   }

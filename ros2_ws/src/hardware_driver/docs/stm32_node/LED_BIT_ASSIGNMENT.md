@@ -29,7 +29,7 @@ ros_value = data[0] | (data[1] << 8)
 | 0 | `0x00` | `STARTUP` | 起動中、または非常停止状態をまだ受信していない |
 | 1 | `0x01` | `READY` | 操作可能な通常状態 |
 | 2 | `0x02` | `EMERGENCY_STOP` | 非常停止中 |
-| 3 | `0x03` | `SHOT_OPENING` | 自動サイクルでアームをOPEN位置へ移動中 |
+| 3 | `0x03` | `SHOT_OPENING` | ベルト発射のFEED姿勢へ移動中 |
 | 4 | `0x04` | `LOADING` | ボールの装填動作中 |
 | 5 | `0x05` | `FIRING` | 発射中、または発射通知表示中 |
 | 6 | `0x06` | `RETURNING` | 発射後にDRIBBLE位置へ復帰中 |
