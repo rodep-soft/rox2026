@@ -164,6 +164,7 @@ private:
 
   int current_filtered_roller_rpm_{0};
   bool belt_auto_started_{false};
+  bool belt_spinup_started_{false};
   bool has_ball_{false};
   double filtered_roller_current_a_{0.0};
   bool roller_current_initialized_{false};

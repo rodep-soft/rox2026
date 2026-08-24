@@ -31,6 +31,11 @@
 [ボタン押下]
     │
     ▼
+ばねを現在の累積待機位置から standby_offset_rad 分だけ収納
+    │
+    ▼  0オフセット相当位置への到達・停止を待機
+    │
+    ▼
 belt を LEVEL_{shot_cycle_belt_spinup_level} に自動ON
     │
     ▼  belt_spinup_timeout_sec 秒待機（スピンアップ）
@@ -49,6 +54,9 @@ belt を自動STOP
 
 ```
 [ボタン押下]
+    │
+    ▼
+ばねを0オフセット相当位置まで収納・停止
     │
     ▼
 DRIBBLE → FEED → DRIBBLE（belt はそのまま）

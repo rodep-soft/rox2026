@@ -84,6 +84,8 @@ private:
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
   double actuator_position_rad_{0.0};
+  double belt_clearance_position_rad_{0.0};
+  double belt_clearance_return_position_rad_{0.0};
   double commanded_forward_speed_m_s_{0.0};
   double cmd_vel_timeout_sec_{0.2};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};

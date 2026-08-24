@@ -253,14 +253,23 @@ void SpringEduliteController::belt_clearance_request_callback(
     return;
   }
 
-  target_position_rad_ = belt_clearance_requested_ ? 0.0 : standby_offset_rad_;
+  if (belt_clearance_requested_) {
+    belt_clearance_return_position_rad_ = target_position_rad_;
+    belt_clearance_position_rad_ =
+        belt_clearance_return_position_rad_ - standby_offset_rad_;
+    target_position_rad_ = belt_clearance_position_rad_;
+  } else {
+    target_position_rad_ = belt_clearance_return_position_rad_;
+  }
   state_ = State::MOVING_TO_STANDBY;
   stable_feedback_count_ = 0;
   publish_target(target_position_rad_);
   RCLCPP_INFO(get_logger(),
-              "Moving spring to %.3f rad for belt-shot clearance: %s",
+              "Moving spring to %.3f rad for belt-shot clearance: %s "
+              "(return: %.3f rad)",
               target_position_rad_,
-              belt_clearance_requested_ ? "requested" : "released");
+              belt_clearance_requested_ ? "requested" : "released",
+              belt_clearance_return_position_rad_);
 }
 
 void SpringEduliteController::cmd_vel_callback(
@@ -318,8 +327,9 @@ void SpringEduliteController::actuator_state_callback(
   // Feedback remains useful for the release position, but state completion and
   // timeout checks must stay paused until emergency stop is released.
   if (state_ == State::READY && belt_clearance_requested_ &&
-      std::fabs(target_position_rad_) > position_tolerance_rad_) {
-    target_position_rad_ = 0.0;
+      std::fabs(target_position_rad_ - belt_clearance_position_rad_) >
+          position_tolerance_rad_) {
+    target_position_rad_ = belt_clearance_position_rad_;
     state_ = State::MOVING_TO_STANDBY;
     stable_feedback_count_ = 0;
     publish_target(target_position_rad_);
@@ -603,7 +613,9 @@ void SpringEduliteController::publish_operation_state() {
   } else if (state_ == State::SLOW_FIRING_EXTENDING ||
              state_ == State::SLOW_FIRING_RETURNING) {
     operation = robot_msgs::msg::SpringOperationState::SLOW_FIRE;
-  } else if (belt_clearance_requested_) {
+  } else if (belt_clearance_requested_ && state_ == State::READY) {
+    // BELT_CLEARANCE means the zero-offset target has been reached and settled,
+    // not merely that a retraction request is active.
     operation = robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
   } else if (state_ == State::ERROR) {
     operation = robot_msgs::msg::SpringOperationState::ERROR;
