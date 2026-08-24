@@ -71,6 +71,9 @@ class TestYoloNode(Node):
         det_array = Detection2DArray()
         det_array.header = msg.header
 
+        best_ball_pose = None
+        min_ball_z = 999.0
+
         for r in results:
             boxes = r.boxes
             for box in boxes:
@@ -106,7 +109,7 @@ class TestYoloNode(Node):
                 det.results.append(hyp)
                 det_array.detections.append(det)
 
-                # ボールの場合: 3D実空間位置を計算して /ball_pose にパブリッシュ
+                # ボールの場合: 3D実空間位置を計算
                 if is_ball:
                     # ピクセル幅から実距離 Z をピンホール推定 (Z = f * W_real / w_pixel)
                     pixel_size = (bw + bh) / 2.0
@@ -121,7 +124,11 @@ class TestYoloNode(Node):
                     pose_msg.pose.position.y = float(est_y)
                     pose_msg.pose.position.z = float(est_z)
                     pose_msg.pose.orientation.w = 1.0
-                    self.pub_ball_pose_.publish(pose_msg)
+
+                    # 最も近いボールを追跡対象として選定
+                    if est_z < min_ball_z:
+                        min_ball_z = est_z
+                        best_ball_pose = pose_msg
 
                     # アノテーション描画
                     x1 = int(xywh[0] - bw / 2.0)
@@ -139,9 +146,12 @@ class TestYoloNode(Node):
                         2,
                     )
 
-                    self.get_logger().info(
-                        f"[BALL 3D DETECTED] {cls_name} ({conf*100:.1f}%) -> 3D Pos: (X={est_x:.2f}m, Y={est_y:.2f}m, Dist Z={est_z:.2f}m)"
-                    )
+        # 最も近いボールの3次元座標を /ball_pose に配信
+        if best_ball_pose is not None:
+            self.pub_ball_pose_.publish(best_ball_pose)
+            self.get_logger().info(
+                f"[CLOSEST BALL TARGET] 3D Pos: (X={best_ball_pose.pose.position.x:.2f}m, Y={best_ball_pose.pose.position.y:.2f}m, Dist Z={best_ball_pose.pose.position.z:.2f}m)"
+            )
 
         self.pub_detections_.publish(det_array)
 
