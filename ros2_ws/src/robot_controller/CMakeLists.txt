@@ -136,7 +136,17 @@ ament_target_dependencies(
   tf2
   tf2_ros)
 
-list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node field_visualization_node trajectory_sim_node)
+add_executable(game2_sim_node auto_controllers/game2_shooter/src/game2_sim_node.cpp)
+ament_target_dependencies(
+  game2_sim_node
+  rclcpp
+  geometry_msgs
+  std_msgs
+  visualization_msgs
+  tf2
+  tf2_ros)
+
+list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node field_visualization_node trajectory_sim_node game2_sim_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories
