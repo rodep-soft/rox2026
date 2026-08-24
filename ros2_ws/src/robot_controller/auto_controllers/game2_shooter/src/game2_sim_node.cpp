@@ -269,9 +269,9 @@ private:
       }
 
       case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        // 次弾装填・アーム展開・ボール安定化 (約1.0秒)
+        // 次弾装填・アーム展開・ボール安定化 (2.0秒)
         arm_mode_ = robot_msgs::msg::ArmPosition::OPEN;
-        if (state_timer_ >= 1.0) {
+        if (state_timer_ >= 2.0) {
           state_ = robot_msgs::msg::Game2State::SHOOTING;
           state_timer_ = 0.0;
           fire_current_ball();
