@@ -80,15 +80,15 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 | parameter | 内容 |
 |---|---|
 | `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
-| `standby_position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
+| `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
 | `fire_increment_rad` | 発射要求1回で加算する回転角度[rad] |
-| `slow_fire_target_rad` | 低速発射の押し出し量[rad] |
-| `slow_fire_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
+| `slow_fire_target_position_rad` | 低速発射のゼロ点基準の絶対目標位置[rad] |
+| `slow_fire_base_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
 | `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
 | `homing_timeout_sec` | ホーミングのタイムアウト[s] |
-| `zeroing_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
-| `zeroing_required_stable_feedback_count` | 静止判定に必要な連続回数 |
+| `stopped_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
+| `required_stable_feedback_count` | 静止判定に必要な連続回数 |
 | `command_period_ms` | 位置目標の更新・再送周期[ms] |
 | `limit_switch_bit_offset` | リミットスイッチbyte内の使用bit |
 

@@ -10,14 +10,13 @@
 #include "joy_controller/slew_rate_limiter.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "robot_msgs/msg/arm_position.hpp"
+#include "robot_msgs/msg/belt_mode.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/int32.hpp"
-#include "robot_msgs/msg/arm_position.hpp"
-#include "robot_msgs/msg/belt_mode.hpp"
 
-class JoyControllerNode : public rclcpp::Node
-{
+class JoyControllerNode : public rclcpp::Node {
 public:
   JoyControllerNode();
 
@@ -26,27 +25,27 @@ private:
   void loop_callback();
   void joy_timeout_timer_callback();
   void state_publish_timer_callback();
-  rcl_interfaces::msg::SetParametersResult parameter_callback(
-    const std::vector<rclcpp::Parameter> & parameters);
-  void spring_actuator_ready_callback(
-    const std_msgs::msg::Bool::SharedPtr msg);
+  rcl_interfaces::msg::SetParametersResult
+  parameter_callback(const std::vector<rclcpp::Parameter> &parameters);
+  void spring_actuator_ready_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_arm_position(uint8_t position);
   void publish_dribble_enabled(bool enabled);
   void publish_dribble_reverse(bool reversed);
-  void publish_spring_decel(bool active);
   void publish_opening_rpm(int rpm);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
-  void publish_limited_velocity(double target_x_m_s, double target_y_m_s, double target_yaw_rad_s);
+  void publish_limited_velocity(double target_x_m_s, double target_y_m_s,
+                                double target_yaw_rad_s);
   void update_acceleration_limits();
 
-  bool is_button_down(const sensor_msgs::msg::Joy & msg, int index) const;
-  bool is_button_just_pressed(const sensor_msgs::msg::Joy & msg, int index) const;
-  double get_axis_value(const sensor_msgs::msg::Joy & msg, int index) const;
-  bool is_axis_just_triggered(
-    const sensor_msgs::msg::Joy & msg, int index, bool positive) const;
+  bool is_button_down(const sensor_msgs::msg::Joy &msg, int index) const;
+  bool is_button_just_pressed(const sensor_msgs::msg::Joy &msg,
+                              int index) const;
+  double get_axis_value(const sensor_msgs::msg::Joy &msg, int index) const;
+  bool is_axis_just_triggered(const sensor_msgs::msg::Joy &msg, int index,
+                              bool positive) const;
 
   double apply_axis_deadzone(double value) const;
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
@@ -106,11 +105,6 @@ private:
   bool spring_arm_restore_pending_{false};
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
-  bool slow_fire_pending_{false};
-  std::chrono::steady_clock::time_point slow_fire_pending_start_time_{};
-  bool slow_fire_arm_restore_pending_{false};
-  int slow_fire_arm_restore_delay_ms_{6000};
-  std::chrono::steady_clock::time_point slow_fire_released_time_{};
   bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
@@ -131,19 +125,21 @@ private:
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_reverse_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_decel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
-  rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_mode_pub_;
+  rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr
+      arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr opening_rpm_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_actuator_ready_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
+      spring_actuator_ready_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;
   rclcpp::TimerBase::SharedPtr state_publish_timer_;
   rclcpp::TimerBase::SharedPtr loop_timer_;
-  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+      parameter_callback_handle_;
 };
 
-#endif  // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_
+#endif // JOY_CONTROLLER__JOY_CONTROLLER_NODE_HPP_

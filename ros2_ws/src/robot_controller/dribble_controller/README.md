@@ -35,7 +35,7 @@
     ▼
 belt を LEVEL_{shot_cycle_belt_spinup_level} に自動ON
     │
-    ▼  belt_spinup_delay_sec 秒待機（スピンアップ）
+    ▼  belt_spinup_timeout_sec 秒待機（スピンアップ）
     │
     ▼
 DRIBBLE → FEED（直接押し込み射出）
@@ -69,15 +69,15 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `ball_lost_threshold_a`（ボール喪失閾値[A]、デフォルト1.0）
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数、デフォルト0.3）
 - `shot_cycle_belt_spinup_level`（1〜4、shot cycle時にbeltをONするレベル）
-- `belt_spinup_delay_sec`（beltがSTOPからONになった後の待機時間[s]）
+- `belt_spinup_timeout_sec`（beltが実測ローラRPMが届かない場合の最大待機時間[s]）
 - `dribble_position_rad`、`open_position_rad`、`feed_position_rad`
 - `open_duration_sec`、`feed_duration_sec`
 - `opening_max_velocity_rad_s`
 - `feeding_max_velocity_rad_s`
 - `returning_max_velocity_rad_s`
 - `dribbling_max_velocity_rad_s`
-- `opening_accel_factor`
-- `dribbling_accel_factor`
+- `opening_max_acceleration_rad_s2`
+- `dribbling_max_acceleration_rad_s2`
 
 更新値はまとめて検証される。位置は有限値、保持時間とRPMは0以上、区間速度は正の
 有限値でなければ更新全体を拒否する。動作中に位置または速度を変更した場合は、現在の
@@ -86,7 +86,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ```bash
 ros2 param set /dribble_controller_node dribble_on_rpm 1000
 ros2 param set /dribble_controller_node shot_cycle_belt_spinup_level 2
-ros2 param set /dribble_controller_node belt_spinup_delay_sec 0.8
+ros2 param set /dribble_controller_node belt_spinup_timeout_sec 0.8
 ros2 param set /dribble_controller_node dribble_position_rad 0.4
 ros2 param set /dribble_controller_node feeding_max_velocity_rad_s 3.5
 ```
