@@ -111,6 +111,16 @@ def generate_launch_description():
                 default_value="true",
                 description="Enable Game 2 auto tactics node",
             ),
+            DeclareLaunchArgument(
+                "enable_belt",
+                default_value="auto",
+                description="Enable belt controller (auto: true for game2, false for game1)",
+            ),
+            DeclareLaunchArgument(
+                "enable_spring",
+                default_value="auto",
+                description="Enable spring controller (auto: true for game1, false for game2)",
+            ),
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
                 "hardware.launch.py",
@@ -119,10 +129,40 @@ def generate_launch_description():
             # --- 2. 操作系 & Foxglove Bridge ---
             include("input/joy_controller.launch.py"),
             include("foxglove_bridge.launch.py"),
-            # --- 3. アーム・射出・LED 各種コントローラ ---
-            include("controllers/belt_controller.launch.py"),
+            # --- 3. アーム・射出・LED 各種コントローラ (Game1: ばねON/ベルトOFF, Game2: ベルトON/ばねOFF) ---
+            include(
+                "controllers/belt_controller.launch.py",
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "('",
+                            LaunchConfiguration("enable_belt"),
+                            "' == 'true') or ('",
+                            LaunchConfiguration("enable_belt"),
+                            "' == 'auto' and '",
+                            LaunchConfiguration("game"),
+                            "' == 'game2')",
+                        ]
+                    )
+                ),
+            ),
             include("controllers/dribble_controller.launch.py"),
-            include("controllers/spring_controller.launch.py"),
+            include(
+                "controllers/spring_controller.launch.py",
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "('",
+                            LaunchConfiguration("enable_spring"),
+                            "' == 'true') or ('",
+                            LaunchConfiguration("enable_spring"),
+                            "' == 'auto' and '",
+                            LaunchConfiguration("game"),
+                            "' != 'game2')",
+                        ]
+                    )
+                ),
+            ),
             include("controllers/led_controller.launch.py"),
             # --- 4. BNO055 Heading Control Node (Feedforward + 2-DOF) from libbno055_linux ---
             Node(
