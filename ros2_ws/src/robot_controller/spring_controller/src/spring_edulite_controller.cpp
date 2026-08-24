@@ -405,6 +405,14 @@ void SpringEduliteController::actuator_state_callback(
     start_belt_clearance_motion();
   }
 
+  // Notify dependent controllers immediately after settling. Waiting for the
+  // periodic control timer adds unnecessary latency before the dribble arm can
+  // start moving. A pending clearance request changes the state from READY, so
+  // it cannot publish a premature completion here.
+  if (state_ == State::READY) {
+    publish_operation_state();
+  }
+
   // ゆっくり射出: 前進完了判定 (SLOW_FIRING_EXTENDING -> SLOW_FIRING_RETURNING)
   if (state_ == State::SLOW_FIRING_EXTENDING) {
     const double elapsed_sec = (now() - slow_fire_phase_start_time_).seconds();

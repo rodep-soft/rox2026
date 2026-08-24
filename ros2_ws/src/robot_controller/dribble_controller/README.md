@@ -68,7 +68,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ```bash
 ros2 param set /dribble_controller_node dribble_on_rpm 1000
 ros2 param set /dribble_controller_node shot_cycle_belt_spinup_level 2
-ros2 param set /dribble_controller_node belt_shot_delay_sec 0.1
+ros2 param set /dribble_controller_node belt_shot_delay_sec 0.0
 ros2 param set /dribble_controller_node dribble_position_rad 0.4
 ros2 param set /dribble_controller_node feeding_max_velocity_rad_s 3.5
 ```
