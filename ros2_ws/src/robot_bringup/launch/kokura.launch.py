@@ -87,14 +87,14 @@ def generate_launch_description():
                 description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
-                "model_name",
-                default_value="yolov5s",
-                description="YOLO model name",
+                "game",
+                default_value="game1",
+                description="Selected game mode: 'game1' (starts webcam & game1) or 'game2' (disables webcam to save USB/BPU bandwidth)",
             ),
             DeclareLaunchArgument(
                 "enable_webcam",
                 default_value="true",
-                description="Enable USB webcam launch (v4l2_camera)",
+                description="Enable USB webcam launch (v4l2_camera). Default true for Game 1.",
             ),
             DeclareLaunchArgument(
                 "video_device",
