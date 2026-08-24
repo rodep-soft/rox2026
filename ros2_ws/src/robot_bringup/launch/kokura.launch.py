@@ -89,7 +89,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "game",
                 default_value="game1",
-                description="Selected game mode: 'game1' (starts webcam & game1) or 'game2' (disables webcam to save USB/BPU bandwidth)",
+                description="Selected game mode: 'game1' (webcam, spring, EKF ON), 'game2' (belt, spring hold, vision ON, EKF OFF), 'game3' (all vision/cameras/EKF/belt OFF, manual/dribble/spring only)",
             ),
             DeclareLaunchArgument(
                 "enable_webcam",
@@ -114,12 +114,17 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "enable_belt",
                 default_value="auto",
-                description="Enable belt controller (auto: true for game2, false for game1)",
+                description="Enable belt controller (auto: true for game2, false for game1/game3)",
             ),
             DeclareLaunchArgument(
                 "enable_spring",
                 default_value="auto",
-                description="Enable spring controller (auto: true for game1, false for game2)",
+                description="Enable spring controller (always true/hold across games)",
+            ),
+            DeclareLaunchArgument(
+                "enable_ekf",
+                default_value="auto",
+                description="Enable EKF node (auto: true for game1, false for game2/game3)",
             ),
             # --- 1. ハードウェア通信 (CAN/VESC/EduLite/STM32) ---
             include(
@@ -172,8 +177,23 @@ def generate_launch_description():
                 output="screen",
                 parameters=[odometry_parameter_file],
             ),
-            # --- 6. 拡張カルマンフィルタ (EKF 自己位置推定ノード) ＆ AprilTag マップ位置補正ノード ---
-            include("ekf.launch.py"),
+            # --- 6. 拡張カルマンフィルタ (EKF: Game 1 で使用、Game 2 / Game 3 では OFF) ---
+            include(
+                "ekf.launch.py",
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "('",
+                            LaunchConfiguration("enable_ekf"),
+                            "' == 'true') or ('",
+                            LaunchConfiguration("enable_ekf"),
+                            "' == 'auto' and '",
+                            LaunchConfiguration("game"),
+                            "' == 'game1')",
+                        ]
+                    )
+                ),
+            ),
             Node(
                 package="robot_controller",
                 executable="apriltag_localizer_node",
@@ -183,6 +203,15 @@ def generate_launch_description():
                     os.path.join(bringup_share, "config", "apriltag_tag_map.yaml"),
                     {"field_side": LaunchConfiguration("side")},
                 ],
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "'",
+                            LaunchConfiguration("game"),
+                            "' == 'game1'",
+                        ]
+                    )
+                ),
             ),
             Node(
                 package="robot_controller",
@@ -204,7 +233,17 @@ def generate_launch_description():
                     os.path.join(bringup_share, "config", "game1.yaml"),
                     {"field_side": LaunchConfiguration("side")},
                 ],
-                condition=IfCondition(LaunchConfiguration("enable_game1")),
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "'",
+                            LaunchConfiguration("enable_game1"),
+                            "' == 'true' and '",
+                            LaunchConfiguration("game"),
+                            "' != 'game3'",
+                        ]
+                    )
+                ),
             ),
             Node(
                 package="robot_controller",
@@ -215,9 +254,19 @@ def generate_launch_description():
                     os.path.join(bringup_share, "config", "game2_controller.yaml"),
                     {"field_side": LaunchConfiguration("side")},
                 ],
-                condition=IfCondition(LaunchConfiguration("enable_game2")),
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "'",
+                            LaunchConfiguration("enable_game2"),
+                            "' == 'true' and '",
+                            LaunchConfiguration("game"),
+                            "' != 'game3'",
+                        ]
+                    )
+                ),
             ),
-            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO ---
+            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO (Game 1 / Game 2 で使用、Game 3 では全OFF) ---
             include(
                 "vision_launch.py",
                 launch_arguments=list(
@@ -237,9 +286,19 @@ def generate_launch_description():
                         "model_name": LaunchConfiguration("model_name"),
                     }.items()
                 ),
-                condition=IfCondition(LaunchConfiguration("enable_vision")),
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            "'",
+                            LaunchConfiguration("enable_vision"),
+                            "' == 'true' and '",
+                            LaunchConfiguration("game"),
+                            "' != 'game3'",
+                        ]
+                    )
+                ),
             ),
-            # --- 9. USB Webカメラ (V4L2 + AprilTag: Game 1 で自動起動、Game 2 では自動OFF) ---
+            # --- 9. USB Webカメラ (V4L2 + AprilTag: Game 1 で自動起動、Game 2 / Game 3 では自動OFF) ---
             include(
                 "webcam_launch.py",
                 launch_arguments=list(
@@ -255,7 +314,7 @@ def generate_launch_description():
                             LaunchConfiguration("enable_webcam"),
                             "' == 'true' and '",
                             LaunchConfiguration("game"),
-                            "' != 'game2'",
+                            "' == 'game1'",
                         ]
                     )
                 ),
