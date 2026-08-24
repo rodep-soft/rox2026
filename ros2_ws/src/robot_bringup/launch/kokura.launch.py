@@ -147,22 +147,7 @@ def generate_launch_description():
                 ),
             ),
             include("controllers/dribble_controller.launch.py"),
-            include(
-                "controllers/spring_controller.launch.py",
-                condition=IfCondition(
-                    PythonExpression(
-                        [
-                            "('",
-                            LaunchConfiguration("enable_spring"),
-                            "' == 'true') or ('",
-                            LaunchConfiguration("enable_spring"),
-                            "' == 'auto' and '",
-                            LaunchConfiguration("game"),
-                            "' != 'game2')",
-                        ]
-                    )
-                ),
-            ),
+            include("controllers/spring_controller.launch.py"),
             include("controllers/led_controller.launch.py"),
             # --- 4. BNO055 Heading Control Node (Feedforward + 2-DOF) from libbno055_linux ---
             Node(
