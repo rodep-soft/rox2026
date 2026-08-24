@@ -32,6 +32,8 @@ PACKAGE ?= $(pkg)
 
 build-package:
 	@test -n "$(PACKAGE)" || (echo "Usage: make build-package PACKAGE=<package> (or pkg=<package>)" && exit 1)
+	@echo "🧹 Cleaning install/$(PACKAGE) and build/$(PACKAGE)..."
+	rm -rf install/$(PACKAGE) build/$(PACKAGE)
 	CMAKE_BUILD_PARALLEL_LEVEL=$(BUILD_JOBS) \
 	colcon build \
 		$(COLCON_ARGS) \
