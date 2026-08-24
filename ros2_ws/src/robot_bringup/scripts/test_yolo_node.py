@@ -21,8 +21,8 @@ class TestYoloNode(Node):
     def __init__(self):
         super().__init__('test_yolo_node')
         self.image_topic = self.declare_parameter('image_topic', '/webcam/image_raw').value
-        self.model_name = self.declare_parameter('model_name', 'yolov8n.pt').value
-        self.conf_thresh = self.declare_parameter('conf_thresh', 0.25).value
+        self.model_name = self.declare_parameter('model_name', '/root/ros2_ws/src/robot_bringup/config/molten_ball_best.pt').value
+        self.conf_thresh = self.declare_parameter('conf_thresh', 0.18).value
 
         self.get_logger().info(f"Loading YOLOv8 model: {self.model_name}...")
         if YOLO is not None:
