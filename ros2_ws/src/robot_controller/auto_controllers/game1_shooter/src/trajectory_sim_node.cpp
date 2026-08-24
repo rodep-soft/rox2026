@@ -33,6 +33,7 @@ public:
     ball_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/sim/ball_marker", 10);
     footprint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/robot/footprint_marker", 10);
     detections_pub_ = create_publisher<apriltag_msgs::msg::AprilTagDetectionArray>("/detections", 10);
+    ball_pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("/detection", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // ── ROS 2 パラメータ読み込み (game1.yaml から直接注入) ──
@@ -370,6 +371,25 @@ private:
     }
 
     detections_pub_->publish(det_array);
+
+    // 6. ボール視覚検出 (YOLO/カメラ検出) シミュレーション (/detection 配信)
+    // ゲート通過後〜キャッチ前: カメラ視野 (0.3m〜5.0m, 前方画角内) にボールが入っていれば検出位置を配信
+    const double b_dx = ball_x_ - curr_x_;
+    const double b_dy = ball_y_ - curr_y_;
+    const double b_local_x =  std::cos(curr_yaw_) * b_dx + std::sin(curr_yaw_) * b_dy;
+    const double b_local_y = -std::sin(curr_yaw_) * b_dx + std::cos(curr_yaw_) * b_dy;
+
+    if (b_local_x > 0.3 && b_local_x < 5.0 && std::abs(b_local_y) < (b_local_x * 0.7)) {
+      geometry_msgs::msg::PoseStamped b_pose;
+      b_pose.header.stamp = now_stamp;
+      b_pose.header.frame_id = "map";
+      // YOLO の微小検出ジッター (±1.5cm) を重畳
+      b_pose.pose.position.x = ball_x_;
+      b_pose.pose.position.y = ball_y_;
+      b_pose.pose.position.z = 0.11;
+      b_pose.pose.orientation.w = 1.0;
+      ball_pose_pub_->publish(b_pose);
+    }
   }
 
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
@@ -378,6 +398,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ball_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr footprint_pub_;
   rclcpp::Publisher<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr detections_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr ball_pose_pub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr timer_;
 
