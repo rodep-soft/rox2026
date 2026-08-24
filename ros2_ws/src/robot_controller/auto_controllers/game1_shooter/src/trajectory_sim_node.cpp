@@ -145,14 +145,19 @@ private:
       const double dist = std::hypot(dx_world, dy_world);
 
       // ── ボール追従フェーズ (ゲート横回り込み〜キャッチ前): 転がるボールへ動的Yawロック ──
-      // キャッチ完了後 (ball_is_caught_ == true) および パスエリア運搬時 (segment 4): 即座に正面 (yaw = 0.0) にビタ固定
+      // キャッチ完了後 & パスエリア運搬時 (segment 4): パスエリア方向へ自然に少し旋回しながら直行
       double dynamic_target_yaw = target.yaw;
       if (current_segment_ == 2 || (current_segment_ == 3 && !ball_is_caught_)) {
         const double to_ball_dx = ball_x_ - curr_x_;
         const double to_ball_dy = ball_y_ - curr_y_;
         dynamic_target_yaw = std::atan2(to_ball_dy, to_ball_dx);
+      } else if (current_segment_ == 4) {
+        // パスエリア投下角度: 少し旋回しながら斜め前方のパスエリア中心を向いて直行
+        const double to_pass_dx = waypoints_[4].x - curr_x_;
+        const double to_pass_dy = waypoints_[4].y - curr_y_;
+        dynamic_target_yaw = std::atan2(to_pass_dy, to_pass_dx);
       } else {
-        dynamic_target_yaw = target.yaw; // 正面 (0.0) 完全固定で直線推進
+        dynamic_target_yaw = target.yaw;
       }
 
       const double yaw_err = std::remainder(dynamic_target_yaw - curr_yaw_, 2.0 * M_PI);
