@@ -187,6 +187,7 @@ def generate_launch_description():
                 name="game2_auto_node",
                 output="screen",
                 parameters=[
+                    os.path.join(bringup_share, "config", "game2_controller.yaml"),
                     {"field_side": LaunchConfiguration("side")},
                 ],
                 condition=IfCondition(LaunchConfiguration("enable_game2")),

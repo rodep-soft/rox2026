@@ -43,7 +43,7 @@ game2_auto_node:
     # false: ボール保持検知・ベルト昇降・ばね射出を含む本番フル自動射出
 
     # alignmentだけ行う半自動のときもtrueにしておく.
-    test_alignment_only: false
+    test_alignment_only: true
 
     # ── 射出・ボール制御パラメータ ──
     # 調整は手動でやるべき
