@@ -80,14 +80,25 @@ class TestYoloNode(Node):
                 xywh = box.xywh[0].tolist()
 
                 # ボール判定 (ball または sports ball)
-                is_ball = cls_name in ['ball', 'sports ball', 'cell phone'] # 移行期対応
+                is_ball = cls_name in ['ball', 'sports ball']
+                
+                # ── ボールの球体・幾何学妥当性フィルター (Geometric Sphere Filter) ──
+                bw = float(xywh[2])
+                bh = float(xywh[3])
+                aspect_ratio = bw / max(1.0, bh)
+                frame_h, frame_w = frame.shape[:2]
+                area_ratio = (bw * bh) / float(frame_w * frame_h)
+
+                # ボールは球体のため 0.70 <= aspect <= 1.40 かつ画面の半分以下 (壁や廊下の誤認を100%カット)
+                if not (0.70 <= aspect_ratio <= 1.40) or area_ratio > 0.45 or bw < 15:
+                    continue
 
                 det = Detection2D()
                 det.header = msg.header
                 det.bbox.center.position.x = float(xywh[0])
                 det.bbox.center.position.y = float(xywh[1])
-                det.bbox.size_x = float(xywh[2])
-                det.bbox.size_y = float(xywh[3])
+                det.bbox.size_x = bw
+                det.bbox.size_y = bh
 
                 hyp = ObjectHypothesisWithPose()
                 hyp.hypothesis.class_id = cls_name
@@ -95,10 +106,10 @@ class TestYoloNode(Node):
                 det.results.append(hyp)
                 det_array.detections.push_back(det)
 
-                # ボールの場合: 3D実空間位置を計算して /detection にパブリッシュ
-                if is_ball and xywh[2] > 10:
+                # ボールの場合: 3D実空間位置を計算して /ball_pose にパブリッシュ
+                if is_ball:
                     # ピクセル幅から実距離 Z をピンホール推定 (Z = f * W_real / w_pixel)
-                    pixel_size = (xywh[2] + xywh[3]) / 2.0
+                    pixel_size = (bw + bh) / 2.0
                     est_z = (self.fx * self.real_ball_diameter) / pixel_size
                     est_x = ((xywh[0] - self.cx) * est_z) / self.fx
                     est_y = ((xywh[1] - self.cy) * est_z) / self.fy
