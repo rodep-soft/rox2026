@@ -105,9 +105,7 @@ private:
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
   int shot_cycle_belt_spinup_level_{1};
-  double belt_spinup_delay_sec_{2.0};
-  double belt_ready_ratio_{0.9};
-  double belt_spinup_min_delay_sec_{0.1};
+  double belt_shot_delay_sec_{0.1};
   double prepare_from_open_delay_sec_{0.1};
   double slow_fire_dribble_position_rad_{-0.8};
   int slow_fire_dribble_rpm_{-500};
@@ -160,11 +158,9 @@ private:
   double current_arm_position_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
-  float roller_measured_rpm_{0.0f};
 
   int current_filtered_roller_rpm_{0};
   bool belt_auto_started_{false};
-  bool belt_spinup_started_{false};
   bool has_ball_{false};
   double filtered_roller_current_a_{0.0};
   bool roller_current_initialized_{false};

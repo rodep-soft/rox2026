@@ -27,40 +27,16 @@
 
 ### beltがSTOPの場合（自動spin-up）
 
-```
-[ボタン押下]
-    │
-    ▼
-ばねを現在の累積待機位置から standby_offset_rad 分だけ収納
-    │
-    ▼  0オフセット相当位置への到達・停止を待機
-    │
-    ▼
-belt を LEVEL_{shot_cycle_belt_spinup_level} に自動ON
-    │
-    ▼  belt_spinup_timeout_sec 秒待機（スピンアップ）
-    │
-    ▼
-DRIBBLE → FEED（直接押し込み射出）
-    │  feed_duration_sec 保持
-    ▼
-FEED → DRIBBLE（アーム復帰）
-    │
-    ▼
-belt を自動STOP
-```
+1. ボタン押下と同時にドリブルローラを shot_cycle_opening_rpm へ上げ、beltを自動ONする。
+2. 同時に、ばねを現在の累積待機位置から standby_offset_rad 分だけ収納する。
+3. belt_shot_delay_sec の経過と、ばねの収納・停止完了の両方を待つ。
+4. DRIBBLEからFEEDへ移動して押し込み射出する。
+5. DRIBBLEへ戻り、ばねを累積待機位置へ戻して、自動起動したbeltを停止する。
 
-### beltが既に回っている場合（即時shot）
+### beltが既に回っている場合
 
-```
-[ボタン押下]
-    │
-    ▼
-ばねを0オフセット相当位置まで収納・停止
-    │
-    ▼
-DRIBBLE → FEED → DRIBBLE（belt はそのまま）
-```
+beltはそのまま維持する。ドリブルローラの高回転化とばね収納を同時に開始し、
+belt_shot_delay_sec の経過とばね収納完了後にFEEDへ移動する。
 
 手動でアーム位置を変更すると shot cycle は中断される。
 emergency stopが有効な場合はshot cycle要求を無視する。
@@ -75,7 +51,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `cmd_vel_timeout_sec`（IMU補正後速度指令が途絶えたと判定する時間）
 - `cmd_vel_acceleration_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
-- `belt_spinup_timeout_sec`（beltが実測ローラRPMが届かない場合の最大待機時間[s]）
+- `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）
 - `dribble_position_rad``open_position_rad``feed_position_rad`
 - feed_duration_sec
 - `opening_max_velocity_rad_s`
@@ -92,7 +68,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 ```bash
 ros2 param set /dribble_controller_node dribble_on_rpm 1000
 ros2 param set /dribble_controller_node shot_cycle_belt_spinup_level 2
-ros2 param set /dribble_controller_node belt_spinup_timeout_sec 0.8
+ros2 param set /dribble_controller_node belt_shot_delay_sec 0.1
 ros2 param set /dribble_controller_node dribble_position_rad 0.4
 ros2 param set /dribble_controller_node feeding_max_velocity_rad_s 3.5
 ```

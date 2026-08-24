@@ -10,11 +10,12 @@
 #include "std_msgs/msg/int16.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
+#include "belt_controller/belt_controller.hpp"
+#include "dribble_controller/dribble_controller.hpp"
+#include "mecanum_controller/mecanum_controller_node.hpp"
 #include "robot_msgs/msg/arm_position.hpp"
 #include "robot_msgs/msg/belt_mode.hpp"
-#include "dribble_controller/dribble_controller.hpp"
-#include "belt_controller/belt_controller.hpp"
-#include "mecanum_controller/mecanum_controller_node.hpp"
+#include "robot_msgs/msg/spring_operation_state.hpp"
 #include "spring_controller/spring_edulite_controller.hpp"
 
 class RobotControllerTest : public ::testing::Test
@@ -356,7 +357,7 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   EXPECT_NEAR(last_position_rad, 1.3f, 0.01f);
 }
 
-TEST_F(RobotControllerTest, DribbleControllerShotCycleTimeoutTest) {
+TEST_F(RobotControllerTest, DribbleControllerShotCycleDelayTest) {
   auto dribble_node = std::make_shared<DribbleControllerNode>();
   auto test_node =
       std::make_shared<rclcpp::Node>("test_dribble_shot_timeout_client");
@@ -379,6 +380,10 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleTimeoutTest) {
 
   auto pub_shot_cycle = test_node->create_publisher<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", 1);
+  auto spring_state_pub =
+      test_node->create_publisher<robot_msgs::msg::SpringOperationState>(
+          "/spring/operation_state",
+          rclcpp::QoS(1).reliable().transient_local());
 
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(dribble_node);
@@ -394,15 +399,19 @@ TEST_F(RobotControllerTest, DribbleControllerShotCycleTimeoutTest) {
   }
   EXPECT_NEAR(last_position_rad, -0.86f, 0.01f);
 
-  // 実測RPMが来ない場合もタイムアウト後にFEEDへ進む。
+  // 設定したローラ待機時間の経過後にFEEDへ進む。
   const auto param_res = dribble_node->set_parameter(
-      rclcpp::Parameter("belt_spinup_timeout_sec", 0.0));
+      rclcpp::Parameter("belt_shot_delay_sec", 0.0));
   ASSERT_TRUE(param_res.successful);
 
-  // ベルトを自動起動し、タイムアウト後にFEEDへ向かう。
+  // ベルトとローラを自動起動し、ばね収納完了後にFEEDへ向かう。
   std_msgs::msg::Bool shot_msg;
   shot_msg.data = true;
   pub_shot_cycle->publish(shot_msg);
+
+  robot_msgs::msg::SpringOperationState spring_state;
+  spring_state.state = robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
+  spring_state_pub->publish(spring_state);
 
   // FEED (1.3 rad) に到達することを確認
   start = std::chrono::steady_clock::now();

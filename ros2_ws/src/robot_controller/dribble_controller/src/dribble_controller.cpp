@@ -159,21 +159,26 @@ void DribbleControllerNode::publish_belt_clearance_request(bool requested) {
 void DribbleControllerNode::start_shot_cycle() {
   RCLCPP_INFO(
       get_logger(),
-      "Belt shot requested: retracting spring to zero-offset position first");
+      "Belt shot requested: starting roller spin-up and spring retraction");
   manual_transition_active_ = false;
   shot_cycle_active_ = true;
   shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::BELT_SPINUP;
   shot_cycle_start_time_ = now();
   shot_cycle_start_position_rad_ = last_position_command_rad_;
   position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-  belt_spinup_started_ = false;
 
   constexpr float stopped_threshold_rpm = 100.0f;
   belt_auto_started_ =
       std::abs(upper_belt_measured_rpm_) < stopped_threshold_rpm &&
       std::abs(under_belt_measured_rpm_) < stopped_threshold_rpm;
+  if (belt_auto_started_) {
+    robot_msgs::msg::BeltMode belt_msg;
+    belt_msg.mode = static_cast<uint8_t>(shot_cycle_belt_spinup_level_);
+    belt_mode_pub_->publish(belt_msg);
+  }
 
   publish_belt_clearance_request(true);
+  update_and_publish_roller_command();
 }
 
 void DribbleControllerNode::emergency_stop_callback(
@@ -536,7 +541,7 @@ void DribbleControllerNode::control_timer_callback() {
   position_command_rad = update_manual_position_command(position_command_rad);
 
   if (shot_cycle_active_) {
-    if (belt_auto_started_ && belt_spinup_started_) {
+    if (belt_auto_started_) {
       robot_msgs::msg::BeltMode belt_msg;
       belt_msg.mode = static_cast<uint8_t>(shot_cycle_belt_spinup_level_);
       belt_mode_pub_->publish(belt_msg);
@@ -545,39 +550,17 @@ void DribbleControllerNode::control_timer_callback() {
       const bool spring_retracted =
           spring_operation_state_ ==
           robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
-      if (!belt_spinup_started_) {
-        if (!spring_retracted) {
-          publish_position_command(position_command_rad);
-          return;
-        }
-        belt_spinup_started_ = true;
-        shot_cycle_start_time_ = now();
-        if (belt_auto_started_) {
-          robot_msgs::msg::BeltMode belt_msg;
-          belt_msg.mode = static_cast<uint8_t>(shot_cycle_belt_spinup_level_);
-          belt_mode_pub_->publish(belt_msg);
-        }
-        RCLCPP_INFO(
-            get_logger(),
-            "Spring retracted to zero-offset position; starting belt spin-up");
-      }
-
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
-      const double required_rpm =
-          std::abs(shot_cycle_opening_rpm_) * belt_ready_ratio_;
-      const bool roller_ready = std::abs(roller_measured_rpm_) >= required_rpm;
-      const bool minimum_delay_elapsed =
-          elapsed_sec >= belt_spinup_min_delay_sec_;
-      if ((roller_ready && minimum_delay_elapsed) ||
-          elapsed_sec >= belt_spinup_delay_sec_) {
+      if (spring_retracted && elapsed_sec >= belt_shot_delay_sec_) {
         shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
         position_mode_ = robot_msgs::msg::ArmPosition::FEED;
         RCLCPP_INFO(
             get_logger(),
-            "Shot Cycle: BELT_SPINUP -> FEED (roller %.1f / required %.1f RPM)",
-            roller_measured_rpm_, required_rpm);
+            "Shot Cycle: spring retracted and %.3f s roller delay elapsed; "
+            "starting FEED",
+            elapsed_sec);
       }
     } else {
       const uint8_t return_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
@@ -657,8 +640,7 @@ int DribbleControllerNode::roller_target_rpm() const {
   if (shot_cycle_active_) {
     switch (shot_cycle_phase_) {
     case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
-      return belt_spinup_started_ ? shot_cycle_opening_rpm_
-                                  : (dribble_enabled_ ? dribble_on_rpm_ : 0);
+      return shot_cycle_opening_rpm_;
     case robot_msgs::msg::ShotCycleState::FEEDING: {
       // FEEDING 移動中、アーム角度が真下 (bottom_position_rad_)
       // を通過するまでは回転数を 100% 維持 真下を通過して逆側 (FEED)
@@ -809,13 +791,9 @@ DribbleControllerNode::parameter_bindings() {
       {"slow_fire_dribble_position_rad", &slow_fire_dribble_position_rad_,
        C::NONE, true},
       {"feed_duration_sec", &feed_duration_sec_, C::NONNEGATIVE, true},
-      {"belt_spinup_timeout_sec", &belt_spinup_delay_sec_, C::NONNEGATIVE,
-       false},
-      {"belt_spinup_min_delay_sec", &belt_spinup_min_delay_sec_, C::NONNEGATIVE,
-       false},
+      {"belt_shot_delay_sec", &belt_shot_delay_sec_, C::NONNEGATIVE, false},
       {"prepare_from_open_delay_sec", &prepare_from_open_delay_sec_,
        C::NONNEGATIVE, false},
-      {"belt_ready_ratio", &belt_ready_ratio_, C::UNIT_INTERVAL, false},
       {"opening_max_velocity_rad_s", &opening_max_velocity_rad_s_, C::POSITIVE,
        true},
       {"feeding_max_velocity_rad_s", &feeding_max_velocity_rad_s_, C::POSITIVE,
