@@ -144,12 +144,15 @@ private:
       const double dy_world = target.y - curr_y_;
       const double dist = std::hypot(dx_world, dy_world);
 
-      // ── ボール追従フェーズ (ゲート横回り込み〜キャッチ): 常に転がるボールへ正面 (Yaw) を向け続ける ──
+      // ── ボール追従フェーズ (ゲート横回り込み〜キャッチ前): 転がるボールへ動的Yawロック ──
+      // キャッチ完了後 (ball_is_caught_ == true) および パスエリア運搬時 (segment 4): 即座に正面 (yaw = 0.0) にビタ固定
       double dynamic_target_yaw = target.yaw;
-      if ((current_segment_ == 2 || current_segment_ == 3) && !ball_is_caught_) {
+      if (current_segment_ == 2 || (current_segment_ == 3 && !ball_is_caught_)) {
         const double to_ball_dx = ball_x_ - curr_x_;
         const double to_ball_dy = ball_y_ - curr_y_;
         dynamic_target_yaw = std::atan2(to_ball_dy, to_ball_dx);
+      } else {
+        dynamic_target_yaw = target.yaw; // 正面 (0.0) 完全固定で直線推進
       }
 
       const double yaw_err = std::remainder(dynamic_target_yaw - curr_yaw_, 2.0 * M_PI);
@@ -159,13 +162,13 @@ private:
       double target_vx_world = 0.0, target_vy_world = 0.0;
       if (dist > 1e-4) {
         // ── セグメント別 安全速度制限 ──
-        // ゲート横回り込み (segment 2): 障害物接触を避けるため安全速度 1.8 m/s に抑制
-        // ボールキャッチ時 (segment 3): キャッチ直後はドリブル吸着安定化のため 2.0 m/s
         double seg_speed_max = max_linear_vel_;
         if (current_segment_ == 2) {
           seg_speed_max = 1.80; // ゲート横安全通過速度
         } else if (current_segment_ == 3 && !ball_is_caught_) {
-          seg_speed_max = 2.20; // ボールアプローチ減速
+          seg_speed_max = 2.00; // ボールアプローチ減速
+        } else if (current_segment_ == 4) {
+          seg_speed_max = 3.00; // パスエリア運搬安定速度
         }
 
         constexpr double a_brake = 8.0; // m/s^2 (急制動減速度)
