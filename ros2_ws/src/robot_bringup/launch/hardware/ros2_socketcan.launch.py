@@ -17,9 +17,12 @@ def wait_for_can_interface(context):
 
     if auto_reset:
         try:
-            # TCAN4550 (TI SPI-CAN) の内部PLLとLDOが安定化するよう 0.2s のディレイを設けてリセット
+            # TCAN4550 チップのハードウェアフリーズを確実に解消するためドライバを物理リロード
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "down"], capture_output=True, timeout=2.0)
-            time.sleep(0.2)
+            subprocess.run(["sudo", "modprobe", "-r", "tcan4x5x"], capture_output=True, timeout=2.0)
+            time.sleep(0.3)
+            subprocess.run(["sudo", "modprobe", "tcan4x5x"], capture_output=True, timeout=2.0)
+            time.sleep(0.3)
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "type", "can", "bitrate", "1000000", "restart-ms", "100"], capture_output=True, timeout=2.0)
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "txqueuelen", "1000"], capture_output=True, timeout=2.0)
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "up"], capture_output=True, timeout=2.0)
