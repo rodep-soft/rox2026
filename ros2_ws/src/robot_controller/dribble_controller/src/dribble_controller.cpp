@@ -202,117 +202,84 @@ void DribbleControllerNode::start_shot_cycle()
   update_and_publish_roller_command();
 }
 
-// 非常停止のデータが来た時のコールバック
-void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+/// @brief ドリブル機構の位置と回転数を指定する関数
+/// @param start_pos_rad セットする角度
+/// @param start_rpm セットする回転数
+void DribbleControllerNode::resume_arm_control(double start_pos_rad, int start_rpm)
 {
-  const bool initial_release = startup_waiting_for_emergency_release_ && startup_emergency_seen_active_ && !msg->data;
-  if (msg->data == emergency_stop_active_ && !initial_release) {
+  arm_cmd_pos_rad_ = start_pos_rad;
+  if (shot_cycle_active_) {
+    shot_phase_start_pos_rad_ = start_pos_rad;
+    shot_phase_start_time_ = now();
     return;
   }
+  is_arm_moving_ = true;
+  arm_move_start_pos_rad_ = start_pos_rad;
+  arm_move_start_time_ = now();
+  arm_move_start_rpm_ = start_rpm;
+}
 
+/// @brief 非常停止の値を受信する関数
+void DribbleControllerNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  //値変更時に一度だけ実行
+  if (msg->data == emergency_stop_active_) {
+    return;
+  }
   emergency_stop_active_ = msg->data;
 
   if (emergency_stop_active_) {
-    startup_emergency_seen_active_ = true;
-    emergency_hold_position_rad_ = edulite_state_received_ ?
-      current_arm_pos_rad_ :
-      arm_cmd_pos_rad_;
-    arm_cmd_pos_rad_ = emergency_hold_position_rad_;
+    //非常停止時はローラを止めて，アームを現在位置に固定する
+    hold_arm_pos_rad_ = is_arm_ready_ ? arm_pos_rad_ : arm_cmd_pos_rad_;
+    arm_cmd_pos_rad_ = hold_arm_pos_rad_;
     roller_cmd_rpm_ = 0;
     RCLCPP_WARN(
       get_logger(),
-      "Emergency stop activated: holding dribble arm at %.3f rad",
-      emergency_hold_position_rad_);
+      "Emergency stop: holding dribble arm at %.3f rad", hold_arm_pos_rad_);
   } else {
-    if (startup_waiting_for_emergency_release_) {
-      startup_waiting_for_emergency_release_ = false;
-      shot_cycle_active_ = false;
-      position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-      RCLCPP_INFO(
-        get_logger(),
-        "Initial emergency stop released: moving to DRIBBLE posture");
-    }
-
-    const double resume_position_rad = edulite_state_received_ ?
-      current_arm_pos_rad_ :
-      emergency_hold_position_rad_;
-
-    // Preserve the pre-stop mode and shot-cycle phase. Restart interpolation
-    // from the measured position so that releasing emergency stop cannot apply
-    // a discontinuous target.
-    if (shot_cycle_active_) {
-      shot_phase_start_pos_rad_ = resume_position_rad;
-      shot_phase_start_time_ = now();
-    } else {
-      is_arm_moving_ = true;
-      arm_move_start_pos_rad_ = resume_position_rad;
-      arm_move_start_time_ = now();
-      arm_move_start_rpm_ = 0;
-    }
-    arm_cmd_pos_rad_ = resume_position_rad;
+    // 現在位置と0回転から再開する
+    const double start_pos_rad = is_arm_ready_ ? arm_pos_rad_ : hold_arm_pos_rad_;
+    resume_arm_control(start_pos_rad, 0);
     RCLCPP_INFO(
       get_logger(),
-      "Emergency stop released: resuming dribble operation from %.3f rad",
-      resume_position_rad);
+      "Emergency stop released: resuming from %.3f rad", start_pos_rad);
   }
   control_timer_callback();
 }
 
-/// @brief アームのeduliteのデータ受信関数
-void DribbleControllerNode::edulite_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+/// @brief armのeduliteの状態を受信する関数
+void DribbleControllerNode::edulite_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id != position_logical_id_) {
     return;
   }
 
   if (msg->state != actuator_msgs::msg::ActuatorState::STATE_READY) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 10000,
-        "Dribble EduLite disconnected; pausing position commands");
-    edulite_ready_ = false;
-    last_arm_cmd_pos_rad_.reset();
+    // eduliteの起動ができていない場合
+    if (is_arm_ready_) {
+      RCLCPP_WARN(
+        get_logger(), "Dribble EduLite disconnected; pausing arm commands");
+    }
+    is_arm_ready_ = false;
     return;
   }
 
-  const bool reconnected = edulite_state_received_ && !edulite_ready_;
-  edulite_ready_ = true;
-  current_arm_pos_rad_ = msg->position;
-
-  // 準備完了以外の状態になった場合，現在位置を取得して，非常停止がかかっている場合は停止，かかっていない場合は移動する
-  if (!edulite_state_received_) {
-    edulite_state_received_ = true;
-    arm_cmd_pos_rad_ = msg->position;
-    emergency_hold_position_rad_ = msg->position;
-    position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-    if (!startup_waiting_for_emergency_release_) {
-      is_arm_moving_ = true;
-      arm_move_start_time_ = now();
-      arm_move_start_pos_rad_ = msg->position;
-      arm_move_start_rpm_ = 0;
-    }
-    RCLCPP_INFO(
-      get_logger(),
-      "Arm initial position received: %.3f rad; waiting for "
-      "emergency release: %s",
-      msg->position,
-      startup_waiting_for_emergency_release_ ? "yes" : "no");
-  } else if (reconnected) {
-    arm_cmd_pos_rad_ = msg->position;
-    emergency_hold_position_rad_ = msg->position;
-    if (shot_cycle_active_) {
-      shot_phase_start_pos_rad_ = msg->position;
-      shot_phase_start_time_ = now();
-    } else {
-      is_arm_moving_ = true;
-      arm_move_start_pos_rad_ = msg->position;
-      arm_move_start_time_ = now();
-      arm_move_start_rpm_ = roller_cmd_rpm_;
-    }
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 10000,
-      "Dribble EduLite reconnected at %.3f rad; resuming smoothly",
-      msg->position);
+  // eduliteの準備ができたとき一度だけ下を実行
+  if (is_arm_ready_) {
+    return;
   }
+  is_arm_ready_ = true;
+  arm_pos_rad_ = msg->position;
+  arm_cmd_pos_rad_ = arm_pos_rad_;
+  hold_arm_pos_rad_ = arm_pos_rad_;
+
+  // 非常が解除されている状態で準備完了した場合，目標値のリセット
+  if (!emergency_stop_active_) {
+    resume_arm_control(arm_pos_rad_, roller_cmd_rpm_);
+  }
+  RCLCPP_INFO(
+    get_logger(), "Dribble EduLite ready at %.3f rad", arm_pos_rad_);
 }
 
 /// @brief ローラやベルトの赤ブラシのデータを取得
@@ -448,10 +415,12 @@ void DribbleControllerNode::update_and_publish_roller_command()
   roller_command.logical_id = roller_logical_id_;
   roller_command.target = static_cast<float>(roller_cmd_rpm_);
   roller_command_pub_->publish(roller_command);
-  last_roller_cmd_rpm_ = roller_cmd_rpm_;
 }
 
-double DribbleControllerNode::apply_arm_move_trajectory(double target_rad)
+/// @brief 台形制御の目標値の更新
+/// @param target_rad 最終の目標値
+/// @return 現在の目標値
+double DribbleControllerNode::update_arm_move_trajectory(double target_rad)
 {
   if (!is_arm_moving_ || shot_cycle_active_) {
     return target_rad;
@@ -476,7 +445,6 @@ double DribbleControllerNode::apply_arm_move_trajectory(double target_rad)
 /// @param target_rad 目標角度
 void DribbleControllerNode::publish_arm_target(double target_rad)
 {
-  last_arm_cmd_pos_rad_ = target_rad;
   actuator_msgs::msg::ActuatorTarget target;
   target.logical_id = position_logical_id_;
   target.target = static_cast<float>(target_rad);
@@ -490,17 +458,14 @@ void DribbleControllerNode::publish_arm_target(double target_rad)
 
 void DribbleControllerNode::control_timer_callback()
 {
-  //今のシュートサイクルを取得する
+  //今のシュートサイクルを取得し，変化があった場合送信
   const uint8_t current_state = shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
   if (current_state != last_published_shot_cycle_state_) {
-    // シュートサイクルに変化があった場合のみ送信
     robot_msgs::msg::ShotCycleState state;
     state.state = current_state;
     shot_cycle_state_pub_->publish(state);
     last_published_shot_cycle_state_ = current_state;
   }
-
-  update_and_publish_roller_command();
 
   // 移動速度や加速度に応じてローラの回転速度を変化させる
   const bool cmd_vel_fresh = last_cmd_vel_time_.nanoseconds() > 0 && (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
@@ -513,40 +478,33 @@ void DribbleControllerNode::control_timer_callback()
     const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ + backward_acc * backward_acc_rpm_per_mps2_;
     current_motion_boost_rpm_ = std::min(max_boost_rpm_, static_cast<int>(std::round(raw_boost)));
   }
+  update_and_publish_roller_command();
 
-  // armのeduliteがREADY以外の状態もしくは非常停止がかかっている場合は現在位置で停止したままにする
-
-  if (!edulite_ready_) {
+  // armのeduliteがREADY以外の状態は送信処理をせずに終了
+  if (!is_arm_ready_) {
     return;
   }
-
-  if (startup_waiting_for_emergency_release_) {
-    publish_arm_target(emergency_hold_position_rad_);
-    return;
-  }
-
+  // 非常停止中は一定角度を送信
   if (emergency_stop_active_) {
-    publish_arm_target(emergency_hold_position_rad_);
+    publish_arm_target(hold_arm_pos_rad_);
     return;
   }
 
-  if (is_pre_shot_active_) {
-    if (!is_arm_moving_) {
-      if (!is_pre_shot_waiting_) {
-        is_pre_shot_waiting_ = true;
-        pre_shot_wait_start_time_ = now();
-      } else if ((now() - pre_shot_wait_start_time_).seconds() >=
-        prepare_from_open_delay_sec_)
-      {
-        is_pre_shot_active_ = false;
-        is_pre_shot_waiting_ = false;
-        start_shot_cycle();
-      }
+  if (is_pre_shot_active_ && !is_arm_moving_) {
+    if (!is_pre_shot_waiting_) {
+      is_pre_shot_waiting_ = true;
+      pre_shot_wait_start_time_ = now();
+    } else if ((now() - pre_shot_wait_start_time_).seconds() >=
+      prepare_from_open_delay_sec_)
+    {
+      is_pre_shot_active_ = false;
+      is_pre_shot_waiting_ = false;
+      start_shot_cycle();
     }
   }
 
   double position_command_rad = get_target_position_rad();
-  position_command_rad = apply_arm_move_trajectory(position_command_rad);
+  position_command_rad = update_arm_move_trajectory(position_command_rad);
 
   if (shot_cycle_active_) {
     if (belt_auto_started_) {
@@ -585,34 +543,19 @@ void DribbleControllerNode::control_timer_callback()
           elapsed_sec);
       }
     } else {
-      const uint8_t return_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-      const double return_target_rad = dribble_position_rad_;
-
-      double phase_target_rad = return_target_rad;
-      double phase_max_vel_rad_s = returning_max_rad_s_;
-      double hold_duration_sec = 0.0;
-
-      switch (shot_cycle_phase_) {
-        case robot_msgs::msg::ShotCycleState::FEEDING:
-          position_mode_ = robot_msgs::msg::ArmPosition::FEED;
-          phase_target_rad = feed_pos_rad_;
-          phase_max_vel_rad_s = feeding_max_rad_s_;
-          hold_duration_sec = feed_duration_sec_;
-          break;
-        case robot_msgs::msg::ShotCycleState::RETURNING:
-          position_mode_ = return_mode;
-          phase_target_rad = return_target_rad;
-          phase_max_vel_rad_s = returning_max_rad_s_;
-          break;
-        default:
-          break;
-      }
-
+      const bool is_feeding =
+        shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING;
+      position_mode_ = is_feeding ?
+        robot_msgs::msg::ArmPosition::FEED :
+        robot_msgs::msg::ArmPosition::DRIBBLE;
+      const double phase_target_rad =
+        is_feeding ? feed_pos_rad_ : dribble_position_rad_;
+      const double phase_max_vel_rad_s =
+        is_feeding ? feeding_max_rad_s_ : returning_max_rad_s_;
+      const double phase_max_rad_s2 =
+        is_feeding ? feeding_max_rad_s2_ : returning_max_rad_s2_;
+      const double hold_duration_sec = is_feeding ? feed_duration_sec_ : 0.0;
       const double elapsed_sec = (now() - shot_phase_start_time_).seconds();
-      double phase_max_rad_s2 = returning_max_rad_s2_;
-      if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
-        phase_max_rad_s2 = feeding_max_rad_s2_;
-      }
       const auto trajectory = sample_trapezoidal_trajectory(
         shot_phase_start_pos_rad_, phase_target_rad, elapsed_sec,
         phase_max_vel_rad_s, phase_max_rad_s2);
@@ -623,7 +566,7 @@ void DribbleControllerNode::control_timer_callback()
         shot_phase_start_pos_rad_ = phase_target_rad;
         shot_phase_start_time_ = now();
 
-        if (shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING) {
+        if (is_feeding) {
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
           RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING");
         } else {
@@ -632,7 +575,7 @@ void DribbleControllerNode::control_timer_callback()
           has_ball_ = false;
           ball_detected_counter_ = 0;
           ball_lost_counter_ = ball_detection_debounce_count_;
-          position_mode_ = return_mode;
+          position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
           if (belt_auto_started_) {
             belt_auto_started_ = false;
             robot_msgs::msg::BeltMode belt_msg;
@@ -668,19 +611,8 @@ int DribbleControllerNode::roller_target_rpm() const
     switch (shot_cycle_phase_) {
       case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
         return shot_cycle_opening_rpm_;
-      case robot_msgs::msg::ShotCycleState::FEEDING: {
-          // FEEDING 移動中、アーム角度が真下 (bottom_pos_rad_)
-          // を通過するまでは回転数を 100% 維持 真下を通過して逆側 (FEED)
-          // へ向かう間に 0 RPM へ滑らかに減速
-          if (current_arm_pos_rad_ < bottom_pos_rad_) {
-            // まだ真下に到達していない
-            return shot_cycle_opening_rpm_;
-          }
-          // 真下を通過して逆側の FEED へ進行中 -> 0 RPM へ減速
-          const double total_range = std::max(0.001, feed_pos_rad_ - bottom_pos_rad_);
-          const double progress = std::clamp((current_arm_pos_rad_ - bottom_pos_rad_) / total_range, 0.0, 1.0);
-          return static_cast<int>(shot_cycle_opening_rpm_ + (shot_cycle_feeding_rpm_ - shot_cycle_opening_rpm_) * progress);
-        }
+      case robot_msgs::msg::ShotCycleState::FEEDING:
+        return shot_cycle_feeding_rpm_;
       case robot_msgs::msg::ShotCycleState::RETURNING:
         return shot_cycle_returning_rpm_;
     }

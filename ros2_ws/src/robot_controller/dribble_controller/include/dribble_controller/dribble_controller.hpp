@@ -33,19 +33,19 @@ private:
   void start_shot_cycle();
   void set_spring_clearance(bool enabled);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void resume_arm_control(double start_pos_rad, int start_rpm);
   void edulite_state_callback(
     const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void
   vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
+  void update_ball_detection(double current_a);
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void spring_operation_state_callback(
     const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void control_timer_callback();
-  void update_motion_compensation();
   void update_and_publish_roller_command();
   double apply_arm_move_trajectory(double target_rad);
   void publish_arm_target(double target_rad);
-  void publish_shot_cycle_state();
   int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult
   parameter_callback(const std::vector<rclcpp::Parameter> & parameters);
@@ -109,12 +109,9 @@ private:
   // ── 状態変数 ────────────────────────────────────────
   uint8_t position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_{false};
-  bool emergency_stop_active_{false};
-  bool edulite_state_received_{false};
-  bool edulite_ready_{false};
-  bool startup_waiting_for_emergency_release_{true};
-  bool startup_emergency_seen_active_{false};
-  double emergency_hold_position_rad_{0.0};
+  bool emergency_stop_active_{true};
+  bool is_arm_ready_{false};
+  double hold_arm_pos_rad_{0.0};
 
   // 運動補正用の一時変数
   double commanded_vx_m_s_{0.0};
@@ -138,7 +135,7 @@ private:
   rclcpp::Time shot_phase_start_time_;
   double shot_phase_start_pos_rad_{0.0};
   double arm_cmd_pos_rad_{-0.86};
-  double current_arm_position_rad_{0.0};
+  double arm_pos_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
 
@@ -148,8 +145,6 @@ private:
   double filtered_roller_current_a_{0.0};
   bool roller_current_initialized_{false};
   std::optional<bool> last_published_ball_state_;
-  std::optional<double> last_arm_cmd_pos_rad_;
-  std::optional<int> last_roller_cmd_rpm_;
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{
