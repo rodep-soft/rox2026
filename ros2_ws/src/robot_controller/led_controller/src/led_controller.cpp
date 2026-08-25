@@ -130,10 +130,12 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
   }
 
   switch (shot_cycle_state_) {
-    case robot_msgs::msg::ShotCycleState::OPENING:   return DisplayMode::SHOT_OPENING;
-    case robot_msgs::msg::ShotCycleState::FEEDING:   return DisplayMode::LOADING;
-    case robot_msgs::msg::ShotCycleState::RETURNING: return DisplayMode::RETURNING;
-    default: break;
+    case robot_msgs::msg::ShotCycleState::FEEDING:
+      return DisplayMode::LOADING;
+    case robot_msgs::msg::ShotCycleState::RETURNING:
+      return DisplayMode::RETURNING;
+    default:
+      break;
   }
 
   return DisplayMode::READY;

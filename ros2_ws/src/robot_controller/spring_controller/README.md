@@ -2,7 +2,7 @@
 
 ばね用EduLite 05を一方向のProfile Position制御で動かすノード。
 起動時とEduLite再接続時にリミットスイッチで原点を取り、通常運転では
-発射要求ごとに累積位置目標へ1周分の負角度を加算する。
+発射要求ごとに累積位置目標へ1周分の負角度を減算する。
 
 ## 関連ファイル
 
@@ -73,6 +73,7 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 再びREADYになっても`position_reference_set=false`なら、必ずHOMINGから再開する。
 
 非常停止中は累積目標値を変更しない。解除後も同じ目標位置を維持する。
+ベルト発射時は現在の累積待機位置から `standby_offset_rad` だけ収納し、収納完了後にベルト発射を許可する。発射後は元の累積待機位置へ戻る。
 非常停止中に届いた発射要求は拒否する。
 
 ## 主なパラメータ
@@ -80,15 +81,20 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 | parameter | 内容 |
 |---|---|
 | `standby_offset_rad` | 0点合わせ後に待機位置へ移動するためのオフセット角度[rad] |
-| `standby_position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
-| `fire_increment_rad` | 発射要求1回で加算する回転角度[rad] |
-| `slow_fire_target_rad` | 低速発射の押し出し量[rad] |
-| `slow_fire_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
+| `belt_clearance_ready_travel_rad` | ベルト収納開始位置からアーム動作を許可するまでの収納回転量[rad] |
+| `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
+| `fire_increment_rad` | 発射要求1回で減算する回転角度[rad] |
+| `slow_fire_move_spring` | trueなら従来どおりばねを動かし、falseならアームとローラのみ動作 |
+| `slow_fire_arm_only_duration_sec` | アームのみモードを有効にする総時間[s] |
+| `slow_fire_base_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
+| `slow_fire_velocity_gain_rad_per_m` | IMU補正後cmd_velの前進速度1 m/sあたりに減算する押し出し速度[rad/s] |
 | `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |
+| `cmd_vel_topic` | スロー発射速度補正に使うIMU補正後の速度指令トピック |
+| `cmd_vel_timeout_sec` | 速度指令が途絶えた場合に補正を無効化するまでの時間[s] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
 | `homing_timeout_sec` | ホーミングのタイムアウト[s] |
-| `zeroing_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
-| `zeroing_required_stable_feedback_count` | 静止判定に必要な連続回数 |
+| `stopped_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
+| `required_stable_feedback_count` | 静止判定に必要な連続回数 |
 | `command_period_ms` | 位置目標の更新・再送周期[ms] |
 | `limit_switch_bit_offset` | リミットスイッチbyte内の使用bit |
 
