@@ -433,9 +433,6 @@ void Game2AutoNode::control_loop()
 
   if (!is_enabled_ || emergency_stop_active_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
     last_cmd_wz_ = 0.0;
-    publish_all(
-      geometry_msgs::msg::Twist{}, 0.0f, 0.0f,
-      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 

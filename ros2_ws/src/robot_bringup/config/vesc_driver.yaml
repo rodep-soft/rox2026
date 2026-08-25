@@ -39,5 +39,5 @@
       feedback_timeout_ms: 500
       max_rpm: 5600.0
       rpm_slew_rate: 5000.0
-      startup_current_a: 2.0
-      rpm_control_threshold_rpm: 0.0
+      startup_current_a: 4.5
+      rpm_control_threshold_rpm: 800.0

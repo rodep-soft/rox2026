@@ -218,9 +218,6 @@ bool Game1AutoNode::is_aligned_to_target(const Waypoint & target)
 void Game1AutoNode::control_loop()
 {
   if (!is_enabled_ || state_ == Game1State::STANDBY) {
-    publish_commands(
-      geometry_msgs::msg::Twist{}, false, robot_msgs::msg::ArmPosition::DRIBBLE,
-      false);
     return;
   }
 
