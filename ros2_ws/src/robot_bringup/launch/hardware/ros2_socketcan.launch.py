@@ -1,3 +1,4 @@
+import subprocess
 import time
 from pathlib import Path
 
@@ -12,6 +13,17 @@ IFF_UP = 0x1
 def wait_for_can_interface(context):
     interface_name = LaunchConfiguration("can_interface").perform(context)
     timeout_sec = float(LaunchConfiguration("can_startup_timeout_sec").perform(context))
+    auto_reset = LaunchConfiguration("auto_reset_can").perform(context).lower() == "true"
+
+    if auto_reset:
+        try:
+            # 起動時に常にクリーンな状態で通信を開始できるよう自動リセット (restart-ms=20ms 高速自動復帰)
+            subprocess.run(["sudo", "ip", "link", "set", interface_name, "down"], capture_output=True, timeout=2.0)
+            subprocess.run(["sudo", "ip", "link", "set", interface_name, "txqueuelen", "1000"], capture_output=True, timeout=2.0)
+            subprocess.run(["sudo", "ip", "link", "set", interface_name, "up", "type", "can", "bitrate", "1000000", "restart-ms", "20"], capture_output=True, timeout=2.0)
+        except Exception:
+            pass
+
     interface_path = Path("/sys/class/net") / interface_name
     flags_path = interface_path / "flags"
     deadline = time.monotonic() + timeout_sec
@@ -63,7 +75,7 @@ def create_socketcan_nodes(interface_name):
                 "interface": interface_name,
                 "enable_can_fd": False,
                 "enable_frame_loopback": False,
-                "timeout_sec": 0.05,
+                "timeout_sec": 0.20,
                 # Avoid launch-service races on slower computers.
                 "auto_configure": True,
                 "auto_activate": True,
@@ -86,6 +98,11 @@ def generate_launch_description():
                 "can_startup_timeout_sec",
                 default_value="5.0",
                 description="Time to wait for the SocketCAN interface to become UP",
+            ),
+            DeclareLaunchArgument(
+                "auto_reset_can",
+                default_value="true",
+                description="Automatically flush and reset CAN interface on launch",
             ),
             OpaqueFunction(function=wait_for_can_interface),
         ]
