@@ -8,13 +8,13 @@ TEST(MecanumOdometryTest, UsesRosBodyAxisSigns)
   constexpr double rotation_radius_m = (0.355 + 0.353) / 2.0;
 
   const auto forward = mecanum_odometry::calculate_body_velocity(
-    {-10.0, 10.0, -10.0, 10.0}, wheel_radius_m, rotation_radius_m);
+    {10.0, 10.0, -10.0, -10.0}, wheel_radius_m, rotation_radius_m);
   EXPECT_NEAR(forward.x_m_s, 0.75, 1e-9);
   EXPECT_NEAR(forward.y_m_s, 0.0, 1e-9);
   EXPECT_NEAR(forward.yaw_rad_s, 0.0, 1e-9);
 
   const auto left = mecanum_odometry::calculate_body_velocity(
-    {10.0, 10.0, -10.0, -10.0}, wheel_radius_m, rotation_radius_m);
+    {-10.0, 10.0, -10.0, 10.0}, wheel_radius_m, rotation_radius_m);
   EXPECT_NEAR(left.x_m_s, 0.0, 1e-9);
   EXPECT_NEAR(left.y_m_s, 0.75, 1e-9);
   EXPECT_NEAR(left.yaw_rad_s, 0.0, 1e-9);

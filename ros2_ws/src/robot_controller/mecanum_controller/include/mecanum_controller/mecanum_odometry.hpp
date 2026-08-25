@@ -64,11 +64,11 @@ inline BodyVelocity calculate_body_velocity(
   const std::array<double, WHEEL_COUNT> & wheel_velocity_rad_s,
   const double wheel_radius_m, const double rotation_radius_m)
 {
-  // Exact inverse transformation of mecanum_controller_node inverse kinematics:
-  // wheel_vel[FL] = -(Vx - Vy + L*Wz) / R
+  // Exact mathematical inverse transformation of mecanum_controller_node kinematics:
+  // wheel_vel[FL] =  (Vx - Vy - L*Wz) / R
   // wheel_vel[FR] =  (Vx + Vy - L*Wz) / R
   // wheel_vel[RL] = -(Vx + Vy + L*Wz) / R
-  // wheel_vel[RR] =  (Vx - Vy - L*Wz) / R
+  // wheel_vel[RR] = -(Vx - Vy + L*Wz) / R
 
   const double w_fl = wheel_velocity_rad_s[FRONT_LEFT];
   const double w_fr = wheel_velocity_rad_s[FRONT_RIGHT];
@@ -76,9 +76,9 @@ inline BodyVelocity calculate_body_velocity(
   const double w_rr = wheel_velocity_rad_s[REAR_RIGHT];
 
   BodyVelocity velocity;
-  velocity.x_m_s = (-w_fl + w_fr - w_rl + w_rr) * wheel_radius_m / 4.0;
-  velocity.y_m_s = ( w_fl + w_fr - w_rl - w_rr) * wheel_radius_m / 4.0;
-  velocity.yaw_rad_s = (-w_fl - w_fr - w_rl - w_rr) * wheel_radius_m / (4.0 * rotation_radius_m);
+  velocity.x_m_s = ( w_fl + w_fr - w_rl - w_rr) * wheel_radius_m / 4.0;
+  velocity.y_m_s = (-w_fl + w_fr - w_rl + w_rr) * wheel_radius_m / 4.0;
+  velocity.yaw_rad_s = -(w_fl + w_fr + w_rl + w_rr) * wheel_radius_m / (4.0 * rotation_radius_m);
   return velocity;
 }
 
