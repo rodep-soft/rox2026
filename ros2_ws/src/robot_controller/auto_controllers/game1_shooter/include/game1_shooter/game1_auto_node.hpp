@@ -95,6 +95,7 @@ private:
   double test_start_x_{0.0};
   double test_start_y_{0.0};
   double test_start_yaw_{0.0};
+  double imu_yaw_{0.0};
   Waypoint wp_test_{1.0, 0.0, 0.0};
 
   // State Variables

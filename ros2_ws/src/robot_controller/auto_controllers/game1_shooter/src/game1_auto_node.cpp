@@ -120,10 +120,10 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     if (test_mode_) {
       test_start_x_ = current_x_;
       test_start_y_ = current_y_;
-      test_start_yaw_ = raw_yaw_;
+      test_start_yaw_ = imu_received_ ? imu_yaw_ : raw_yaw_;
       RCLCPP_INFO(
         get_logger(),
-        "=== [Test Mode STARTED] Target Relative: (dx=%.2fm, dy=%.2fm) | Start Pose: (%.2f, %.2f, Yaw: %.2f rad) ===",
+        "=== [Test Mode STARTED] Target Relative: (dx=%.2fm, dy=%.2fm) | Start Pose: (%.2f, %.2f, Heading: %.2f rad) ===",
         test_dist_x_, test_dist_y_, test_start_x_, test_start_y_, test_start_yaw_);
     } else {
       RCLCPP_INFO(
@@ -140,15 +140,17 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 void Game1AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
+  const double qx = msg->orientation.x;
+  const double qy = msg->orientation.y;
+  const double qz = msg->orientation.z;
+  const double qw = msg->orientation.w;
+  const double siny_cosp = 2.0 * (qw * qz + qx * qy);
+  const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+  imu_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+
   if (!odom_received_) {
     // EKF 未受信時のみバックアップとして直読み IMU を使用
-    const double qx = msg->orientation.x;
-    const double qy = msg->orientation.y;
-    const double qz = msg->orientation.z;
-    const double qw = msg->orientation.w;
-    const double siny_cosp = 2.0 * (qw * qz + qx * qy);
-    const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
-    raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
+    raw_yaw_ = imu_yaw_;
   }
 }
 
@@ -327,6 +329,9 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::TEST_SINGLE_WP: {
+        const double current_heading = imu_received_ ? imu_yaw_ : raw_yaw_;
+        const double rel_yaw = std::remainder(current_heading - test_start_yaw_, 2.0 * M_PI);
+
         // 現在の生位置をスタート地点基準の相対座標（スタート時のロボット座標系）へ変換
         const double dx_raw = current_x_ - test_start_x_;
         const double dy_raw = current_y_ - test_start_y_;
@@ -334,7 +339,6 @@ void Game1AutoNode::control_loop()
         const double sin_start_yaw = std::sin(-test_start_yaw_);
         const double rel_x = dx_raw * cos_start_yaw - dy_raw * sin_start_yaw;
         const double rel_y = dx_raw * sin_start_yaw + dy_raw * cos_start_yaw;
-        const double rel_yaw = std::remainder(raw_yaw_ - test_start_yaw_, 2.0 * M_PI);
 
         // 目標との差分 (相対座標系上)
         const double err_x = test_dist_x_ - rel_x;
@@ -360,6 +364,8 @@ void Game1AutoNode::control_loop()
             get_logger(),
             "=== [Test Mode COMPLETED] Target reached! Moved: (dx=%.3fm, dy=%.3fm), DistErr: %.3fm ===",
             rel_x, rel_y, dist_err);
+          cmd = geometry_msgs::msg::Twist{};
+          publish_commands(cmd, false, robot_msgs::msg::ArmPosition::DRIBBLE, false, false);
           state_ = Game1State::COMPLETED;
         }
         break;
@@ -368,6 +374,8 @@ void Game1AutoNode::control_loop()
     case Game1State::COMPLETED: {
         is_enabled_ = false;
         state_ = Game1State::STANDBY;
+        cmd = geometry_msgs::msg::Twist{};
+        publish_commands(cmd, false, robot_msgs::msg::ArmPosition::DRIBBLE, false, false);
         std_msgs::msg::Bool comp;
         comp.data = true;
         completed_pub_->publish(comp);
