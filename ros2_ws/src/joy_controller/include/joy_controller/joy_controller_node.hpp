@@ -108,6 +108,7 @@ private:
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool was_spring_ready_{false};
+  bool game1_active_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
   bool is_heading_hold_enabled_{true};
@@ -134,6 +135,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
     spring_actuator_ready_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr game1_completed_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr game2_completed_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;

@@ -17,8 +17,6 @@
 
 #include "nav_msgs/msg/odometry.hpp"
 
-#include "sensor_msgs/msg/joy.hpp"
-
 namespace robot_controller
 {
 
@@ -54,7 +52,6 @@ private:
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-  void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
 
   void publish_commands(
     const geometry_msgs::msg::Twist & cmd_vel,
@@ -72,7 +69,6 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr ball_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
