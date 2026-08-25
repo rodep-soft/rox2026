@@ -84,8 +84,8 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     std::bind(&Game1AutoNode::control_loop, this));
 
   RCLCPP_INFO(
-    get_logger(), "Game1AutoNode initialized with %s feedback (test_mode=%s).",
-    odom_topic.c_str(), test_mode_ ? "true" : "false");
+    get_logger(), "Game1AutoNode initialized with EKF /odometry/filtered feedback (test_mode=%s).",
+    test_mode_ ? "true" : "false");
 }
 
 void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
