@@ -62,8 +62,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game1AutoNode::imu_callback, this, std::placeholders::_1));
 
+  const std::string odom_topic = test_mode_ ? "/wheel/odometry" : "/odometry/filtered";
   odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-    "/odometry/filtered", 10,
+    odom_topic, 10,
     std::bind(&Game1AutoNode::odom_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
@@ -83,7 +84,9 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     std::chrono::milliseconds(50),
     std::bind(&Game1AutoNode::control_loop, this));
 
-  RCLCPP_INFO(get_logger(), "Game1AutoNode initialized with EKF /odometry/filtered feedback.");
+  RCLCPP_INFO(
+    get_logger(), "Game1AutoNode initialized with %s feedback (test_mode=%s).",
+    odom_topic.c_str(), test_mode_ ? "true" : "false");
 }
 
 void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -120,10 +123,10 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     if (test_mode_) {
       test_start_x_ = current_x_;
       test_start_y_ = current_y_;
-      test_start_yaw_ = imu_received_ ? imu_yaw_ : raw_yaw_;
+      test_start_yaw_ = raw_yaw_;
       RCLCPP_INFO(
         get_logger(),
-        "=== [Test Mode STARTED] Target Relative: (dx=%.2fm, dy=%.2fm) | Start Pose: (%.2f, %.2f, Heading: %.2f rad) ===",
+        "=== [Test Mode STARTED] Target Relative: (dx=%.2fm, dy=%.2fm) | Start Pose: (%.2f, %.2f, Yaw: %.2f rad) ===",
         test_dist_x_, test_dist_y_, test_start_x_, test_start_y_, test_start_yaw_);
     } else {
       RCLCPP_INFO(
@@ -329,8 +332,7 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::TEST_SINGLE_WP: {
-        const double current_heading = imu_received_ ? imu_yaw_ : raw_yaw_;
-        const double rel_yaw = std::remainder(current_heading - test_start_yaw_, 2.0 * M_PI);
+        const double rel_yaw = std::remainder(raw_yaw_ - test_start_yaw_, 2.0 * M_PI);
 
         // 現在の生位置をスタート地点基準の相対座標（スタート時のロボット座標系）へ変換
         const double dx_raw = current_x_ - test_start_x_;
