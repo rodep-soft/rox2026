@@ -62,9 +62,8 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game1AutoNode::imu_callback, this, std::placeholders::_1));
 
-  const std::string odom_topic = test_mode_ ? "/wheel/odometry" : "/odometry/filtered";
   odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-    odom_topic, 10,
+    "/odometry/filtered", 10,
     std::bind(&Game1AutoNode::odom_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
