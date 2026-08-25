@@ -18,7 +18,7 @@ mecanum_odometry_node:
     # 詳細な決め方手順: ros2_ws/src/robot_bringup/docs/ODOMETRY_TUNING_GUIDE.md
 
     # [IMPORTANT]チューニング必須
-    velocity_scale_x: 1.0     # 前後実測スケール補正 (目標1m走らせた実測平均値)
+    velocity_scale_x: 0.965   # 前後実測スケール補正 (目標1.0mに対し実測0.965m)
     velocity_scale_y: 1.0     # 左右カニ歩き実測スケール補正
     velocity_scale_yaw: 1.0   # 旋回スケール補正
     velocity_filter_alpha: 0.40  # 高速応答性とノイズ抑制のバランス
