@@ -61,7 +61,7 @@ private:
     bool spring_slow_fire = false);
 
   // メカナム特化型 全方位ホロノミック追従制御 (Field-Oriented to Body-Frame)
-  geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target);
+  geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target, double speed_limit = -1.0);
   bool is_aligned_to_target(const Waypoint & target);
 
   // Subscriptions & Publishers
@@ -80,14 +80,18 @@ private:
 
   // Parameters
   double kp_linear_{1.0};
-  double kp_angular_{1.5};
-  double max_linear_vel_{1.5};
-  double max_angular_vel_{1.0};
-  double pos_tolerance_{0.08};
+  double kp_angular_{2.0};
+  double max_linear_vel_{3.5};
+  double max_angular_vel_{3.5};
+  double pos_tolerance_{0.05};
   double yaw_tolerance_{0.05};
+  std::string field_side_{"left"};
 
   // Test Mode Parameters
   bool test_mode_{false};
+  double test_dist_x_{1.0};
+  double test_dist_y_{0.0};
+  double test_max_vel_{3.5};
   Waypoint wp_test_{1.0, 0.0, 0.0};
 
   // State Variables
@@ -116,8 +120,6 @@ private:
   // IMU Feedback
   bool imu_received_{false};
   double raw_yaw_{0.0};
-  double yaw_offset_{0.0};
-  double current_yaw_{0.0};
 };
 
 }  // namespace robot_controller

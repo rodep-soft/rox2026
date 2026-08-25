@@ -4,14 +4,15 @@
     kp_angular: 2.0
     max_linear_vel: 3.5
     max_angular_vel: 3.5
-    pos_tolerance: 0.08
+    pos_tolerance: 0.05
     yaw_tolerance: 0.05
 
-    # ── テストモード設定 (単一WP移動テスト) ──
+    # ── テストモード設定 (オドメトリチューニング用: 直進・横移動テスト) ──
+    # test_mode: true の場合、スタートボタンを押したその場から相対的に (test_dist_x, test_dist_y) だけ移動して停止します
     test_mode: true
-    wp_test_x: -4.50
-    wp_test_y: 2.50
-    wp_test_yaw: 0.0
+    test_dist_x: 1.0          # ロボット正面方向の移動距離 (m) (前後テスト: 1.0, 左右テスト: 0.0)
+    test_dist_y: 0.0          # ロボット左側方向の移動距離 (m) (前後テスト: 0.0, 左右テスト: 1.0)
+    test_max_vel: 3.5         # テスト走行時の上限速度 (m/s)
 
     ## 6.283 < -- 2pi
 

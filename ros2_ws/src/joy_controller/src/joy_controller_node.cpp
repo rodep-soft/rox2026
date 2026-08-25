@@ -405,15 +405,22 @@ void JoyControllerNode::loop_callback()
     shot_cycle_request_pub_->publish(req);
   }
 
-  // 5b. Game 1 自動戦術モード / テスト走行 (L3 + R3 両スティック押し込み同時押し または game1_start_button_)
+  // 5b. Game 1 自動戦術モード / テスト走行 (L3 + R3 両スティック押し込み同時押し または 専用startボタン)
   const bool l3_down = is_button_down(joy_msg_, left_stick_button_);
   const bool r3_down = is_button_down(joy_msg_, right_stick_button_);
   const bool was_l3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), left_stick_button_);
   const bool was_r3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), right_stick_button_);
   const bool both_sticks_just_pressed = (l3_down && r3_down) && !(was_l3_down && was_r3_down);
 
+  bool game1_trigger_pressed = both_sticks_just_pressed;
+  if (game1_start_button_ >= 0 && game1_start_button_ != left_stick_button_ && game1_start_button_ != right_stick_button_) {
+    if (is_button_just_pressed(joy_msg_, game1_start_button_)) {
+      game1_trigger_pressed = true;
+    }
+  }
+
   bool game1_just_toggled = false;
-  if (both_sticks_just_pressed || is_button_just_pressed(joy_msg_, game1_start_button_)) {
+  if (game1_trigger_pressed) {
     game1_active_ = !game1_active_;
     game1_just_toggled = true;
     RCLCPP_INFO(

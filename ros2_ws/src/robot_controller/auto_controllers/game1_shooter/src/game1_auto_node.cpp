@@ -13,18 +13,18 @@ Game1AutoNode::Game1AutoNode(const rclcpp::NodeOptions & options)
   kp_angular_ = declare_parameter<double>("kp_angular", 2.0);
   max_linear_vel_ = declare_parameter<double>("max_linear_vel", 3.5);
   max_angular_vel_ = declare_parameter<double>("max_angular_vel", 3.5);
-  pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.08);
+  pos_tolerance_ = declare_parameter<double>("pos_tolerance", 0.05);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.05);
 
   // テストモード設定
   test_mode_ = declare_parameter<bool>("test_mode", false);
-  wp_test_.x = declare_parameter<double>("wp_test_x", 1.0);
-  wp_test_.y = declare_parameter<double>("wp_test_y", 0.0);
-  wp_test_.yaw = declare_parameter<double>("wp_test_yaw", 0.0);
+  test_dist_x_ = declare_parameter<double>("test_dist_x", 1.0);
+  test_dist_y_ = declare_parameter<double>("test_dist_y", 0.0);
+  test_max_vel_ = declare_parameter<double>("test_max_vel", 3.5);
 
   // フィールドサイド設定 ("left" or "right" / 左右反転フィールド対応)
-  std::string field_side = declare_parameter<std::string>("field_side", "left");
-  const double mirror_x = (field_side == "right" || field_side == "blue") ? -1.0 : 1.0;
+  field_side_ = declare_parameter<std::string>("field_side", "left");
+  const double mirror_x = (field_side_ == "right" || field_side_ == "blue") ? -1.0 : 1.0;
   if (mirror_x < 0.0) {
     RCLCPP_INFO(
       get_logger(),
@@ -100,7 +100,6 @@ void Game1AutoNode::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
   const double siny_cosp = 2.0 * (qw * qz + qx * qy);
   const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
   raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
-  current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
 void Game1AutoNode::ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
@@ -117,12 +116,23 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     is_enabled_ = true;
     state_ = test_mode_ ? Game1State::TEST_SINGLE_WP : Game1State::NAV_TO_GATE;
     state_start_time_ = now();
-    // スタート時のIMU/EKF生角度をオフセットとして記録し、スタート位置の向きを 0.0 rad にゼロリセット
-    yaw_offset_ = raw_yaw_;
-    current_yaw_ = 0.0;
-    RCLCPP_INFO(
-      get_logger(), "Game 1 Auto Sequence STARTED (TestMode: %s). EKF/IMU Zero-Reset (Offset: %.3f rad).",
-      test_mode_ ? "ON" : "OFF", yaw_offset_);
+
+    if (test_mode_) {
+      // 現在の自己位置・向きから、指定距離(test_dist_x, test_dist_y)だけ進んだ目標WPを動的生成 (ロボット座標系 -> ワールド座標系)
+      const double cos_yaw = std::cos(raw_yaw_);
+      const double sin_yaw = std::sin(raw_yaw_);
+      wp_test_.x = current_x_ + (cos_yaw * test_dist_x_ - sin_yaw * test_dist_y_);
+      wp_test_.y = current_y_ + (sin_yaw * test_dist_x_ + cos_yaw * test_dist_y_);
+      wp_test_.yaw = raw_yaw_;
+      RCLCPP_INFO(
+        get_logger(),
+        "=== [Test Mode STARTED] dx=%.2fm, dy=%.2fm | Start: (%.2f, %.2f) -> Target: (%.2f, %.2f), Yaw: %.2f rad ===",
+        test_dist_x_, test_dist_y_, current_x_, current_y_, wp_test_.x, wp_test_.y, wp_test_.yaw);
+    } else {
+      RCLCPP_INFO(
+        get_logger(), "Game 1 Auto Sequence STARTED (Field side: %s, Start Pos: [%.2f, %.2f], Yaw: %.2f rad).",
+        field_side_.c_str(), current_x_, current_y_, raw_yaw_);
+    }
   } else if (!msg->data && is_enabled_) {
     is_enabled_ = false;
     state_ = Game1State::STANDBY;
@@ -134,7 +144,7 @@ void Game1AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
   if (!odom_received_) {
-    // EKF 未受信時のみバックアップとして直読み IMU をバックアップ受信用に使用
+    // EKF 未受信時のみバックアップとして直読み IMU を使用
     const double qx = msg->orientation.x;
     const double qy = msg->orientation.y;
     const double qz = msg->orientation.z;
@@ -142,13 +152,14 @@ void Game1AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
     const double siny_cosp = 2.0 * (qw * qz + qx * qy);
     const double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
     raw_yaw_ = std::atan2(siny_cosp, cosy_cosp);
-    current_yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
   }
 }
 
-geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoint & target)
+geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoint & target, double speed_limit)
 {
   geometry_msgs::msg::Twist cmd;
+
+  const double max_speed = (speed_limit > 0.0) ? speed_limit : max_linear_vel_;
 
   // 1. ワールド座標系（フィールド基準）での位置誤差と距離
   const double dx_world = target.x - current_x_;
@@ -157,22 +168,22 @@ geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoin
 
   if (dist > 1e-4) {
     // 2. ベクトル比例減速プロファイル（目標に近づくほど滑らかに減速しオーバーシュートを防止）
-    const double target_speed = std::min(max_linear_vel_, kp_linear_ * dist);
+    const double target_speed = std::min(max_speed, kp_linear_ * dist);
 
     // ワールド座標系での速度ベクトル
     const double vx_world = target_speed * (dx_world / dist);
     const double vy_world = target_speed * (dy_world / dist);
 
     // 3. フィールド座標系 ➔ ロボット車体座標系への回転変換 (Field-Oriented -> Body-Centric)
-    const double cos_yaw = std::cos(current_yaw_);
-    const double sin_yaw = std::sin(current_yaw_);
+    const double cos_yaw = std::cos(raw_yaw_);
+    const double sin_yaw = std::sin(raw_yaw_);
 
     cmd.linear.x = cos_yaw * vx_world + sin_yaw * vy_world;
     cmd.linear.y = -sin_yaw * vx_world + cos_yaw * vy_world;
   }
 
   // 4. 独立した姿勢角（Heading）制御
-  const double yaw_err = std::remainder(target.yaw - current_yaw_, 2.0 * M_PI);
+  const double yaw_err = std::remainder(target.yaw - raw_yaw_, 2.0 * M_PI);
   cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
 
   return cmd;
@@ -181,7 +192,7 @@ geometry_msgs::msg::Twist Game1AutoNode::compute_holonomic_pursuit(const Waypoin
 bool Game1AutoNode::is_aligned_to_target(const Waypoint & target)
 {
   const double dist_err = std::hypot(target.x - current_x_, target.y - current_y_);
-  const double yaw_err = std::abs(std::remainder(target.yaw - current_yaw_, 2.0 * M_PI));
+  const double yaw_err = std::abs(std::remainder(target.yaw - raw_yaw_, 2.0 * M_PI));
 
   return (dist_err <= pos_tolerance_) && (yaw_err <= yaw_tolerance_);
 }
@@ -257,7 +268,7 @@ void Game1AutoNode::control_loop()
             cmd.linear.y = ball_speed * (detected_ball_y_ / ball_dist);
           }
           // 正面 (yaw=0.0) を維持
-          cmd.angular.z = std::clamp(kp_angular_ * std::remainder(wp_ball_.yaw - current_yaw_, 2.0 * M_PI), -max_angular_vel_, max_angular_vel_);
+          cmd.angular.z = std::clamp(kp_angular_ * std::remainder(wp_ball_.yaw - raw_yaw_, 2.0 * M_PI), -max_angular_vel_, max_angular_vel_);
         } else {
           // ボール未検出：予想ターゲット位置へ向かってホロノミック追従走行
           cmd = compute_holonomic_pursuit(wp_ball_);
@@ -319,9 +330,13 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::TEST_SINGLE_WP: {
-        cmd = compute_holonomic_pursuit(wp_test_);
-        if (is_aligned_to_target(wp_test_) || elapsed > 15.0) {
-          RCLCPP_INFO(get_logger(), "Test Single Waypoint Movement COMPLETED!");
+        cmd = compute_holonomic_pursuit(wp_test_, test_max_vel_);
+        const double dist_err = std::hypot(wp_test_.x - current_x_, wp_test_.y - current_y_);
+        if (dist_err <= pos_tolerance_ || elapsed > 10.0) {
+          RCLCPP_INFO(
+            get_logger(),
+            "=== [Test Mode COMPLETED] Target reached! Final Pos: (%.2f, %.2f), DistErr: %.3fm ===",
+            current_x_, current_y_, dist_err);
           state_ = Game1State::COMPLETED;
         }
         break;
