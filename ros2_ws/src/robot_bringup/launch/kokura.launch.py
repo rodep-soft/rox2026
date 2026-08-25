@@ -271,7 +271,7 @@ def generate_launch_description():
                     )
                 ),
             ),
-            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO (Game 3 以外で起動) ---
+            # --- 8. 230AI MIPI ステレオビジョン & AprilTag / YOLO (all / Game 2 で起動、Game 1 / Game 3 では OFF) ---
             include(
                 "vision_launch.py",
                 launch_arguments=list(
@@ -298,7 +298,7 @@ def generate_launch_description():
                             LaunchConfiguration("enable_vision"),
                             "' == 'true' and '",
                             LaunchConfiguration("game"),
-                            "' != 'game3'",
+                            "' in ['all', 'game2']",
                         ]
                     )
                 ),
