@@ -118,16 +118,13 @@ void Game1AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     state_start_time_ = now();
 
     if (test_mode_) {
-      // 現在の自己位置・向きから、指定距離(test_dist_x, test_dist_y)だけ進んだ目標WPを動的生成 (ロボット座標系 -> ワールド座標系)
-      const double cos_yaw = std::cos(raw_yaw_);
-      const double sin_yaw = std::sin(raw_yaw_);
-      wp_test_.x = current_x_ + (cos_yaw * test_dist_x_ - sin_yaw * test_dist_y_);
-      wp_test_.y = current_y_ + (sin_yaw * test_dist_x_ + cos_yaw * test_dist_y_);
-      wp_test_.yaw = raw_yaw_;
+      test_start_x_ = current_x_;
+      test_start_y_ = current_y_;
+      test_start_yaw_ = raw_yaw_;
       RCLCPP_INFO(
         get_logger(),
-        "=== [Test Mode STARTED] dx=%.2fm, dy=%.2fm | Start: (%.2f, %.2f) -> Target: (%.2f, %.2f), Yaw: %.2f rad ===",
-        test_dist_x_, test_dist_y_, current_x_, current_y_, wp_test_.x, wp_test_.y, wp_test_.yaw);
+        "=== [Test Mode STARTED] Target Relative: (dx=%.2fm, dy=%.2fm) | Start Pose: (%.2f, %.2f, Yaw: %.2f rad) ===",
+        test_dist_x_, test_dist_y_, test_start_x_, test_start_y_, test_start_yaw_);
     } else {
       RCLCPP_INFO(
         get_logger(), "Game 1 Auto Sequence STARTED (Field side: %s, Start Pos: [%.2f, %.2f], Yaw: %.2f rad).",
@@ -330,13 +327,39 @@ void Game1AutoNode::control_loop()
       }
 
     case Game1State::TEST_SINGLE_WP: {
-        cmd = compute_holonomic_pursuit(wp_test_, test_max_vel_);
-        const double dist_err = std::hypot(wp_test_.x - current_x_, wp_test_.y - current_y_);
+        // 現在の生位置をスタート地点基準の相対座標（スタート時のロボット座標系）へ変換
+        const double dx_raw = current_x_ - test_start_x_;
+        const double dy_raw = current_y_ - test_start_y_;
+        const double cos_start_yaw = std::cos(-test_start_yaw_);
+        const double sin_start_yaw = std::sin(-test_start_yaw_);
+        const double rel_x = dx_raw * cos_start_yaw - dy_raw * sin_start_yaw;
+        const double rel_y = dx_raw * sin_start_yaw + dy_raw * cos_start_yaw;
+        const double rel_yaw = std::remainder(raw_yaw_ - test_start_yaw_, 2.0 * M_PI);
+
+        // 目標との差分 (相対座標系上)
+        const double err_x = test_dist_x_ - rel_x;
+        const double err_y = test_dist_y_ - rel_y;
+        const double dist_err = std::hypot(err_x, err_y);
+        const double yaw_err = std::remainder(0.0 - rel_yaw, 2.0 * M_PI);
+
+        if (dist_err > 1e-4) {
+          const double target_speed = std::min(test_max_vel_, kp_linear_ * dist_err);
+          const double vx_rel = target_speed * (err_x / dist_err);
+          const double vy_rel = target_speed * (err_y / dist_err);
+
+          // 相対座標系 ➔ 現在のロボット車体座標系への回転変換
+          const double cos_cur_yaw = std::cos(rel_yaw);
+          const double sin_cur_yaw = std::sin(rel_yaw);
+          cmd.linear.x = cos_cur_yaw * vx_rel + sin_cur_yaw * vy_rel;
+          cmd.linear.y = -sin_cur_yaw * vx_rel + cos_cur_yaw * vy_rel;
+        }
+        cmd.angular.z = std::clamp(kp_angular_ * yaw_err, -max_angular_vel_, max_angular_vel_);
+
         if (dist_err <= pos_tolerance_ || elapsed > 10.0) {
           RCLCPP_INFO(
             get_logger(),
-            "=== [Test Mode COMPLETED] Target reached! Final Pos: (%.2f, %.2f), DistErr: %.3fm ===",
-            current_x_, current_y_, dist_err);
+            "=== [Test Mode COMPLETED] Target reached! Moved: (dx=%.3fm, dy=%.3fm), DistErr: %.3fm ===",
+            rel_x, rel_y, dist_err);
           state_ = Game1State::COMPLETED;
         }
         break;
