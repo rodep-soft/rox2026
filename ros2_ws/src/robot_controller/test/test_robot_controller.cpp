@@ -326,7 +326,7 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   const auto position_update = dribble_node->set_parameters_atomically(
   {
     rclcpp::Parameter("open_position_rad", -0.5),
-    rclcpp::Parameter("opening_max_velocity_rad_s", 10.0)});
+    rclcpp::Parameter("opening_max_rad_s", 10.0)});
   ASSERT_TRUE(position_update.successful);
 
   // 状態1: runtime parameterで変更したOPEN位置 (-0.5 rad) へ遷移

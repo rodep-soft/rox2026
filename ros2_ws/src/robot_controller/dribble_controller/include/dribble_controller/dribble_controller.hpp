@@ -38,21 +38,20 @@ private:
     const actuator_msgs::msg::ActuatorState::SharedPtr msg);
   void
   vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg);
-  void update_ball_detection(double current_a);
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void spring_operation_state_callback(
     const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void control_timer_callback();
   void update_and_publish_roller_command();
-  double apply_arm_move_trajectory(double target_rad);
+  double update_arm_move_trajectory(double target_rad);
   void publish_arm_target(double target_rad);
   int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult
   parameter_callback(const std::vector<rclcpp::Parameter> & parameters);
 
-  double target_position_rad() const;
-  double arm_move_max_vel_rad_s() const;
-  double arm_move_max_accel_rad_s2() const;
+  double get_target_position_rad() const;
+  double get_arm_move_max_vel_rad_s() const;
+  double get_arm_move_max_accel_rad_s2() const;
   struct TrajectorySample
   {
     double position_rad;
@@ -66,19 +65,19 @@ private:
     double max_acceleration_rad_s2) const;
 
   // ── パラメータ ──────────────────────────────────────
-  double dribble_position_rad_{-0.86};
+  double dribble_pos_rad_{-0.86};
   double open_position_rad_{-1.27};
-  double bottom_position_rad_{0.0};
-  double feed_position_rad_{1.3};
+  double bottom_pos_rad_{0.0};
+  double feed_pos_rad_{1.3};
   double feed_duration_sec_{0.6};
-  double opening_max_velocity_rad_s_{4.0};
-  double feeding_max_velocity_rad_s_{6.0};
-  double returning_max_velocity_rad_s_{4.0};
-  double dribbling_max_velocity_rad_s_{3.0};
-  double opening_max_acceleration_rad_s2_{15.0};
-  double feeding_max_acceleration_rad_s2_{15.0};
-  double returning_max_acceleration_rad_s2_{18.0};
-  double dribbling_max_acceleration_rad_s2_{12.0};
+  double opening_max_rad_s_{4.0};
+  double feeding_max_rad_s_{6.0};
+  double returning_max_rad_s_{4.0};
+  double dribbling_max_rad_s_{3.0};
+  double opening_max_rad_s2_{15.0};
+  double feeding_max_rad_s2_{15.0};
+  double returning_max_rad_s2_{18.0};
+  double dribbling_max_rad_s2_{12.0};
   double ball_detection_threshold_a_{4.5};
   double ball_lost_threshold_a_{2.2};
   double current_lpf_alpha_{0.07};
@@ -87,7 +86,7 @@ private:
   int shot_cycle_feeding_rpm_{500};
   int shot_cycle_returning_rpm_{800};
   int shot_cycle_belt_spinup_level_{1};
-  double belt_shot_delay_sec_{0.0};
+  double belt_shot_delay_sec_{0.5};
   double belt_clearance_timeout_sec_{5.0};
   double prepare_from_open_delay_sec_{0.1};
   double slow_fire_dribble_position_rad_{-0.8};
@@ -100,8 +99,8 @@ private:
   // ── 運動補正パラメータ (後退・急減速時のボール安定化) ──
   bool enable_motion_compensation_{true};
   double backward_velocity_boost_rpm_per_mps_{500.0};
-  double backward_acceleration_rpm_per_mps2_{200.0};
-  double cmd_vel_acceleration_lpf_alpha_{0.2};
+  double backward_acc_rpm_per_mps2_{200.0};
+  double cmd_vel_acc_lpf_alpha_{0.2};
   double cmd_vel_timeout_sec_{0.2};
   int max_boost_rpm_{1200};
   std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
@@ -125,9 +124,14 @@ private:
   double arm_move_start_pos_rad_{0.0};
   int arm_move_start_rpm_{0};
 
+  enum class PreShotState
+  {
+    IDLE,
+    MOVING_TO_DRIBBLE,
+    WAITING,
+  };
   bool shot_cycle_active_{false};
-  bool is_pre_shot_active_{false};
-  bool is_pre_shot_waiting_{false};
+  PreShotState pre_shot_state_{PreShotState::IDLE};
   rclcpp::Time pre_shot_wait_start_time_;
   uint8_t spring_operation_state_{robot_msgs::msg::SpringOperationState::IDLE};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};

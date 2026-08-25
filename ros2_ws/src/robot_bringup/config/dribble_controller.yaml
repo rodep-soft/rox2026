@@ -10,17 +10,22 @@
     slow_fire_dribble_position_rad: -1.32
     
     # [s] 自動シュートサイクルのタイミング
-    belt_shot_delay_sec: 0.0          # ばね収納完了後、待たずにFEEDを開始
+    belt_shot_delay_sec: 0.5          # ベルト停止時、自動起動からFEED開始までの待機時間[s]
     belt_clearance_timeout_sec: 5.0  # ばね退避を待つ最大時間。超過時はベルト発射を解除
     prepare_from_open_delay_sec: 0.1     # OPENからDRIBBLEへ戻った後の待機
     feed_duration_sec: 0.1      # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_acceleration_rad_s2: 10.0
-    feeding_max_acceleration_rad_s2: 5.0
-    returning_max_acceleration_rad_s2: 30.0
-    dribbling_max_velocity_rad_s: 50.0
-    dribbling_max_acceleration_rad_s2: 10.0
+    opening_max_rad_s: 4.0
+    feeding_max_rad_s: 6.0
+    returning_max_rad_s: 4.0
+    dribbling_max_rad_s: 50.0
+
+    # [rad/s^2] 区間ごとの最大角加速度
+    opening_max_rad_s2: 10.0
+    feeding_max_rad_s2: 5.0
+    returning_max_rad_s2: 30.0
+    dribbling_max_rad_s2: 10.0
     
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 450             # DRIBBLE姿勢 (ボール保持中) の回転数
@@ -28,6 +33,7 @@
     shot_cycle_opening_rpm: 900    # ベルト発射準備時のローラ回転数
     shot_cycle_feeding_rpm: 900       # FEED中のローラ回転数
     shot_cycle_returning_rpm: 450  # FEED -> DRIBBLE
+    shot_cycle_belt_spinup_level: 1  # 自動起動時のベルト回転レベル (1～4)
     
     # [A] 電流値によるボール検知しきい値
     ball_detection_threshold_a: 4.2 # 1.7A 以上でボール保持(BALL DETECTED)と判定
@@ -44,11 +50,11 @@
     # ── 高速移動時のボール保持安定化 (運動補正) ──
     cmd_vel_topic: "/mecanum/cmd_vel_heading"  # IMU補正後の速度指令
     cmd_vel_timeout_sec: 0.2              # 途絶時は補正を0に戻す
-    cmd_vel_acceleration_lpf_alpha: 0.2
+    cmd_vel_acc_lpf_alpha: 0.2
     enable_motion_compensation: true          # 運動補正の有効化
 
     backward_velocity_boost_rpm_per_mps: 100.0
-    backward_acceleration_rpm_per_mps2: 30.0
+    backward_acc_rpm_per_mps2: 30.0
     max_boost_rpm: 250
 
 
