@@ -17,10 +17,12 @@ def wait_for_can_interface(context):
 
     if auto_reset:
         try:
-            # 起動時に常にクリーンな状態で通信を開始できるよう自動リセット (restart-ms=20ms 高速自動復帰)
+            # TCAN4550 (TI SPI-CAN) の内部PLLとLDOが安定化するよう 0.2s のディレイを設けてリセット
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "down"], capture_output=True, timeout=2.0)
+            time.sleep(0.2)
+            subprocess.run(["sudo", "ip", "link", "set", interface_name, "type", "can", "bitrate", "1000000", "restart-ms", "100"], capture_output=True, timeout=2.0)
             subprocess.run(["sudo", "ip", "link", "set", interface_name, "txqueuelen", "1000"], capture_output=True, timeout=2.0)
-            subprocess.run(["sudo", "ip", "link", "set", interface_name, "up", "type", "can", "bitrate", "1000000", "restart-ms", "20"], capture_output=True, timeout=2.0)
+            subprocess.run(["sudo", "ip", "link", "set", interface_name, "up"], capture_output=True, timeout=2.0)
         except Exception:
             pass
 
