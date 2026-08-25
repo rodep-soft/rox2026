@@ -2,10 +2,8 @@
 #define DRIBBLE_CONTROLLER__DRIBBLE_CONTROLLER_HPP_
 
 #include <cstdint>
-#include <limits>
 #include <optional>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include "actuator_msgs/msg/actuator_state.hpp"
@@ -25,30 +23,6 @@ public:
   DribbleControllerNode();
 
 private:
-  enum class ParameterConstraint
-  {
-    NONE,
-    NONNEGATIVE,
-    POSITIVE,
-    UNIT_INTERVAL,
-    BELT_LEVEL,
-  };
-  using ParameterValue = std::variant<bool *, int *, double *>;
-  struct ParameterBinding
-  {
-    const char * name;
-    ParameterValue value;
-    ParameterConstraint constraint;
-    bool affects_trajectory;
-  };
-  std::vector<ParameterBinding> parameter_bindings();
-  static bool parameter_value_is_valid(
-    ParameterConstraint constraint,
-    double value);
-  void declare_binding(ParameterBinding & binding);
-  static bool apply_binding(
-    const ParameterBinding & binding,
-    const rclcpp::Parameter & parameter);
   void restart_active_trajectory();
   void load_parameters();
 
@@ -57,7 +31,7 @@ private:
   void dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void start_shot_cycle();
-  void publish_belt_clearance_request(bool requested);
+  void set_spring_clearance(bool enabled);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void edulite_state_callback(
     const actuator_msgs::msg::ActuatorState::SharedPtr msg);
@@ -69,22 +43,23 @@ private:
   void control_timer_callback();
   void update_motion_compensation();
   void update_and_publish_roller_command();
-  double update_manual_position_command(double position_command_rad);
-  void publish_position_command(double position_rad);
+  double apply_arm_move_trajectory(double target_rad);
+  void publish_arm_target(double target_rad);
   void publish_shot_cycle_state();
   int roller_target_rpm() const;
   rcl_interfaces::msg::SetParametersResult
   parameter_callback(const std::vector<rclcpp::Parameter> & parameters);
 
   double target_position_rad() const;
-  double manual_transition_max_velocity_rad_s() const;
-  double manual_transition_max_acceleration_rad_s2() const;
+  double arm_move_max_vel_rad_s() const;
+  double arm_move_max_accel_rad_s2() const;
   struct TrajectorySample
   {
     double position_rad;
     double duration_sec;
   };
-  TrajectorySample sample_trajectory(
+  // 加速・定速・減速からなる台形（短距離では三角形）速度軌道を計算する。
+  TrajectorySample sample_trapezoidal_trajectory(
     double start_rad, double target_rad,
     double elapsed_sec,
     double max_velocity_rad_s,
@@ -148,33 +123,33 @@ private:
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
   int current_motion_boost_rpm_{0};
 
-  bool manual_transition_active_{false};
-  rclcpp::Time manual_transition_start_time_;
-  double manual_transition_start_position_rad_{0.0};
-  int manual_transition_start_rpm_{0};
+  bool is_arm_moving_{false};
+  rclcpp::Time arm_move_start_time_;
+  double arm_move_start_pos_rad_{0.0};
+  int arm_move_start_rpm_{0};
 
   bool shot_cycle_active_{false};
-  bool shot_prepare_from_open_{false};
-  bool shot_prepare_delay_started_{false};
-  rclcpp::Time shot_prepare_start_time_;
+  bool is_pre_shot_active_{false};
+  bool is_pre_shot_waiting_{false};
+  rclcpp::Time pre_shot_wait_start_time_;
   uint8_t spring_operation_state_{robot_msgs::msg::SpringOperationState::IDLE};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};
   uint8_t last_published_shot_cycle_state_{0xFF};
-  rclcpp::Time shot_cycle_start_time_;
-  double shot_cycle_start_position_rad_{0.0};
-  double last_position_command_rad_{-0.86};
+  rclcpp::Time shot_phase_start_time_;
+  double shot_phase_start_pos_rad_{0.0};
+  double arm_cmd_pos_rad_{-0.86};
   double current_arm_position_rad_{0.0};
   float upper_belt_measured_rpm_{0.0f};
   float under_belt_measured_rpm_{0.0f};
 
-  int current_filtered_roller_rpm_{0};
+  int roller_cmd_rpm_{0};
   bool belt_auto_started_{false};
   bool has_ball_{false};
   double filtered_roller_current_a_{0.0};
   bool roller_current_initialized_{false};
   std::optional<bool> last_published_ball_state_;
-  std::optional<double> last_published_position_rad_;
-  std::optional<int> last_published_roller_rpm_;
+  std::optional<double> last_arm_cmd_pos_rad_;
+  std::optional<int> last_roller_cmd_rpm_;
   int ball_detected_counter_{0};
   int ball_lost_counter_{0};
   int ball_detection_debounce_count_{

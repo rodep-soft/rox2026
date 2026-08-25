@@ -54,5 +54,7 @@
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
     roller_logical_id: 12   # ROS2上の認識ID(ドリブルローラー)
+    upper_belt_logical_id: 10
+    under_belt_logical_id: 11
     position_target_topic: "/edulite/target"
     roller_target_topic: "/vesc/target"
