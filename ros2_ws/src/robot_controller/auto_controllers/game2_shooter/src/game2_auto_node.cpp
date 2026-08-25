@@ -344,8 +344,8 @@ void Game2AutoNode::tag_detections_callback(
       const double aligned_target_pixel =
         camera_cx_ + ((camera_offset_y_ - target_config_.shooter_offset_y) / target_distance_) * camera_fx_;
 
-      RCLCPP_INFO_THROTTLE(
-        get_logger(), *get_clock(), 200,
+      RCLCPP_DEBUG_THROTTLE(
+        get_logger(), *get_clock(), 1000,
         "[VisualServo Track Tag #%d] HeadingErr: %+.2f deg | Pixel: %.1f px (TargetAligned: %.1f px)",
         best_id, best_heading_err * 180.0 / M_PI, best_pixel_x, aligned_target_pixel);
     }
