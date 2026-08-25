@@ -113,6 +113,7 @@ private:
   int shot_cycle_returning_rpm_{800};
   int shot_cycle_belt_spinup_level_{1};
   double belt_shot_delay_sec_{0.0};
+  double belt_clearance_timeout_sec_{5.0};
   double prepare_from_open_delay_sec_{0.1};
   double slow_fire_dribble_position_rad_{-0.8};
   int slow_fire_dribble_rpm_{-500};

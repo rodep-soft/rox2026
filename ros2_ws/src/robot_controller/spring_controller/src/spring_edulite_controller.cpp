@@ -166,21 +166,21 @@ SpringEduliteController::SpringEduliteController()
 void SpringEduliteController::fire_request_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
-  const bool rising_edge = msg->data && !fire_request_active_;
-  fire_request_active_ = msg->data;
-
-  if (!rising_edge) {
+  if (!msg->data) {
+    fire_request_active_ = false;
+    return;
+  }
+  if (fire_request_active_) {
     return;
   }
 
+  // 周期送信されたtrueは、ばねがREADYになるまで次周期に再評価する。
   if (emergency_stop_active_ || belt_clearance_requested_ ||
     state_ != State::READY)
   {
-    RCLCPP_WARN(
-      get_logger(), "Fire request rejected: emergency stop, belt "
-      "clearance, or non-READY state.");
     return;
   }
+  fire_request_active_ = true;
 
   // 1回転を加算して発射し、回転完了後に待機位置へ戻る
   target_position_rad_ += fire_increment_rad_;
@@ -197,21 +197,20 @@ void SpringEduliteController::fire_request_callback(
 void SpringEduliteController::slow_fire_request_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
-  const bool rising_edge = msg->data && !slow_fire_request_active_;
-  slow_fire_request_active_ = msg->data;
-
-  if (!rising_edge) {
+  if (!msg->data) {
+    slow_fire_request_active_ = false;
+    return;
+  }
+  if (slow_fire_request_active_) {
     return;
   }
 
   if (emergency_stop_active_ || belt_clearance_requested_ ||
     state_ != State::READY)
   {
-    RCLCPP_WARN(
-      get_logger(), "Slow fire request rejected: emergency stop, "
-      "belt clearance, or non-READY state.");
     return;
   }
+  slow_fire_request_active_ = true;
 
   if (!slow_fire_move_spring_) {
     state_ = State::SLOW_FIRE_ARM_ONLY;

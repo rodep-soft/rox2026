@@ -113,18 +113,18 @@ DribbleControllerNode::DribbleControllerNode()
       &DribbleControllerNode::parameter_callback, this, std::placeholders::_1));
 }
 
+/// @brief 4パターンの位置の情報を取得
 void DribbleControllerNode::position_mode_callback(
   const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  if (emergency_stop_active_ ||
-    (msg->position != robot_msgs::msg::ArmPosition::DRIBBLE &&
-    msg->position != robot_msgs::msg::ArmPosition::OPEN))
+  // 非常停止かかってない場合かつ，ドリブルとオープンの位置以外は無視
+  if (emergency_stop_active_ || (msg->position != robot_msgs::msg::ArmPosition::DRIBBLE && msg->position != robot_msgs::msg::ArmPosition::OPEN))
   {
     return;
   }
 
   const uint8_t target_mode = msg->position;
-
+  // 今の状態でないかつ，ベルト発射中でない場合，一度読み取りをする
   if (target_mode != position_mode_ || shot_cycle_active_) {
     shot_cycle_active_ = false;
     publish_belt_clearance_request(false);
@@ -136,17 +136,17 @@ void DribbleControllerNode::position_mode_callback(
   }
 }
 
+/// @brief ドリブルの可否受取
 void DribbleControllerNode::dribble_enabled_callback(
   const std_msgs::msg::Bool::SharedPtr msg)
 {
   dribble_enabled_ = msg->data;
 }
 
-void DribbleControllerNode::shot_cycle_callback(
-  const std_msgs::msg::Bool::SharedPtr msg)
+/// @brief ベルト発射のサイクルのフラグ受け取り
+void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (!msg->data || emergency_stop_active_ || shot_cycle_active_ ||
-    shot_prepare_from_open_)
+  if (!msg->data || emergency_stop_active_ || shot_cycle_active_ || shot_prepare_from_open_)
   {
     return;
   }
@@ -592,7 +592,21 @@ void DribbleControllerNode::control_timer_callback()
         spring_operation_state_ ==
         robot_msgs::msg::SpringOperationState::BELT_CLEARANCE;
       const double elapsed_sec = (now() - shot_cycle_start_time_).seconds();
-      if (spring_retracted && elapsed_sec >= belt_shot_delay_sec_) {
+      if (!spring_retracted && elapsed_sec >= belt_clearance_timeout_sec_) {
+        shot_cycle_active_ = false;
+        publish_belt_clearance_request(false);
+        position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+        if (belt_auto_started_) {
+          belt_auto_started_ = false;
+          robot_msgs::msg::BeltMode belt_msg;
+          belt_msg.mode = robot_msgs::msg::BeltMode::STOP;
+          belt_mode_pub_->publish(belt_msg);
+        }
+        RCLCPP_ERROR(
+          get_logger(),
+          "Shot Cycle aborted: spring clearance timed out after %.3f s",
+          elapsed_sec);
+      } else if (spring_retracted && elapsed_sec >= belt_shot_delay_sec_) {
         shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
         shot_cycle_start_time_ = now();
         shot_cycle_start_position_rad_ = last_position_command_rad_;
@@ -846,6 +860,8 @@ DribbleControllerNode::parameter_bindings()
       C::NONE, true},
     {"feed_duration_sec", &feed_duration_sec_, C::NONNEGATIVE, true},
     {"belt_shot_delay_sec", &belt_shot_delay_sec_, C::NONNEGATIVE, false},
+    {"belt_clearance_timeout_sec", &belt_clearance_timeout_sec_, C::POSITIVE,
+      false},
     {"prepare_from_open_delay_sec", &prepare_from_open_delay_sec_,
       C::NONNEGATIVE, false},
     {"opening_max_velocity_rad_s", &opening_max_velocity_rad_s_, C::POSITIVE,

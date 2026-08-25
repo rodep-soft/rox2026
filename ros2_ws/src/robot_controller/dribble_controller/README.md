@@ -52,6 +52,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `cmd_vel_acceleration_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）
+- elt_clearance_timeout_sec（ばね退避を待つ最大時間[s]。超過時はサイクルを解除）
 - `dribble_position_rad``open_position_rad``feed_position_rad`
 - feed_duration_sec
 - `opening_max_velocity_rad_s`

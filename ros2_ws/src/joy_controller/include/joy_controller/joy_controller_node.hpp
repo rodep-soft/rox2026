@@ -98,14 +98,12 @@ private:
   bool dribble_enabled_{false};
   bool dribble_enabled_before_spring_{false};
   bool spring_arm_open_pending_{false};
+  bool spring_fire_command_started_{false};
   int spring_arm_open_delay_ms_{0};
-  bool spring_fire_pending_{false};
-  int spring_fire_decel_delay_ms_{0};
-  std::chrono::steady_clock::time_point spring_fire_pending_start_time_{};
+  std::chrono::steady_clock::time_point spring_sequence_start_time_{};
   bool spring_arm_restore_pending_{false};
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
-  bool was_spring_ready_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
   bool is_heading_hold_enabled_{true};
