@@ -45,6 +45,8 @@ JoyControllerNode::JoyControllerNode()
   slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
+  spring_arm_open_delay_ms_ =
+    declare_parameter<int>("spring_arm_open_delay_ms", 0);
   spring_arm_restore_delay_ms_ =
     declare_parameter<int>("spring_arm_restore_delay_ms", 600);
 
@@ -60,6 +62,9 @@ JoyControllerNode::JoyControllerNode()
     state_publish_period_ms_ <= 0)
   {
     throw std::runtime_error("QoS depth and timer periods must be positive");
+  }
+  if (spring_arm_open_delay_ms_ < 0 || spring_arm_restore_delay_ms_ < 0) {
+    throw std::runtime_error("spring arm delays must be non-negative");
   }
   if (!std::isfinite(max_vel_x_m_s_) || max_vel_x_m_s_ < 0.0 ||
     !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
@@ -191,6 +196,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       }
       if (name == "joy_timeout_ms") {
         joy_timeout_ms_ = val;
+      } else if (name == "spring_arm_open_delay_ms") {
+        spring_arm_open_delay_ms_ = val;
       } else if (name == "spring_arm_restore_delay_ms") {
         spring_arm_restore_delay_ms_ = val;
       } else if (name == "ps_button") {
@@ -426,26 +433,36 @@ void JoyControllerNode::loop_callback()
   bool should_publish_spring_fire = false;
 
   if (spring_fire_input_triggered && spring_actuator_ready_ &&
-    !spring_fire_pending_ && !spring_arm_restore_pending_)
+    !spring_arm_open_pending_ && !spring_fire_pending_ &&
+    !spring_arm_restore_pending_)
   {
-    // 1) アームを OPEN 姿勢へ開く
-    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
-
-    // 2) アームがOPEN方向へ動き始める時間を確保
-    RCLCPP_INFO(
-      get_logger(),
-      "Spring fire sequence started: Opening arm (OPEN) and "
-      "decelerating dribble roller to 300 RPM...");
-
-    // 3) OPEN移動待機モードにセット
+    // アームOPENとばね発射を、同じ入力時刻を基準に独立して待機する。
+    spring_arm_open_pending_ = true;
     spring_fire_pending_ = true;
     spring_fire_pending_start_time_ = std::chrono::steady_clock::now();
+    RCLCPP_INFO(
+      get_logger(),
+      "Spring fire sequence started: arm OPEN delay=%d ms, "
+      "spring fire delay=%d ms",
+      spring_arm_open_delay_ms_, spring_fire_decel_delay_ms_);
   }
 
-  // ドリブルの滑らか減速時間 (150ms) が経過したら実際にキッカーばねを解放
+  const auto now_tp = std::chrono::steady_clock::now();
+  if (spring_arm_open_pending_) {
+    const auto elapsed_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - spring_fire_pending_start_time_)
+      .count();
+    if (elapsed_ms >= spring_arm_open_delay_ms_) {
+      spring_arm_open_pending_ = false;
+      publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+      RCLCPP_INFO(get_logger(), "Arm OPEN delay complete -> Arm opening!");
+    }
+  }
+
+  // ドリブルの滑らか減速時間が経過したら実際にキッカーばねを解放
   // (FIRE!)
   if (spring_fire_pending_) {
-    const auto now_tp = std::chrono::steady_clock::now();
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
       now_tp - spring_fire_pending_start_time_)
@@ -457,7 +474,7 @@ void JoyControllerNode::loop_callback()
       spring_fire_released_time_ = now_tp;
       RCLCPP_INFO(
         get_logger(),
-        "Arm opening delay complete -> Spring FIRE released!");
+        "Spring fire delay complete -> Spring FIRE released!");
     }
   }
 
@@ -472,7 +489,8 @@ void JoyControllerNode::loop_callback()
     is_button_just_pressed(joy_msg_, slow_fire_button_);
   std_msgs::msg::Bool slow_fire_msg;
   slow_fire_msg.data = slow_fire_input_triggered && spring_actuator_ready_ &&
-    !spring_fire_pending_ && !spring_arm_restore_pending_;
+    !spring_arm_open_pending_ && !spring_fire_pending_ &&
+    !spring_arm_restore_pending_;
   slow_fire_pub_->publish(slow_fire_msg);
   if (slow_fire_msg.data) {
     RCLCPP_INFO(
@@ -481,8 +499,7 @@ void JoyControllerNode::loop_callback()
   }
 
   // ばねの再充填・準備完了(is_ready_rising)、または発射後一定時間経過でアームをDRIBBLEへ自動復帰
-  if (spring_arm_restore_pending_) {
-    const auto now_tp = std::chrono::steady_clock::now();
+  if (spring_arm_restore_pending_ && !spring_arm_open_pending_) {
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
       now_tp - spring_fire_released_time_)

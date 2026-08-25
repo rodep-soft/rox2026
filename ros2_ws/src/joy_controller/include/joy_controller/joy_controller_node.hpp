@@ -97,6 +97,8 @@ private:
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   bool dribble_enabled_{false};
   bool dribble_enabled_before_spring_{false};
+  bool spring_arm_open_pending_{false};
+  int spring_arm_open_delay_ms_{0};
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{0};
   std::chrono::steady_clock::time_point spring_fire_pending_start_time_{};
