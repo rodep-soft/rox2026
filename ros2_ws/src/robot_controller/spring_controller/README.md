@@ -28,9 +28,13 @@
 
 ```text
 起動・再接続
-    │
-    │ state.position_reference_set == false
     ▼
+WAITING_FOR_ACTUATOR_READY
+    │ driver READY
+    ├─ position_reference_set == true → READY
+    ▼ position_reference_set == false
+WAITING_FOR_HOMING
+    ▼ 非常停止解除
  HOMING ── limit ON / set_position(0)成功 ──→ MOVING_TO_STANDBY
     │                                             │
     └──────── timeout → ERROR                     │ 到達 & 静止
@@ -69,12 +73,18 @@ target_position_rad += fire_increment_rad
 
 ## 再接続と非常停止
 
-EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ破棄する。
-再びREADYになっても`position_reference_set=false`なら、必ずHOMINGから再開する。
+EduLiteがREADY以外の場合は`WAITING_FOR_ACTUATOR_READY`で待機する。
+READY復帰時に`position_reference_set=true`なら通常制御へ戻り、falseの場合だけ
+`WAITING_FOR_HOMING`を経由してHOMINGを開始する。
 
 非常停止中は累積目標値を変更しない。解除後も同じ目標位置を維持する。
 ベルト発射時は現在の累積待機位置から `standby_offset_rad` だけ収納し、収納完了後にベルト発射を許可する。発射後は元の累積待機位置へ戻る。
 非常停止中に届いた発射要求は拒否する。
+
+## コールバックとタイマー
+
+各購読コールバックは要求値・センサー値の保存だけを行う。状態遷移、到達判定、
+タイムアウト、目標位置計算、位置指令の毎周期送信は`control_timer_callback()`で行う。
 
 ## 主なパラメータ
 
@@ -93,6 +103,7 @@ EduLiteがREADY以外になった場合、上位ノードは累積目標を0へ�
 | `cmd_vel_timeout_sec` | 速度指令が途絶えた場合に補正を無効化するまでの時間[s] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
 | `homing_timeout_sec` | ホーミングのタイムアウト[s] |
+| `motion_timeout_sec` | 通常発射・待機位置移動のタイムアウト[s] |
 | `stopped_velocity_threshold_rad_s` | 静止と判定する速度閾値[rad/s] |
 | `required_stable_feedback_count` | 静止判定に必要な連続回数 |
 | `command_period_ms` | 位置目標の更新・再送周期[ms] |

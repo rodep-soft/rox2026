@@ -34,6 +34,7 @@
   
     # [s] リミットスイッチが見つからない場合のタイムアウト
     homing_timeout_sec: 50.0
+    motion_timeout_sec: 10.0          # [s] 通常発射・待機位置移動のタイムアウト
     
     # [rad/s] この速度以下を停止とみなす
     stopped_velocity_threshold_rad_s: 0.05
@@ -42,7 +43,7 @@
     required_stable_feedback_count: 3
 
     # [ms] 位置指令更新周期
-    command_period_ms: 50
+    command_period_ms: 10
 
     logical_id: 4
     target_topic: "/edulite/target"

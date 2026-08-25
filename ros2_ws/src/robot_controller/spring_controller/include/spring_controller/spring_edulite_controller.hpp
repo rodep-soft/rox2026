@@ -22,7 +22,8 @@ public:
 private:
   enum class State : uint8_t
   {
-    UNINITIALIZED,
+    WAITING_FOR_ACTUATOR_READY,
+    WAITING_FOR_HOMING,
     HOMING,
     WAITING_FOR_STOP,
     MOVING_TO_STANDBY,
@@ -56,9 +57,12 @@ private:
   void publish_operation_state();
   bool update_settled(const actuator_msgs::msg::ActuatorState & feedback);
 
-  State state_{State::UNINITIALIZED};
+  State state_{State::WAITING_FOR_ACTUATOR_READY};
   bool emergency_stop_active_{true};
+  bool previous_emergency_stop_active_{true};
+  bool fire_requested_{false};
   bool fire_request_active_{false};
+  bool slow_fire_requested_{false};
   bool slow_fire_request_active_{false};
   bool slow_fire_move_spring_{true};
   bool limit_switch_active_{false};
@@ -69,6 +73,10 @@ private:
   bool homing_required_{true};
   bool belt_clearance_requested_{false};
   bool belt_clearance_request_pending_{false};
+  bool belt_clearance_command_{false};
+  bool new_actuator_feedback_{false};
+  bool zero_service_response_received_{false};
+  bool zero_service_succeeded_{false};
 
   int limit_switch_bit_offset_{0};
   int command_period_ms_{10};
@@ -89,11 +97,14 @@ private:
   double slow_fire_return_velocity_rad_s_{6.0};
   double homing_velocity_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
+  double motion_timeout_sec_{10.0};
   double stopped_velocity_threshold_rad_s_{0.05};
   double target_position_rad_{0.0};
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
   double actuator_position_rad_{0.0};
+  double actuator_velocity_rad_s_{0.0};
+  double emergency_hold_position_rad_{0.0};
   double belt_clearance_position_rad_{0.0};
   double belt_clearance_return_position_rad_{0.0};
   double commanded_forward_speed_m_s_{0.0};
@@ -101,6 +112,7 @@ private:
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
   std::optional<double> last_published_target_rad_;
   uint8_t last_published_operation_state_{255};
+  uint8_t actuator_state_{actuator_msgs::msg::ActuatorState::STATE_OFFLINE};
   uint16_t logical_id_{4};
 
   rcl_interfaces::msg::SetParametersResult
@@ -108,6 +120,8 @@ private:
 
   rclcpp::Time homing_start_time_;
   rclcpp::Time slow_fire_phase_start_time_;
+  rclcpp::Time motion_start_time_;
+  std::string zero_service_response_message_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
     params_callback_handle_;
