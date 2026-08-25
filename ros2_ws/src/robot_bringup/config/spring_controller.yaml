@@ -7,9 +7,9 @@
     qos_depth: 3
 
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 3.2   # 3.5
+    standby_offset_rad: 4.1   # 3.5
     # [rad] ベルト収納開始位置から、アーム動作を許可するまでの収納回転量
-    belt_clearance_ready_travel_rad: 0.5
+    belt_clearance_ready_travel_rad: 0.2
 
     # [rad] 待機位置・目標位置到達判定の許容誤差
     position_tolerance_rad: 0.05

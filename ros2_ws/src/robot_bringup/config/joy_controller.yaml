@@ -12,7 +12,7 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
-    spring_arm_open_delay_ms: 0     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間
+    spring_arm_open_delay_ms: 250     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間
     spring_arm_restore_delay_ms: 600  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
 
     # R1でdribble正回転をON/OFFする
@@ -55,10 +55,10 @@
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
     linear_x_acceleration_limit: 3.0
-    linear_y_acceleration_limit: 3.0
+    linear_y_acceleration_limit: 1.5
     angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
     linear_x_deceleration_limit: 3.25
-    linear_y_deceleration_limit: 3.25
+    linear_y_deceleration_limit: 2.25
     angular_z_deceleration_limit: 15.0
