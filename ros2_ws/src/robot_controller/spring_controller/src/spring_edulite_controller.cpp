@@ -262,7 +262,8 @@ void SpringEduliteController::limit_switch_callback(
     ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
 }
 
-void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void SpringEduliteController::actuator_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id != logical_id_) {
     return;
@@ -375,7 +376,7 @@ void SpringEduliteController::control_timer_callback()
   if (state_ == State::WAITING_FOR_HOMING) {
     state_ = State::HOMING;
     target_position_rad_ =
-    actuator_pos_received_ ? actuator_pos_rad_ : 0.0;
+      actuator_pos_received_ ? actuator_pos_rad_ : 0.0;
     stable_feedback_count_ = 0;
     zero_service_pending_ = false;
     homing_start_time_ = now();
@@ -387,13 +388,13 @@ void SpringEduliteController::control_timer_callback()
       finish_belt_clearance_motion();
       motion_start_time_ = now();
     }
-  } else if (!is_belt_clearance_active_ && (state_ == State::READY || state_ == State::MOVING_TO_STANDBY))
+  } else if (!is_belt_clearance_active_ &&
+    (state_ == State::READY || state_ == State::MOVING_TO_STANDBY))
   {
     start_belt_clearance_motion();
     motion_start_time_ = now();
   }
-  if (state_ == State::READY && !is_belt_clearance_active_ && fire_request_pending_)
-  {
+  if (state_ == State::READY && !is_belt_clearance_active_ && fire_request_pending_) {
     fire_request_pending_ = false;
     target_position_rad_ += fire_increment_rad_;
     state_ = State::FIRING;
@@ -585,7 +586,7 @@ void SpringEduliteController::request_zero_reference()
       zero_service_pending_ = false;
       zero_service_succeeded_ = response->success;
       zero_service_response_message_ = response->success ?
-        std::string{} : "Failed to zero spring position: " + response->message;
+      std::string{} : "Failed to zero spring position: " + response->message;
       zero_service_response_received_ = true;
     });
 }
@@ -628,7 +629,9 @@ void SpringEduliteController::publish_operation_state()
 {
   uint8_t operation = robot_msgs::msg::SpringOperationState::IDLE;
 
-  if (state_ == State::WAITING_FOR_HOMING || state_ == State::HOMING || state_ == State::WAITING_FOR_STOP) {
+  if (state_ == State::WAITING_FOR_HOMING || state_ == State::HOMING ||
+    state_ == State::WAITING_FOR_STOP)
+  {
     operation = robot_msgs::msg::SpringOperationState::HOMING;
   } else if (state_ == State::FIRING) {
     operation = robot_msgs::msg::SpringOperationState::NORMAL_FIRE;

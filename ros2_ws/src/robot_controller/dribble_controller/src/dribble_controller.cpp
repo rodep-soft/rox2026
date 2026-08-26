@@ -116,7 +116,8 @@ DribbleControllerNode::DribbleControllerNode()
 // callback関数一覧
 // ---------------------------------------------------------------------------------------------------------------
 /// @brief 4パターンの位置の情報を取得
-void DribbleControllerNode::position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg)
+void DribbleControllerNode::position_mode_callback(
+  const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
   const uint8_t target_mode = msg->position;
   if (emergency_stop_active_ ||
@@ -149,7 +150,8 @@ void DribbleControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::
 void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   // 非常がかかっている，すでにサイクルが始まっている場合は無視
-  if (!msg->data || emergency_stop_active_ || shot_cycle_active_ || pre_shot_state_ != PreShotState::IDLE)
+  if (!msg->data || emergency_stop_active_ || shot_cycle_active_ ||
+    pre_shot_state_ != PreShotState::IDLE)
   {
     return;
   }
@@ -287,7 +289,8 @@ void DribbleControllerNode::edulite_state_callback(
 }
 
 /// @brief ローラやベルトの赤ブラシのデータを取得
-void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::ActuatorState::SharedPtr msg)
+void DribbleControllerNode::vesc_state_callback(
+  const actuator_msgs::msg::ActuatorState::SharedPtr msg)
 {
   if (msg->logical_id == upper_belt_logical_id_) {
     upper_belt_measured_rpm_ = msg->velocity;
@@ -301,7 +304,8 @@ void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::Actuat
       filtered_roller_current_a_ = msg->current_a;
       roller_current_initialized_ = true;
     } else {
-      filtered_roller_current_a_ = current_lpf_alpha_ * msg->current_a + (1.0 - current_lpf_alpha_) * filtered_roller_current_a_;
+      filtered_roller_current_a_ = current_lpf_alpha_ * msg->current_a +
+        (1.0 - current_lpf_alpha_) * filtered_roller_current_a_;
     }
     // 電流値によるボール保持判定 (ヒステリシス + 連続カウントによるディバウンスノイズフィルタ)
     const bool previous_has_ball = has_ball_;
@@ -334,8 +338,7 @@ void DribbleControllerNode::vesc_state_callback(const actuator_msgs::msg::Actuat
           msg->current_a, filtered_roller_current_a_);
       }
     }
-    if (!last_published_ball_state_.has_value() || *last_published_ball_state_ != has_ball_)
-    {
+    if (!last_published_ball_state_.has_value() || *last_published_ball_state_ != has_ball_) {
       std_msgs::msg::Bool ball_msg;
       ball_msg.data = has_ball_;
       ball_detected_pub_->publish(ball_msg);
@@ -354,7 +357,8 @@ void DribbleControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
     const double dt = (current_time - last_cmd_vel_time_).seconds();
     if (dt > 0.001 && dt < 0.5) {  // 受信間隔がおかしい場合は無視
       const double raw_acc = (commanded_vx_m_s_ - last_commanded_vx_m_s_) / dt;
-      commanded_ax_m_s2_ = cmd_vel_acc_lpf_alpha_ * raw_acc + (1.0 - cmd_vel_acc_lpf_alpha_) * commanded_ax_m_s2_;
+      commanded_ax_m_s2_ = cmd_vel_acc_lpf_alpha_ * raw_acc + (1.0 - cmd_vel_acc_lpf_alpha_) *
+        commanded_ax_m_s2_;
     }
   }
   last_commanded_vx_m_s_ = commanded_vx_m_s_;
@@ -362,7 +366,8 @@ void DribbleControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
 }
 
 /// @brief ばね発射機構の現在状態を受信
-void DribbleControllerNode::spring_operation_state_callback(const robot_msgs::msg::SpringOperationState::SharedPtr msg)
+void DribbleControllerNode::spring_operation_state_callback(
+  const robot_msgs::msg::SpringOperationState::SharedPtr msg)
 {
   const bool was_slow = spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE;
   spring_operation_state_ = msg->state;
@@ -385,14 +390,17 @@ void DribbleControllerNode::update_and_publish_roller_command()
   const int target_rpm = roller_target_rpm();
   if (emergency_stop_active_) {
     roller_cmd_rpm_ = 0;
-  } else if (is_arm_moving_ && !shot_cycle_active_ && dribble_enabled_ && spring_operation_state_ != robot_msgs::msg::SpringOperationState::SLOW_FIRE)
+  } else if (is_arm_moving_ && !shot_cycle_active_ && dribble_enabled_ &&
+    spring_operation_state_ != robot_msgs::msg::SpringOperationState::SLOW_FIRE)
   {
     const double mode_target_rad = get_target_position_rad();
     const double max_vel_rad_s = get_arm_move_max_vel_rad_s();
     const double max_rad_s2 = get_arm_move_max_accel_rad_s2();
 
     const double elapsed_sec = (now() - arm_move_start_time_).seconds();
-    const auto trajectory = sample_trapezoidal_trajectory(arm_move_start_pos_rad_, mode_target_rad, elapsed_sec, max_vel_rad_s, max_rad_s2);
+    const auto trajectory = sample_trapezoidal_trajectory(
+      arm_move_start_pos_rad_, mode_target_rad,
+      elapsed_sec, max_vel_rad_s, max_rad_s2);
     if (trajectory.duration_sec > 0.0) {
       const double progress =
         std::clamp(elapsed_sec / trajectory.duration_sec, 0.0, 1.0);
@@ -463,7 +471,8 @@ void DribbleControllerNode::publish_arm_target(double target_rad)
 void DribbleControllerNode::control_timer_callback()
 {
   //今のシュートサイクルを取得し，変化があった場合送信
-  const uint8_t current_state = shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
+  const uint8_t current_state =
+    shot_cycle_active_ ? shot_cycle_phase_ : robot_msgs::msg::ShotCycleState::IDLE;
   if (current_state != last_published_shot_cycle_state_) {
     robot_msgs::msg::ShotCycleState state;
     state.state = current_state;
@@ -472,14 +481,15 @@ void DribbleControllerNode::control_timer_callback()
   }
 
   // 移動速度や加速度に応じてローラの回転速度を変化させる
-  const bool cmd_vel_fresh = last_cmd_vel_time_.nanoseconds() > 0 && (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
-  if (!enable_motion_compensation_ || emergency_stop_active_ || !cmd_vel_fresh)
-  {
+  const bool cmd_vel_fresh = last_cmd_vel_time_.nanoseconds() > 0 &&
+    (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
+  if (!enable_motion_compensation_ || emergency_stop_active_ || !cmd_vel_fresh) {
     current_motion_boost_rpm_ = 0;
-  } else{
+  } else {
     const double backward_speed = std::max(0.0, -commanded_vx_m_s_);
     const double backward_acc = std::max(0.0, -commanded_ax_m_s2_);
-    const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ + backward_acc * backward_acc_rpm_per_mps2_;
+    const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ + backward_acc *
+      backward_acc_rpm_per_mps2_;
     current_motion_boost_rpm_ = std::min(max_boost_rpm_, static_cast<int>(std::round(raw_boost)));
   }
   update_and_publish_roller_command();
@@ -494,12 +504,11 @@ void DribbleControllerNode::control_timer_callback()
     return;
   }
 
-  if (pre_shot_state_ == PreShotState::MOVING_TO_DRIBBLE && !is_arm_moving_)
-  { // open姿勢からdribble姿勢に移動が完了した場合
+  if (pre_shot_state_ == PreShotState::MOVING_TO_DRIBBLE && !is_arm_moving_) { // open姿勢からdribble姿勢に移動が完了した場合
     pre_shot_state_ = PreShotState::WAITING;
     pre_shot_wait_start_time_ = now();
   } else if (pre_shot_state_ == PreShotState::WAITING &&
-     (now() - pre_shot_wait_start_time_).seconds() >= prepare_from_open_delay_sec_)
+    (now() - pre_shot_wait_start_time_).seconds() >= prepare_from_open_delay_sec_)
   {// 所定時間待ち終わった場合
     pre_shot_state_ = PreShotState::IDLE;
     start_shot_cycle();
@@ -537,8 +546,7 @@ void DribbleControllerNode::control_timer_callback()
           get_logger(),
           "Shot Cycle aborted: spring clearance timed out after %.3f s",
           elapsed_sec);
-      } else if (spring_retracted && (!belt_auto_started_ || elapsed_sec >= belt_shot_delay_sec_))
-      {
+      } else if (spring_retracted && (!belt_auto_started_ || elapsed_sec >= belt_shot_delay_sec_)) {
         shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
         shot_phase_start_time_ = now();
         shot_phase_start_pos_rad_ = arm_cmd_pos_rad_;
@@ -552,7 +560,8 @@ void DribbleControllerNode::control_timer_callback()
     } else {
       // ベルトの回転時間待ち以降の処理
       const bool is_feeding = shot_cycle_phase_ == robot_msgs::msg::ShotCycleState::FEEDING;
-      position_mode_ = is_feeding ? robot_msgs::msg::ArmPosition::FEED : robot_msgs::msg::ArmPosition::DRIBBLE;
+      position_mode_ =
+        is_feeding ? robot_msgs::msg::ArmPosition::FEED : robot_msgs::msg::ArmPosition::DRIBBLE;
       const double phase_target_rad = is_feeding ? feed_pos_rad_ : dribble_pos_rad_;
       const double phase_max_vel_rad_s = is_feeding ? feeding_max_rad_s_ : returning_max_rad_s_;
       const double phase_max_rad_s2 = is_feeding ? feeding_max_rad_s2_ : returning_max_rad_s2_;
@@ -606,8 +615,7 @@ int DribbleControllerNode::roller_target_rpm() const
   if (emergency_stop_active_) {
     return 0;
   }
-  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE)
-  {
+  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE) {
     return slow_fire_dribble_rpm_;
   }
   if (shot_cycle_active_) {
@@ -639,7 +647,8 @@ int DribbleControllerNode::roller_target_rpm() const
 /// @return 今回の動きでの目標角度
 double DribbleControllerNode::get_target_position_rad() const
 {
-  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE && !shot_cycle_active_)
+  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE &&
+    !shot_cycle_active_)
   {
     return slow_fire_dribble_position_rad_;
   }
@@ -676,8 +685,7 @@ double DribbleControllerNode::get_arm_move_max_vel_rad_s() const
 /// @return 今回の動きの角加速度
 double DribbleControllerNode::get_arm_move_max_accel_rad_s2() const
 {
-  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE)
-  {
+  if (spring_operation_state_ == robot_msgs::msg::SpringOperationState::SLOW_FIRE) {
     return dribbling_max_rad_s2_;
   }
   switch (position_mode_) {
@@ -839,8 +847,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       result.reason = reason;
     };
   const auto update_double = [&reject](
-      const rclcpp::Parameter & parameter, double & target,
-      double minimum, double maximum) {
+    const rclcpp::Parameter & parameter, double & target,
+    double minimum, double maximum) {
       if (parameter.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
         reject(parameter.get_name() + " must be a double");
         return false;
@@ -854,8 +862,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       return true;
     };
   const auto update_int = [&reject](
-      const rclcpp::Parameter & parameter, int & target,
-      int minimum, int maximum) {
+    const rclcpp::Parameter & parameter, int & target,
+    int minimum, int maximum) {
       if (parameter.get_type() != rclcpp::ParameterType::PARAMETER_INTEGER) {
         reject(parameter.get_name() + " must be an integer");
         return false;
@@ -905,7 +913,9 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       updated = update_double(parameter, feed_pos_rad_, any_double_min, any_double_max);
       affects_trajectory = true;
     } else if (name == "slow_fire_dribble_position_rad") {
-      updated = update_double(parameter, slow_fire_dribble_position_rad_, any_double_min, any_double_max);
+      updated = update_double(
+        parameter, slow_fire_dribble_position_rad_, any_double_min,
+        any_double_max);
       affects_trajectory = true;
     } else if (name == "feed_duration_sec") {
       updated = update_double(parameter, feed_duration_sec_, 0.0, any_double_max);
