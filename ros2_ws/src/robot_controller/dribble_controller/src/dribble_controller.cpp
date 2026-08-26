@@ -118,9 +118,10 @@ DribbleControllerNode::DribbleControllerNode()
 /// @brief 4パターンの位置の情報を取得
 void DribbleControllerNode::position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
-  const uint8_t target_mode = msg->position;
-  // 非常停止かかってない場合かつ，ドリブルとオープンの位置以外は無視
-  if (emergency_stop_active_ || (target_mode != robot_msgs::msg::ArmPosition::DRIBBLE && target_mode != robot_msgs::msg::ArmPosition::OPEN))
+  if (emergency_stop_active_ ||
+    (msg->position != robot_msgs::msg::ArmPosition::DRIBBLE &&
+    msg->position != robot_msgs::msg::ArmPosition::OPEN &&
+    msg->position != robot_msgs::msg::ArmPosition::HOME))
   {
     return;
   }
@@ -151,8 +152,8 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
   {
     return;
   }
-  // オープンの状態なら一度ドリブルの部分まで動く処理の開始
-  if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
+
+  if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
     position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
     is_arm_moving_ = true;
     arm_move_start_time_ = now();
@@ -644,6 +645,8 @@ double DribbleControllerNode::get_target_position_rad() const
   switch (position_mode_) {
     case robot_msgs::msg::ArmPosition::OPEN:
       return open_position_rad_;
+    case robot_msgs::msg::ArmPosition::HOME:
+      return home_position_rad_;
     case robot_msgs::msg::ArmPosition::FEED:
       return feed_pos_rad_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
@@ -661,7 +664,9 @@ double DribbleControllerNode::get_arm_move_max_vel_rad_s() const
     case robot_msgs::msg::ArmPosition::FEED:
       return feeding_max_rad_s_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
-      return dribbling_max_rad_s_;
+      return dribbling_max_velocity_rad_s_;
+    case robot_msgs::msg::ArmPosition::HOME:
+      return returning_max_velocity_rad_s_;
     default:
       return returning_max_rad_s_;
   }
@@ -680,6 +685,7 @@ double DribbleControllerNode::get_arm_move_max_accel_rad_s2() const
     case robot_msgs::msg::ArmPosition::FEED:
       return feeding_max_rad_s2_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
+    case robot_msgs::msg::ArmPosition::HOME:
     default:
       return dribbling_max_rad_s2_;
   }

@@ -315,19 +315,17 @@ void JoyControllerNode::loop_callback()
 
   // 2. DPAD 入力処理
   if (is_r2_active) {
-    // R2 + DPAD 左右で手動アーム位置変更 (左: DRIBBLE, 右: OPEN)
+    // R2 + DPAD左右で手動アーム位置をDRIBBLEとのトグルで変更する。
     if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
         false))                          // DPAD 右 (-1.0)
     {
-      publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
-      RCLCPP_INFO(get_logger(), "Manual arm position -> OPEN");
+      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
     } else if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
         true))                                 // DPAD 左 (+1.0)
     {
-      publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
-      RCLCPP_INFO(get_logger(), "Manual arm position -> DRIBBLE");
+      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::OPEN);
     }
   } else {
     // R2非押下時: DPAD 上/下でベルトレベル昇降
@@ -417,10 +415,27 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. L2とR2を押している間、毎周期スプリング発射要求を送信する。
-  // 受信側はREADYになった周期で一度だけ要求を受理する。
-  const bool spring_fire_requested = is_l2_active && is_r2_active;
-  const auto now_tp = std::chrono::steady_clock::now();
+  // 8. L2とR2を同時に押した瞬間にスプリング発射シーケンスを開始
+  const bool was_l2_active =
+    last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool was_r2_active =
+    last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool spring_fire_input_triggered =
+    is_l2_active && is_r2_active && !(was_l2_active && was_r2_active);
+  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
+
+  bool should_publish_spring_fire = false;
+
+  if (spring_fire_input_triggered && spring_actuator_ready_ &&
+    !spring_fire_pending_ && !spring_arm_restore_pending_)
+  {
+    // 1) アームを OPEN 姿勢へ開く
+    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+    manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
 
   if (spring_fire_requested && spring_actuator_ready_ &&
     !spring_fire_command_started_)
@@ -467,6 +482,7 @@ void JoyControllerNode::loop_callback()
     if (elapsed_ms >= spring_arm_restore_delay_ms_) {
       spring_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
+      manual_arm_position_ = robot_msgs::msg::ArmPosition::DRIBBLE;
       RCLCPP_INFO(
         get_logger(),
         "Spring shot complete -> Arm automatically restored to "
@@ -567,6 +583,19 @@ void JoyControllerNode::publish_arm_position(uint8_t position)
   robot_msgs::msg::ArmPosition msg;
   msg.position = position;
   arm_position_mode_pub_->publish(msg);
+}
+
+void JoyControllerNode::toggle_manual_arm_position(uint8_t target_position)
+{
+  manual_arm_position_ = manual_arm_position_ == target_position ?
+    robot_msgs::msg::ArmPosition::DRIBBLE : target_position;
+  publish_arm_position(manual_arm_position_);
+  RCLCPP_INFO(
+    get_logger(), "Manual arm position -> %s",
+    manual_arm_position_ == robot_msgs::msg::ArmPosition::DRIBBLE ?
+    "DRIBBLE" :
+    (manual_arm_position_ == robot_msgs::msg::ArmPosition::OPEN ?
+    "OPEN" : "HOME"));
 }
 
 void JoyControllerNode::publish_dribble_enabled(bool enabled)
