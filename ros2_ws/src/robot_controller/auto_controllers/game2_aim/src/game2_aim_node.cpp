@@ -234,10 +234,19 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
       "=== [Game2 START] Sequence Activated -> SEARCHING (IMU Yaw Zero-Reset Offset: %.3f rad, TestMode: %s) ===",
       yaw_offset_, test_alignment_only_ ? "ON" : "OFF");
   } else {
-    is_enabled_ = false;
-    state_ = robot_msgs::msg::Game2State::STANDBY;
-    reset_sequence();
-    RCLCPP_INFO(get_logger(), "=== [Game2 STOP] Sequence Disengaged -> STANDBY ===");
+    if (is_enabled_) {
+      is_enabled_ = false;
+      state_ = robot_msgs::msg::Game2State::STANDBY;
+      reset_sequence();
+      RCLCPP_INFO(get_logger(), "=== [Game2 STOP] Sequence Disengaged -> STANDBY ===");
+      // 安全のため停止した瞬間に1度だけアクチュエータ停止指令を送信
+      publish_all(
+        geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
+        false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      robot_msgs::msg::Game2State state_msg;
+      state_msg.state = state_;
+      state_pub_->publish(state_msg);
+    }
   }
 }
 
@@ -579,10 +588,8 @@ void Game2AimNode::control_loop()
     robot_msgs::msg::Game2State state_msg;
     state_msg.state = state_;
     state_pub_->publish(state_msg);
-
-    publish_all(
-      geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
-      false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+    // STANDBY時は手動操作 (joy_controller / heading_hold) にトピックを譲るため
+    // 周期的なゼロ速度・停止コマンドのパブリッシュは行わない
     return;
   }
 
@@ -611,19 +618,29 @@ void Game2AimNode::control_loop()
     return;
   }
 
-  // Target is valid: Aligning / Aiming mode
-  state_ = robot_msgs::msg::Game2State::ALIGNING;
-  robot_msgs::msg::Game2State state_msg;
-  state_msg.state = state_;
-  state_pub_->publish(state_msg);
-
+  // Target is valid: check alignment
   geometry_msgs::msg::Twist cmd;
   const double heading_err = target_heading_err_;
   const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+  uint8_t current_belt_mode = robot_msgs::msg::BeltMode::STOP;
 
   if (is_aligned) {
+    // 照準完了 -> PREPARING_SHOOT (ベルト回転開始)
+    state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
     cmd.angular.z = 0.0;
+    last_cmd_wz_ = 0.0;
+    current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
+
+    RCLCPP_INFO_THROTTLE(
+      get_logger(),
+      *get_clock(), 500,
+      "🚀 [Game2 PREPARING_SHOOT] Tag #%d (Row %d) Aligned! Spinning Belt (Mode: %u)",
+      active_target_id_, active_row_, current_belt_mode);
   } else {
+    // 照準旋回中 -> ALIGNING (ベルト停止)
+    state_ = robot_msgs::msg::Game2State::ALIGNING;
+    current_belt_mode = robot_msgs::msg::BeltMode::STOP;
+
     // Proportional visual error + IMU Gyro damping (PD control)
     double desired_wz = kp_yaw_ * heading_err;
     if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
@@ -645,18 +662,21 @@ void Game2AimNode::control_loop()
     }
 
     cmd.angular.z = desired_wz;
-  }
-  last_cmd_wz_ = cmd.angular.z;
+    last_cmd_wz_ = cmd.angular.z;
 
-  RCLCPP_INFO_THROTTLE(
-    get_logger(),
-    *get_clock(), 200,
-    "🎯 [Game2 Aim Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
-    active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z,
-    is_aligned ? "✨ ALIGNED" : "🔄 TURNING");
+    RCLCPP_INFO_THROTTLE(
+      get_logger(),
+      *get_clock(), 200,
+      "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | 🔄 TURNING",
+      active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z);
+  }
+
+  robot_msgs::msg::Game2State state_msg;
+  state_msg.state = state_;
+  state_pub_->publish(state_msg);
 
   publish_all(
-    cmd, test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_,
+    cmd, current_belt_mode,
     !test_alignment_only_,
     robot_msgs::msg::ArmPosition::DRIBBLE,
     false);
