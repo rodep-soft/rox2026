@@ -271,12 +271,15 @@ void DribbleControllerNode::edulite_state_callback(
     return;
   }
 
-  // eduliteの準備ができたとき一度だけ下を実行
-  if (is_arm_ready_) {
-    return;
-  }
+  // 現在角度はREADYのフィードバックを受けるたびに更新する
+  const bool was_arm_ready = is_arm_ready_;
   is_arm_ready_ = true;
   arm_pos_rad_ = msg->position;
+
+  // READYへ切り替わったときだけ指令値を現在角度で初期化する
+  if (was_arm_ready) {
+    return;
+  }
   arm_cmd_pos_rad_ = arm_pos_rad_;
   hold_arm_pos_rad_ = arm_pos_rad_;
 
