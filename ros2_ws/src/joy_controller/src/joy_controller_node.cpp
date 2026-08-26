@@ -57,8 +57,7 @@ JoyControllerNode::JoyControllerNode()
   dpad_horizontal_axis_ = declare_parameter<int>("dpad_horizontal_axis", 6);
   dpad_vertical_axis_ = declare_parameter<int>("dpad_vertical_axis", 7);
 
-  if (joy_timeout_ms_ <= 0 || state_publish_period_ms_ <= 0)
-  {
+  if (joy_timeout_ms_ <= 0 || state_publish_period_ms_ <= 0) {
     throw std::runtime_error("timer periods must be positive");
   }
   if (spring_arm_open_delay_ms_ < 0 || spring_arm_restore_delay_ms_ < 0) {
@@ -171,8 +170,7 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
 
     // 再起動が必要なパラメータの変更を拒否
     if (name == "state_publish_period_ms") {
-      if (param.as_int() != state_publish_period_ms_)
-      {
+      if (param.as_int() != state_publish_period_ms_) {
         result.successful = false;
         result.reason = name + " requires a node restart";
         return result;
