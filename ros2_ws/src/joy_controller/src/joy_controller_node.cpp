@@ -415,30 +415,13 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. L2とR2を同時に押した瞬間にスプリング発射シーケンスを開始
-  const bool was_l2_active =
-    last_joy_msg_.has_value() &&
-    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
-    -axis_on_threshold_;
-  const bool was_r2_active =
-    last_joy_msg_.has_value() &&
-    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
-    -axis_on_threshold_;
-  const bool spring_fire_input_triggered =
-    is_l2_active && is_r2_active && !(was_l2_active && was_r2_active);
-  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
+  // 8. L2とR2の同時押しでスプリング発射を要求
+  const auto now_tp = std::chrono::steady_clock::now();
+  const bool spring_fire_requested = is_l2_active && is_r2_active;
 
-  bool should_publish_spring_fire = false;
-
-  if (spring_fire_input_triggered && spring_actuator_ready_ &&
-    !spring_fire_pending_ && !spring_arm_restore_pending_)
-  {
-    // 1) アームを OPEN 姿勢へ開く
-    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
-    manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
-
+  // 初回だけアームOPENの遅延シーケンスを開始する。
   if (spring_fire_requested && spring_actuator_ready_ &&
-    !spring_fire_command_started_)
+    !spring_fire_command_started_ && !spring_arm_restore_pending_)
   {
     spring_fire_command_started_ = true;
     spring_arm_open_pending_ = true;
@@ -456,29 +439,31 @@ void JoyControllerNode::loop_callback()
   if (spring_arm_open_pending_) {
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
-      now_tp - spring_sequence_start_time_)
-      .count();
+      now_tp - spring_sequence_start_time_).count();
     if (elapsed_ms >= spring_arm_open_delay_ms_) {
       spring_arm_open_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+      manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
     }
   }
 
+  // 押している間は毎周期送信し、spring_controller側で1要求にラッチする。
   std_msgs::msg::Bool spring_fire_msg;
   spring_fire_msg.data = spring_fire_requested;
   spring_fire_pub_->publish(spring_fire_msg);
-  // L1も押している間は毎周期要求を送信する。
+
+  // L1を押している間も毎周期スロー発射要求を送信する。
   const bool slow_fire_requested =
-    (slow_fire_button_ >= 0) && is_button_down(joy_msg_, slow_fire_button_);
+    slow_fire_button_ >= 0 && is_button_down(joy_msg_, slow_fire_button_);
   std_msgs::msg::Bool slow_fire_msg;
   slow_fire_msg.data = slow_fire_requested;
   slow_fire_pub_->publish(slow_fire_msg);
-  // 発射指令から設定時間が経過したらアームをDRIBBLEへ自動復帰
+
+  // 発射開始から設定時間が経過したらアームをDRIBBLEへ戻す。
   if (spring_arm_restore_pending_ && !spring_arm_open_pending_) {
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
-      now_tp - spring_fire_released_time_)
-      .count();
+      now_tp - spring_fire_released_time_).count();
     if (elapsed_ms >= spring_arm_restore_delay_ms_) {
       spring_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
@@ -490,7 +475,6 @@ void JoyControllerNode::loop_callback()
         dribble_enabled_ ? "ON" : "OFF");
     }
   }
-
 
   // アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
   if (!game2_active_) {

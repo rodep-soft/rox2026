@@ -118,6 +118,7 @@ DribbleControllerNode::DribbleControllerNode()
 /// @brief 4パターンの位置の情報を取得
 void DribbleControllerNode::position_mode_callback(const robot_msgs::msg::ArmPosition::SharedPtr msg)
 {
+  const uint8_t target_mode = msg->position;
   if (emergency_stop_active_ ||
     (msg->position != robot_msgs::msg::ArmPosition::DRIBBLE &&
     msg->position != robot_msgs::msg::ArmPosition::OPEN &&
@@ -664,9 +665,9 @@ double DribbleControllerNode::get_arm_move_max_vel_rad_s() const
     case robot_msgs::msg::ArmPosition::FEED:
       return feeding_max_rad_s_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
-      return dribbling_max_velocity_rad_s_;
+      return dribbling_max_rad_s_;
     case robot_msgs::msg::ArmPosition::HOME:
-      return returning_max_velocity_rad_s_;
+      return returning_max_rad_s_;
     default:
       return returning_max_rad_s_;
   }
@@ -747,6 +748,7 @@ void DribbleControllerNode::load_parameters()
   // アーム位置
   dribble_pos_rad_ = declare_parameter("dribble_position_rad", dribble_pos_rad_);
   open_position_rad_ = declare_parameter("open_position_rad", open_position_rad_);
+  home_position_rad_ = declare_parameter("home_position_rad", home_position_rad_);
   bottom_pos_rad_ = declare_parameter("bottom_position_rad", bottom_pos_rad_);
   feed_pos_rad_ = declare_parameter("feed_position_rad", feed_pos_rad_);
   slow_fire_dribble_position_rad_ = declare_parameter(
@@ -892,6 +894,9 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       affects_trajectory = true;
     } else if (name == "open_position_rad") {
       updated = update_double(parameter, open_position_rad_, any_double_min, any_double_max);
+      affects_trajectory = true;
+    } else if (name == "home_position_rad") {
+      updated = update_double(parameter, home_position_rad_, any_double_min, any_double_max);
       affects_trajectory = true;
     } else if (name == "bottom_position_rad") {
       updated = update_double(parameter, bottom_pos_rad_, any_double_min, any_double_max);

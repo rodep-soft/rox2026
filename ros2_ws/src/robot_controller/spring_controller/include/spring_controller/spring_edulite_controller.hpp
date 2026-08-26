@@ -2,7 +2,6 @@
 #define SPRING_CONTROLLER__SPRING_EDULITE_CONTROLLER_HPP_
 
 #include <cstdint>
-#include <optional>
 #include <string>
 
 #include "actuator_msgs/msg/actuator_state.hpp"
@@ -22,17 +21,17 @@ public:
 private:
   enum class State : uint8_t
   {
-    WAITING_FOR_ACTUATOR_READY,
-    WAITING_FOR_HOMING,
-    HOMING,
-    WAITING_FOR_STOP,
-    MOVING_TO_STANDBY,
-    READY,
-    FIRING,
-    SLOW_FIRING_EXTENDING,
-    SLOW_FIRING_RETURNING,
-    SLOW_FIRE_ARM_ONLY,
-    ERROR,
+    WAITING_FOR_ACTUATOR_READY, //driverからのREADYを待つ状態
+    WAITING_FOR_HOMING,         // HOMINGの開始を待つ状態
+    HOMING,                     // HOMING中
+    WAITING_FOR_STOP,           // 停止待ち　
+    MOVING_TO_STANDBY,          // 機構の動作準備中
+    READY,                      //機構の動作準備完了
+    FIRING,                     //ばね発射中
+    SLOW_FIRING_EXTENDING,      // スロー発射進行中
+    SLOW_FIRING_RETURNING,      // スロー発射からもとに位置に帰還中
+    SLOW_FIRE_ARM_ONLY,         // スロー発射のアームだけの動作中
+    ERROR,                      // driver側のエラー
   };
 
   void fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -53,13 +52,13 @@ private:
   void enter_error_with_position_hold(
     double current_position_rad,
     const char * reason);
-  void publish_target(double target_rad, bool force = false);
+  void publish_target(double target_rad);
   void publish_operation_state();
   bool update_settled(const actuator_msgs::msg::ActuatorState & feedback);
 
   State state_{State::WAITING_FOR_ACTUATOR_READY};
   bool emergency_stop_active_{true};
-  bool previous_emergency_stop_active_{true};
+  bool resume_after_emergency_stop_{false};
   bool fire_requested_{false};
   bool fire_request_pending_{false};
   bool slow_fire_requested_{false};
@@ -71,9 +70,8 @@ private:
   bool zero_service_pending_{false};
   bool actuator_pos_received_{false};
   bool homing_required_{true};
-  bool belt_clearance_requested_{false};
-  bool belt_clearance_request_pending_{false};
-  bool belt_clearance_command_{false};
+  bool belt_clearance_request_active_{false};
+  bool is_belt_clearance_active_{false};
   bool new_actuator_feedback_{false};
   bool zero_service_response_received_{false};
   bool zero_service_succeeded_{false};
@@ -110,7 +108,6 @@ private:
   double commanded_forward_speed_m_s_{0.0};
   double cmd_vel_timeout_sec_{0.2};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
-  std::optional<double> last_published_target_rad_;
   uint8_t last_published_operation_state_{255};
   uint8_t actuator_state_{actuator_msgs::msg::ActuatorState::STATE_OFFLINE};
   uint16_t logical_id_{4};

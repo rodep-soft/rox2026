@@ -68,8 +68,8 @@ private:
   double dribble_pos_rad_{-0.86};
   double open_position_rad_{-1.27};
   double home_position_rad_{0.0};
-  double bottom_position_rad_{0.0};
-  double feed_position_rad_{1.3};
+  double bottom_pos_rad_{0.0};
+  double feed_pos_rad_{1.3};
   double feed_duration_sec_{0.6};
   double opening_max_rad_s_{4.0};
   double feeding_max_rad_s_{6.0};

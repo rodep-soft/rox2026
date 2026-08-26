@@ -182,7 +182,7 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
-| publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
+| publish | `/dribble/command_position` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
 | publish | `/game2/start` | `std_msgs/msg/Bool` |

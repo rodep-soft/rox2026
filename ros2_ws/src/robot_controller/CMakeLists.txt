@@ -98,7 +98,8 @@ add_controller(
   sensor_msgs
   std_msgs
   robot_msgs)
-add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs robot_msgs)
+add_controller(
+  led_controller_node led_controller led_controller.cpp actuator_msgs rclcpp std_msgs robot_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
 target_include_directories(
