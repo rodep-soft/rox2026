@@ -686,21 +686,32 @@ SpringEduliteController::parameters_callback(
         result.reason = "standby_offset_rad must be a number";
         return result;
       }
+      const double standby_delta_rad = new_standby - standby_offset_rad_;
+      if (std::fabs(standby_delta_rad) <= 1e-9) {
+        continue;
+      }
+
       standby_offset_rad_ = new_standby;
       RCLCPP_INFO(
         get_logger(), "Updated standby_offset_rad to %.3f rad",
         standby_offset_rad_);
 
-      // READY または MOVING_TO_STANDBY 状態であれば、即座に新しい待機位置へ移動
+      // 累積した発射位置を維持し、待機オフセットの変更量だけを反映する
       if (state_ == State::READY || state_ == State::MOVING_TO_STANDBY) {
-        target_pos_rad_ =
-          is_belt_clearance_active_ ? 0.0 : standby_offset_rad_;
+        if (is_belt_clearance_active_) {
+          belt_clearance_return_pos_rad_ += standby_delta_rad;
+          belt_clearance_pos_rad_ =
+            belt_clearance_return_pos_rad_ - standby_offset_rad_;
+          target_pos_rad_ = belt_clearance_pos_rad_;
+        } else {
+          target_pos_rad_ += standby_delta_rad;
+        }
         stable_fb_count_ = 0;
         state_ = State::MOVING_TO_STANDBY;
         motion_start_time_ = now();
         publish_target(target_pos_rad_);
         RCLCPP_INFO(
-          get_logger(), "Applying new standby position: %.3f rad.",
+          get_logger(), "Applying standby offset delta: target %.3f rad.",
           target_pos_rad_);
       }
     } else if (name == "belt_clearance_ready_travel_rad") {

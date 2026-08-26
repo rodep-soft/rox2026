@@ -222,6 +222,24 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
   }
   EXPECT_NEAR(last_position_rad, -6.283185307f, 0.01f);
 
+  // 発射完了後に同じYAML値を再ロードしても、累積目標位置を維持する
+  state_msg.position = last_position_rad;
+  state_msg.velocity = 0.0f;
+  for (int i = 0; i < 5; ++i) {
+    state_pub->publish(state_msg);
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+  }
+  ASSERT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("standby_offset_rad", 0.0)).successful);
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(50)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_NEAR(last_position_rad, -6.283185307f, 0.01f);
+
   fire_msg.data = false;
   fire_pub->publish(fire_msg);
   std_msgs::msg::Bool emergency_stop_msg;

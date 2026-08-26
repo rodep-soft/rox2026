@@ -8,7 +8,7 @@
 
     heading_deadband_rad: 0.01
     rotation_input_deadband_rad_s: 0.01
-    max_correction_rad_s: 1.5
+    max_correction_rad_s: 3.0
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
 
