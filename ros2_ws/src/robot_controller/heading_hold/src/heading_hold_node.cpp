@@ -10,6 +10,7 @@
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
@@ -45,6 +46,11 @@ public:
     imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
       imu_topic_, rclcpp::SensorDataQoS(),
       [this](const sensor_msgs::msg::Imu::SharedPtr message) {receive_imu(*message);});
+    heading_enable_sub_ = create_subscription<std_msgs::msg::Bool>(
+      heading_enable_topic_, rclcpp::QoS(1).reliable().transient_local(),
+      [this](const std_msgs::msg::Bool::SharedPtr message) {
+        set_heading_hold_enabled(message->data);
+      });
     corrected_command_pub_ = create_publisher<geometry_msgs::msg::Twist>(
       corrected_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
 
@@ -84,6 +90,8 @@ private:
     imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
     corrected_cmd_vel_topic_ =
       declare_parameter<std::string>("corrected_cmd_vel_topic", "/mecanum/cmd_vel_heading");
+    heading_enable_topic_ =
+      declare_parameter<std::string>("heading_enable_topic", "/heading_control/enable");
 
     validate_non_negative("kp", kp_);
     validate_non_negative("ki", ki_);
@@ -233,6 +241,23 @@ private:
     settle_velocity_is_stable_ = false;
   }
 
+  void set_heading_hold_enabled(const bool enabled)
+  {
+    if (heading_hold_enabled_ == enabled) {
+      return;
+    }
+
+    heading_hold_enabled_ = enabled;
+    reset_heading_hold();
+    if (!heading_hold_enabled_) {
+      corrected_command_pub_->publish(latest_command_);
+    }
+    RCLCPP_INFO(
+      get_logger(), "Heading hold %s; mecanum command is %s",
+      heading_hold_enabled_ ? "enabled" : "disabled",
+      heading_hold_enabled_ ? "IMU-corrected" : "passed through");
+  }
+
   void control()
   {
     const auto current_time = now();
@@ -248,6 +273,12 @@ private:
         RCLCPP_INFO(get_logger(), "cmd_vel idle / timed out; publishing zero velocity");
         cmd_vel_timeout_logged_ = true;
       }
+      return;
+    }
+
+    if (!heading_hold_enabled_) {
+      corrected_command_pub_->publish(latest_command_);
+      reset_heading_hold();
       return;
     }
 
@@ -313,6 +344,8 @@ private:
       target_yaw_rad_ = current_yaw_rad_;
       target_yaw_initialized_ = true;
       integral_error_rad_s_ = 0.0;
+      corrected_command_pub_->publish(latest_command_);
+      return;
     }
 
     const double safe_dt_s =
@@ -338,6 +371,7 @@ private:
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr heading_enable_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr corrected_command_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_;
@@ -353,6 +387,7 @@ private:
   double target_yaw_rad_{0.0};
   double integral_error_rad_s_{0.0};
   bool target_yaw_initialized_{false};
+  bool heading_hold_enabled_{true};
   bool cmd_vel_timeout_logged_{false};
 
   double kp_{4.0};
@@ -374,6 +409,7 @@ private:
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;
+  std::string heading_enable_topic_;
 };
 
 int main(int argc, char ** argv)

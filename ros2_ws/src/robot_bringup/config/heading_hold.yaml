@@ -20,3 +20,4 @@
     raw_cmd_vel_topic: /drive/cmd_vel
     imu_topic: /imu/data
     corrected_cmd_vel_topic: /mecanum/cmd_vel_heading
+    heading_enable_topic: /heading_control/enable
