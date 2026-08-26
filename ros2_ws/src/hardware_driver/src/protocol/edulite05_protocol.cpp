@@ -392,18 +392,6 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
   // bit23~22
   const auto mode_status = static_cast<uint8_t>((message.id >> 22) & 0x03);
 
-  if (!startup_run_state_observed_) {
-    // RUN observed after this driver sent ENABLE belongs to the current
-    // initialization, not to a previously running motor. Only a RUN seen
-    // before ENABLE proves that software restarted while motor power stayed on.
-    const bool enable_already_sent =
-      initialization_step_ == InitializationStep::WAIT_FOR_ENABLE ||
-      initialization_step_ == InitializationStep::READY;
-    motor_was_running_at_startup_ =
-      !enable_already_sent && mode_status == RUN_STATUS_MODE;
-    startup_run_state_observed_ = true;
-  }
-
   if (summary_fault_code != 0U) {
     const auto fault_code = detailed_fault_code_ != 0U ?
       detailed_fault_code_ : summary_fault_code;
@@ -500,12 +488,9 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
       {
         logical_position_offset_rad_ = -motor_position_rad_;
         feedback_.position = 0.0f;
-        // If the motor was already RUN before this driver initialized, only the software was
-        // restarted. Preserve motion continuity by accepting the measured position as the new
-        // logical reference. A real motor power-cycle is not RUN here and still requires homing.
-        if (motor_was_running_at_startup_) {
-          position_reference_state_ = PositionReferenceState::ESTABLISHED;
-        }
+        // Service-based references are temporary after every driver start.
+        // The controller must home against the limit switch and call
+        // set_position before normal operation is allowed.
       }
     } else {
       startup_position_alignment_pending_ = true;
@@ -674,8 +659,6 @@ void Protocol::restart_initialization(bool clear_target)
 {
   state_ = MotorState::INITIALIZING;
   motor_enabled_ = false;
-  startup_run_state_observed_ = false;
-  motor_was_running_at_startup_ = false;
   consecutive_non_run_feedback_count_ = 0;
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
