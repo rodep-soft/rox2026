@@ -38,6 +38,7 @@ public:
   {
     configure_parameters();
 
+    // raw cmd_velを受け取り、IMU補正後のcmd_vel_headingとして出力する。
     command_sub_ = create_subscription<geometry_msgs::msg::Twist>(
       raw_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_),
       [this](const geometry_msgs::msg::Twist::SharedPtr message) {
@@ -252,6 +253,7 @@ private:
       return;
     }
 
+    // OFF時は補正状態を破棄し、入力cmd_velをそのまま通す。
     heading_hold_enabled_ = enabled;
     reset_heading_hold_state();
     if (!heading_hold_enabled_) {
@@ -279,6 +281,7 @@ private:
   geometry_msgs::msg::Twist select_output_command(
     const rclcpp::Time & current_time, const double dt_s)
   {
+    // cmd_vel途絶時は、安全のため補正状態をリセットする。
     if (!command_is_fresh(current_time)) {
       reset_heading_hold_state();
       if (!cmd_vel_timeout_logged_) {
@@ -292,6 +295,7 @@ private:
       return latest_command_;
     }
 
+    // IMU途絶時は補正せず、入力cmd_velをそのまま出力する。
     if (!imu_is_fresh(current_time)) {
       reset_heading_hold_state();
       RCLCPP_WARN_THROTTLE(
@@ -300,6 +304,7 @@ private:
       return latest_command_;
     }
 
+    // 旋回入力中はHeading Holdを適用せず、操作者の旋回指令をそのまま出力する。
     if (std::abs(latest_command_.angular.z) > rotation_input_deadband_rad_s_) {
       target_yaw_rad_ = current_yaw_rad_;
       target_yaw_initialized_ = true;
@@ -309,6 +314,7 @@ private:
     }
 
     if (rotation_state_ == RotationState::MANUAL_ROTATION) {
+      // 旋回停止後、機体が静止するまで待ってから新しい保持角度を設定する。
       rotation_state_ = RotationState::SETTLING;
       settle_velocity_is_stable_ = false;
     }
