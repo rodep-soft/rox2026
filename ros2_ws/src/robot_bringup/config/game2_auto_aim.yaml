@@ -17,12 +17,12 @@
     camera_cy: 540.0        # [px] 光学主点Y
 
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
-    kp_yaw: 2.2             # 比例ゲイン (視覚誤差)
-    kd_yaw: 0.10            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)
+    kp_yaw: 1.8             # 比例ゲイン (視覚誤差)
+    kd_yaw: 0.12            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)
     min_angular_z: 0.12     # [rad/s] 静止摩擦補償最小角速度
-    max_angular_z: 0.80     # [rad/s] 最大旋回角速度
-    max_angular_accel: 4.0  # [rad/s^2] 旋回加減速度リミッター (スリップ防止)
-    yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.85度)
+    max_angular_z: 0.40     # [rad/s] 最大旋回角速度 (カメラブレ防止: 約23 deg/s)
+    max_angular_accel: 2.5  # [rad/s^2] 旋回加減速度リミッター (スリップ・ブレ防止)
+    yaw_tolerance: 0.030    # [rad] 角度誤差許容値 (約1.7度)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
 
     # ── 🧪 テストモード切替 ──
@@ -30,7 +30,7 @@
     # false: BeltMode連動を含むエイムアシスト (下段: LEVEL_1, 中段: LEVEL_2, 上段: LEVEL_3)
     test_alignment_only: false
 
-    tag_lost_timeout: 0.5   # [s] AprilTag見失い判定タイムアウト
+    tag_lost_timeout: 1.5   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ耐性)
     enable_double_panel_midpoint_targeting: true # true: 列間中点狙い (1-2列間, 2-3列間) を有効化し2枚抜きを優先 (上段->中段->下段)
 
     # ── 🏷️ シュートパネル AprilTag ID ──

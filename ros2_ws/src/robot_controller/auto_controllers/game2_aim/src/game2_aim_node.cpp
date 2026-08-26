@@ -77,11 +77,11 @@ void Game2AimNode::load_parameters()
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
 
   // Control gains & Limits
-  kp_yaw_ = declare_parameter<double>("kp_yaw", 2.2);
-  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.10);
+  kp_yaw_ = declare_parameter<double>("kp_yaw", 1.8);
+  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.12);
   min_angular_z_ = declare_parameter<double>("min_angular_z", 0.12);
-  max_angular_z_ = declare_parameter<double>("max_angular_z", 0.80);
-  max_angular_accel_ = declare_parameter<double>("max_angular_accel", 4.0);
+  max_angular_z_ = declare_parameter<double>("max_angular_z", 0.40);
+  max_angular_accel_ = declare_parameter<double>("max_angular_accel", 2.5);
   target_distance_ = declare_parameter<double>("target_distance", 4.0);
 
   // Camera Physical & Optical Parameters
@@ -96,10 +96,10 @@ void Game2AimNode::load_parameters()
   camera_cy_ = declare_parameter<double>("camera_cy", camera_image_height_ / 2.0);
 
   // Tolerances & Timings
-  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.015);
+  yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.030);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
 
-  tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 0.5);
+  tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 1.5);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   enable_double_panel_midpoint_targeting_ =
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
@@ -313,6 +313,7 @@ void Game2AimNode::tag_detections_callback(
       it->second.detected = true;
       it->second.pixel_x = static_cast<double>(detection.centre.x);
       it->second.pixel_y = static_cast<double>(detection.centre.y);
+      it->second.yaw_at_detection = yaw_;
 
       // ── 📐 厳密な3D幾何学座標変換 (カメラ光学座標系 -> ロボット旋回/射出口座標系) ──
       // 1. カメラ光学系におけるターゲット相対位置 (X_cam: 前方深度, Y_cam: 左方距離)
@@ -359,7 +360,9 @@ void Game2AimNode::tag_detections_callback(
       target_x_ = target.x;
       target_y_ = target.y;
       target_z_ = target.z;
-      target_heading_err_ = best_heading_err;
+      const double raw_heading_err = std::atan2(target_y_, target_x_);
+      const double rotated = std::remainder(yaw_ - target.yaw_at_detection, 2.0 * M_PI);
+      target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
       target_valid_ = true;
 
       // 射出口と完全に一致する理論目標ピクセル (例: 960 + (35mm / 4m) * 800 = 967px)
@@ -394,6 +397,10 @@ void Game2AimNode::select_target_and_aim()
       const auto it = panel_grid_.find(active_target_id_);
       if (it == panel_grid_.end() || !it->second.detected) {
         target_valid_ = false;
+      } else {
+        const double raw_heading_err = std::atan2(target_y_, target_x_);
+        const double rotated = std::remainder(yaw_ - it->second.yaw_at_detection, 2.0 * M_PI);
+        target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
       }
     }
     return;
@@ -469,7 +476,10 @@ void Game2AimNode::select_target_and_aim()
           target_z_ = (p0->z + p1->z) * 0.5;
           active_row_ = row;
           active_target_id_ = p0->tag_id;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          const double raw_heading_err = std::atan2(target_y_, target_x_);
+          const double avg_yaw = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
+          const double rotated = std::remainder(yaw_ - avg_yaw, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
@@ -490,7 +500,10 @@ void Game2AimNode::select_target_and_aim()
           target_z_ = (p1->z + p2->z) * 0.5;
           active_row_ = row;
           active_target_id_ = p1->tag_id;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          const double raw_heading_err = std::atan2(target_y_, target_x_);
+          const double avg_yaw = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
+          const double rotated = std::remainder(yaw_ - avg_yaw, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
@@ -511,7 +524,9 @@ void Game2AimNode::select_target_and_aim()
           target_z_ = p0->z;
           active_row_ = row;
           active_target_id_ = p0->tag_id;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          const double raw_heading_err = std::atan2(target_y_, target_x_);
+          const double rotated = std::remainder(yaw_ - p0->yaw_at_detection, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
@@ -532,7 +547,9 @@ void Game2AimNode::select_target_and_aim()
           target_z_ = p1->z;
           active_row_ = row;
           active_target_id_ = p1->tag_id;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          const double raw_heading_err = std::atan2(target_y_, target_x_);
+          const double rotated = std::remainder(yaw_ - p1->yaw_at_detection, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
@@ -553,7 +570,9 @@ void Game2AimNode::select_target_and_aim()
           target_z_ = p2->z;
           active_row_ = row;
           active_target_id_ = p2->tag_id;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          const double raw_heading_err = std::atan2(target_y_, target_x_);
+          const double rotated = std::remainder(yaw_ - p2->yaw_at_detection, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);

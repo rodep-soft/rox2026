@@ -37,6 +37,7 @@ struct PanelTagInfo
   double z{0.0};
   double pixel_x{0.0};
   double pixel_y{0.0};
+  double yaw_at_detection{0.0};
   rclcpp::Time last_seen;
 };
 
@@ -95,11 +96,11 @@ private:
   std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
   std::string detections_topic_{"/detections"};
   std::string tag_prefix_{"tag16h5:"};
-  double kp_yaw_{2.2};
-  double kd_yaw_{0.10};
+  double kp_yaw_{1.8};
+  double kd_yaw_{0.12};
   double min_angular_z_{0.12};
-  double max_angular_z_{0.80};
-  double max_angular_accel_{4.0}; // [rad/s^2]
+  double max_angular_z_{0.40};
+  double max_angular_accel_{2.5}; // [rad/s^2]
   double target_distance_{4.0};
 
   // Camera Optical / Physical Parameters
@@ -114,10 +115,10 @@ private:
   double camera_cy_{540.0};
 
   // Tolerances & Timings
-  double yaw_tolerance_{0.015}; // rad (~0.85 deg)
+  double yaw_tolerance_{0.030}; // rad (~1.7 deg)
   double dist_tolerance_{0.05};
 
-  double tag_lost_timeout_{0.5};
+  double tag_lost_timeout_{1.5};
   bool test_alignment_only_{false};
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
 
