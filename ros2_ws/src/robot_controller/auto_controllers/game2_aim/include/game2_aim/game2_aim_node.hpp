@@ -119,6 +119,7 @@ private:
   double dist_tolerance_{0.05};
 
   double tag_lost_timeout_{1.5};
+  double search_angular_z_{0.15};
   bool test_alignment_only_{false};
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
 

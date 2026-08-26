@@ -100,6 +100,7 @@ void Game2AimNode::load_parameters()
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
 
   tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 1.5);
+  search_angular_z_ = declare_parameter<double>("search_angular_z", 0.15);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   enable_double_panel_midpoint_targeting_ =
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
@@ -621,13 +622,21 @@ void Game2AimNode::control_loop()
     state_pub_->publish(state_msg);
 
     geometry_msgs::msg::Twist cmd;
-    cmd.angular.z = 0.0;
-    last_cmd_wz_ = 0.0;
+    cmd.angular.z = search_angular_z_;
+    last_cmd_wz_ = search_angular_z_;
 
-    RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 1000,
-      "🔍 [Game2 Search] Waiting for target AprilTags... Standing still");
+    if (std::abs(search_angular_z_) > 0.001) {
+      RCLCPP_INFO_THROTTLE(
+        get_logger(),
+        *get_clock(), 1000,
+        "🔍 [Game2 Search] Scanning for target AprilTags... Rotating %+.2f rad/s",
+        search_angular_z_);
+    } else {
+      RCLCPP_INFO_THROTTLE(
+        get_logger(),
+        *get_clock(), 1000,
+        "🔍 [Game2 Search] Waiting for target AprilTags... Standing still");
+    }
 
     publish_all(
       cmd, robot_msgs::msg::BeltMode::STOP,
