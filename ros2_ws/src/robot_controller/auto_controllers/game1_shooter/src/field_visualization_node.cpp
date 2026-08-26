@@ -1,0 +1,513 @@
+#include <rclcpp/rclcpp.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <vector>
+#include <string>
+#include <cmath>
+
+namespace robot_controller
+{
+
+class FieldVisualizationNode : public rclcpp::Node
+{
+public:
+  explicit FieldVisualizationNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("field_visualization_node", options)
+  {
+    map_frame_ = declare_parameter<std::string>("map_frame", "map");
+    marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+      "/field/markers", rclcpp::QoS(1).reliable().transient_local());
+
+    timer_ = create_wall_timer(
+      std::chrono::milliseconds(1000),
+      std::bind(&FieldVisualizationNode::publish_field_markers, this));
+
+    RCLCPP_INFO(get_logger(), "FieldVisualizationNode: Publishing CAD-accurate field layout and AprilTags to /field/markers");
+  }
+
+private:
+  void publish_field_markers()
+  {
+    visualization_msgs::msg::MarkerArray msg;
+    const auto now_stamp = this->now();
+    int32_t id = 0;
+
+    // 1. フィールド床面
+    {
+      visualization_msgs::msg::Marker floor;
+      floor.header.frame_id = map_frame_;
+      floor.header.stamp = now_stamp;
+      floor.ns = "field_floor";
+      floor.id = id++;
+      floor.type = visualization_msgs::msg::Marker::CUBE;
+      floor.action = visualization_msgs::msg::Marker::ADD;
+      floor.pose.position.x = 0.0;
+      floor.pose.position.y = 0.0;
+      floor.pose.position.z = -0.01;
+      floor.pose.orientation.w = 1.0;
+      floor.scale.x = 12.85;
+      floor.scale.y = 10.90;
+      floor.scale.z = 0.02;
+      floor.color.r = 0.10f;
+      floor.color.g = 0.12f;
+      floor.color.b = 0.16f;
+      floor.color.a = 0.98f;
+      msg.markers.push_back(floor);
+
+      visualization_msgs::msg::Marker cline;
+      cline.header.frame_id = map_frame_;
+      cline.header.stamp = now_stamp;
+      cline.ns = "center_line";
+      cline.id = id++;
+      cline.type = visualization_msgs::msg::Marker::CUBE;
+      cline.action = visualization_msgs::msg::Marker::ADD;
+      cline.pose.position.x = 0.0;
+      cline.pose.position.y = 0.0;
+      cline.pose.position.z = 0.002;
+      cline.pose.orientation.w = 1.0;
+      cline.scale.x = 0.08;
+      cline.scale.y = 10.90;
+      cline.scale.z = 0.005;
+      cline.color.r = 0.95f;
+      cline.color.g = 0.98f;
+      cline.color.b = 1.00f;
+      cline.color.a = 0.95f;
+      msg.markers.push_back(cline);
+    }
+
+    // 2. コーナーエリア (4隅)
+    {
+      const std::vector<std::pair<double, double>> corners = {
+        {-6.425 + 0.5,  5.45 - 0.5},
+        { 6.425 - 0.5,  5.45 - 0.5},
+        {-6.425 + 0.5, -5.45 + 0.5},
+        { 6.425 - 0.5, -5.45 + 0.5}
+      };
+      for (const auto & c : corners) {
+        visualization_msgs::msg::Marker corner;
+        corner.header.frame_id = map_frame_;
+        corner.header.stamp = now_stamp;
+        corner.ns = "corner_areas";
+        corner.id = id++;
+        corner.type = visualization_msgs::msg::Marker::CUBE;
+        corner.action = visualization_msgs::msg::Marker::ADD;
+        corner.pose.position.x = c.first;
+        corner.pose.position.y = c.second;
+        corner.pose.position.z = 0.001;
+        corner.pose.orientation.w = 1.0;
+        corner.scale.x = 1.0;
+        corner.scale.y = 1.0;
+        corner.scale.z = 0.002;
+        corner.color.r = 0.40f;
+        corner.color.g = 0.50f;
+        corner.color.b = 0.60f;
+        corner.color.a = 0.25f;
+        msg.markers.push_back(corner);
+      }
+    }
+
+    // 3. スタートエリア
+    {
+      visualization_msgs::msg::Marker g1_start_a;
+      g1_start_a.header.frame_id = map_frame_;
+      g1_start_a.header.stamp = now_stamp;
+      g1_start_a.ns = "start_areas";
+      g1_start_a.id = id++;
+      g1_start_a.type = visualization_msgs::msg::Marker::CUBE;
+      g1_start_a.action = visualization_msgs::msg::Marker::ADD;
+      g1_start_a.pose.position.x = -5.925;
+      g1_start_a.pose.position.y = 4.950;
+      g1_start_a.pose.position.z = 0.005;
+      g1_start_a.pose.orientation.w = 1.0;
+      g1_start_a.scale.x = 1.00;
+      g1_start_a.scale.y = 1.00;
+      g1_start_a.scale.z = 0.01;
+      g1_start_a.color.r = 0.00f;
+      g1_start_a.color.g = 0.95f;
+      g1_start_a.color.b = 0.45f;
+      g1_start_a.color.a = 0.70f;
+      msg.markers.push_back(g1_start_a);
+
+      visualization_msgs::msg::Marker g1_start_b = g1_start_a;
+      g1_start_b.id = id++;
+      g1_start_b.pose.position.x = 5.925;
+      g1_start_b.color.r = 0.00f;
+      g1_start_b.color.g = 0.70f;
+      g1_start_b.color.b = 1.00f;
+      msg.markers.push_back(g1_start_b);
+
+      visualization_msgs::msg::Marker start_a = g1_start_a;
+      start_a.id = id++;
+      start_a.pose.position.x = -3.43;
+      start_a.pose.position.y = -0.75;
+      start_a.scale.x = 1.20;
+      start_a.scale.y = 1.20;
+      start_a.color.r = 0.00f;
+      start_a.color.g = 0.85f;
+      start_a.color.b = 0.60f;
+      start_a.color.a = 0.65f;
+      msg.markers.push_back(start_a);
+
+      visualization_msgs::msg::Marker start_b = start_a;
+      start_b.id = id++;
+      start_b.pose.position.x = 3.43;
+      start_b.color.r = 0.20f;
+      start_b.color.g = 0.50f;
+      start_b.color.b = 1.00f;
+      msg.markers.push_back(start_b);
+    }
+
+    // 4. GAME1 パスエリア (寸法図: X = -1.316, Y = 1.641, 0.768m x 1.718m)
+    {
+      visualization_msgs::msg::Marker pass_a;
+      pass_a.header.frame_id = map_frame_;
+      pass_a.header.stamp = now_stamp;
+      pass_a.ns = "pass_areas";
+      pass_a.id = id++;
+      pass_a.type = visualization_msgs::msg::Marker::CUBE;
+      pass_a.action = visualization_msgs::msg::Marker::ADD;
+      pass_a.pose.position.x = -1.316;
+      pass_a.pose.position.y = 1.641;
+      pass_a.pose.position.z = 0.005;
+      pass_a.pose.orientation.w = 1.0;
+      pass_a.scale.x = 0.768;
+      pass_a.scale.y = 1.718;
+      pass_a.scale.z = 0.01;
+      pass_a.color.r = 0.05f;
+      pass_a.color.g = 0.90f;
+      pass_a.color.b = 0.55f;
+      pass_a.color.a = 0.80f;
+      msg.markers.push_back(pass_a);
+
+      visualization_msgs::msg::Marker pass_b = pass_a;
+      pass_b.id = id++;
+      pass_b.pose.position.x = 1.316;
+      pass_b.color.r = 0.05f;
+      pass_b.color.g = 0.65f;
+      pass_b.color.b = 1.00f;
+      msg.markers.push_back(pass_b);
+    }
+
+    // 5. GAME1 DFゲート構造体 (公式図面 measurement.webp 実寸法完全一致)
+    // ゲート1 (上側横向きゲート |--|): 中心 X = -3.415m, Y = 4.025m (幅0.55m, 支柱間0.50m)
+    // ゲート2 (中段縦向きゲート  I ): 中心 X = -4.600m, Y = 2.165m (幅0.55m, 支柱間0.50m)
+    {
+      struct DFGateExact {
+        double p1_x, p1_y, p2_x, p2_y;
+        double bar_x, bar_y, bar_sx, bar_sy;
+        float r, g, b;
+      };
+
+      const std::vector<DFGateExact> gates = {
+        // 自陣 上側横向きゲート (X = -3.415, Y = 4.025)
+        {-3.665, 4.025, -3.165, 4.025, -3.415, 4.025, 0.55, 0.05, 0.10f, 0.75f, 1.00f},
+        // 自陣 中段縦向きゲート (X = -4.600, Y = 2.165)
+        {-4.600, 2.415, -4.600, 1.915, -4.600, 2.165, 0.05, 0.55, 0.10f, 0.75f, 1.00f},
+        // 敵陣 上側横向きゲート (X =  3.415, Y = 4.025)
+        { 3.165, 4.025,  3.665, 4.025,  3.415, 4.025, 0.55, 0.05, 1.00f, 0.55f, 0.10f},
+        // 敵陣 中段縦向きゲート (X =  4.600, Y = 2.165)
+        { 4.600, 2.415,  4.600, 1.915,  4.600, 2.165, 0.05, 0.55, 1.00f, 0.55f, 0.10f}
+      };
+
+      for (const auto & g : gates) {
+        visualization_msgs::msg::Marker p1;
+        p1.header.frame_id = map_frame_;
+        p1.header.stamp = now_stamp;
+        p1.ns = "df_gates";
+        p1.id = id++;
+        p1.type = visualization_msgs::msg::Marker::CUBE;
+        p1.action = visualization_msgs::msg::Marker::ADD;
+        p1.pose.position.x = g.p1_x;
+        p1.pose.position.y = g.p1_y;
+        p1.pose.position.z = 0.40;
+        p1.pose.orientation.w = 1.0;
+        p1.scale.x = 0.05;
+        p1.scale.y = 0.05;
+        p1.scale.z = 0.80;
+        p1.color.r = g.r;
+        p1.color.g = g.g;
+        p1.color.b = g.b;
+        p1.color.a = 1.0f;
+        msg.markers.push_back(p1);
+
+        visualization_msgs::msg::Marker p2 = p1;
+        p2.id = id++;
+        p2.pose.position.x = g.p2_x;
+        p2.pose.position.y = g.p2_y;
+        msg.markers.push_back(p2);
+
+        visualization_msgs::msg::Marker top_bar = p1;
+        top_bar.id = id++;
+        top_bar.pose.position.x = g.bar_x;
+        top_bar.pose.position.y = g.bar_y;
+        top_bar.pose.position.z = 0.80;
+        top_bar.scale.x = g.bar_sx;
+        top_bar.scale.y = g.bar_sy;
+        top_bar.scale.z = 0.05;
+        msg.markers.push_back(top_bar);
+      }
+    }
+
+    // 6. GAME3 ゴール構造体
+    {
+      visualization_msgs::msg::Marker g3_top_bar;
+      g3_top_bar.header.frame_id = map_frame_;
+      g3_top_bar.header.stamp = now_stamp;
+      g3_top_bar.ns = "game3_goal_structure";
+      g3_top_bar.id = id++;
+      g3_top_bar.type = visualization_msgs::msg::Marker::CUBE;
+      g3_top_bar.action = visualization_msgs::msg::Marker::ADD;
+      g3_top_bar.pose.position.x = 0.10;
+      g3_top_bar.pose.position.y = -5.510;
+      g3_top_bar.pose.position.z = 0.850;
+      g3_top_bar.pose.orientation.w = 1.0;
+      g3_top_bar.scale.x = 1.70;
+      g3_top_bar.scale.y = 0.06;
+      g3_top_bar.scale.z = 0.06;
+      g3_top_bar.color.r = 1.00f;
+      g3_top_bar.color.g = 0.85f;
+      g3_top_bar.color.b = 0.10f;
+      g3_top_bar.color.a = 1.00f;
+      msg.markers.push_back(g3_top_bar);
+
+      visualization_msgs::msg::Marker g3_left_post = g3_top_bar;
+      g3_left_post.id = id++;
+      g3_left_post.pose.position.x = -0.750;
+      g3_left_post.pose.position.z = 0.425;
+      g3_left_post.scale.x = 0.06;
+      g3_left_post.scale.z = 0.85;
+      msg.markers.push_back(g3_left_post);
+
+      visualization_msgs::msg::Marker g3_right_post = g3_top_bar;
+      g3_right_post.id = id++;
+      g3_right_post.pose.position.x = 0.950;
+      g3_right_post.pose.position.z = 0.425;
+      g3_right_post.scale.x = 0.06;
+      g3_right_post.scale.z = 0.85;
+      msg.markers.push_back(g3_right_post);
+
+      visualization_msgs::msg::Marker g3_left_rail = g3_top_bar;
+      g3_left_rail.id = id++;
+      g3_left_rail.pose.position.x = -0.750;
+      g3_left_rail.pose.position.y = -5.985;
+      g3_left_rail.pose.position.z = 0.050;
+      g3_left_rail.scale.x = 0.05;
+      g3_left_rail.scale.y = 0.95;
+      g3_left_rail.scale.z = 0.08;
+      g3_left_rail.color.r = 0.85f;
+      g3_left_rail.color.g = 0.85f;
+      g3_left_rail.color.b = 0.90f;
+      msg.markers.push_back(g3_left_rail);
+
+      visualization_msgs::msg::Marker g3_right_rail = g3_left_rail;
+      g3_right_rail.id = id++;
+      g3_right_rail.pose.position.x = 0.950;
+      msg.markers.push_back(g3_right_rail);
+    }
+
+    // 7. GAME2 3x3 シュートパネル構造体
+    {
+      const std::vector<double> g2_xs = {-3.23, 3.63};
+      for (const double g2_x : g2_xs) {
+        for (int r = 0; r < 3; ++r) {
+          for (int c = 0; c < 3; ++c) {
+            visualization_msgs::msg::Marker panel;
+            panel.header.frame_id = map_frame_;
+            panel.header.stamp = now_stamp;
+            panel.ns = "game2_shoot_panels";
+            panel.id = id++;
+            panel.type = visualization_msgs::msg::Marker::CUBE;
+            panel.action = visualization_msgs::msg::Marker::ADD;
+            panel.pose.position.x = g2_x + (c - 1) * 0.41;
+            panel.pose.position.y = -5.525;
+            panel.pose.position.z = 0.18 + r * 0.41;
+            panel.pose.orientation.w = 1.0;
+            panel.scale.x = 0.36;
+            panel.scale.y = 0.03;
+            panel.scale.z = 0.36;
+            panel.color.r = 0.85f;
+            panel.color.g = 0.20f;
+            panel.color.b = 0.25f;
+            panel.color.a = 0.92f;
+            msg.markers.push_back(panel);
+          }
+        }
+      }
+    }
+
+    // 8. 全27枚の公式 AprilTag (図面 2.3 & measurement.webp 実寸完全吸着)
+    {
+      struct TagData {
+        int id;
+        double x, y, z, normal_yaw;
+      };
+      const std::vector<TagData> all_tags = {
+        // 四隅・外壁
+        // 自陣 (SIDE A):
+        {0,  -5.920,  5.450, 0.300,  1.5708},   // 上壁 (北向き)
+        {1,  -6.425,  4.920, 0.300,  3.1416},   // 左上壁 (西向き)
+        {2,  -6.425, -4.920, 0.300,  3.1416},   // 左下壁 (西向き)
+        {3,  -5.920, -5.450, 0.300, -1.5708},   // 下壁 (南向き)
+        // 敵陣 (SIDE B):
+        {0,   5.920,  5.450, 0.300,  1.5708},
+        {1,   6.425,  4.920, 0.300,  0.0000},
+        {2,   6.425, -4.920, 0.300,  0.0000},
+        {3,   5.920, -5.450, 0.300, -1.5708},
+
+        // 上側横向きゲート (中心 X = -3.415, Y = 4.025)
+        // バー表 (北向き Y=4.050): 4
+        {4,  -3.415,  4.050, 0.800,  1.5708},
+        // バー裏 (南向き Y=4.000): 6
+        {6,  -3.415,  4.000, 0.800, -1.5708},
+        // 左支柱 (西向き X=-3.665): 7
+        {7,  -3.665,  4.025, 0.400,  3.1416},
+        // 右支柱 (東向き X=-3.165): 5
+        {5,  -3.165,  4.025, 0.400,  0.0000},
+
+        // 敵陣 上側横向きゲート (中心 X = 3.415, Y = 4.025)
+        {4,   3.415,  4.050, 0.800,  1.5708},
+        {6,   3.415,  4.000, 0.800, -1.5708},
+        {5,   3.165,  4.025, 0.400,  3.1416},
+        {7,   3.665,  4.025, 0.400,  0.0000},
+
+        // 中段縦向きゲート (中心 X = -4.600, Y = 2.165)
+        // 上支柱 (北向き Y=2.415): 9
+        {9,  -4.600,  2.415, 0.400,  1.5708},
+        // 下支柱 (南向き Y=1.915): 11
+        {11, -4.600,  1.915, 0.400, -1.5708},
+        // 左バー (西向き X=-4.625): 8
+        {8,  -4.625,  2.165, 0.800,  3.1416},
+        // 右バー (東向き X=-4.575): 10
+        {10, -4.575,  2.165, 0.800,  0.0000},
+
+        // 敵陣 中段縦向きゲート (中心 X = 4.600, Y = 2.165)
+        {9,   4.600,  2.415, 0.400,  1.5708},
+        {11,  4.600,  1.915, 0.400, -1.5708},
+        {10,  4.575,  2.165, 0.800,  3.1416},
+        {8,   4.625,  2.165, 0.800,  0.0000},
+
+        // センターラインポール (上 Y=2.45m, 下 Y=0.65m)
+        {12, -0.020,  2.450, 0.400,  3.1416},
+        {13, -0.020,  0.650, 0.400,  3.1416},
+
+        // GAME2 3x3 シュートパネル (SIDE A 自陣下側 X = -3.23m)
+        // 正面から見て: 左 16/19/22 (X=-3.64), 中 15/18/21 (X=-3.23), 右 14/17/20 (X=-2.82)
+        {16, -3.640, -5.525, 1.000,  1.5708},
+        {15, -3.230, -5.525, 1.000,  1.5708},
+        {14, -2.820, -5.525, 1.000,  1.5708},
+        {19, -3.640, -5.525, 0.590,  1.5708},
+        {18, -3.230, -5.525, 0.590,  1.5708},
+        {17, -2.820, -5.525, 0.590,  1.5708},
+        {22, -3.640, -5.525, 0.180,  1.5708},
+        {21, -3.230, -5.525, 0.180,  1.5708},
+        {20, -2.820, -5.525, 0.180,  1.5708},
+
+        // GAME2 3x3 シュートパネル (SIDE B 敵陣下側 X = +3.63m)
+        // 正面から見て: 左 16/19/22 (X=+3.22), 中 15/18/21 (X=+3.63), 右 14/17/20 (X=+4.04)
+        {16,  3.220, -5.525, 1.000,  1.5708},
+        {15,  3.630, -5.525, 1.000,  1.5708},
+        {14,  4.040, -5.525, 1.000,  1.5708},
+        {19,  3.220, -5.525, 0.590,  1.5708},
+        {18,  3.630, -5.525, 0.590,  1.5708},
+        {17,  4.040, -5.525, 0.590,  1.5708},
+        {22,  3.220, -5.525, 0.180,  1.5708},
+        {21,  3.630, -5.525, 0.180,  1.5708},
+        {20,  4.040, -5.525, 0.180,  1.5708},
+
+        // GAME3 ゴールエリア (図面 2.3: 23=左上, 24=右上, 25=左下, 26=右下)
+        {23, -0.750, -5.510, 0.850,  1.5708},
+        {24,  0.950, -5.510, 0.850,  1.5708},
+        {25, -0.750, -5.510, 0.120,  1.5708},
+        {26,  0.950, -5.510, 0.120,  1.5708}
+      };
+
+      for (const auto & tag : all_tags) {
+        const double forward_offset = 0.025;
+        const double nx = std::cos(tag.normal_yaw);
+        const double ny = std::sin(tag.normal_yaw);
+        const double px = tag.x + forward_offset * nx;
+        const double py = tag.y + forward_offset * ny;
+
+        // 1. Tag プレート本体 (黒外枠)
+        visualization_msgs::msg::Marker tag_plate;
+        tag_plate.header.frame_id = map_frame_;
+        tag_plate.header.stamp = now_stamp;
+        tag_plate.ns = "apriltags_plate";
+        tag_plate.id = id++;
+        tag_plate.type = visualization_msgs::msg::Marker::CUBE;
+        tag_plate.action = visualization_msgs::msg::Marker::ADD;
+        tag_plate.pose.position.x = px;
+        tag_plate.pose.position.y = py;
+        tag_plate.pose.position.z = tag.z;
+        tag_plate.pose.orientation.z = std::sin(tag.normal_yaw / 2.0);
+        tag_plate.pose.orientation.w = std::cos(tag.normal_yaw / 2.0);
+        tag_plate.scale.x = 0.012;
+        tag_plate.scale.y = 0.18;
+        tag_plate.scale.z = 0.18;
+        tag_plate.color.r = 0.05f;
+        tag_plate.color.g = 0.05f;
+        tag_plate.color.b = 0.07f;
+        tag_plate.color.a = 0.95f;
+        msg.markers.push_back(tag_plate);
+
+        // 2. 白背景インナー枠
+        visualization_msgs::msg::Marker tag_inner;
+        tag_inner.header.frame_id = map_frame_;
+        tag_inner.header.stamp = now_stamp;
+        tag_inner.ns = "apriltags_inner";
+        tag_inner.id = id++;
+        tag_inner.type = visualization_msgs::msg::Marker::CUBE;
+        tag_inner.action = visualization_msgs::msg::Marker::ADD;
+        tag_inner.pose.position.x = px + 0.008 * nx;
+        tag_inner.pose.position.y = py + 0.008 * ny;
+        tag_inner.pose.position.z = tag.z;
+        tag_inner.pose.orientation = tag_plate.pose.orientation;
+        tag_inner.scale.x = 0.008;
+        tag_inner.scale.y = 0.14;
+        tag_inner.scale.z = 0.14;
+        tag_inner.color.r = 0.95f;
+        tag_inner.color.g = 0.95f;
+        tag_inner.color.b = 0.98f;
+        tag_inner.color.a = 0.95f;
+        msg.markers.push_back(tag_inner);
+
+        // 3. 頭上に浮かぶネオンシアン HUD バッジ (#00 〜 #26)
+        visualization_msgs::msg::Marker hud_badge;
+        hud_badge.header.frame_id = map_frame_;
+        hud_badge.header.stamp = now_stamp;
+        hud_badge.ns = "apriltags_floating_hud";
+        hud_badge.id = id++;
+        hud_badge.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+        hud_badge.action = visualization_msgs::msg::Marker::ADD;
+        hud_badge.pose.position.x = tag.x + 0.15 * nx;
+        hud_badge.pose.position.y = tag.y + 0.15 * ny;
+        hud_badge.pose.position.z = tag.z + 0.18;
+        hud_badge.scale.z = 0.13;
+        hud_badge.color.r = 0.00f;
+        hud_badge.color.g = 1.00f;
+        hud_badge.color.b = 0.85f;
+        hud_badge.color.a = 1.00f;
+        char hud_buf[32];
+        std::snprintf(hud_buf, sizeof(hud_buf), "#%02d", tag.id);
+        hud_badge.text = hud_buf;
+        msg.markers.push_back(hud_badge);
+      }
+    }
+
+    marker_pub_->publish(msg);
+  }
+
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
+  std::string map_frame_{"map"};
+};
+
+}  // namespace robot_controller
+
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<robot_controller::FieldVisualizationNode>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
+}

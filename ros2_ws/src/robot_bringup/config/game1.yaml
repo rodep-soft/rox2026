@@ -1,40 +1,56 @@
-game1_auto_node:
+/**:
   ros__parameters:
     kp_linear: 1.0
-    kp_angular: 1.5
-    max_linear_vel: 1.5
-    max_angular_vel: 1.0
-    pos_tolerance: 0.08
+    kp_angular: 2.0
+    max_linear_vel: 3.5
+    max_angular_vel: 3.5
+    pos_tolerance: 0.05
     yaw_tolerance: 0.05
 
-    # ── テストモード設定 (単一WP移動テスト) ──
+    # ── テストモード設定 (オドメトリチューニング用: 直進・横移動テスト) ──
+    # test_mode: true の場合、スタートボタンを押したその場から相対的に (test_dist_x, test_dist_y) だけ移動して停止します
     test_mode: true
-    wp_test_x: 1.0
-    wp_test_y: 0.0
-    wp_test_yaw: 0.0
+    test_dist_x: 1.0          # ロボット正面方向の移動距離 (m) (前後テスト: 1.0, 左右テスト: 0.0)
+    test_dist_y: 0.0          # ロボット左側方向の移動距離 (m) (前後テスト: 0.0, 左右テスト: 1.0)
+    test_max_vel: 0.5         # テスト走行時の安全な上限速度 (m/s)
 
-    # ── Game 1 ウェイポイント設定 [x (m), y (m), yaw (rad)] ──
-    # 1. ゲート射出位置
-    wp_gate_x: 1.5
-    wp_gate_y: 0.0
+    ## 6.283 < -- 2pi
+
+    # ros2 launch robot_bringup kokura.launch.py     
+    # ros2 launch robot_bringup game1.launch.py   
+    # r1ボタン
+    # or
+    # ros2 topic pub --once /game1/command_start std_msgs/msg/Bool "{data: true}"               
+
+
+    # ── Game 1 共通ウェイポイント設定 [x (m), y (m), yaw (rad)] ──
+    # 全区間で yaw=0.0 (ゲート射出方向: X軸正方向) を完全固定。旋回ゼロで全方向ホロノミック移動
+    # 1. ゲート外側シュート位置 (縦向きゲート: X=-4.600, Y=2.165 の自陣側 X=-5.925 で射出)
+    wp_gate_x: -5.925
+    wp_gate_y: 2.165
     wp_gate_yaw: 0.0
 
     # 2. ゲート横回り込み通過点
-    wp_around_gate_x: 2.5
-    wp_around_gate_y: 1.0
+    wp_around_gate_x: -4.600
+    wp_around_gate_y: 1.400
     wp_around_gate_yaw: 0.0
 
-    # 3. ボールキャッチ予想位置 (カメラ未検出時の代替ターゲット)
-    wp_ball_x: 3.5
-    wp_ball_y: 0.0
+    # 3. ボール背後回り込み位置 (ボール X=-2.70m の後ろ X=-3.20m, Y=2.165m に回り込んで正面からキャッチ)
+    wp_ball_x: -3.200
+    wp_ball_y: 2.165
     wp_ball_yaw: 0.0
 
-    # 4. パスエリア射出位置
-    wp_pass_area_x: 2.0
-    wp_pass_area_y: -1.0
-    wp_pass_area_yaw: -1.5708
+    # 4. パスエリア外側停止・投下位置 (ボールを前に押し出しながら平行移動し境界X=-1.700m手前X=-2.150mで停止)
+    wp_pass_area_x: -2.150
+    wp_pass_area_y: 1.641
+    wp_pass_area_yaw: 0.0
 
-    # 5. スタート復帰位置
-    wp_start_x: 0.0
-    wp_start_y: 0.0
+    # 5. 上側ゲート最短クリア 頂点ウェイポイント
+    wp_return_apex_x: -3.800
+    wp_return_apex_y: 3.200
+    wp_return_apex_yaw: 0.0
+
+    # 6. スタート復帰位置 - ゲート正面(yaw=0.0)を向けたまま帰還し、次サイクルも旋回ゼロで即発進
+    wp_start_x: -5.925
+    wp_start_y: 4.950
     wp_start_yaw: 0.0

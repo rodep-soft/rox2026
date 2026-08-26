@@ -93,6 +93,7 @@ def launch_setup(context, *args, **kwargs):
                     "tag_family": tag_family,
                     "tag_size": tag_size,
                     "pkg_name": "apriltag_ros",
+                    "camera_frame_id": camera_frame_id,
                 }.items()
             ),
         )

@@ -15,6 +15,7 @@ namespace edulite05_driver
 constexpr uint8_t HOST_ID = 0xFD;
 constexpr uint8_t TYPE_FEEDBACK = 0x02;
 constexpr uint8_t TYPE_ENABLE = 0x03;
+constexpr uint8_t TYPE_RESET = 0x04;
 constexpr uint8_t TYPE_READ = 0x11;
 constexpr uint8_t TYPE_FAULT = 0x15;
 constexpr uint8_t TYPE_WRITE = 0x12;
@@ -130,9 +131,13 @@ public:
     TimePoint current_time);
   void watchdog(TimePoint current_time);
 
+  static can_msgs::msg::Frame make_reset_frame(uint8_t motor_id);
+
 private:
   enum class InitializationStep
   {
+    RESET_MOTOR,
+    WAIT_AFTER_RESET,
     WRITE_PARAMETER,
     WAIT_AFTER_WRITE,
     READ_PARAMETER,
@@ -188,7 +193,7 @@ private:
   MotorConfig config_;
   MotorFeedback feedback_;
   MotorState state_ = MotorState::INITIALIZING;
-  InitializationStep initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  InitializationStep initialization_step_ = InitializationStep::RESET_MOTOR;
   std::vector<InitializationParameter> initialization_parameters_;
   std::size_t initialization_parameter_index_ = 0;
   float target_value_ = 0.0f;

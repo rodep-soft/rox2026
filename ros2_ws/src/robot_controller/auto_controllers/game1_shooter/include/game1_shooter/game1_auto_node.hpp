@@ -17,8 +17,6 @@
 
 #include "nav_msgs/msg/odometry.hpp"
 
-#include "sensor_msgs/msg/joy.hpp"
-
 namespace robot_controller
 {
 
@@ -54,16 +52,16 @@ private:
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void ball_detection_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-  void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
 
   void publish_commands(
     const geometry_msgs::msg::Twist & cmd_vel,
     bool dribble_enabled,
     uint8_t arm_position,
-    bool spring_fire);
+    bool spring_fire,
+    bool spring_slow_fire = false);
 
   // メカナム特化型 全方位ホロノミック追従制御 (Field-Oriented to Body-Frame)
-  geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target);
+  geometry_msgs::msg::Twist compute_holonomic_pursuit(const Waypoint & target, double speed_limit = -1.0);
   bool is_aligned_to_target(const Waypoint & target);
 
   // Subscriptions & Publishers
@@ -71,25 +69,33 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr ball_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_fire_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr spring_slow_fire_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   // Parameters
   double kp_linear_{1.0};
-  double kp_angular_{1.5};
-  double max_linear_vel_{1.5};
-  double max_angular_vel_{1.0};
-  double pos_tolerance_{0.08};
+  double kp_angular_{2.0};
+  double max_linear_vel_{3.5};
+  double max_angular_vel_{3.5};
+  double pos_tolerance_{0.05};
   double yaw_tolerance_{0.05};
+  std::string field_side_{"left"};
 
   // Test Mode Parameters
   bool test_mode_{false};
+  double test_dist_x_{1.0};
+  double test_dist_y_{0.0};
+  double test_max_vel_{0.5};
+  double test_start_x_{0.0};
+  double test_start_y_{0.0};
+  double test_start_yaw_{0.0};
+  double imu_yaw_{0.0};
   Waypoint wp_test_{1.0, 0.0, 0.0};
 
   // State Variables
@@ -118,8 +124,6 @@ private:
   // IMU Feedback
   bool imu_received_{false};
   double raw_yaw_{0.0};
-  double yaw_offset_{0.0};
-  double current_yaw_{0.0};
 };
 
 }  // namespace robot_controller

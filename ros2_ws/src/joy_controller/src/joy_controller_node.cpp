@@ -33,11 +33,15 @@ JoyControllerNode::JoyControllerNode()
     declare_parameter<double>("angular_z_deceleration_limit", 6.0);
   axis_deadzone_ = declare_parameter<double>("axis_deadzone", 0.05);
   axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.7);
+  game2_override_deadzone_ = declare_parameter<double>("game2_override_deadzone", 0.25);
 
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
+  game1_start_button_ = declare_parameter<int>("game1_start_button", 10);
+  left_stick_button_ = declare_parameter<int>("left_stick_button", 10);
+  right_stick_button_ = declare_parameter<int>("right_stick_button", 11);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
     declare_parameter<int>("heading_hold_toggle_button", 8);
@@ -74,8 +78,7 @@ JoyControllerNode::JoyControllerNode()
     deceleration_y_m_s2_ <= 0.0 || !std::isfinite(deceleration_yaw_rad_s2_) ||
     deceleration_yaw_rad_s2_ <= 0.0)
   {
-    throw std::runtime_error(
-            "velocity limits must be nonnegative and rate limits positive");
+    throw std::runtime_error("Velocity and acceleration limits must be positive finite values");
   }
   update_acceleration_limits();
 
@@ -116,8 +119,29 @@ JoyControllerNode::JoyControllerNode()
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
     "/dribble/command_position", command_qos);
 
+  game1_start_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/game1/command_start", command_qos);
+
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/command_start", command_qos);
+
+  game1_completed_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/game1/completed", command_qos,
+    [this](const std_msgs::msg::Bool::SharedPtr msg) {
+      if (msg->data) {
+        game1_active_ = false;
+        RCLCPP_INFO(get_logger(), "Game 1 auto completed: manual drive restored.");
+      }
+    });
+
+  game2_completed_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/game2/completed", command_qos,
+    [this](const std_msgs::msg::Bool::SharedPtr msg) {
+      if (msg->data) {
+        game2_active_ = false;
+        RCLCPP_INFO(get_logger(), "Game 2 auto completed: manual drive restored.");
+      }
+    });
 
   heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
@@ -253,6 +277,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         axis_deadzone_ = val;
       } else if (name == "axis_on_threshold") {
         axis_on_threshold_ = val;
+      } else if (name == "game2_override_deadzone") {
+        game2_override_deadzone_ = val;
       } else if (name == "slow_turn_scale" || name == "slow_turn_ratio") {
         slow_turn_scale_ = val;
       } else if (name == "slow_linear_scale" || name == "slow_linear_ratio") {
@@ -379,9 +405,37 @@ void JoyControllerNode::loop_callback()
     shot_cycle_request_pub_->publish(req);
   }
 
+  // 5b. Game 1 自動戦術モード / テスト走行 (L3 + R3 両スティック押し込み同時押し または 専用startボタン)
+  const bool l3_down = is_button_down(joy_msg_, left_stick_button_);
+  const bool r3_down = is_button_down(joy_msg_, right_stick_button_);
+  const bool was_l3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), left_stick_button_);
+  const bool was_r3_down = last_joy_msg_.has_value() && is_button_down(last_joy_msg_.value(), right_stick_button_);
+  const bool both_sticks_just_pressed = (l3_down && r3_down) && !(was_l3_down && was_r3_down);
+
+  bool game1_trigger_pressed = both_sticks_just_pressed;
+  if (game1_start_button_ >= 0 && game1_start_button_ != left_stick_button_ && game1_start_button_ != right_stick_button_) {
+    if (is_button_just_pressed(joy_msg_, game1_start_button_)) {
+      game1_trigger_pressed = true;
+    }
+  }
+
+  bool game1_just_toggled = false;
+  if (game1_trigger_pressed) {
+    game1_active_ = !game1_active_;
+    game1_just_toggled = true;
+    RCLCPP_INFO(
+      get_logger(), "=== [JoyController] Game 1 AUTO / TEST MODE %s (L3+R3) ===",
+      game1_active_ ? "START" : "STOP");
+    std_msgs::msg::Bool game1_msg;
+    game1_msg.data = game1_active_;
+    game1_start_pub_->publish(game1_msg);
+  }
+
   // 6. Game 2 自動戦術モード切替 (OPTIONS)
+  bool game2_just_toggled = false;
   if (is_button_just_pressed(joy_msg_, game2_start_button_)) {
     game2_active_ = !game2_active_;
+    game2_just_toggled = true;
     RCLCPP_INFO(
       get_logger(), "Game 2 mode toggled: %s",
       game2_active_ ? "START" : "STOP");
@@ -390,8 +444,9 @@ void JoyControllerNode::loop_callback()
     game2_start_pub_->publish(game2_msg);
   }
 
-  // 7. 手動オーバーライド: Game 2 モード中にスティック操作を検出したら自動解除
-  if (game2_active_) {
+  // 7. 手動オーバーライド: Game 1 / Game 2 モード中にスティック操作を検出したら自動解除
+  // ※ボタンを押した瞬間フレームはスキップし、スティック微動・ドリフトで誤解除されないよう閾値(game2_override_deadzone_)で判定
+  if ((game1_active_ && !game1_just_toggled) || (game2_active_ && !game2_just_toggled)) {
     const double raw_vx =
       apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
     const double raw_vy =
@@ -399,14 +454,31 @@ void JoyControllerNode::loop_callback()
     const double raw_wz =
       apply_axis_deadzone(-get_axis_value(joy_msg_, right_stick_x_axis_));
 
-    if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
-      game2_active_ = false;
-      RCLCPP_WARN(
-        get_logger(),
-        "Manual stick input detected! Game 2 AUTO mode disengaged.");
-      std_msgs::msg::Bool game2_msg;
-      game2_msg.data = false;
-      game2_start_pub_->publish(game2_msg);
+    if (std::abs(raw_vx) > game2_override_deadzone_ ||
+        std::abs(raw_vy) > game2_override_deadzone_ ||
+        std::abs(raw_wz) > game2_override_deadzone_) {
+      if (game1_active_) {
+        game1_active_ = false;
+        RCLCPP_WARN(
+          get_logger(),
+          "Manual stick input detected (vx=%.2f, vy=%.2f, wz=%.2f > %.2f)! "
+          "Game 1 AUTO mode disengaged.",
+          raw_vx, raw_vy, raw_wz, game2_override_deadzone_);
+        std_msgs::msg::Bool game1_msg;
+        game1_msg.data = false;
+        game1_start_pub_->publish(game1_msg);
+      }
+      if (game2_active_) {
+        game2_active_ = false;
+        RCLCPP_WARN(
+          get_logger(),
+          "Manual stick input detected (vx=%.2f, vy=%.2f, wz=%.2f > %.2f)! "
+          "Game 2 AUTO mode disengaged.",
+          raw_vx, raw_vy, raw_wz, game2_override_deadzone_);
+        std_msgs::msg::Bool game2_msg;
+        game2_msg.data = false;
+        game2_start_pub_->publish(game2_msg);
+      }
     }
   }
 
@@ -500,8 +572,8 @@ void JoyControllerNode::loop_callback()
 
   was_spring_ready_ = spring_actuator_ready_;
 
-  // アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
-  if (!game2_active_) {
+  // アナログスティック走行コマンド算出 (Game 1 / Game 2 非アクティブ時)
+  if (!game1_active_ && !game2_active_) {
     double raw_vx = get_axis_value(joy_msg_, left_stick_y_axis_);
     double raw_vy = get_axis_value(joy_msg_, left_stick_x_axis_);
     const double raw_wz = -get_axis_value(joy_msg_, right_stick_x_axis_);
@@ -609,6 +681,19 @@ void JoyControllerNode::publish_drive_reversed(bool reversed)
 
 void JoyControllerNode::publish_stop_commands()
 {
+  if (game1_active_) {
+    game1_active_ = false;
+    std_msgs::msg::Bool game1_msg;
+    game1_msg.data = false;
+    game1_start_pub_->publish(game1_msg);
+  }
+  if (game2_active_) {
+    game2_active_ = false;
+    std_msgs::msg::Bool game2_msg;
+    game2_msg.data = false;
+    game2_start_pub_->publish(game2_msg);
+  }
+
   velocity_limiter_x_.reset();
   velocity_limiter_y_.reset();
   velocity_limiter_yaw_.reset();

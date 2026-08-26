@@ -14,13 +14,14 @@ def launch_setup(context, *args, **kwargs):
     tag_size = float(LaunchConfiguration("tag_size").perform(context))
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
+    pose_estimation_method = LaunchConfiguration("pose_estimation_method").perform(context)
     node_params = {
         "image_transport": "raw",
         "family": tag_family,
         "size": tag_size,
         "max_hamming": 0,
-        "publish_tf": True,
-        "pose_estimation_method": "pnp",
+        "publish_tf": False,
+        "pose_estimation_method": pose_estimation_method,
         "decimate": 1.0,
         "blur": 0.0,
         "threads": 1,
@@ -83,6 +84,11 @@ def generate_launch_description():
                 "camera_frame_id",
                 default_value="",
                 description="Optional override for camera frame ID",
+            ),
+            DeclareLaunchArgument(
+                "pose_estimation_method",
+                default_value="",
+                description="Pose estimation method ('pnp' or '' to disable and silence uncalibrated warnings)",
             ),
             OpaqueFunction(function=launch_setup),
         ]

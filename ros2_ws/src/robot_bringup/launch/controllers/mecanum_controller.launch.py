@@ -20,15 +20,15 @@ def generate_launch_description():
     odometry_parameter_file = os.path.join(
         bringup_share,
         "config",
-        "sensors.yaml",
+        "odometry.yaml",
     )
 
     return LaunchDescription(
         [
             Node(
-                package="robot_controller",
-                executable="heading_hold_node",
-                name="heading_hold_node",
+                package="libbno055_linux",
+                executable="bno055_heading_control_node",
+                name="bno055_heading_control_node",
                 output="screen",
                 parameters=[heading_hold_parameter_file],
             ),

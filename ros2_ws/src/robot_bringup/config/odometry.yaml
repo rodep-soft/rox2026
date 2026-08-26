@@ -1,0 +1,55 @@
+mecanum_odometry_node:
+  ros__parameters:
+    # mecanum_controller.yaml
+    wheel_radius: 0.075
+    robot_length: 0.355
+    robot_width: 0.353
+    wheel_logical_ids: [0, 1, 2, 3]  # FL, FR, RL, RR
+    state_array_topic: /edulite/state_array
+    odometry_topic: /wheel/odometry
+    imu_topic: /imu/data
+    odom_frame: odom
+    base_frame: base_link
+    publish_tf: false
+    publish_period_ms: 20.0
+    feedback_timeout_ms: 250.0
+
+    # ── 実測スケール補正 & 共分散チューニング ──
+    # 詳細な決め方手順: ros2_ws/src/robot_bringup/docs/ODOMETRY_TUNING_GUIDE.md
+    # [実測履歴 X軸 (目標1.0m)]:
+    #   1回目 (scale=1.000) -> 実測 0.965m
+    #   2回目 (scale=0.965) -> 実測 1.060m (1m6cm) -> 補正: 0.965 * 1.060 = 1.023
+    velocity_scale_x: 1.023   # 前後実測スケール補正
+    velocity_scale_y: 1.0     # 左右カニ歩き実測スケール補正
+    velocity_scale_yaw: 1.0   # 旋回スケール補正
+    velocity_filter_alpha: 0.40  # 高速応答性とノイズ抑制のバランス
+
+    slip_compensation:
+      enabled: true
+      acceleration_threshold_x_m_s2: 1.2        # [m/s^2] 前後急加減速しきい値
+      acceleration_threshold_y_m_s2: 0.6        # [m/s^2] 左右横滑りしきい値 (メカナムの横滑りを高感度検知)
+      angular_acceleration_threshold_rad_s2: 2.5 # [rad/s^2] 旋回角加減速しきい値
+      maximum_covariance_multiplier: 40.0       # スリップ検知時の共分散膨張倍率 (10 -> 40に強化)
+
+    # --- Covariance tuning (EKF入力前提) ---
+    # twist_covariance_x / y / yaw: ホイール速度計測の不確かさ (observation noise)。
+    #   メカナムの物理特性に合わせ、前後(X)は高信頼、左右(Y)はローラ滑り考慮で不確かさを分離設定。
+    pose_covariance_x: 0.02
+    pose_covariance_y: 0.05
+    pose_covariance_yaw: 0.10
+    twist_covariance_x: 0.03       # 前後(X)ベース速度共分散 (グリップ良好)
+    twist_covariance_y: 0.10       # 左右(Y)ベース速度共分散 (メカナムローラ滑り考慮)
+    twist_covariance_yaw: 0.15     # 旋回角速度共分散 (IMUジャイロを最優先)
+    odom_drift_rate: 0.03
+
+#can_imu_node:
+#  ros__parameters:
+#    can_topic: /socketcan_bridge/rx
+#    frame_id: imu_link
+#    accel_can_id: 1280
+#    gyro_can_id: 1281
+#    quaternion_can_id: 1282
+#    accel_scale: 0.00980665
+#    gyro_scale: 0.0000174532925199433
+#    quaternion_scale: 0.00006103515625
+#    max_component_age: 0.1

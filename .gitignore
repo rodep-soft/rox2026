@@ -17,8 +17,9 @@ __pycache__/
 *.mcap
 rosbag2_*/
 
-# debag file (.txt)
+# debag file (.txt, .log)
 *log*.txt
+*.log
 
 #about vscode setting
 .vacode/
@@ -51,6 +52,7 @@ fix.md
 
 # External vcs repositories (Do not commit to git)
 ros2_ws/src/libbno055-linux/
+ros2_ws/src/zenoh_joy_rs/
 
 
 # kamei氏のdirを入れないものとする

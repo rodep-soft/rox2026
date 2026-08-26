@@ -8,13 +8,13 @@ TEST(MecanumOdometryTest, UsesRosBodyAxisSigns)
   constexpr double rotation_radius_m = (0.355 + 0.353) / 2.0;
 
   const auto forward = mecanum_odometry::calculate_body_velocity(
-    {-10.0, 10.0, -10.0, 10.0}, wheel_radius_m, rotation_radius_m);
+    {10.0, 10.0, -10.0, -10.0}, wheel_radius_m, rotation_radius_m);
   EXPECT_NEAR(forward.x_m_s, 0.75, 1e-9);
   EXPECT_NEAR(forward.y_m_s, 0.0, 1e-9);
   EXPECT_NEAR(forward.yaw_rad_s, 0.0, 1e-9);
 
   const auto left = mecanum_odometry::calculate_body_velocity(
-    {10.0, 10.0, -10.0, -10.0}, wheel_radius_m, rotation_radius_m);
+    {-10.0, 10.0, -10.0, 10.0}, wheel_radius_m, rotation_radius_m);
   EXPECT_NEAR(left.x_m_s, 0.0, 1e-9);
   EXPECT_NEAR(left.y_m_s, 0.75, 1e-9);
   EXPECT_NEAR(left.yaw_rad_s, 0.0, 1e-9);
@@ -76,4 +76,36 @@ TEST(MecanumOdometryTest, PerAxisCovarianceInterpolatesLinearly)
   EXPECT_DOUBLE_EQ(s.x, 5.5);
   EXPECT_DOUBLE_EQ(s.y, 1.0);
   EXPECT_DOUBLE_EQ(s.yaw, 1.0);
+}
+
+// 車輪加速度 vs IMU実測加速度の不一致検知テスト
+TEST(MecanumOdometryTest, DetectsSlipFromImuDiscrepancy)
+{
+  // 車輪は 2.5 m/s^2 で空転、IMU は 0.5 m/s^2 のみ検知 (差分 2.0 m/s^2 > 閾値 1.0m/s^2)
+  const mecanum_odometry::BodyVelocity wheel_accel{2.5, 0.0, 0.0};
+  const mecanum_odometry::BodyVelocity imu_accel{0.5, 0.0, 0.0};
+
+  const auto s = mecanum_odometry::calculate_imu_discrepancy_multipliers(
+    wheel_accel, imu_accel, 1.0, 1.0, 2.0, 10.0);
+  EXPECT_DOUBLE_EQ(s.x, 10.0); // スリップ検知で最大膨張
+  EXPECT_DOUBLE_EQ(s.y, 1.0);  // Y は影響なし
+  EXPECT_DOUBLE_EQ(s.yaw, 1.0);
+}
+
+// メディアンフィルタのトゲ除去＆中央値出力テスト
+TEST(MecanumOdometryTest, MedianFilterRejectsSpikeNoise)
+{
+  mecanum_odometry::MedianFilter<3> filter;
+
+  // 正常な値: 1.0, 1.1
+  EXPECT_DOUBLE_EQ(filter.update(1.0), 1.0);
+  EXPECT_DOUBLE_EQ(filter.update(1.1), 1.05); // 2個の平均/中央値
+
+  // 突然の巨大スパイクノイズ (100.0) が混入
+  // バッファ: [1.0, 1.1, 100.0] -> 中央値は 1.1 (100.0を完全に無視！)
+  EXPECT_DOUBLE_EQ(filter.update(100.0), 1.1);
+
+  // 次の正常な値 (1.2)
+  // バッファ: [1.2, 1.1, 100.0] -> ソート後 [1.1, 1.2, 100.0] -> 中央値は 1.2
+  EXPECT_DOUBLE_EQ(filter.update(1.2), 1.2);
 }

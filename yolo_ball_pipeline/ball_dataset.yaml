@@ -1,0 +1,7 @@
+path: /home/tatsv/rox2026/yolo_ball_pipeline/dataset
+train: images/train
+val: images/val
+
+# Classes
+names:
+  0: ball

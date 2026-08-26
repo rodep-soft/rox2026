@@ -71,6 +71,7 @@ private:
   bool belt_clearance_request_pending_{false};
 
   int limit_switch_bit_offset_{0};
+  int limit_switch_debounce_count_{0};
   int command_period_ms_{10};
   int stable_feedback_count_{0};
   int required_stable_feedback_count_{3};

@@ -1,0 +1,132 @@
+apriltag_localizer_node:
+  ros__parameters:
+    base_frame: "base_link"
+    map_frame: "map"
+    tag_size: 0.18 # [m] Tagの一辺の長さ (18cm)
+    camera_offset_x: 0.265 # [m] 射出口中心からのカメラ前方オフセット
+    camera_offset_y: 0.035 # [m] 射出口中心からのカメラ左方オフセット
+    camera_offset_z: 0.193 # [m] 射出口中心からのカメラ高さオフセット
+
+    # ── 使用するタグIDリスト (0〜26の全タグを完全登録) ──
+    active_tag_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+
+    # ── フィールド絶対座標マップ (map frame 基準) [x (m), y (m), yaw (rad)] ──
+    # 四隅・外壁 (自陣 SIDE A)
+    tag_0_x: -5.920
+    tag_0_y: 5.450
+    tag_0_yaw: 1.5708
+
+    tag_1_x: -6.425
+    tag_1_y: 4.920
+    tag_1_yaw: 3.1416
+
+    tag_2_x: -6.425
+    tag_2_y: -4.920
+    tag_2_yaw: 3.1416
+
+    tag_3_x: -5.920
+    tag_3_y: -5.450
+    tag_3_yaw: -1.5708
+
+    # GAME1 横向きDFゲート (自陣 SIDE A: |--|)
+    tag_4_x: -3.415
+    tag_4_y: 4.050
+    tag_4_yaw: 1.5708
+
+    tag_5_x: -3.165
+    tag_5_y: 4.025
+    tag_5_yaw: 0.0000
+
+    tag_6_x: -3.415
+    tag_6_y: 4.000
+    tag_6_yaw: -1.5708
+
+    tag_7_x: -3.665
+    tag_7_y: 4.025
+    tag_7_yaw: 3.1416
+
+    # GAME1 縦向きDFゲート (自陣 SIDE A: I)
+    tag_8_x: -4.625
+    tag_8_y: 2.165
+    tag_8_yaw: 3.1416
+
+    tag_9_x: -4.600
+    tag_9_y: 2.415
+    tag_9_yaw: 1.5708
+
+    tag_10_x: -4.575
+    tag_10_y: 2.165
+    tag_10_yaw: 0.0000
+
+    tag_11_x: -4.600
+    tag_11_y: 1.915
+    tag_11_yaw: -1.5708
+
+    # センターラインポール (中央 X = 0.0m)
+    tag_12_x: -0.020
+    tag_12_y: 2.450
+    tag_12_yaw: 3.1416
+
+    tag_13_x: -0.020
+    tag_13_y: 0.650
+    tag_13_yaw: 3.1416
+
+    # GAME2 3x3 シュートパネル (自陣下側 X = -3.23m)
+    # 正面視点で: 左列 16/19/22, 中列 15/18/21, 右列 14/17/20
+    tag_14_x: -2.820
+    tag_14_y: -5.525
+    tag_14_yaw: 1.5708
+
+    tag_15_x: -3.230
+    tag_15_y: -5.525
+    tag_15_yaw: 1.5708
+
+    tag_16_x: -3.640
+    tag_16_y: -5.525
+    tag_16_yaw: 1.5708
+
+    tag_17_x: -2.820
+    tag_17_y: -5.525
+    tag_17_yaw: 1.5708
+
+    tag_18_x: -3.230
+    tag_18_y: -5.525
+    tag_18_yaw: 1.5708
+
+    tag_19_x: -3.640
+    tag_19_y: -5.525
+    tag_19_yaw: 1.5708
+
+    tag_20_x: -2.820
+    tag_20_y: -5.525
+    tag_20_yaw: 1.5708
+
+    tag_21_x: -3.230
+    tag_21_y: -5.525
+    tag_21_yaw: 1.5708
+
+    tag_22_x: -3.640
+    tag_22_y: -5.525
+    tag_22_yaw: 1.5708
+
+    # GAME3 ゴールエリア (正面ビュー, Y = -5.510m)
+    tag_23_x: -0.750
+    tag_23_y: -5.510
+    tag_23_yaw: 1.5708
+
+    tag_24_x: 0.950
+    tag_24_y: -5.510
+    tag_24_yaw: 1.5708
+
+    tag_25_x: -0.750
+    tag_25_y: -5.510
+    tag_25_yaw: 1.5708
+
+    tag_26_x: 0.950
+    tag_26_y: -5.510
+    tag_26_yaw: 1.5708
+
+    # ── 共分散パラメータ (EKFへの信頼度) ──
+    base_position_covariance: 0.01  # x, y の測定誤差分散 [m^2]
+    base_yaw_covariance: 0.005      # yaw の測定誤差分散 [rad^2]
+    max_valid_distance: 5.5         # [m] これ以上遠いタグは除外

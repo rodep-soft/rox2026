@@ -1,5 +1,6 @@
 services:
   ros2_rox2026:
+    image: rox2026-ros2_rox2026:latest
     build:
       context: .
       dockerfile: Dockerfile

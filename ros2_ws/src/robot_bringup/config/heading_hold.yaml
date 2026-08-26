@@ -1,22 +1,44 @@
-/heading_hold_node:
+# ==============================================================================
+# BNO055 Heading Control Parameters Configuration
+# ==============================================================================
+
+bno055_heading_control_node:
   ros__parameters:
-    # IMU ジャイロ補正のPID
-    kp: 3.5
-    ki: 0.0
-    kd: 0.15
-    integral_limit: 0.5
+    # --------------------------------------------------------------------------
+    # 1. Topic Configuration & Pipeline
+    # --------------------------------------------------------------------------
+    imu_topic: "/imu/data"                         # Input IMU topic
+    cmd_vel_in_topic: "/drive/cmd_vel"             # Raw input cmd_vel
+    cmd_vel_out_topic: "/mecanum/cmd_vel_heading"  # Corrected output cmd_vel
 
-    heading_deadband_rad: 0.01
-    rotation_input_deadband_rad_s: 0.01
-    max_correction_rad_s: 1.5
-    rotation_settle_velocity_rad_s: 0.08
-    rotation_settle_duration_ms: 200
+    # --------------------------------------------------------------------------
+    # 2. Feedforward (FF) Control & Cross-Coupling Drift Cancellation
+    # --------------------------------------------------------------------------
+    enable_feedforward: false          # Enable feedforward
+    k_ff_vel: 0.0                      # Angular velocity command FF gain (w_cmd)
+    k_ff_acc: 0.0                      # Angular acceleration FF gain (dw_cmd/dt)
+    k_ff_drift_vx: 0.0                 # Translational Vx drift compensation gain
+    k_ff_drift_vy: 0.0                 # Translational Vy drift compensation gain
+    k_ff_drift_ax: 0.0                 # Translational Ax acceleration drift compensation gain
+    k_ff_drift_ay: 0.0                 # Translational Ay acceleration drift compensation gain
+    accel_filter_alpha: 0.3            # Low-pass filter alpha for acceleration estimation (0.0 - 1.0)
 
-    control_period_ms: 10   # トピック配信周期
-    command_timeout_ms: 500 # cmd_velのタイムアウト判断時間
-    imu_timeout_ms: 250     # IMUのタイムアウト判断時間
-    command_qos_depth: 10
+    # --------------------------------------------------------------------------
+    # 3. Control Gains (PID)
+    # --------------------------------------------------------------------------
+    kp: 3.5                            # Proportional Gain (responsive heading restoration)
+    ki: 0.0                            # Integral Gain
+    kd: 0.05                           # Derivative Gain (damping for inertia)
+    kff: 1.0                           # Feedforward Gain (alias for k_ff_vel)
+    max_i_term: 0.5                    # Anti-windup integral saturation limit
+    max_output: 1.5                    # Maximum angular velocity correction limit (rad/s)
+    deadband_deg: 0.3                  # Deadband in degrees
+    angular_deadband: 0.08             # Turning threshold (rad/s) to start manual turning
+    turn_relock_delay: 0.15            # Delay (seconds) after manual turn to settle inertia
 
-    raw_cmd_vel_topic: /drive/cmd_vel
-    imu_topic: /imu/data
-    corrected_cmd_vel_topic: /mecanum/cmd_vel_heading
+    # --------------------------------------------------------------------------
+    # 4. Safety Watchdog & Diagnostics
+    # --------------------------------------------------------------------------
+    cmd_vel_timeout: 0.5               # Command loss timeout (s)
+    imu_timeout: 0.25                  # IMU loss timeout (s)
+    enable_diagnostics: true           # Publish 1Hz real-time diagnostic status (/diagnostics)

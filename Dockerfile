@@ -36,6 +36,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     uncrustify \
     evtest \
     libboost-dev \
+    libconsole-bridge-dev \
+    liborocos-kdl-dev \
+    libeigen3-dev \
+    libspdlog-dev \
+    libfmt-dev \
+    libyaml-cpp-dev \
+    ros-humble-spdlog-vendor \
+    ros-humble-console-bridge-vendor \
+    ros-humble-orocos-kdl-vendor \
+    ros-humble-class-loader \
+    ros-humble-tf2-geometry-msgs \
     && pip3 install --no-cache-dir black cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,7 +61,9 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
       ros-humble-rqt \
       ros-humble-rqt-graph \
       ros-humble-rviz2 \
-      ros-humble-foxglove-bridge; \
+      ros-humble-foxglove-bridge \
+      ros-humble-ros-gz-sim \
+      ros-humble-ros-gz-bridge; \
     fi && rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init || true

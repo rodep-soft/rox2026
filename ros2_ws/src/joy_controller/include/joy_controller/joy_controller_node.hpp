@@ -67,11 +67,15 @@ private:
   double deceleration_yaw_rad_s2_{6.0};
   double axis_deadzone_{0.05};
   double axis_on_threshold_{0.7};
+  double game2_override_deadzone_{0.25};
 
   int ps_button_{12};
   int home_button_{13};
   int circle_button_{2};
   int dribble_enable_button_{5};
+  int game1_start_button_{10}; // L3 / R3 同時押し または 単独割り当て
+  int left_stick_button_{10};  // L3 (左スティック押し込み)
+  int right_stick_button_{11}; // R3 (右スティック押し込み)
   int game2_start_button_{9};
   int heading_hold_toggle_button_{8};
   int slow_turn_button_{7};
@@ -104,6 +108,7 @@ private:
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool was_spring_ready_{false};
+  bool game1_active_{false};
   bool game2_active_{false};
   bool is_drive_reversed_{false};
   bool is_heading_hold_enabled_{true};
@@ -125,10 +130,13 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr
     arm_position_mode_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game1_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
     spring_actuator_ready_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr game1_completed_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr game2_completed_sub_;
 
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr drive_reversed_pub_;
   rclcpp::TimerBase::SharedPtr joy_timeout_timer_;

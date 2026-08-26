@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<robot name="rox2026_base_kit" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- 1. Include Modular Components -->
+  <xacro:include filename="$(find robot_bringup)/urdf/include/common.xacro"/>
+  <xacro:include filename="$(find robot_bringup)/urdf/include/wheel.xacro"/>
+
+  <!-- 2. Dynamic Configuration from YAML -->
+  <xacro:property name="props" value="${xacro.load_yaml('$(find robot_bringup)/config/params/physical_props.yaml')}"/>
+  <xacro:property name="hw"    value="${xacro.load_yaml('$(find robot_bringup)/config/params/hardware_config.yaml')}"/>
+
+  <!-- Physical Specs -->
+  <xacro:property name="base_mass"    value="${props['base']['mass']}"/> 
+  <xacro:property name="base_w"       value="${props['base']['width']}"/>
+  <xacro:property name="base_l"       value="${props['base']['length']}"/>
+  <xacro:property name="base_h"       value="${props['base']['height']}"/>
+
+  <xacro:property name="hub_mass"     value="${props['wheels']['mass']}"/>
+  <xacro:property name="wheel_radius" value="${props['wheels']['radius']}"/>
+  <xacro:property name="wheel_base"   value="${props['wheels']['wheel_base']}"/>
+  <xacro:property name="wheel_sep"    value="${props['wheels']['track_width']}"/>
+
+  <!-- 3. Base Body -->
+  <link name="base_footprint"/>
+  <link name="base_link">
+    <xacro:box_inertia m="${base_mass}" w="${base_w}" h="${base_l}" d="${base_h}"/>
+    <visual name="base_vis"><origin xyz="0 0 0.05"/><geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry><material name="black"/></visual>
+    <collision name="base_col"><origin xyz="0 0 0.05"/><geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry></collision>
+  </link>
+  <joint name="base_joint" type="fixed"><parent link="base_footprint"/><child link="base_link"/><origin xyz="0 0 0.05"/></joint>
+
+  <!-- 4. Sensors -->
+  <xacro:property name="imu_o" value="${props['sensors']['imu_offset']}"/>
+  <link name="imu_link">
+    <xacro:box_inertia m="0.01" w="0.01" h="0.01" d="0.01" oz="0"/>
+    <visual name="imu_vis"><geometry><box size="0.03 0.03 0.01"/></geometry><material name="red"/></visual>
+  </link>
+  <joint name="imu_joint" type="fixed"><parent link="base_link"/><child link="imu_link"/><origin xyz="${imu_o['x']} ${imu_o['y']} ${imu_o['z']}"/></joint>
+  
+  <xacro:property name="cam_o" value="${props['sensors']['camera_offset']}"/>
+  <link name="camera_link">
+    <xacro:box_inertia m="0.01" w="0.02" h="0.05" d="0.02"/>
+    <visual name="cam_vis"><geometry><box size="0.02 0.05 0.02"/></geometry><material name="red"/></visual>
+  </link>
+  <joint name="camera_joint" type="fixed"><parent link="base_link"/><child link="camera_link"/><origin xyz="${cam_o['x']} ${cam_o['y']} ${cam_o['z']}" rpy="${cam_o['roll']} ${cam_o['pitch']} ${cam_o['yaw']}"/></joint>
+
+  <!-- Camera Optical Frame -->
+  <link name="camera_link_optical"/>
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_link_optical"/>
+    <origin xyz="0 0 0" rpy="-1.570796 0 -1.570796"/>
+  </joint>
+
+  <!-- 5. Actuators (Wheels) -->
+  <xacro:property name="off_x" value="${wheel_base / 2.0}"/>
+  <xacro:property name="off_y" value="${wheel_sep / 2.0}"/>
+
+  <xacro:mecanum_wheel name="front_left"  x="${off_x}"  y="${off_y}" roller_type="1" hub_mass="${hub_mass}" wheel_radius="${wheel_radius}"/>
+  <xacro:mecanum_wheel name="front_right" x="${off_x}"  y="${-off_y}" roller_type="-1"  hub_mass="${hub_mass}" wheel_radius="${wheel_radius}"/>
+  <xacro:mecanum_wheel name="rear_left"   x="${-off_x}" y="${off_y}"  roller_type="-1"  hub_mass="${hub_mass}" wheel_radius="${wheel_radius}"/>
+  <xacro:mecanum_wheel name="rear_right"  x="${-off_x}" y="${-off_y}" roller_type="1" hub_mass="${hub_mass}" wheel_radius="${wheel_radius}"/>
+
+  <!-- 6. ros2_control & Gazebo -->
+  <xacro:arg name="gazebo" default="false"/>
+  <xacro:arg name="usb_path" default="${hw['hardware']['usb_port']}"/>
+  <xacro:arg name="bench_mode" default="false"/>
+  <xacro:arg name="use_mock_hardware" default="false"/>
+
+  <ros2_control name="BaseKitSystem" type="system">
+    <hardware>
+      <xacro:if value="$(arg use_mock_hardware)">
+        <plugin>mock_components/GenericSystem</plugin>
+        <param name="calculate_dynamics">false</param>
+      </xacro:if>
+      <xacro:unless value="$(arg use_mock_hardware)">
+        <xacro:if value="$(arg gazebo)">
+          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </xacro:if>
+        <xacro:unless value="$(arg gazebo)">
+          <plugin>robstride_driver/RobstrideSystemHardware</plugin>
+          <param name="usb_path">$(arg usb_path)</param>
+          <param name="protocol">${hw['hardware']['protocol']}</param>
+          <param name="serial_baud">${hw['hardware']['baud_rate']}</param>
+          <param name="transport">${hw['hardware'].get('transport', 'serial_port')}</param>
+          <param name="can_interface">${hw['hardware'].get('can_interface', 'can0')}</param>
+        </xacro:unless>
+      </xacro:unless>
+    </hardware>
+
+    <xacro:if value="$(arg bench_mode)">
+      <joint name="bench_joint">
+        <command_interface name="velocity"><param name="p">40.0</param></command_interface>
+        <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+        <param name="motor_id">${hw['hardware']['motors']['bench_id']}</param>
+        <param name="invert_direction">false</param>
+      </joint>
+    </xacro:if>
+
+    <xacro:unless value="$(arg bench_mode)">
+      <xacro:macro name="joint_if" params="name hw_node">
+        <joint name="${name}_wheel_joint">
+          <command_interface name="velocity">
+            <param name="p">80.0</param><param name="i">10.0</param><param name="d">2.0</param>
+            <param name="i_clamp">10.0</param>
+            <param name="max_effort">20.0</param>
+          </command_interface>
+          <state_interface name="position"/><state_interface name="velocity"/><state_interface name="effort"/>
+          <param name="motor_id">${hw['hardware']['motors'][hw_node]['id']}</param>
+          <param name="invert_direction">${hw['hardware']['motors'][hw_node]['invert']}</param>
+        </joint>
+      </xacro:macro>
+      <xacro:joint_if name="front_left"  hw_node="front_left"/>
+      <xacro:joint_if name="front_right" hw_node="front_right"/>
+      <xacro:joint_if name="rear_left"   hw_node="rear_left"/>
+      <xacro:joint_if name="rear_right"  hw_node="rear_right"/>
+    </xacro:unless>
+  </ros2_control>
+...
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find robot_bringup)/config/controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+  <!-- Gazebo IMU Sensor Plugin -->
+  <gazebo reference="base_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <topic>/imu</topic>
+      <gz_frame_id>base_link</gz_frame_id>
+      <imu>
+        <angular_velocity>
+          <x><noise type="none"/></x>
+          <y><noise type="none"/></y>
+          <z><noise type="none"/></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="none"/></x>
+          <y><noise type="none"/></y>
+          <z><noise type="none"/></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-mecanum-drive-system" name="gz::sim::systems::MecanumDrive">
+      <front_left_joint>front_left_wheel_joint</front_left_joint>
+      <front_right_joint>front_right_wheel_joint</front_right_joint>
+      <back_left_joint>rear_left_wheel_joint</back_left_joint>
+      <back_right_joint>rear_right_wheel_joint</back_right_joint>
+      <wheel_separation>${wheel_sep}</wheel_separation>
+      <wheelbase>${wheel_base}</wheelbase>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <min_acceleration>-5.0</min_acceleration>
+      <max_acceleration>5.0</max_acceleration>
+      <topic>/cmd_vel</topic>
+      <odom_topic>/model/rox2026/odometry</odom_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+  </gazebo>
+  <!-- Gazebo Camera Sensor Plugin -->
+  <gazebo reference="camera_link">
+    <sensor name="camera_sensor" type="rgbd_camera">
+      <always_on>true</always_on>
+      <update_rate>15.0</update_rate>
+      <topic>/camera</topic>
+      <gz_frame_id>camera_link_optical</gz_frame_id>
+      <camera>
+        <horizontal_fov>1.5</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>10.0</far>
+        </clip>
+      </camera>
+    </sensor>
+  </gazebo>
+</robot>

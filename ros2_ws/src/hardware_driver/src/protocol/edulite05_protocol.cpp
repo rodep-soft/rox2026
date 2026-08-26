@@ -63,9 +63,7 @@ Protocol::Protocol(const MotorConfig & config)
       break;
     case ControlMode::PROFILE_POSITION:
       initialization_parameters_.push_back(
-        {PP_SPEED, InitializationParameterType::FLOAT, config_.speed_limit});
-      initialization_parameters_.push_back(
-        {PP_ACCELERATION, InitializationParameterType::FLOAT, config_.acceleration});
+        {SPEED_LIMIT, InitializationParameterType::FLOAT, config_.speed_limit});
       initialization_parameters_.push_back(
         {CURRENT_LIMIT, InitializationParameterType::FLOAT, config_.current_limit});
       break;
@@ -76,6 +74,12 @@ std::string Protocol::initialization_diagnostic() const
 {
   const char * step_name = "unknown";
   switch (initialization_step_) {
+    case InitializationStep::RESET_MOTOR:
+      step_name = "reset_motor";
+      break;
+    case InitializationStep::WAIT_AFTER_RESET:
+      step_name = "wait_after_reset";
+      break;
     case InitializationStep::WRITE_PARAMETER:
       step_name = "write";
       break;
@@ -204,6 +208,19 @@ std::optional<can_msgs::msg::Frame> Protocol::create_initialization_frame(
   // 待機完了やタイムアウト処理だけで呼び出しを終えずに送信が必要な状態まで同じ呼び出し内で進め，送信フレームは必ず最大1つ
   while (true) {
     switch (initialization_step_) {
+      case InitializationStep::RESET_MOTOR:
+        state_ = MotorState::INITIALIZING;
+        last_request_time_ = current_time;
+        initialization_step_ = InitializationStep::WAIT_AFTER_RESET;
+        return make_reset_frame(config_.can_id);
+
+      case InitializationStep::WAIT_AFTER_RESET:
+        if (current_time - last_request_time_ < std::chrono::milliseconds(10)) {
+          return std::nullopt;
+        }
+        initialization_step_ = InitializationStep::WRITE_PARAMETER;
+        continue;
+
       case InitializationStep::WRITE_PARAMETER: {
           state_ = MotorState::INITIALIZING;
           const auto & parameter =
@@ -397,7 +414,10 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     startup_run_state_observed_ = true;
   }
 
-  if (summary_fault_code != 0U) {
+  // 致命的ハードウェア障害のみで ERROR 遷移（bit 0:未校正、bit 4:軽微な電圧ディップ等は除外）
+  constexpr uint32_t FATAL_FAULT_MASK = 0x2E; // bits 1(相), 2(エンコーダ), 3(過熱), 5(過電圧)
+
+  if ((summary_fault_code & FATAL_FAULT_MASK) != 0U) {
     const auto fault_code = detailed_fault_code_ != 0U ?
       detailed_fault_code_ : summary_fault_code;
     enter_fault_state(fault_code, current_time);
@@ -412,14 +432,8 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
     if (mode_status == RUN_STATUS_MODE) {
       motor_enabled_ = true;
       initialization_retry_count_ = 0;
-      if (initialization_parameter_index_ >=
-        initialization_parameters_.size())
-      {
-        state_ = MotorState::READY;
-        initialization_step_ = InitializationStep::READY;
-      } else {
-        initialization_step_ = InitializationStep::WRITE_PARAMETER;
-      }
+      state_ = MotorState::READY;
+      initialization_step_ = InitializationStep::READY;
     }
     return;
   }
@@ -449,7 +463,7 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
 bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
 {
   const auto destination = static_cast<uint8_t>(message.id & 0xFF);
-  const auto status = static_cast<uint8_t>((message.id >> 16) & 0xFF);
+  const auto fault_code = static_cast<uint8_t>((message.id >> 16) & 0x3F);
   if (destination != HOST_ID) {
     return false;
   }
@@ -460,7 +474,7 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     (static_cast<uint16_t>(message.data[1]) << 8);
   if (initialization_step_ == InitializationStep::READY &&
     config_.current_feedback_enabled && index == CURRENT_FEEDBACK &&
-    status == RESET_STATUS_MODE)
+    fault_code == 0)
   {
     float value = 0.0f;
     std::memcpy(&value, message.data.data() + 4, sizeof(float));
@@ -477,12 +491,21 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float current_position = 0.0f;
     std::memcpy(&current_position, message.data.data() + 4, sizeof(float));
-    if (status != RESET_STATUS_MODE || !std::isfinite(current_position)) {
+    constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+    if (((fault_code & FATAL_FAULT_MASK) != 0) || !std::isfinite(current_position)) {
       retry_initialization();
       return false;
     }
 
     startup_hold_position_rad_ = current_position;
+    if (config_.control_mode == ControlMode::CYCLIC_SYNCHRONOUS_POSITION) {
+      while (startup_hold_position_rad_ > 4.0f * PI) {
+        startup_hold_position_rad_ -= 8.0f * PI;
+      }
+      while (startup_hold_position_rad_ < -4.0f * PI) {
+        startup_hold_position_rad_ += 8.0f * PI;
+      }
+    }
     if (motor_position_initialized_) {
       // MECHANICAL_POSITION is multi-turn. Align the accumulated feedback position with it;
       // otherwise the temporary zero can differ by whole 8*PI turns after a driver restart.
@@ -513,8 +536,9 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
     }
     float hold_position = 0.0f;
     std::memcpy(&hold_position, message.data.data() + 4, sizeof(float));
-    if (status != RESET_STATUS_MODE || !std::isfinite(hold_position) ||
-      std::fabs(hold_position - startup_hold_position_rad_) >= 0.001f)
+    constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+    if (((fault_code & FATAL_FAULT_MASK) != 0) || !std::isfinite(hold_position) ||
+      std::fabs(hold_position - startup_hold_position_rad_) > 0.1f)
     {
       retry_initialization();
       return false;
@@ -528,8 +552,9 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
   if (initialization_step_ != InitializationStep::WAIT_FOR_READ) {
     return false;
   }
-  // Type17 status != 0
-  if (status != RESET_STATUS_MODE) {
+  // Type17 fault summary != 0
+  constexpr uint8_t FATAL_FAULT_MASK = 0x2E;
+  if ((fault_code & FATAL_FAULT_MASK) != 0) {
     retry_initialization();
     return false;
   }
@@ -547,7 +572,10 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
   } else {
     float value = 0.0f;
     std::memcpy(&value, message.data.data() + 4, sizeof(float));
-    values_match = std::fabs(value - expected.value) < 0.001f;
+    // モーター内部の浮動小数点丸めや固定小数点変換誤差を許容
+    values_match = std::isfinite(value) &&
+      (std::fabs(value - expected.value) < 0.2f ||
+      (std::fabs(expected.value) > 1e-4f && std::fabs(value - expected.value) / std::fabs(expected.value) < 0.05f));
   }
   if (!values_match) {
     retry_initialization();
@@ -556,23 +584,16 @@ bool Protocol::process_parameter_response(const can_msgs::msg::Frame & message)
 
   initialization_retry_count_ = 0;
   ++initialization_parameter_index_;
-  if (initialization_parameter_index_ >= initialization_parameters_.size()) {
-    if (motor_enabled_) {
-      state_ = MotorState::READY;
-      initialization_step_ = InitializationStep::READY;
-    } else {
-      initialization_step_ = InitializationStep::ENABLE;
-    }
-  } else if (!motor_enabled_) {
-    if (uses_position_control() && expected.index == RUN_MODE) {
+  if (initialization_parameter_index_ < initialization_parameters_.size()) {
+    initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  } else {
+    // 全パラメータの書込み・読み戻し完了後に位置アライメントまたはEnableへ
+    if (uses_position_control()) {
       initialization_step_ = InitializationStep::READ_STARTUP_POSITION;
     } else {
       initialization_step_ = InitializationStep::ENABLE;
     }
-  } else {
-    initialization_step_ = InitializationStep::WRITE_PARAMETER;
   }
-  // 初期化状態が進んだことをNodeへ通知し，特に最終readbackでREADYになったstateを個別topicへ即時publish
   return true;
 }
 
@@ -580,6 +601,17 @@ bool Protocol::process_fault(const can_msgs::msg::Frame & message)
 {
   const auto fault_code = read_little_endian_uint32(message.data, 0);
   if (fault_code == 0U) {
+    return false;
+  }
+
+  // 32-bit detailed fault code:
+  // bit 0 (0x0001): 未校准
+  // bit 4 (0x0010): 欠圧 (電源投入時や負荷時の軽微な電圧降下)
+  // bit 14 (0x4000): CAN通信タイムアウト (起動時や初期化中の未通信)
+  // これらは正常な起動シーケンスで一時的に立つため、致命的エラーとして中断しない
+  constexpr uint32_t NON_FATAL_MASK = 0x4011; // bits 0, 4, 14
+  if ((fault_code & ~NON_FATAL_MASK) == 0U) {
+    detailed_fault_code_ = fault_code;
     return false;
   }
 
@@ -596,13 +628,14 @@ void Protocol::enter_fault_state(uint32_t fault_code, TimePoint current_time)
   feedback_.fault_code = fault_code;
   feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
   last_current_feedback_time_ = TimePoint{};
-  state_ = MotorState::ERROR;
+  if (state_ != MotorState::ERROR) {
+    state_ = MotorState::ERROR;
+    error_time_ = current_time;
+  }
   motor_enabled_ = false;
   has_target_ = false;
   target_value_ = 0.0f;
   initialization_step_ = InitializationStep::ERROR;
-  // faultが継続する間はType 2フィードバックによって更新される
-  error_time_ = current_time;
 }
 
 void Protocol::invalidate_stale_current(TimePoint current_time)
@@ -673,7 +706,7 @@ void Protocol::restart_initialization(bool clear_target)
   initialization_parameter_index_ = 0;
   initialization_retry_count_ = 0;
   detailed_fault_code_ = 0;
-  initialization_step_ = InitializationStep::WRITE_PARAMETER;
+  initialization_step_ = InitializationStep::RESET_MOTOR;
   feedback_.current_a = std::numeric_limits<float>::quiet_NaN();
   last_current_feedback_time_ = TimePoint{};
   if (uses_position_control()) {
@@ -728,8 +761,16 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame(
     std::clamp(
     target_value_, config_.minimum_position_rad,
     config_.maximum_position_rad);
-  const auto motor_position_target =
+  auto motor_position_target =
     absolute_position_target - logical_position_offset_rad_;
+  if (config_.control_mode == ControlMode::CYCLIC_SYNCHRONOUS_POSITION) {
+    while (motor_position_target > 4.0f * PI) {
+      motor_position_target -= 8.0f * PI;
+    }
+    while (motor_position_target < -4.0f * PI) {
+      motor_position_target += 8.0f * PI;
+    }
+  }
   return make_write_float_frame(
     config_.can_id, POSITION_REFERENCE,
     motor_position_target);
@@ -800,6 +841,11 @@ can_msgs::msg::Frame Protocol::make_read_parameter_frame(
 can_msgs::msg::Frame Protocol::make_enable_frame(uint8_t motor_id)
 {
   return make_base_frame(TYPE_ENABLE, motor_id);
+}
+
+can_msgs::msg::Frame Protocol::make_reset_frame(uint8_t motor_id)
+{
+  return make_base_frame(TYPE_RESET, motor_id);
 }
 
 

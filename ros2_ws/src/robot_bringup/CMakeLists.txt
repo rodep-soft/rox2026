@@ -3,7 +3,13 @@ project(robot_bringup)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY config launch scripts DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch scripts models world urdf DESTINATION share/${PROJECT_NAME})
+
+install(PROGRAMS
+  scripts/test_yolo_node.py
+  scripts/video_streamer_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -73,15 +73,16 @@
       control_mode: pp
       current_limit: 11.0
       acceleration: 150.0
-      speed_limit: 30.0    # 最大速度は 33 rad/s
+      speed_limit: 30.0
 
       position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
       minimum_position_rad: -1000000.0 # 
       maximum_position_rad: 1000000.0  # 逆回転(正方向)の待機オフセットを許可
 
-      current_feedback_enabled: false
+      current_feedback_enabled: true
+      current_feedback_period_ms: 100
       command_period_ms: 10
-      feedback_timeout_ms: 500     # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄
+      feedback_timeout_ms: 2000    # CAN feedbackが途絶えたら電源断・再接続として初期化と原点を破棄 (2.0sで一時切断を防止)
 
     dribble:
       immediate_state_publish: true # 位置制御用に即時配信
@@ -98,5 +99,6 @@
       minimum_position_rad: -1.57
       maximum_position_rad: 1.57
 
-      current_feedback_enabled: false
+      current_feedback_enabled: true
+      current_feedback_period_ms: 100
       command_period_ms: 10

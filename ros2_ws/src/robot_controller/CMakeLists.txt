@@ -19,6 +19,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(robot_msgs REQUIRED)
 find_package(apriltag_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -75,19 +76,18 @@ add_controller(
   rcl_interfaces
   std_msgs
   robot_msgs)
-add_controller(
-  game2_auto_node
-  auto_controllers/game2_shooter
-  game2_auto_node.cpp
-  geometry_msgs
-  rclcpp
-  rcl_interfaces
-  sensor_msgs
-  std_msgs
-  robot_msgs
-  apriltag_msgs
-  tf2
-  tf2_ros)
+add_library(game2_auto_node_implementation STATIC
+  auto_controllers/game2_shooter/src/game2_auto_node.cpp
+  auto_controllers/game2_shooter/src/vision_tracker.cpp
+  auto_controllers/game2_shooter/src/target_selector.cpp)
+target_include_directories(game2_auto_node_implementation
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/auto_controllers/game2_shooter/include>)
+ament_target_dependencies(game2_auto_node_implementation
+  geometry_msgs rclcpp rcl_interfaces sensor_msgs std_msgs robot_msgs apriltag_msgs tf2 tf2_ros)
+add_executable(game2_auto_node auto_controllers/game2_shooter/src/main.cpp)
+target_link_libraries(game2_auto_node PRIVATE game2_auto_node_implementation)
+list(APPEND controller_nodes game2_auto_node)
+
 add_controller(
   game1_auto_node
   auto_controllers/game1_shooter
@@ -105,24 +105,65 @@ target_include_directories(
   mecanum_odometry_node
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/mecanum_controller/include)
 ament_target_dependencies(
-  mecanum_odometry_node actuator_msgs nav_msgs rclcpp tf2 tf2_ros)
-
-add_executable(heading_hold_node heading_hold/src/heading_hold_node.cpp)
-ament_target_dependencies(
-  heading_hold_node
-  geometry_msgs
-  rcl_interfaces
+  mecanum_odometry_node
+  actuator_msgs
+  nav_msgs
   rclcpp
   sensor_msgs
-  std_msgs
   tf2
-  tf2_geometry_msgs)
+  tf2_ros)
 
 add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp)
 ament_target_dependencies(
   test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
 
-list(APPEND controller_nodes mecanum_odometry_node heading_hold_node test_game1_wp_move_node)
+add_executable(apriltag_localizer_node auto_controllers/game1_shooter/src/apriltag_localizer_node.cpp)
+ament_target_dependencies(
+  apriltag_localizer_node
+  apriltag_msgs
+  geometry_msgs
+  rclcpp
+  sensor_msgs
+  tf2
+  tf2_geometry_msgs)
+
+add_executable(field_visualization_node auto_controllers/game1_shooter/src/field_visualization_node.cpp)
+ament_target_dependencies(
+  field_visualization_node
+  rclcpp
+  geometry_msgs
+  visualization_msgs)
+
+add_executable(trajectory_sim_node auto_controllers/game1_shooter/src/trajectory_sim_node.cpp)
+ament_target_dependencies(
+  trajectory_sim_node
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  visualization_msgs
+  apriltag_msgs
+  tf2
+  tf2_ros)
+
+add_executable(game2_sim_node
+  auto_controllers/game2_shooter/src/game2_sim_node.cpp
+  auto_controllers/game2_shooter/src/vision_tracker.cpp
+  auto_controllers/game2_shooter/src/target_selector.cpp)
+target_include_directories(game2_sim_node
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/auto_controllers/game2_shooter/include)
+ament_target_dependencies(
+  game2_sim_node
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  std_msgs
+  robot_msgs
+  visualization_msgs
+  apriltag_msgs
+  tf2
+  tf2_ros)
+
+list(APPEND controller_nodes mecanum_odometry_node test_game1_wp_move_node apriltag_localizer_node field_visualization_node trajectory_sim_node game2_sim_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories

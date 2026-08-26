@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="barrel" params="wheel_prefix num angle_deg roller_type">
+    <xacro:property name="angle_rad" value="${radians(angle_deg)}"/>
+    <xacro:property name="pos_x" value="${0.038 * cos(angle_rad)}"/>
+    <xacro:property name="pos_y" value="${0.038 * sin(angle_rad)}"/>
+    <xacro:property name="rot_r" value="${roller_type * pi/4}"/>
+    <joint name="${wheel_prefix}_barrel_${num}_joint" type="continuous">
+      <parent link="${wheel_prefix}_link"/><child link="${wheel_prefix}_barrel_${num}_link"/>
+      <origin xyz="${pos_x} ${pos_y} 0" rpy="${rot_r} 0 ${angle_rad}"/>
+      <axis xyz="0 0 1"/>
+      <dynamics damping="0.001" friction="0.001"/>
+    </joint>
+    <link name="${wheel_prefix}_barrel_${num}_link">
+      <xacro:cylinder_inertia m="0.01" r="0.012" h="0.032"/>
+      <visual name="${wheel_prefix}_barrel_${num}_vis">
+        <geometry><cylinder radius="0.012" length="0.032"/></geometry>
+        <material name="black"/>
+      </visual>
+      <!-- Barrel collision removed to use fake mecanum physics on hub -->
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="mecanum_wheel" params="name x y roller_type hub_mass wheel_radius">
+    <link name="${name}_wheel_link">
+      <xacro:cylinder_inertia m="${hub_mass}" r="${wheel_radius}" h="0.04"/>
+      <visual name="${name}_hub_vis"><geometry><cylinder radius="${wheel_radius}" length="0.04"/></geometry><material name="aluminum"/></visual>
+      <collision name="${name}_hub_col">
+        <geometry><sphere radius="${wheel_radius}"/></geometry>
+      </collision>
+    </link>
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="base_link"/><child link="${name}_wheel_link"/>
+      <origin xyz="${x} ${y} 0" rpy="-1.57 0 0"/><axis xyz="0 0 1"/>
+      <limit effort="50.0" velocity="100.0"/> 
+      <dynamics damping="0.1" friction="0.1"/>
+    </joint>
+    <gazebo reference="${name}_wheel_link">
+      <mu1>0.0</mu1>
+      <mu2>1.0</mu2>
+      <fdir1>${-sin(roller_type * pi/4)} 0 ${cos(roller_type * pi/4)}</fdir1>
+    </gazebo>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="0" angle_deg="0"   roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="1" angle_deg="40"  roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="2" angle_deg="80"  roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="3" angle_deg="120" roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="4" angle_deg="160" roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="5" angle_deg="200" roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="6" angle_deg="240" roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="7" angle_deg="280" roller_type="${roller_type}"/>
+    <xacro:barrel wheel_prefix="${name}_wheel" num="8" angle_deg="320" roller_type="${roller_type}"/>
+  </xacro:macro>
+</robot>
