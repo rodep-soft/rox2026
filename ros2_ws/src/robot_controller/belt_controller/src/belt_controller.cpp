@@ -11,11 +11,14 @@ BeltControllerNode::BeltControllerNode()
 {
   load_parameters();
 
-  const auto command_qos = rclcpp::QoS(qos_depth_);
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
+  const auto request_qos =
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
   belt_mode_sub_ = create_subscription<robot_msgs::msg::BeltMode>(
-    "/belt/command_mode", command_qos,
+    "/belt/command_mode", request_qos,
     std::bind(&BeltControllerNode::belt_mode_callback, this, std::placeholders::_1));
 
   belt_target_rpm_sub_ = create_subscription<std_msgs::msg::Float32>(
@@ -59,14 +62,13 @@ void BeltControllerNode::load_parameters()
   upperbelt_rpms_[3] = declare_parameter<int>("upperbelt_level_4_rpm", 4500);
 
   emergency_stop_period_ms_ = declare_parameter<int>("emergency_stop_period_ms", 50);
-  qos_depth_ = declare_parameter<int>("qos_depth", 1);
   const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
   const auto upperbelt_logical_id = declare_parameter<int>("upperbelt_logical_id", 10);
   target_array_topic_ = declare_parameter<std::string>(
     "target_array_topic",
     "/vesc/target_array");
 
-  if (emergency_stop_period_ms_ <= 0 || qos_depth_ <= 0 || target_array_topic_.empty()) {
+  if (emergency_stop_period_ms_ <= 0 || target_array_topic_.empty()) {
     throw std::runtime_error("Invalid belt parameters: timing or topic is invalid");
   }
   if (underbelt_logical_id < 0 || underbelt_logical_id > 65535 ||
@@ -150,14 +152,6 @@ rcl_interfaces::msg::SetParametersResult BeltControllerNode::parameter_callback(
     const auto & name = param.get_name();
 
     // 再起動が必要なパラメータ（同じ値なら許可、変更時は拒否）
-    if (name == "qos_depth") {
-      if (param.as_int() != qos_depth_) {
-        result.successful = false;
-        result.reason = name + " requires a node restart";
-        return result;
-      }
-      continue;
-    }
     if (name == "emergency_stop_period_ms") {
       if (param.as_int() != emergency_stop_period_ms_) {
         result.successful = false;

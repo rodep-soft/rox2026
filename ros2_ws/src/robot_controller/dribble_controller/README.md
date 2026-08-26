@@ -81,5 +81,5 @@ ros2 param load /dribble_controller_node \
   ros2_ws/src/robot_bringup/config/dribble_controller.yaml
 ```
 
-topiclogical IDQoS指令周期はnode再起動が必要なparameterである。同じ値なら
+topic、logical ID、指令周期はnode再起動が必要なparameterである。同じ値なら
 YAML全体の読み込みを許可し変更されている場合だけ拒否する。

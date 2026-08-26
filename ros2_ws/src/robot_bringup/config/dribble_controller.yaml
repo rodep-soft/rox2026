@@ -44,10 +44,6 @@
     ball_lost_debounce_count: 12      # 連続12回(約240ms)の継続判定で停止時のバウンドによる誤解除を完全防止
     
     command_period_ms: 10 # コントロールタイマー周期
-    
-    # ROS 2 QoS queue depth
-    qos_depth: 1
-
     # ── 高速移動時のボール保持安定化 (運動補正) ──
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # IMU補正後の速度指令
     cmd_vel_timeout_sec: 0.2                  # 途絶時は補正を0に戻す

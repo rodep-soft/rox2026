@@ -38,7 +38,7 @@ publishする。非常停止の開始・解除も受信時に即時反映し、�
 cmd_velの`linear.x`、`linear.y`、`angular.z`のどれかがNaN・Infなら、最後の指令を
 ゼロへ置き換えて全輪0をpublishする。
 
-半径、寸法、上限、QoSには起動時検証がある。不正値はWARNまたはERROR後に安全な
+半径、寸法、上限には起動時検証がある。不正値はWARNまたはERROR後に安全な
 既定値へ補正し、nodeは起動を続ける。上限はEduLite仕様に合わせて50 rad/s以下。
 
 ## 確認方法

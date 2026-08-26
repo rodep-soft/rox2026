@@ -3,9 +3,6 @@
   
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）
     limit_switch_bit_offset: 0
-    # ROS 2 QoSのqueue depth。
-    qos_depth: 3
-
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
     standby_offset_rad: 4.1   # 3.5
     # [rad] ベルト収納開始位置から、アーム動作を許可するまでの収納回転量

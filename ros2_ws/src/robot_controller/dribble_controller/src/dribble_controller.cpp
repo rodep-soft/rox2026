@@ -24,19 +24,20 @@ DribbleControllerNode::DribbleControllerNode()
     declare_parameter<std::string>("roller_target_topic", "/vesc/target");
   const auto command_period_ms =
     declare_parameter<int>("command_period_ms", 20);
-  const auto qos_depth = declare_parameter<int>("qos_depth", 1);
   if (position_target_topic.empty() || roller_target_topic.empty()) {
     throw std::runtime_error("target topics must not be empty");
   }
-  if (command_period_ms <= 0 || qos_depth <= 0) {
-    throw std::runtime_error(
-            "command_period_ms and qos_depth must be positive");
+  if (command_period_ms <= 0) {
+    throw std::runtime_error("command_period_ms must be positive");
   }
 
   load_parameters();
 
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
-  const auto command_qos = rclcpp::QoS(qos_depth);
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
+  const auto request_qos =
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
 
   position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     position_target_topic, command_qos);
@@ -52,10 +53,10 @@ DribbleControllerNode::DribbleControllerNode()
     "/dribble/ball_detected", rclcpp::QoS(1).reliable().transient_local());
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-    "/belt/command_mode", command_qos);
+    "/belt/command_mode", request_qos);
 
   position_mode_sub_ = create_subscription<robot_msgs::msg::ArmPosition>(
-    "/dribble/command_position", command_qos,
+    "/dribble/command_position", request_qos,
     std::bind(
       &DribbleControllerNode::position_mode_callback, this,
       std::placeholders::_1));
@@ -67,7 +68,7 @@ DribbleControllerNode::DribbleControllerNode()
       std::placeholders::_1));
 
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/dribble/shot_cycle_request", command_qos,
+    "/dribble/shot_cycle_request", request_qos,
     std::bind(
       &DribbleControllerNode::shot_cycle_callback, this,
       std::placeholders::_1));
@@ -888,7 +889,7 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
 
   for (const auto & parameter : parameters) {
     const auto & name = parameter.get_name();
-    if (name == "command_period_ms" || name == "qos_depth" ||
+    if (name == "command_period_ms" ||
       name == "position_logical_id" || name == "roller_logical_id" ||
       name == "upper_belt_logical_id" || name == "under_belt_logical_id" ||
       name == "position_target_topic" || name == "roller_target_topic" ||

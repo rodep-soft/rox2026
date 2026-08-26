@@ -67,7 +67,6 @@ SpringEduliteController::SpringEduliteController()
   cmd_vel_timeout_sec_ = declare_double_parameter("cmd_vel_timeout_sec", 0.2);
   command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
 
-  const auto qos_depth = declare_parameter<int>("qos_depth", 1);
   const auto logical_id = declare_parameter<int>("logical_id", 4);
   const auto target_topic =
     declare_parameter<std::string>("target_topic", "/edulite/target");
@@ -88,7 +87,8 @@ SpringEduliteController::SpringEduliteController()
   }
 
   logical_id_ = static_cast<uint16_t>(logical_id);
-  const auto command_qos = rclcpp::QoS(qos_depth);
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
   fire_req_sub_ = create_subscription<std_msgs::msg::Bool>(

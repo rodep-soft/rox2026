@@ -38,7 +38,8 @@ public:
     configure_parameters();
 
     command_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-      raw_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_),
+      raw_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile(),
       [this](const geometry_msgs::msg::Twist::SharedPtr message) {
         receive_command(*message);
       });
@@ -46,7 +47,8 @@ public:
       imu_topic_, rclcpp::SensorDataQoS(),
       [this](const sensor_msgs::msg::Imu::SharedPtr message) {receive_imu(*message);});
     corrected_command_pub_ = create_publisher<geometry_msgs::msg::Twist>(
-      corrected_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+      corrected_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile());
 
     parameter_callback_ = add_on_set_parameters_callback(
       [this](const std::vector<rclcpp::Parameter> & parameters) {
@@ -78,7 +80,6 @@ private:
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
-    command_qos_depth_ = declare_parameter("command_qos_depth", 10);
     raw_cmd_vel_topic_ =
       declare_parameter<std::string>("raw_cmd_vel_topic", "/mecanum/cmd_vel");
     imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
@@ -94,9 +95,9 @@ private:
     validate_non_negative("rotation_settle_velocity_rad_s", rotation_settle_velocity_rad_s_);
     validate_positive("max_correction_rad_s", max_correction_rad_s_);
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
-      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0 || command_qos_depth_ <= 0)
+      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
     {
-      throw std::invalid_argument("period, timeout, and QoS parameters must be positive");
+      throw std::invalid_argument("period and timeout parameters must be positive");
     }
   }
 
@@ -385,7 +386,6 @@ private:
   int control_period_ms_{20};
   int command_timeout_ms_{500};
   int imu_timeout_ms_{250};
-  int command_qos_depth_{10};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;

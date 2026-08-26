@@ -22,6 +22,8 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
   const auto cmd_qos = rclcpp::QoS(10);
+  const auto request_qos =
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
   const auto estop_qos = rclcpp::QoS(1).reliable().transient_local();
 
   // Subscriptions
@@ -35,7 +37,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
     std::bind(&Game2AutoNode::camera_info_callback, this, std::placeholders::_1));
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/game2/command_start", cmd_qos,
+    "/game2/command_start", request_qos,
     std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
@@ -60,7 +62,7 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", cmd_qos);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", cmd_qos);
   arm_position_pub_ =
-    create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", cmd_qos);
+    create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", request_qos);
   completed_pub_ = create_publisher<std_msgs::msg::Bool>("/game2/completed", cmd_qos);
   state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
     "/game2/state", rclcpp::QoS(1).reliable().transient_local());

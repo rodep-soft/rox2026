@@ -71,12 +71,6 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   EXPECT_FALSE(
     belt_node->set_parameter(
       rclcpp::Parameter("underbelt_level_3_rpm", -1)).successful);
-  EXPECT_FALSE(
-    belt_node->set_parameter(
-      rclcpp::Parameter("qos_depth", 2)).successful);
-  EXPECT_TRUE(
-    belt_node->set_parameter(
-      rclcpp::Parameter("qos_depth", 1)).successful);
 
   // Level 3を受信した時点で、上下個別のRPMを即時送信する。
   std_msgs::msg::UInt8 mode_msg;
@@ -287,10 +281,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1))
     .successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
-  EXPECT_TRUE(
-    dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 1)).successful);
 
   // 1. runtime parameterで変更した900 RPMを出力する。
   std_msgs::msg::Bool enable_msg;
