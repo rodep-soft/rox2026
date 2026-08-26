@@ -110,7 +110,8 @@ SpringEduliteController::SpringEduliteController()
       std::placeholders::_1));
 
   belt_clearance_req_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/spring/belt_clearance_request", command_qos,
+    "/spring/belt_clearance_request",
+    rclcpp::QoS(1).reliable().transient_local(),
     std::bind(
       &SpringEduliteController::belt_clearance_request_callback, this,
       std::placeholders::_1));

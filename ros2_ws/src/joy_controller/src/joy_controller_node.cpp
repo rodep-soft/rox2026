@@ -90,12 +90,13 @@ JoyControllerNode::JoyControllerNode()
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
   const auto command_qos = rclcpp::QoS(command_qos_depth_);
-  const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
+  const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
+  const auto emergency_stop_qos = state_qos;
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos);
 
   spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/spring/actuator_ready", command_qos,
+    "/spring/actuator_ready", state_qos,
     std::bind(
       &JoyControllerNode::spring_actuator_ready_callback, this,
       std::placeholders::_1));
@@ -417,7 +418,8 @@ void JoyControllerNode::loop_callback()
 
   // 8. L2とR2の同時押しでスプリング発射を要求
   const auto now_tp = std::chrono::steady_clock::now();
-  const bool spring_fire_requested = is_l2_active && is_r2_active;
+  const bool spring_fire_input = is_l2_active && is_r2_active;
+  const bool spring_fire_requested = spring_fire_input && spring_actuator_ready_;
 
   // 初回だけアームOPENの遅延シーケンスを開始する。
   if (spring_fire_requested && spring_actuator_ready_ &&
@@ -543,7 +545,6 @@ void JoyControllerNode::joy_timeout_timer_callback()
 void JoyControllerNode::state_publish_timer_callback()
 {
   publish_emergency_stop(is_emergency_stop_);
-  publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
   publish_drive_reversed(is_drive_reversed_);
 }
