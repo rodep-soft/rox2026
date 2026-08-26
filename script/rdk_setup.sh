@@ -87,6 +87,8 @@ sudo apt install -y \
   ros-humble-v4l2-camera \
   ros-humble-apriltag-ros
 
+sudo apt install --reinstall -y ros-humble-tf2-ros
+
 
 
 #ca~~  :https認証用
