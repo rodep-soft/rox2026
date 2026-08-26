@@ -659,7 +659,8 @@ void Game2AimNode::control_loop()
     current_belt_mode = robot_msgs::msg::BeltMode::STOP;
 
     // Proportional visual error + IMU Gyro damping (PD control)
-    double desired_wz = kp_yaw_ * heading_err;
+    // 機体ハードウェアの旋回方向（+wz = CW右旋回）に合わせて符号を設定
+    double desired_wz = -kp_yaw_ * heading_err;
     if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
       desired_wz -= kd_yaw_ * gyro_z_;
     }
