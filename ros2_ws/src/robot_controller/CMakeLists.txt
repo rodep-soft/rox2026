@@ -29,9 +29,8 @@ function(add_controller target directory implementation)
   if(BUILD_TESTING)
     # Tests link against the implementation without pulling in main().
     add_library(${library_target} STATIC ${directory}/src/${implementation})
-    target_include_directories(
-      ${library_target}
-      PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
+    target_include_directories(${library_target}
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
     ament_target_dependencies(${library_target} ${ARGN})
 
     add_executable(${target} ${directory}/src/main.cpp)
@@ -39,15 +38,9 @@ function(add_controller target directory implementation)
   else()
     # Compile implementation and main as one translation unit. This avoids
     # parsing the controller's ROS headers twice in normal RDK builds.
-    add_executable(
-      ${target}
-      ${directory}/src/${implementation}
-      ${directory}/src/main.cpp)
-    set_target_properties(
-      ${target} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 2)
-    target_include_directories(
-      ${target}
-      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include)
+    add_executable(${target} ${directory}/src/${implementation} ${directory}/src/main.cpp)
+    set_target_properties(${target} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 2)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include)
     ament_target_dependencies(${target} ${ARGN})
   endif()
 
