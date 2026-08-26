@@ -53,7 +53,6 @@ private:
   static uint8_t increment_mode(uint8_t mode, uint8_t maximum_mode);
   static uint8_t decrement_mode(uint8_t mode);
 
-  int command_qos_depth_{1};
   int joy_timeout_ms_{200};
   int state_publish_period_ms_{20};
 

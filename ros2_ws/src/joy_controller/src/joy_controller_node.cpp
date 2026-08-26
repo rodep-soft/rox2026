@@ -9,7 +9,6 @@
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller_node")
 {
-  command_qos_depth_ = declare_parameter<int>("command_qos_depth", 1);
   joy_timeout_ms_ = declare_parameter<int>("joy_timeout_ms", 200);
   state_publish_period_ms_ =
     declare_parameter<int>("state_publish_period_ms", 20);
@@ -58,10 +57,9 @@ JoyControllerNode::JoyControllerNode()
   dpad_horizontal_axis_ = declare_parameter<int>("dpad_horizontal_axis", 6);
   dpad_vertical_axis_ = declare_parameter<int>("dpad_vertical_axis", 7);
 
-  if (command_qos_depth_ <= 0 || joy_timeout_ms_ <= 0 ||
-    state_publish_period_ms_ <= 0)
+  if (joy_timeout_ms_ <= 0 || state_publish_period_ms_ <= 0)
   {
-    throw std::runtime_error("QoS depth and timer periods must be positive");
+    throw std::runtime_error("timer periods must be positive");
   }
   if (spring_arm_open_delay_ms_ < 0 || spring_arm_restore_delay_ms_ < 0) {
     throw std::runtime_error("spring arm delays must be non-negative");
@@ -89,7 +87,13 @@ JoyControllerNode::JoyControllerNode()
     "/joy", rclcpp::SensorDataQoS(),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
-  const auto command_qos = rclcpp::QoS(command_qos_depth_);
+  // 周期送信する指令は最新値だけを保持する。
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
+  // ボタン操作ごとに一度だけ送る要求は、短時間に連続しても欠落しないよう
+  // 十分な履歴を持たせて確実配送する。古い操作の再実行を避けるためvolatileとする。
+  const auto request_qos =
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   const auto emergency_stop_qos = state_qos;
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
@@ -111,19 +115,19 @@ JoyControllerNode::JoyControllerNode()
     "/spring/slow_fire_request", command_qos);
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-    "/belt/command_mode", command_qos);
+    "/belt/command_mode", request_qos);
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/command_enabled", command_qos);
 
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/dribble/shot_cycle_request", command_qos);
+    "/dribble/shot_cycle_request", request_qos);
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
-    "/dribble/command_position", command_qos);
+    "/dribble/command_position", request_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/game2/command_start", command_qos);
+    "/game2/command_start", request_qos);
 
   heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
@@ -166,10 +170,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     const auto & name = param.get_name();
 
     // 再起動が必要なパラメータの変更を拒否
-    if (name == "command_qos_depth" || name == "state_publish_period_ms") {
-      if (param.as_int() != (name == "command_qos_depth" ?
-        command_qos_depth_ :
-        state_publish_period_ms_))
+    if (name == "state_publish_period_ms") {
+      if (param.as_int() != state_publish_period_ms_)
       {
         result.successful = false;
         result.reason = name + " requires a node restart";

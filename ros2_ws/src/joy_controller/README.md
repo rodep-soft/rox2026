@@ -118,7 +118,6 @@ SpringはL2とR2を押している間、毎周期trueを送る。受信側はREA
 
 | parameter | 型 | 説明 |
 |---|---|---|
-| `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `dribble_enable_button` | int | dribble ON/OFFのbutton index |
@@ -147,7 +146,7 @@ ros2 param load /joy_controller \
   src/robot_bringup/config/joy_controller.yaml
 ```
 
-`command_qos_depth`と`state_publish_period_ms`はROS interfaceまたはtimerの再生成が
+`state_publish_period_ms`はtimerの再生成が
 必要になるため、実行中には変更できない。YAML内の値が現在値と同じ場合は、そのまま
 読み込みを許可する。
 
