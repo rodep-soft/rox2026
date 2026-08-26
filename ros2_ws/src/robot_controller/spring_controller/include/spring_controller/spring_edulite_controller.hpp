@@ -29,6 +29,7 @@ private:
     READY,                      //機構の動作準備完了
     FIRING,                     //ばね発射中
     SLOW_FIRE_WAITING,          // スロー発射開始待ち
+    SLOW_FIRE_RETRACTING,       // スロー発射前の収納中
     SLOW_FIRING_EXTENDING,      // スロー発射進行中
     SLOW_FIRING_RETURNING,      // スロー発射からもとに位置に帰還中
     SLOW_FIRE_ARM_ONLY,         // スロー発射のアームだけの動作中
@@ -86,7 +87,7 @@ private:
   double belt_clearance_ready_travel_rad_{3.0};
   double pos_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
-  double slow_fire_target_pos_rad_{13.5};
+  double slow_fire_stroke_rad_{5.0};
   double slow_fire_base_vel_rad_s_{12.0};
   double slow_fire_vel_gain_rad_per_m_{0.0};
   double slow_fire_min_vel_rad_s_{1.0};
@@ -102,6 +103,7 @@ private:
   double target_pos_rad_{0.0};
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
+  double slow_fire_return_pos_rad_{0.0};
   double actuator_pos_rad_{0.0};
   double actuator_vel_rad_s_{0.0};
   double e_stop_hold_pos_rad_{0.0};

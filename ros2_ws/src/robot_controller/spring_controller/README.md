@@ -94,8 +94,9 @@ READY復帰時に`position_reference_set=true`なら通常制御へ戻り、fals
 | `belt_clearance_ready_travel_rad` | ベルト収納開始位置からアーム動作を許可するまでの収納回転量[rad] |
 | `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
 | `fire_increment_rad` | 発射要求1回で減算する回転角度[rad] |
-| `slow_fire_move_spring` | trueなら従来どおりばねを動かし、falseならアームとローラのみ動作 |
+| `slow_fire_move_spring` | trueなら収納後にばねを低速発射し、falseならアームとローラのみ動作 |
 | `slow_fire_arm_only_duration_sec` | アームのみモードを有効にする総時間[s] |
+| `slow_fire_stroke_rad` | 収納位置から低速で押し出す相対回転量[rad] |
 | `slow_fire_base_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
 | `slow_fire_velocity_gain_rad_per_m` | IMU補正後cmd_velの前進速度1 m/sあたりに減算する押し出し速度[rad/s] |
 | `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |

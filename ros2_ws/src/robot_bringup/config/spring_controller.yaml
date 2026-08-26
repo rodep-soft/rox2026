@@ -17,7 +17,7 @@
     slow_fire_move_spring: true           # false: ばねは保持し、アームとローラのみ動作
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
-    slow_fire_target_position_rad: 5.0    # [rad] ゼロ点基準の最大伸長位置
+    slow_fire_stroke_rad: 5.0              # [rad] 収納位置からゆっくり押し出す回転量
     slow_fire_base_velocity_rad_s: 10.0    # スロー発射の基準速度
     slow_fire_velocity_gain_rad_per_m: 5.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0      # スロー発射の最小速度

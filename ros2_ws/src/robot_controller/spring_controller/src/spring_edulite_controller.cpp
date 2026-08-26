@@ -36,8 +36,8 @@ SpringEduliteController::SpringEduliteController()
     declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ =
     declare_double_parameter("fire_increment_rad", -6.283185307);
-  slow_fire_target_pos_rad_ =
-    declare_double_parameter("slow_fire_target_position_rad", 13.5);
+  slow_fire_stroke_rad_ =
+    declare_double_parameter("slow_fire_stroke_rad", 5.0);
   slow_fire_base_vel_rad_s_ =
     declare_double_parameter("slow_fire_base_velocity_rad_s", 12.0);
   slow_fire_vel_gain_rad_per_m_ =
@@ -78,7 +78,8 @@ SpringEduliteController::SpringEduliteController()
     "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
   if (belt_clearance_ready_travel_rad_ < 0.0 ||
-    slow_fire_delay_sec_ < 0.0 || slow_fire_arm_only_duration_sec_ < 0.0 ||
+    slow_fire_stroke_rad_ < 0.0 || slow_fire_delay_sec_ < 0.0 ||
+    slow_fire_arm_only_duration_sec_ < 0.0 ||
     logical_id < 0 ||
     logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
     set_position_service.empty() || cmd_vel_topic.empty())
@@ -162,9 +163,9 @@ SpringEduliteController::SpringEduliteController()
   RCLCPP_INFO(
     get_logger(),
     "SpringEduliteController initialized. Parameters: "
-    "standby_offset_rad=%.3f rad, slow_fire_target_position_rad=%.3f "
+    "standby_offset_rad=%.3f rad, slow_fire_stroke_rad=%.3f "
     "rad, fire_increment_rad=%.3f rad.",
-    standby_offset_rad_, slow_fire_target_pos_rad_,
+    standby_offset_rad_, slow_fire_stroke_rad_,
     fire_increment_rad_);
 }
 
@@ -479,14 +480,42 @@ void SpringEduliteController::control_timer_callback()
         if (!slow_fire_move_spring_) {
           state_ = State::SLOW_FIRE_ARM_ONLY;
         } else {
-          slow_fire_base_rad_ = target_pos_rad_;
-          const double stroke_rad = std::max(
-            0.0, slow_fire_target_pos_rad_ - standby_offset_rad_);
-          slow_fire_peak_rad_ = slow_fire_base_rad_ + stroke_rad;
-          state_ = State::SLOW_FIRING_EXTENDING;
+          slow_fire_return_pos_rad_ = target_pos_rad_;
+          slow_fire_base_rad_ =
+            slow_fire_return_pos_rad_ - standby_offset_rad_;
+          target_pos_rad_ = slow_fire_base_rad_;
+          state_ = State::SLOW_FIRE_RETRACTING;
+          motion_start_time_ = now();
+          RCLCPP_INFO(
+            get_logger(),
+            "Slow fire retracting spring: %.3f -> %.3f rad.",
+            slow_fire_return_pos_rad_, slow_fire_base_rad_);
         }
       }
       break;
+
+    case State::SLOW_FIRE_RETRACTING:
+      if ((now() - motion_start_time_).seconds() >= motion_timeout_sec_) {
+        enter_error_with_position_hold(
+          actuator_pos_rad_, "Slow fire retraction timed out");
+      } else if (has_new_feedback) {
+        actuator_msgs::msg::ActuatorState feedback;
+        feedback.position = actuator_pos_rad_;
+        feedback.velocity = actuator_vel_rad_s_;
+        if (update_settled(feedback)) {
+          target_pos_rad_ = slow_fire_base_rad_;
+          slow_fire_peak_rad_ = slow_fire_base_rad_ + slow_fire_stroke_rad_;
+          stable_fb_count_ = 0;
+          slow_fire_phase_start_time_ = now();
+          state_ = State::SLOW_FIRING_EXTENDING;
+          RCLCPP_INFO(
+            get_logger(),
+            "Slow fire retracted to %.3f rad; extending %.3f rad.",
+            slow_fire_base_rad_, slow_fire_stroke_rad_);
+        }
+      }
+      break;
+
     case State::SLOW_FIRE_ARM_ONLY:
       if ((now() - slow_fire_phase_start_time_).seconds() >=
         slow_fire_arm_only_duration_sec_)
@@ -536,10 +565,16 @@ void SpringEduliteController::control_timer_callback()
     case State::SLOW_FIRING_RETURNING:
       {
         const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
-        target_pos_rad_ = std::max(
-          slow_fire_base_rad_,
-          target_pos_rad_ - slow_fire_return_vel_rad_s_ * period_sec);
-        const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
+        const double return_delta_rad =
+          slow_fire_return_pos_rad_ - target_pos_rad_;
+        const double return_step_rad = slow_fire_return_vel_rad_s_ * period_sec;
+        if (std::fabs(return_delta_rad) <= return_step_rad) {
+          target_pos_rad_ = slow_fire_return_pos_rad_;
+        } else {
+          target_pos_rad_ += std::copysign(return_step_rad, return_delta_rad);
+        }
+        const double stroke_rad =
+          std::fabs(slow_fire_peak_rad_ - slow_fire_return_pos_rad_);
         const double expected_duration_sec = slow_fire_return_vel_rad_s_ > 0.0 ?
           stroke_rad / slow_fire_return_vel_rad_s_ : 1.0;
         if ((now() - slow_fire_phase_start_time_).seconds() >=
@@ -548,14 +583,14 @@ void SpringEduliteController::control_timer_callback()
           enter_error_with_position_hold(
             actuator_pos_rad_, "Slow fire return timed out");
         } else if (has_new_feedback &&
-          std::fabs(actuator_pos_rad_ - slow_fire_base_rad_) <=
+          std::fabs(actuator_pos_rad_ - slow_fire_return_pos_rad_) <=
           pos_tolerance_rad_ &&
           std::fabs(actuator_vel_rad_s_) <= stopped_vel_threshold_rad_s_ &&
-          target_pos_rad_ <= slow_fire_base_rad_ + 1e-4)
+          std::fabs(target_pos_rad_ - slow_fire_return_pos_rad_) <= 1e-4)
         {
           ++stable_fb_count_;
           if (stable_fb_count_ >= required_stable_fb_count_) {
-            target_pos_rad_ = slow_fire_base_rad_;
+            target_pos_rad_ = slow_fire_return_pos_rad_;
             state_ = State::READY;
             stable_fb_count_ = 0;
           }
@@ -647,6 +682,7 @@ void SpringEduliteController::publish_operation_state()
   } else if (state_ == State::FIRING) {
     operation = robot_msgs::msg::SpringOperationState::NORMAL_FIRE;
   } else if (state_ == State::SLOW_FIRE_WAITING ||
+    state_ == State::SLOW_FIRE_RETRACTING ||
     state_ == State::SLOW_FIRING_EXTENDING ||
     state_ == State::SLOW_FIRING_RETURNING ||
     state_ == State::SLOW_FIRE_ARM_ONLY)
@@ -763,10 +799,23 @@ SpringEduliteController::parameters_callback(
         return result;
       }
       slow_fire_arm_only_duration_sec_ = value;
-    } else if (name == "slow_fire_target_position_rad") {
+    } else if (name == "slow_fire_stroke_rad") {
+      double value = 0.0;
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_target_pos_rad_ = param.as_double();
+        value = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        value = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "slow_fire_stroke_rad must be a number";
+        return result;
       }
+      if (value < 0.0) {
+        result.successful = false;
+        result.reason = "slow_fire_stroke_rad must be non-negative";
+        return result;
+      }
+      slow_fire_stroke_rad_ = value;
     } else if (name == "slow_fire_base_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         slow_fire_base_vel_rad_s_ = param.as_double();
