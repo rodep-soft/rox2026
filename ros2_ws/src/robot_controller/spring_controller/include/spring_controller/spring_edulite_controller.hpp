@@ -28,6 +28,7 @@ private:
     MOVING_TO_STANDBY,          // 機構の動作準備中
     READY,                      //機構の動作準備完了
     FIRING,                     //ばね発射中
+    SLOW_FIRE_WAITING,          // スロー発射開始待ち
     SLOW_FIRING_EXTENDING,      // スロー発射進行中
     SLOW_FIRING_RETURNING,      // スロー発射からもとに位置に帰還中
     SLOW_FIRE_ARM_ONLY,         // スロー発射のアームだけの動作中
@@ -90,6 +91,7 @@ private:
   double slow_fire_vel_gain_rad_per_m_{0.0};
   double slow_fire_min_vel_rad_s_{1.0};
   double slow_fire_max_vel_rad_s_{20.0};
+  double slow_fire_delay_sec_{0.0};
   double slow_fire_settle_timeout_sec_{3.0};
   double slow_fire_arm_only_duration_sec_{0.5};
   double slow_fire_return_vel_rad_s_{6.0};

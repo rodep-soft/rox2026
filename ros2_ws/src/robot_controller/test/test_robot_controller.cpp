@@ -158,6 +158,15 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
 TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
 {
   auto spring_node = std::make_shared<SpringEduliteController>();
+  EXPECT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_delay_sec", 0.1)).successful);
+  EXPECT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_return_velocity_rad_s", 8.0)).successful);
+  EXPECT_FALSE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_delay_sec", -0.1)).successful);
   auto test_node = std::make_shared<rclcpp::Node>("test_spring_client");
 
   float last_position_rad = 0.0f;

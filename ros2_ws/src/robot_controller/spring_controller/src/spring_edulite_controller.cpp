@@ -48,6 +48,8 @@ SpringEduliteController::SpringEduliteController()
     declare_double_parameter("slow_fire_max_velocity_rad_s", 20.0);
   slow_fire_return_vel_rad_s_ =
     declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
+  slow_fire_delay_sec_ =
+    declare_double_parameter("slow_fire_delay_sec", 0.0);
   slow_fire_settle_timeout_sec_ =
     declare_double_parameter("slow_fire_settle_timeout_sec", 3.0);
   slow_fire_move_spring_ =
@@ -77,7 +79,8 @@ SpringEduliteController::SpringEduliteController()
     "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
   if (belt_clearance_ready_travel_rad_ < 0.0 ||
-    slow_fire_arm_only_duration_sec_ < 0.0 || logical_id < 0 ||
+    slow_fire_delay_sec_ < 0.0 || slow_fire_arm_only_duration_sec_ < 0.0 ||
+    logical_id < 0 ||
     logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
     set_position_service.empty() || cmd_vel_topic.empty())
   {
@@ -408,15 +411,7 @@ void SpringEduliteController::control_timer_callback()
     slow_fire_req_pending_ = false;
     stable_fb_count_ = 0;
     slow_fire_phase_start_time_ = now();
-    if (!slow_fire_move_spring_) {
-      state_ = State::SLOW_FIRE_ARM_ONLY;
-    } else {
-      slow_fire_base_rad_ = target_pos_rad_;
-      const double stroke_rad = std::max(
-        0.0, slow_fire_target_pos_rad_ - standby_offset_rad_);
-      slow_fire_peak_rad_ = slow_fire_base_rad_ + stroke_rad;
-      state_ = State::SLOW_FIRING_EXTENDING;
-    }
+    state_ = State::SLOW_FIRE_WAITING;
   }
 
   // 現在の状態に応じて目標値と状態遷移を更新する
@@ -476,6 +471,21 @@ void SpringEduliteController::control_timer_callback()
       }
       break;
 
+    case State::SLOW_FIRE_WAITING:
+      if ((now() - slow_fire_phase_start_time_).seconds() >= slow_fire_delay_sec_) {
+        stable_fb_count_ = 0;
+        slow_fire_phase_start_time_ = now();
+        if (!slow_fire_move_spring_) {
+          state_ = State::SLOW_FIRE_ARM_ONLY;
+        } else {
+          slow_fire_base_rad_ = target_pos_rad_;
+          const double stroke_rad = std::max(
+            0.0, slow_fire_target_pos_rad_ - standby_offset_rad_);
+          slow_fire_peak_rad_ = slow_fire_base_rad_ + stroke_rad;
+          state_ = State::SLOW_FIRING_EXTENDING;
+        }
+      }
+      break;
     case State::SLOW_FIRE_ARM_ONLY:
       if ((now() - slow_fire_phase_start_time_).seconds() >=
         slow_fire_arm_only_duration_sec_)
@@ -586,7 +596,7 @@ void SpringEduliteController::request_zero_reference()
       zero_srv_pending_ = false;
       zero_srv_succeeded_ = response->success;
       zero_srv_response_msg_ = response->success ?
-        std::string{} : "Failed to zero spring position: " + response->message;
+      std::string{} : "Failed to zero spring position: " + response->message;
       zero_srv_response_received_ = true;
     });
 }
@@ -635,7 +645,8 @@ void SpringEduliteController::publish_operation_state()
     operation = robot_msgs::msg::SpringOperationState::HOMING;
   } else if (state_ == State::FIRING) {
     operation = robot_msgs::msg::SpringOperationState::NORMAL_FIRE;
-  } else if (state_ == State::SLOW_FIRING_EXTENDING ||
+  } else if (state_ == State::SLOW_FIRE_WAITING ||
+    state_ == State::SLOW_FIRING_EXTENDING ||
     state_ == State::SLOW_FIRING_RETURNING ||
     state_ == State::SLOW_FIRE_ARM_ONLY)
   {
@@ -760,9 +771,30 @@ SpringEduliteController::parameters_callback(
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         slow_fire_max_vel_rad_s_ = param.as_double();
       }
+    } else if (name == "slow_fire_delay_sec") {
+      double value = 0.0;
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        value = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        value = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "slow_fire_delay_sec must be a number";
+        return result;
+      }
+      if (value < 0.0) {
+        result.successful = false;
+        result.reason = "slow_fire_delay_sec must be non-negative";
+        return result;
+      }
+      slow_fire_delay_sec_ = value;
     } else if (name == "slow_fire_settle_timeout_sec") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
         slow_fire_settle_timeout_sec_ = param.as_double();
+      }
+    } else if (name == "slow_fire_return_velocity_rad_s") {
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        slow_fire_return_vel_rad_s_ = param.as_double();
       }
     } else if (name == "cmd_vel_timeout_sec") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
