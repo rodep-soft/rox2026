@@ -393,7 +393,14 @@ void Protocol::process_feedback(const can_msgs::msg::Frame & message)
   const auto mode_status = static_cast<uint8_t>((message.id >> 22) & 0x03);
 
   if (!startup_run_state_observed_) {
-    motor_was_running_at_startup_ = mode_status == RUN_STATUS_MODE;
+    // RUN observed after this driver sent ENABLE belongs to the current
+    // initialization, not to a previously running motor. Only a RUN seen
+    // before ENABLE proves that software restarted while motor power stayed on.
+    const bool enable_already_sent =
+      initialization_step_ == InitializationStep::WAIT_FOR_ENABLE ||
+      initialization_step_ == InitializationStep::READY;
+    motor_was_running_at_startup_ =
+      !enable_already_sent && mode_status == RUN_STATUS_MODE;
     startup_run_state_observed_ = true;
   }
 
