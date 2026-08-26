@@ -3,6 +3,6 @@ uint8 DRIBBLE = 0
 uint8 OPEN = 1
 uint8 FEED = 2
 uint8 RECEIVE = 3
-uint8 ZERO_POSITION = 4
+uint8 HOME = 4
 
 uint8 position

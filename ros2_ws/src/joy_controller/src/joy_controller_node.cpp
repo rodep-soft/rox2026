@@ -313,7 +313,7 @@ void JoyControllerNode::loop_callback()
         joy_msg_, dpad_horizontal_axis_,
         false))                          // DPAD 右 (-1.0)
     {
-      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::ZERO_POSITION);
+      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
     } else if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
         true))                                 // DPAD 左 (+1.0)
@@ -603,7 +603,7 @@ void JoyControllerNode::toggle_manual_arm_position(uint8_t target_position)
     manual_arm_position_ == robot_msgs::msg::ArmPosition::DRIBBLE ?
     "DRIBBLE" :
     (manual_arm_position_ == robot_msgs::msg::ArmPosition::OPEN ?
-    "OPEN" : "ZERO_POSITION"));
+    "OPEN" : "HOME"));
 }
 
 void JoyControllerNode::publish_dribble_enabled(bool enabled)
