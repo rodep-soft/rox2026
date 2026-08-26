@@ -73,7 +73,7 @@ void Game2AimNode::load_parameters()
 {
   base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
   cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel_heading");
-  detections_topic_ = declare_parameter<std::string>("detections_topic", "/apriltag/detections");
+  detections_topic_ = declare_parameter<std::string>("detections_topic", "/detections");
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
 
   // Control gains & Limits

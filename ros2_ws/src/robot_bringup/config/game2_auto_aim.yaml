@@ -2,6 +2,7 @@
   ros__parameters:
     base_frame: "base_link"
     cmd_vel_topic: "/mecanum/cmd_vel_heading"
+    detections_topic: "/detections"
     target_distance: 4.0
 
     # ── 📐 カメラ物理・光学パラメータ ──
