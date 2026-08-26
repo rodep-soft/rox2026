@@ -64,7 +64,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
 | **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms 減速後に発射 ➔ 発射完了後に自動でDRIBBLE姿勢へ復帰) |
-| **R2 + DPAD 右** | **【手動アーム操作】 CUSTOM ↔ DRIBBLE** (`custom_position_rad`で設定する任意角度と切替) |
+| **R2 + DPAD 右** | **【手動アーム操作】 ZERO_POSITION ↔ DRIBBLE** (`zero_position_rad`で設定する0 rad姿勢と切替) |
 | **R2 + DPAD 左** | **【手動アーム操作】 OPEN ↔ DRIBBLE** |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
@@ -172,7 +172,7 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | 0 | DRIBBLE |
 | 1 | OPEN |
 | 2 | FEED |
-| 4 | CUSTOM |
+| 4 | ZERO_POSITION |
 
 ## 主なtopic
 
