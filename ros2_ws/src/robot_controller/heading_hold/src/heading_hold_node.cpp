@@ -198,6 +198,10 @@ private:
 
   void receive_imu(const sensor_msgs::msg::Imu & message)
   {
+    const auto reception_time = now();
+    const bool recovered_after_timeout = last_imu_time_.nanoseconds() != 0 &&
+      (reception_time - last_imu_time_).nanoseconds() > imu_timeout_ms_ * 1000000LL;
+
     const auto & orientation = message.orientation;
     if (!std::isfinite(orientation.x) || !std::isfinite(orientation.y) ||
       !std::isfinite(orientation.z) || !std::isfinite(orientation.w) ||
@@ -222,7 +226,18 @@ private:
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
     current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
-    last_imu_time_ = now();
+
+    // The IMU callback can update last_imu_time_ before the control timer observes
+    // the timeout. Rebase here as well so a restarted IMU cannot apply its new
+    // reference frame to the heading target retained from before the outage.
+    if (recovered_after_timeout) {
+      reset_heading_hold();
+      RCLCPP_WARN(
+        get_logger(),
+        "IMU data has recovered after a timeout; rebasing the heading-hold target");
+    }
+
+    last_imu_time_ = reception_time;
   }
 
   void reset_heading_hold()
