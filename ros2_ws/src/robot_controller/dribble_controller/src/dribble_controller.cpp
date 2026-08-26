@@ -118,7 +118,8 @@ void DribbleControllerNode::position_mode_callback(
 {
   if (emergency_stop_active_ ||
     (msg->position != robot_msgs::msg::ArmPosition::DRIBBLE &&
-    msg->position != robot_msgs::msg::ArmPosition::OPEN))
+    msg->position != robot_msgs::msg::ArmPosition::OPEN &&
+    msg->position != robot_msgs::msg::ArmPosition::CUSTOM))
   {
     return;
   }
@@ -151,7 +152,7 @@ void DribbleControllerNode::shot_cycle_callback(
     return;
   }
 
-  if (position_mode_ == robot_msgs::msg::ArmPosition::OPEN) {
+  if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
     position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
     manual_transition_active_ = true;
     manual_transition_start_time_ = now();
@@ -755,6 +756,8 @@ double DribbleControllerNode::target_position_rad() const
   switch (position_mode_) {
     case robot_msgs::msg::ArmPosition::OPEN:
       return open_position_rad_;
+    case robot_msgs::msg::ArmPosition::CUSTOM:
+      return custom_position_rad_;
     case robot_msgs::msg::ArmPosition::FEED:
       return feed_position_rad_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
@@ -772,6 +775,8 @@ double DribbleControllerNode::manual_transition_max_velocity_rad_s() const
       return feeding_max_velocity_rad_s_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
       return dribbling_max_velocity_rad_s_;
+    case robot_msgs::msg::ArmPosition::CUSTOM:
+      return returning_max_velocity_rad_s_;
     default:
       return returning_max_velocity_rad_s_;
   }
@@ -791,6 +796,7 @@ DribbleControllerNode::manual_transition_max_acceleration_rad_s2() const
     case robot_msgs::msg::ArmPosition::FEED:
       return feeding_max_acceleration_rad_s2_;
     case robot_msgs::msg::ArmPosition::DRIBBLE:
+    case robot_msgs::msg::ArmPosition::CUSTOM:
     default:
       return dribbling_max_acceleration_rad_s2_;
   }
@@ -840,6 +846,7 @@ DribbleControllerNode::parameter_bindings()
   return {
     {"dribble_position_rad", &dribble_position_rad_, C::NONE, true},
     {"open_position_rad", &open_position_rad_, C::NONE, true},
+    {"custom_position_rad", &custom_position_rad_, C::NONE, true},
     {"bottom_position_rad", &bottom_position_rad_, C::NONE, true},
     {"feed_position_rad", &feed_position_rad_, C::NONE, true},
     {"slow_fire_dribble_position_rad", &slow_fire_dribble_position_rad_,
