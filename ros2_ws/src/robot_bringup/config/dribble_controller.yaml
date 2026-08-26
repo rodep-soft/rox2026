@@ -3,12 +3,12 @@
     
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
-    dribble_position_rad: -0.92    # DRIBBLE姿勢
+    dribble_position_rad: -0.95    # DRIBBLE姿勢
     open_position_rad: -1.35       # OPEN姿勢 (ボールを出すときの姿勢)
     home_position_rad: 0.0        # R2 + DPAD右で切替えるホーム姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.95        # FEED姿勢(発射機構に押し込む姿勢)
-    slow_fire_dribble_position_rad: -1.3
+    slow_fire_dribble_position_rad: -1.35
     
     # [s] 自動シュートサイクルのタイミング
     belt_shot_delay_sec: 1.0         # ベルト停止時、自動起動からFEED開始までの待機時間[s]
@@ -29,11 +29,11 @@
     dribbling_max_rad_s2: 10.0
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 800             # DRIBBLE姿勢 (ボール保持中) の回転数
+    dribble_on_rpm: 450             # DRIBBLE姿勢 (ボール保持中) の回転数
     slow_fire_dribble_rpm: 0        # スロー発射中の回転数（負値で逆回転）
     shot_cycle_opening_rpm: 900     # ベルト発射準備時のローラ回転数
-    shot_cycle_feeding_rpm: 0       # FEED中のローラ回転数
-    shot_cycle_returning_rpm: 650   # FEED -> DRIBBLE時の回転数
+    shot_cycle_feeding_rpm: 700       # FEED中のローラ回転数
+    shot_cycle_returning_rpm: 450   # FEED -> DRIBBLE時の回転数
     shot_cycle_belt_spinup_level: 1 # 自動起動時のベルト回転レベル (1～4)
     
     # [A] 電流値によるボール検知しきい値
