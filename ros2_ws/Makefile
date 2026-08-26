@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := build
 
-BUILD_JOBS ?= 5
+BUILD_JOBS ?= 4
 PARALLEL_WORKERS ?= 2
 EXECUTOR ?= parallel
 
