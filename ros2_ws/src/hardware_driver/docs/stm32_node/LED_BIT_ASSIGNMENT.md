@@ -10,7 +10,7 @@ RDKからSTM32へ、CAN ID `0x201`のStandard Data FrameでLED状態を送信す
 | `data[0]` | 主表示モード |
 | `data[1]` | 同時表示する付加状態のビットフィールド |
 
-ROS 2では`/led/cmd`へ`std_msgs/msg/UInt16`を送信する。
+ROS 2では`/hardware/led_cmd`へ`std_msgs/msg/UInt16`を送信する。
 `stm32_driver`が次のリトルエンディアン形式でCANフレームへ変換する。
 
 ```text
@@ -29,23 +29,62 @@ ros_value = data[0] | (data[1] << 8)
 | 0 | `0x00` | `STARTUP` | 起動中、または非常停止状態をまだ受信していない |
 | 1 | `0x01` | `READY` | 操作可能な通常状態 |
 | 2 | `0x02` | `EMERGENCY_STOP` | 非常停止中 |
-| 3 | `0x03` | `SHOT_OPENING` | ベルト発射のFEED姿勢へ移動中 |
+| 3 | `0x03` | `ARM_OPEN` | ドリブルアームのOPEN姿勢 |
 | 4 | `0x04` | `LOADING` | ボールの装填動作中 |
 | 5 | `0x05` | `FIRING` | 発射中、または発射通知表示中 |
 | 6 | `0x06` | `RETURNING` | 発射後にDRIBBLE位置へ復帰中 |
 | 7 | `0x07` | `GAME2_SEARCHING` | Game2でターゲットを探索中 |
 | 8 | `0x08` | `GAME2_ALIGNING` | Game2でターゲットへ位置合わせ中 |
-| 9 | `0x09` | `ERROR` | 将来の異常表示用に予約 |
-| 10～255 | `0x0a`～`0xff` | Reserved | 将来拡張用。送信しないこと |
+| 9 | `0x09` | `ERROR` | ばね機構の異常 |
+| 10 | `0x0a` | `ARM_DRIBBLE` | ドリブルアームのDRIBBLE姿勢 |
+| 11 | `0x0b` | `SLOW_FIRING` | スロー発射中 |
+| 12 | `0x0c` | `ARM_FEED` | ドリブルアームのFEED姿勢 |
+| 13 | `0x0d` | `ARM_RECEIVE` | ドリブルアームのRECEIVE姿勢 |
+| 14 | `0x0e` | `ARM_HOME` | ドリブルアームのHOME姿勢 |
+| 15 | `0x0f` | `BELT_SPINUP` | ベルト発射サイクルの回転立上げ中 |
+| 16～255 | `0x10`～`0xff` | Reserved | 将来拡張用。送信しないこと |
 
 未定義値を受信した場合、STM32は安全な既定表示として扱うこと。
+
+### 2.1 入力状態から主表示モードへの変換
+
+現行の`led_controller_node`は、購読した状態を次のように`data[0]`へ変換する。
+表にない状態は、より優先度の高い状態がなければ`READY`になる。
+
+| 入力topic | 入力状態 | `data[0]` | 表示 |
+|---|---|---:|---|
+| `/system/emergency_stop` | 初回メッセージ未受信 | `0x00` | `STARTUP` |
+| `/system/emergency_stop` | `true` | `0x02` | `EMERGENCY_STOP` |
+| `/spring/fire_request` | `false`から`true`への立上り後`firing_display_ms`の間 | `0x05` | `FIRING` |
+| `/spring/operation_state` | `NORMAL_FIRE` | `0x05` | `FIRING` |
+| `/spring/operation_state` | `SLOW_FIRE` | `0x0b` | `SLOW_FIRING` |
+| `/spring/operation_state` | `ERROR` | `0x09` | `ERROR` |
+| `/game2/state` | `SEARCHING` | `0x07` | `GAME2_SEARCHING` |
+| `/game2/state` | `ALIGNING` | `0x08` | `GAME2_ALIGNING` |
+| `/game2/state` | `PREPARING_SHOOT` | `0x04` | `LOADING` |
+| `/game2/state` | `SHOOTING` | `0x05` | `FIRING` |
+| `/game2/state` | `WAITING_RESULT` | `0x06` | `RETURNING` |
+| `/game2/state` | `STANDBY`または`COMPLETED` | 下位状態で決定 | Game2固有表示なし |
+| `/dribble/shot_cycle_state` | `BELT_SPINUP` | `0x0f` | `BELT_SPINUP` |
+| `/dribble/shot_cycle_state` | `FEEDING` | `0x04` | `LOADING` |
+| `/dribble/shot_cycle_state` | `RETURNING` | `0x06` | `RETURNING` |
+| `/dribble/command_position` | `DRIBBLE` | `0x0a` | `ARM_DRIBBLE` |
+| `/dribble/command_position` | `OPEN` | `0x03` | `ARM_OPEN` |
+| `/dribble/command_position` | `FEED` | `0x0c` | `ARM_FEED` |
+| `/dribble/command_position` | `RECEIVE` | `0x0d` | `ARM_RECEIVE` |
+| `/dribble/command_position` | `HOME` | `0x0e` | `ARM_HOME` |
+
+`firing_display_ms`の既定値は500 ms、コマンドの配信周期
+`publish_period_ms`の既定値は100 msである。`/spring/fire_request`を`true`のまま
+保持しても表示時間は延長されず、いったん`false`を受信した後の次の立上りで
+再トリガーされる。
 
 ## 3. data[1]: 付加状態
 
 ```text
 bit:       7       6       5       4       3       2       1       0
          +-------+-------+-------+-------+-------+-------+-------+-------+
-data[1]  | 予約  | 予約  | Game2 | 反転  |Dribble|     Belt level       |
+data[1]  |ローラ逆|ローラ正| Game2 | 反転  |Dribble|     Belt level       |
          +-------+-------+-------+-------+-------+-------+-------+-------+
 mask       0x80    0x40    0x20    0x10    0x08       0x07
 ```
@@ -63,7 +102,7 @@ mask       0x80    0x40    0x20    0x10    0x08       0x07
 | `100` | 4 | LEVEL 4 |
 | `101`～`111` | 5～7 | 予約。不正値としてSTOP表示にする |
 
-この値は`/belt/mode`の0～4に対応する。Game2から直接指定されるRPMそのものは
+この値は`/belt/command_mode`の0～4に対応する。Game2から直接指定されるRPMそのものは
 この3 bitには格納しない。
 
 ### 3.2 bit 3: ドリブル状態
@@ -105,10 +144,24 @@ bool drive_reversed = (data[1] & 0x10U) != 0U;
 bool game2_enabled = (data[1] & 0x20U) != 0U;
 ```
 
-### 3.5 bit 6～7: 予約
+`led_controller_node`は`/game2/state`が`STANDBY`または`COMPLETED`以外のときに
+このbitを1にする。
 
-現在は常に0を送信する。将来使用するときは、古いSTM32ファームウェアが
-これらのbitを無視できるようにする。
+### 3.5 bit 6～7: ドリブルローラ回転方向
+
+`led_controller_node`は`/vesc/target`のうち`roller_logical_id`（既定値12）
+と一致する指令値を監視する。
+
+| bit 7～6 | `data[1]`加算値 | ローラ状態 |
+|---|---:|---|
+| `00` | `0x00` | 停止（目標RPM = 0） |
+| `01` | `0x40` | 正転（目標RPM > 0） |
+| `10` | `0x80` | 逆転（目標RPM < 0） |
+| `11` | `0xc0` | 予約。送信しない |
+
+bit 3はドリブル機能の有効/無効、bit 6～7は実際に出力されている目標回転方向を
+表すため、両者は独立して送信する。スロー発射やベルト発射サイクル中のローラも
+bit 6～7へ反映される。
 
 ## 4. 主表示の優先順位
 
@@ -118,14 +171,29 @@ bool game2_enabled = (data[1] & 0x20U) != 0U;
 ```text
 STARTUP判定
   > EMERGENCY_STOP
-  > 手動ばね発射のFIRING表示
+  > ばね機構ERROR
+  > 通常ばね発射
+  > スロー発射
   > Game2進行状態
-  > shot cycle進行状態
+  > ベルト発射サイクル進行状態
+  > ドリブルアーム姿勢
   > READY
 ```
 
 `data[1]`の付加状態は主表示とは別に保持される。ただしSTM32は、非常停止などの
 主表示を優先し、付加状態を画面へ反映しなくてもよい。
+
+主表示の具体的な決定順は次のとおり。
+
+1. `/system/emergency_stop`をまだ受信していなければ`STARTUP`
+2. 非常停止中なら`EMERGENCY_STOP`
+3. ばね機構が異常なら`ERROR`
+4. 通常ばね発射中、または手動発射の通知期間中なら`FIRING`
+5. スロー発射中なら`SLOW_FIRING`
+6. Game2が進行中なら、その進行状態に対応する表示
+7. ベルト発射サイクル中なら、その進行状態に対応する表示
+8. サイクル外では、指令されたドリブルアーム姿勢に対応する表示
+9. いずれにも該当しなければ`READY`
 
 ## 5. エンコード例
 
@@ -161,12 +229,63 @@ data[1] = 0x00
 UInt16  = 0x0002 = 2
 ```
 
-## 6. ROS 2試験コマンド
+## 6. 動作別の送信パターン
+
+以下はベルトSTOP、ドリブルOFF、通常方向を基準としたパターンである。
+Game2の各パターンではGame2有効bit（`0x20`）を付加する。
+
+| 動作 | `data[0]` | `data[1]` | `UInt16`（16進数） | `UInt16`（10進数） | CAN payload |
+|---|---:|---:|---:|---:|---|
+| 起動中 | `0x00` | `0x00` | `0x0000` | 0 | `00 00` |
+| 通常待機 | `0x01` | `0x00` | `0x0001` | 1 | `01 00` |
+| 非常停止 | `0x02` | `0x00` | `0x0002` | 2 | `02 00` |
+| shot cycle装填中 | `0x04` | `0x00` | `0x0004` | 4 | `04 00` |
+| 通常ばね発射 | `0x05` | `0x00` | `0x0005` | 5 | `05 00` |
+| スロー発射 | `0x0b` | `0x00` | `0x000b` | 11 | `0B 00` |
+| ベルト発射・回転立上げ | `0x0f` | `0x00` | `0x000f` | 15 | `0F 00` |
+| shot cycle復帰中 | `0x06` | `0x00` | `0x0006` | 6 | `06 00` |
+| ドリブル姿勢DRIBBLE | `0x0a` | `0x00` | `0x000a` | 10 | `0A 00` |
+| ドリブル姿勢OPEN | `0x03` | `0x00` | `0x0003` | 3 | `03 00` |
+| ドリブル姿勢FEED | `0x0c` | `0x00` | `0x000c` | 12 | `0C 00` |
+| ドリブル姿勢RECEIVE | `0x0d` | `0x00` | `0x000d` | 13 | `0D 00` |
+| ドリブル姿勢HOME | `0x0e` | `0x00` | `0x000e` | 14 | `0E 00` |
+| 前後反転・DRIBBLE姿勢 | `0x0a` | `0x10` | `0x100a` | 4106 | `0A 10` |
+| ドリブルON・ローラ正転・DRIBBLE姿勢 | `0x0a` | `0x48` | `0x480a` | 18442 | `0A 48` |
+| ドリブルON・ローラ逆転・DRIBBLE姿勢 | `0x0a` | `0x88` | `0x880a` | 34826 | `0A 88` |
+| Game2探索中 | `0x07` | `0x20` | `0x2007` | 8199 | `07 20` |
+| Game2位置合わせ中 | `0x08` | `0x20` | `0x2008` | 8200 | `08 20` |
+| Game2発射準備中 | `0x04` | `0x20` | `0x2004` | 8196 | `04 20` |
+| Game2発射中 | `0x05` | `0x20` | `0x2005` | 8197 | `05 20` |
+| Game2結果待ち | `0x06` | `0x20` | `0x2006` | 8198 | `06 20` |
+
+付加状態を組み合わせる場合は、次の式で`data[1]`を生成する。
+
+```text
+data[1] = belt_level
+        | (dribble_enabled ? 0x08 : 0x00)
+        | (drive_reversed  ? 0x10 : 0x00)
+        | (game2_enabled   ? 0x20 : 0x00)
+        | (roller_forward ? 0x40 : 0x00)
+        | (roller_reverse ? 0x80 : 0x00)
+
+UInt16 = data[0] | (data[1] << 8)
+```
+
+例えばGame2発射中、ベルトLEVEL 4、ドリブルON、前後反転では次の値になる。
+
+```text
+data[0] = 0x05
+data[1] = 0x04 | 0x08 | 0x10 | 0x20 = 0x3c
+UInt16  = 0x3c05 = 15365
+CAN payload = 05 3C
+```
+
+## 7. ROS 2試験コマンド
 
 例えば`READY + LEVEL 2 + ドリブルON + 前後反転`を直接送る場合は次を使用する。
 
 ```bash
-ros2 topic pub --once /led/cmd std_msgs/msg/UInt16 "{data: 6657}"
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 6657}"
 ```
 
 CANへ正しく変換されると、`0x201`のデータは次の並びになる。
@@ -185,10 +304,61 @@ candump can0,201:7FF
 can0  201   [2]  01 1A
 ```
 
-## 7. 互換性規則
+追加動作の代表パターンは次のコマンドで直接送信できる。
+
+```bash
+# Game2探索中: UInt16 0x2007、CAN payload 07 20
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8199}"
+
+# Game2位置合わせ中: UInt16 0x2008、CAN payload 08 20
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8200}"
+
+# Game2発射準備中: UInt16 0x2004、CAN payload 04 20
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8196}"
+
+# Game2発射中: UInt16 0x2005、CAN payload 05 20
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8197}"
+
+# Game2結果待ち: UInt16 0x2006、CAN payload 06 20
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8198}"
+
+# shot cycle装填中: UInt16 0x0004、CAN payload 04 00
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 4}"
+
+# shot cycle復帰中: UInt16 0x0006、CAN payload 06 00
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 6}"
+
+# 通常ばね発射: UInt16 0x0005、CAN payload 05 00
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 5}"
+
+# スロー発射: UInt16 0x000b、CAN payload 0B 00
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 11}"
+
+# ベルト発射・回転立上げ: UInt16 0x000f、CAN payload 0F 00
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 15}"
+
+# 前後反転・DRIBBLE姿勢: UInt16 0x100a、CAN payload 0A 10
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 4106}"
+
+# ドリブルON・ローラ正転・DRIBBLE姿勢: UInt16 0x480a、CAN payload 0A 48
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 18442}"
+
+# ドリブルON・ローラ逆転・DRIBBLE姿勢: UInt16 0x880a、CAN payload 0A 88
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 34826}"
+```
+
+`led_controller_node`自身の状態遷移を確認する場合は、出力値を直接publishせず、
+対応する入力topic（`/game2/state`、`/dribble/shot_cycle_state`、
+`/spring/fire_request`など）へ試験メッセージを送り、次で出力を確認する。
+
+```bash
+ros2 topic echo /hardware/led_cmd
+```
+
+## 8. 互換性規則
 
 - `data[0]`の既存値0～9の意味を変更しない。
 - `data[1]`の既存bitを別の用途へ再割り当てしない。
-- 新しい付加状態は、予約bit 6～7から使用する。
-- 予約bitを受信した古いSTM32は、そのbitを無視する。
+- bit 6～7はローラ回転方向として使用する。古いSTM32はこのbitを無視してよい。
+- 新規主表示モードは値10以降へ追加し、既存値0～9の意味を維持する。
 - CAN ID、DLC、またはbyte配置を変更する場合は、RDKとSTM32を同時に更新する。

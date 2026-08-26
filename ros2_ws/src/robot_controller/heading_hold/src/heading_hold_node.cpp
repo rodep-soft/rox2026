@@ -40,7 +40,8 @@ public:
 
     // raw cmd_velを受け取り、IMU補正後のcmd_vel_headingとして出力する。
     command_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-      raw_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_),
+      raw_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile(),
       [this](const geometry_msgs::msg::Twist::SharedPtr message) {
         receive_command(*message);
       });
@@ -53,7 +54,8 @@ public:
         set_heading_hold_enabled(message->data);
       });
     corrected_command_pub_ = create_publisher<geometry_msgs::msg::Twist>(
-      corrected_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+      corrected_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile());
 
     parameter_callback_ = add_on_set_parameters_callback(
       [this](const std::vector<rclcpp::Parameter> & parameters) {
@@ -85,7 +87,6 @@ private:
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
-    command_qos_depth_ = declare_parameter("command_qos_depth", 10);
     raw_cmd_vel_topic_ =
       declare_parameter<std::string>("raw_cmd_vel_topic", "/mecanum/cmd_vel");
     imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
@@ -103,9 +104,9 @@ private:
     validate_non_negative("rotation_settle_velocity_rad_s", rotation_settle_velocity_rad_s_);
     validate_positive("max_correction_rad_s", max_correction_rad_s_);
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
-      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0 || command_qos_depth_ <= 0)
+      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
     {
-      throw std::invalid_argument("period, timeout, and QoS parameters must be positive");
+      throw std::invalid_argument("period and timeout parameters must be positive");
     }
   }
 
@@ -207,6 +208,10 @@ private:
 
   void receive_imu(const sensor_msgs::msg::Imu & message)
   {
+    const auto reception_time = now();
+    const bool recovered_after_timeout = last_imu_time_.nanoseconds() != 0 &&
+      (reception_time - last_imu_time_).nanoseconds() > imu_timeout_ms_ * 1000000LL;
+
     const auto & orientation = message.orientation;
     if (!std::isfinite(orientation.x) || !std::isfinite(orientation.y) ||
       !std::isfinite(orientation.z) || !std::isfinite(orientation.w) ||
@@ -231,7 +236,18 @@ private:
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
     current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
-    last_imu_time_ = now();
+
+    // The IMU callback can update last_imu_time_ before the control timer observes
+    // the timeout. Rebase here as well so a restarted IMU cannot apply its new
+    // reference frame to the heading target retained from before the outage.
+    if (recovered_after_timeout) {
+      reset_heading_hold();
+      RCLCPP_WARN(
+        get_logger(),
+        "IMU data has recovered after a timeout; rebasing the heading-hold target");
+    }
+
+    last_imu_time_ = reception_time;
   }
 
   void reset_heading_hold_state()
@@ -424,7 +440,6 @@ private:
   int control_period_ms_{20};
   int command_timeout_ms_{500};
   int imu_timeout_ms_{250};
-  int command_qos_depth_{10};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;

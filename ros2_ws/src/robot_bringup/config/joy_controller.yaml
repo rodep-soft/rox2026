@@ -1,7 +1,5 @@
 /joy_controller:
   ros__parameters:
-    # 機構指令を保持する件数
-    command_qos_depth: 1
     # [ms] Joy入力断と判定してSTOPへ移るまでの時間 (200ms -> 1000msに緩和)
     joy_timeout_ms: 1000
 
@@ -12,7 +10,8 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
-    spring_arm_restore_delay_ms: 600  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
+    spring_arm_open_delay_ms: 150     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間
+    spring_arm_restore_delay_ms: 800  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
 
     # R1でdribble正回転をON/OFFする
     dribble_enable_button: 5
@@ -47,17 +46,17 @@
 
     # スティック全倒し時の最大速度
     # linear: [m/s]、angular: [rad/s]
-    linear_x_limit: 3.75
-    linear_y_limit: 3.75
+    linear_x_limit: 3.7
+    linear_y_limit: 3.7
     angular_z_limit: 2.0
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 2.5
-    linear_y_acceleration_limit: 2.5
+    linear_x_acceleration_limit: 3.0
+    linear_y_acceleration_limit: 1.75
     angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 3.75
-    linear_y_deceleration_limit: 3.75
+    linear_x_deceleration_limit: 3.25
+    linear_y_deceleration_limit: 2.5
     angular_z_deceleration_limit: 15.0

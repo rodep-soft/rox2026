@@ -82,8 +82,8 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 6. 現在の入力を前回値として保存する。
 
 button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
-SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続けても再発射しない。
-再発射する場合は、どちらか一方を離してから再度同時押しする。
+SpringはL2とR2を押している間、毎周期trueを送る。受信側はREADYになった周期で1回だけ受理し、
+押し続けても再発射しない。再発射する場合は、両トリガーを離してから再度同時押しする。
 
 ## stick処理
 
@@ -118,7 +118,6 @@ SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続け
 
 | parameter | 型 | 説明 |
 |---|---|---|
-| `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `dribble_enable_button` | int | dribble ON/OFFのbutton index |
@@ -147,7 +146,7 @@ ros2 param load /joy_controller \
   src/robot_bringup/config/joy_controller.yaml
 ```
 
-`command_qos_depth`と`state_publish_period_ms`はROS interfaceまたはtimerの再生成が
+`state_publish_period_ms`はtimerの再生成が
 必要になるため、実行中には変更できない。YAML内の値が現在値と同じ場合は、そのまま
 読み込みを許可する。
 
@@ -182,7 +181,7 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
-| publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
+| publish | `/dribble/command_position` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
 | publish | `/game2/start` | `std_msgs/msg/Bool` |

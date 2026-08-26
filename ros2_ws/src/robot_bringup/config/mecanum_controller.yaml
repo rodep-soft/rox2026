@@ -6,9 +6,6 @@
     
     # 車輪の倫理IDの配列 [FRONT_L，FRONT_R，REAR_L，REAR_R]
     wheel_logical_ids: [0, 1, 2, 3]
-    
-    # ROS 2 QoSのqueue depth。
-    qos_depth: 3
     # 非常停止中に全輪ゼロ指令を再送する周期[ms]
     emergency_stop_period_ms: 20
 

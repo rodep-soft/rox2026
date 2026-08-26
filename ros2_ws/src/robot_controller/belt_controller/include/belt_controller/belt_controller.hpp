@@ -47,7 +47,6 @@ private:
   std::array<int, num_levels> underbelt_rpms_{3000, 3500, 4000, 4500};
   std::array<int, num_levels> upperbelt_rpms_{3000, 3500, 4000, 4500};
   int emergency_stop_period_ms_{50};
-  int qos_depth_{1};
   uint16_t underbelt_logical_id_{11};
   uint16_t upperbelt_logical_id_{10};
   std::string target_array_topic_{"/vesc/target_array"};
