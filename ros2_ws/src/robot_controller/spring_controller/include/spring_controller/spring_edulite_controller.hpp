@@ -61,15 +61,15 @@ private:
   bool emergency_stop_active_{true};
   bool previous_emergency_stop_active_{true};
   bool fire_requested_{false};
-  bool fire_request_active_{false};
+  bool fire_request_pending_{false};
   bool slow_fire_requested_{false};
-  bool slow_fire_request_active_{false};
+  bool slow_fire_request_pending_{false};
   bool slow_fire_move_spring_{true};
   bool limit_switch_active_{false};
   bool actuator_ready_{false};
-  bool position_reference_set_{false};
+  bool position_ref_set_{false};
   bool zero_service_pending_{false};
-  bool actuator_position_received_{false};
+  bool actuator_pos_received_{false};
   bool homing_required_{true};
   bool belt_clearance_requested_{false};
   bool belt_clearance_request_pending_{false};
@@ -102,7 +102,7 @@ private:
   double target_position_rad_{0.0};
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
-  double actuator_position_rad_{0.0};
+  double actuator_pos_rad_{0.0};
   double actuator_velocity_rad_s_{0.0};
   double emergency_hold_position_rad_{0.0};
   double belt_clearance_position_rad_{0.0};

@@ -170,12 +170,18 @@ SpringEduliteController::SpringEduliteController()
 /// @brief ばね発射のリクエスト関数
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (msg->data && !fire_requested_) {
+    fire_request_pending_ = true;
+  }
   fire_requested_ = msg->data;
 }
 
 /// @brief スロー発射のリクエスト関数
 void SpringEduliteController::slow_fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  if (msg->data && !slow_fire_requested_) {
+    slow_fire_request_pending_ = true;
+  }
   slow_fire_requested_ = msg->data;
 }
 
@@ -278,18 +284,13 @@ void SpringEduliteController::actuator_state_callback(const actuator_msgs::msg::
 // ------------------------------------------------------------------------------------
 void SpringEduliteController::control_timer_callback()
 {
+  // 前のタイマー周期との間でフィードバックが来ているか確認
   const bool has_new_feedback = new_actuator_feedback_;
   new_actuator_feedback_ = false;
 
-  if (!fire_requested_) {
-    fire_request_active_ = false;
-  }
-  if (!slow_fire_requested_) {
-    slow_fire_request_active_ = false;
-  }
 
-  const bool driver_error = actuator_state_ == actuator_msgs::msg::ActuatorState::STATE_ERROR;
-  if (driver_error) {
+  // eduliteの状態からばね発射機構の状態を更新
+  if (actuator_state_ == actuator_msgs::msg::ActuatorState::STATE_ERROR) {
     state_ = State::ERROR;
   } else if (!actuator_pos_received_ || !actuator_ready_) {
     if (state_ != State::WAITING_FOR_ACTUATOR_READY) {
@@ -303,7 +304,7 @@ void SpringEduliteController::control_timer_callback()
     zero_service_response_received_ = false;
     last_published_target_rad_.reset();
   } else if (state_ == State::WAITING_FOR_ACTUATOR_READY) {
-    // ドライバ初期化完了と、ばね機構のゼロ点取得を別状態として扱う。
+    // ドライバ初期化完了と、ばね機構のゼロ点取得を別状態として扱う
     target_position_rad_ = actuator_pos_rad_;
     emergency_hold_position_rad_ = actuator_pos_rad_;
     stable_feedback_count_ = 0;
@@ -351,6 +352,12 @@ void SpringEduliteController::control_timer_callback()
   }
 
   if (emergency_stop_active_) {
+    if (fire_request_pending_ || slow_fire_request_pending_) {
+      fire_request_pending_ = false;
+      slow_fire_request_pending_ = false;
+      RCLCPP_WARN(
+        get_logger(), "Spring fire request rejected during emergency stop");
+    }
     if (!previous_emergency_stop_active_) {
       emergency_hold_position_rad_ = actuator_pos_rad_;
       stable_feedback_count_ = 0;
@@ -399,9 +406,9 @@ void SpringEduliteController::control_timer_callback()
   }
 
   if (state_ == State::READY && !belt_clearance_requested_ &&
-    fire_requested_ && !fire_request_active_)
+    fire_request_pending_)
   {
-    fire_request_active_ = true;
+    fire_request_pending_ = false;
     target_position_rad_ += fire_increment_rad_;
     state_ = State::FIRING;
     stable_feedback_count_ = 0;
@@ -409,9 +416,9 @@ void SpringEduliteController::control_timer_callback()
     RCLCPP_INFO(
       get_logger(), "Spring firing: target %.3f rad", target_position_rad_);
   } else if (state_ == State::READY && !belt_clearance_requested_ &&
-    slow_fire_requested_ && !slow_fire_request_active_)
+    slow_fire_request_pending_)
   {
-    slow_fire_request_active_ = true;
+    slow_fire_request_pending_ = false;
     stable_feedback_count_ = 0;
     slow_fire_phase_start_time_ = now();
     if (!slow_fire_move_spring_) {
