@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_bringup = get_package_share_directory("robot_bringup")
-    default_config = os.path.join(pkg_bringup, "config", "game2_controller.yaml")
+    default_config = os.path.join(pkg_bringup, "config", "game2_auto_aim.yaml")
     belt_config = os.path.join(pkg_bringup, "config", "belt_controller.yaml")
     joy_config = os.path.join(pkg_bringup, "config", "joy_controller.yaml")
 
@@ -30,13 +30,13 @@ def generate_launch_description():
     config_file_arg = DeclareLaunchArgument(
         "config_file",
         default_value=default_config,
-        description="Path to the game2 controller config yaml file",
+        description="Path to the game2 auto aim config yaml file",
     )
 
     game2_node = Node(
         package="robot_controller",
-        executable="game2_auto_node",
-        name="game2_auto_node",
+        executable="game2_aim",
+        name="game2_aim",
         output="screen",
         parameters=[LaunchConfiguration("config_file"), belt_params, joy_params],
     )

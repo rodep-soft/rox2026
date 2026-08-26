@@ -89,6 +89,19 @@ add_controller(
   tf2
   tf2_ros)
 add_controller(
+  game2_aim
+  auto_controllers/game2_aim
+  game2_aim_node.cpp
+  geometry_msgs
+  rclcpp
+  rcl_interfaces
+  sensor_msgs
+  std_msgs
+  robot_msgs
+  apriltag_msgs
+  tf2
+  tf2_ros)
+add_controller(
   game1_auto_node
   auto_controllers/game1_shooter
   game1_auto_node.cpp

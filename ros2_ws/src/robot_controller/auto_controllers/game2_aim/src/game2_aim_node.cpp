@@ -1,4 +1,4 @@
-#include "game2_shooter/game2_auto_node.hpp"
+#include "game2_aim/game2_aim_node.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,8 +6,8 @@
 namespace robot_controller
 {
 
-Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
-: Node("game2_auto_node", options)
+Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
+: Node("game2_aim", options)
 {
   load_parameters();
 
@@ -27,36 +27,36 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
   // Subscriptions
   detections_sub_ = create_subscription<apriltag_msgs::msg::AprilTagDetectionArray>(
     "/detections", cmd_qos,
-    std::bind(&Game2AutoNode::tag_detections_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::tag_detections_callback, this, std::placeholders::_1));
 
   // /camera_info から実際のカメラ内部パラメータ行列 K を自動取得 (未受信時はYAML値で動作)
   camera_info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
     "/image_combine_raw/left/camera_info", cmd_qos,
-    std::bind(&Game2AutoNode::camera_info_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::camera_info_callback, this, std::placeholders::_1));
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/game2/command_start", cmd_qos,
-    std::bind(&Game2AutoNode::start_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::start_callback, this, std::placeholders::_1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "/imu/data", rclcpp::SensorDataQoS(),
-    std::bind(&Game2AutoNode::imu_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::imu_callback, this, std::placeholders::_1));
 
   ball_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/ball_detected", cmd_qos,
-    std::bind(&Game2AutoNode::ball_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::ball_callback, this, std::placeholders::_1));
 
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
     "/joy", rclcpp::SensorDataQoS(),
-    std::bind(&Game2AutoNode::joy_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::joy_callback, this, std::placeholders::_1));
 
   shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/dribble/shot_cycle_request", cmd_qos,
-    std::bind(&Game2AutoNode::shot_cycle_request_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::shot_cycle_request_callback, this, std::placeholders::_1));
 
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", estop_qos,
-    std::bind(&Game2AutoNode::emergency_stop_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::emergency_stop_callback, this, std::placeholders::_1));
 
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
@@ -72,20 +72,20 @@ Game2AutoNode::Game2AutoNode(const rclcpp::NodeOptions & options)
 
   // Dynamic Parameter Callback
   parameter_callback_handle_ = add_on_set_parameters_callback(
-    std::bind(&Game2AutoNode::parameter_callback, this, std::placeholders::_1));
+    std::bind(&Game2AimNode::parameter_callback, this, std::placeholders::_1));
 
   // 20 Hz Control Loop Timer (50 ms)
   timer_ = create_wall_timer(
     std::chrono::milliseconds(50),
-    std::bind(&Game2AutoNode::control_loop, this));
+    std::bind(&Game2AimNode::control_loop, this));
 
   RCLCPP_INFO(
     get_logger(),
-    "Game2AutoNode initialized. Output CmdVel: %s, TestAlignmentOnly: %s",
+    "Game2AimNode initialized. Output CmdVel: %s, TestAlignmentOnly: %s",
     cmd_vel_topic_.c_str(), test_alignment_only_ ? "true" : "false");
 }
 
-void Game2AutoNode::load_parameters()
+void Game2AimNode::load_parameters()
 {
   base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
   cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel_heading");
@@ -171,7 +171,7 @@ void Game2AutoNode::load_parameters()
   register_row(top_tags, 2);
 }
 
-rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
+rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
   const std::vector<rclcpp::Parameter> & parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;
@@ -243,7 +243,7 @@ rcl_interfaces::msg::SetParametersResult Game2AutoNode::parameter_callback(
   return result;
 }
 
-void Game2AutoNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
+void Game2AimNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
 {
   if (msg->k[0] > 10.0 && msg->k[4] > 10.0) {
     camera_fx_ = msg->k[0];
@@ -260,7 +260,7 @@ void Game2AutoNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::Sha
   }
 }
 
-void Game2AutoNode::reset_sequence()
+void Game2AimNode::reset_sequence()
 {
   active_row_ = 2;
   active_target_id_ = -1;
@@ -281,7 +281,7 @@ void Game2AutoNode::reset_sequence()
   }
 }
 
-uint8_t Game2AutoNode::get_target_belt_mode(int row) const
+uint8_t Game2AimNode::get_target_belt_mode(int row) const
 {
   switch (row) {
     case 0: return robot_msgs::msg::BeltMode::LEVEL_1; // 下段 -> Level 1
@@ -291,7 +291,7 @@ uint8_t Game2AutoNode::get_target_belt_mode(int row) const
   }
 }
 
-std::pair<int, int> Game2AutoNode::get_target_belt_rpms(int row) const
+std::pair<int, int> Game2AimNode::get_target_belt_rpms(int row) const
 {
   switch (row) {
     case 0: // 下段 (Row 0) -> Level 1 (Upper, Under/Bottom)
@@ -305,7 +305,7 @@ std::pair<int, int> Game2AutoNode::get_target_belt_rpms(int row) const
   }
 }
 
-void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data) {
     is_enabled_ = true;
@@ -331,7 +331,7 @@ void Game2AutoNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
   }
 }
 
-void Game2AutoNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game2AimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   emergency_stop_active_ = msg->data;
   if (emergency_stop_active_ && is_enabled_) {
@@ -345,7 +345,7 @@ void Game2AutoNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr
   }
 }
 
-void Game2AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
+void Game2AimNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
   if (!is_enabled_) {
     prev_circle_pressed_ = false;
@@ -395,7 +395,7 @@ void Game2AutoNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
   }
 }
 
-void Game2AutoNode::shot_cycle_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game2AimNode::shot_cycle_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (!is_enabled_ || !msg->data) {
     return;
@@ -425,7 +425,7 @@ void Game2AutoNode::shot_cycle_request_callback(const std_msgs::msg::Bool::Share
   }
 }
 
-void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+void Game2AimNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
   last_imu_time_ = now();
@@ -463,7 +463,7 @@ void Game2AutoNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
 }
 
-void Game2AutoNode::tag_detections_callback(
+void Game2AimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
   const auto current_time = now();
@@ -538,7 +538,7 @@ void Game2AutoNode::tag_detections_callback(
   }
 }
 
-void Game2AutoNode::update_panel_states()
+void Game2AimNode::update_panel_states()
 {
   const auto current_time = now();
 
@@ -549,7 +549,7 @@ void Game2AutoNode::update_panel_states()
   }
 }
 
-void Game2AutoNode::select_target_and_aim()
+void Game2AimNode::select_target_and_aim()
 {
   if (test_alignment_only_) {
     // In test mode, target is updated in tag_detections_callback
@@ -749,7 +749,7 @@ void Game2AutoNode::select_target_and_aim()
   }
 }
 
-void Game2AutoNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void Game2AimNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   const bool prev = ball_detected_;
   ball_detected_ = msg->data;
@@ -761,7 +761,7 @@ void Game2AutoNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
   }
 }
 
-void Game2AutoNode::control_loop()
+void Game2AimNode::control_loop()
 {
   const auto current_time = now();
   double dt = (current_time - last_loop_time_).seconds();
@@ -972,7 +972,7 @@ void Game2AutoNode::control_loop()
     arm_mode, state_ == robot_msgs::msg::Game2State::COMPLETED);
 }
 
-void Game2AutoNode::publish_all(
+void Game2AimNode::publish_all(
   const geometry_msgs::msg::Twist & cmd_vel,
   uint8_t belt_mode,
   bool shoot_trigger,

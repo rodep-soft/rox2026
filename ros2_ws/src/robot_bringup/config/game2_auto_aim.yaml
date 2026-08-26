@@ -1,4 +1,4 @@
-game2_auto_node:
+/**:
   ros__parameters:
     base_frame: "base_link"
     cmd_vel_topic: "/mecanum/cmd_vel_heading"
