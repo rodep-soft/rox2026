@@ -100,9 +100,7 @@ void Game2AimNode::load_parameters()
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
 
   tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 0.5);
-  aligning_timeout_ = declare_parameter<double>("aligning_timeout", 10.0);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
-  auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
   enable_double_panel_midpoint_targeting_ =
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
 

@@ -31,9 +31,7 @@
     test_alignment_only: false
 
     tag_lost_timeout: 0.5   # [s] AprilTag見失い判定タイムアウト
-    aligning_timeout: 10.0  # [s] 照準タイムアウト
-    auto_advance_rows: true # true: 段内のタグを射出完了したら自動で次段へ移行
-    enable_double_panel_midpoint_targeting: true # true: 列間中点狙い (1-2列間, 2-3列間) を有効化し2枚抜きを優先 (左から1-2間->2-3間->左->中->右 の順かつ 上段->中段->下段)
+    enable_double_panel_midpoint_targeting: true # true: 列間中点狙い (1-2列間, 2-3列間) を有効化し2枚抜きを優先 (上段->中段->下段)
 
     # ── 🏷️ シュートパネル AprilTag ID ──
     # Row 0: 下段, Row 1: 中段, Row 2: 上段 (左から右の順)
