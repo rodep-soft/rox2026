@@ -101,6 +101,7 @@ private:
   bool enable_motion_compensation_{true};
   double backward_velocity_boost_rpm_per_mps_{500.0};
   double backward_acc_rpm_per_mps2_{200.0};
+  double turning_boost_rpm_per_rad_s_{30.0};
   double cmd_vel_acc_lpf_alpha_{0.2};
   double cmd_vel_timeout_sec_{0.2};
   int max_boost_rpm_{1200};
@@ -115,6 +116,7 @@ private:
 
   // 運動補正用の一時変数
   double commanded_vx_m_s_{0.0};
+  double commanded_wz_rad_s_{0.0};
   double commanded_ax_m_s2_{0.0};
   double last_commanded_vx_m_s_{0.0};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};

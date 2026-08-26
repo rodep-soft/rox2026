@@ -357,6 +357,7 @@ void DribbleControllerNode::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
   //速度と現在時間を取得して，差分により加速度を求める
   const auto current_time = now();
   commanded_vx_m_s_ = msg->linear.x;
+  commanded_wz_rad_s_ = msg->angular.z;
   if (last_cmd_vel_time_.nanoseconds() > 0) {
     const double dt = (current_time - last_cmd_vel_time_).seconds();
     if (dt > 0.001 && dt < 0.5) {  // 受信間隔がおかしい場合は無視
@@ -492,8 +493,10 @@ void DribbleControllerNode::control_timer_callback()
   } else {
     const double backward_speed = std::max(0.0, -commanded_vx_m_s_);
     const double backward_acc = std::max(0.0, -commanded_ax_m_s2_);
-    const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ + backward_acc *
-      backward_acc_rpm_per_mps2_;
+    const double turning_speed = std::abs(commanded_wz_rad_s_);
+    const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ +
+      backward_acc * backward_acc_rpm_per_mps2_ +
+      turning_speed * turning_boost_rpm_per_rad_s_;
     current_motion_boost_rpm_ = std::min(max_boost_rpm_, static_cast<int>(std::round(raw_boost)));
   }
   update_and_publish_roller_command();
@@ -817,6 +820,8 @@ void DribbleControllerNode::load_parameters()
     "backward_velocity_boost_rpm_per_mps", backward_velocity_boost_rpm_per_mps_);
   backward_acc_rpm_per_mps2_ = declare_parameter(
     "backward_acc_rpm_per_mps2", backward_acc_rpm_per_mps2_);
+  turning_boost_rpm_per_rad_s_ = declare_parameter(
+    "turning_boost_rpm_per_rad_s", turning_boost_rpm_per_rad_s_);
   cmd_vel_acc_lpf_alpha_ = declare_parameter(
     "cmd_vel_acc_lpf_alpha", cmd_vel_acc_lpf_alpha_);
   cmd_vel_timeout_sec_ = declare_parameter("cmd_vel_timeout_sec", cmd_vel_timeout_sec_);
@@ -968,6 +973,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       updated = update_double(parameter, backward_velocity_boost_rpm_per_mps_, 0.0, any_double_max);
     } else if (name == "backward_acc_rpm_per_mps2") {
       updated = update_double(parameter, backward_acc_rpm_per_mps2_, 0.0, any_double_max);
+    } else if (name == "turning_boost_rpm_per_rad_s") {
+      updated = update_double(parameter, turning_boost_rpm_per_rad_s_, 0.0, any_double_max);
     } else if (name == "dribble_on_rpm") {
       updated = update_int(parameter, dribble_on_rpm_, 0, any_int_max);
     } else if (name == "slow_fire_dribble_rpm") {

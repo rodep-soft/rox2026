@@ -52,6 +52,7 @@
 
     backward_velocity_boost_rpm_per_mps: 100.0 # 1 rad/s の後退時に速度に応じて変化させるrpm
     backward_acc_rpm_per_mps2: 30.0            # 1 rad/s^2の加速度に応じて変化させるrpm
+    turning_boost_rpm_per_rad_s: 30.0           # 旋回速度1 rad/sあたりに加算するrpm
     max_boost_rpm: 250                         # 変化させる最大回転量
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)

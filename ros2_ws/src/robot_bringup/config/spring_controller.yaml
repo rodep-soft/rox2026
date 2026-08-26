@@ -4,7 +4,7 @@
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）
     limit_switch_bit_offset: 0
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 4.1   # 3.5
+    standby_offset_rad: 4.0   # 4.0
     # [rad] ベルト収納開始位置から、アーム動作を許可するまでの収納回転量
     belt_clearance_ready_travel_rad: 0.2
 
@@ -14,11 +14,11 @@
     fire_increment_rad: -43.9822971
     
     # ── ゆっくり射出 ──
-    slow_fire_move_spring: false           # false: ばねは保持し、アームとローラのみ動作
+    slow_fire_move_spring: true           # false: ばねは保持し、アームとローラのみ動作
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
-    slow_fire_target_position_rad: 13.0    # [rad] ゼロ点基準の最大伸長位置
-    slow_fire_base_velocity_rad_s: 15.0    # スロー発射の基準速度
+    slow_fire_target_position_rad: 5.0    # [rad] ゼロ点基準の最大伸長位置
+    slow_fire_base_velocity_rad_s: 10.0    # スロー発射の基準速度
     slow_fire_velocity_gain_rad_per_m: 5.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0      # スロー発射の最小速度
     slow_fire_max_velocity_rad_s: 30.0     # スロー発射の最大速度
