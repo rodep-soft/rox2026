@@ -8,7 +8,7 @@
 |---|---|---|
 | sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
 | sub | `/dribble/position_mode` | `DRIBBLE``OPEN``FEED` 姿勢 |
-| sub | `/dribble/command_position` | `DRIBBLE``OPEN``FEED` 姿勢 |
+| sub | `/dribble/command_position` | `DRIBBLE``OPEN``FEED``HOME` 姿勢 |
 | sub | `/dribble/shot_cycle_request` | `FEED → DRIBBLE` 自動射出動作 |
 | sub | `/belt/command_mode` | beltの現在モード把握（0=STOP1〜4=LEVEL） |
 | sub | `/system/emergency_stop` | ローラー停止安全姿勢復帰 |
@@ -20,6 +20,7 @@
 ## 各姿勢（Position Mode）の役割
 - `OPEN`：ボール排出用姿勢（角度: `-1.27 rad`回転: `0 RPM`）。
 - `FEED`：ベルト射出押し込み姿勢（角度: `0.5 rad`）。
+- `HOME`：手動操作用のホーム姿勢（角度: `home_position_rad`）。
 
 ## shot cycleの動作
 
@@ -52,7 +53,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `cmd_vel_acceleration_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）
-- `dribble_position_rad``open_position_rad``feed_position_rad`
+- `dribble_position_rad``open_position_rad``home_position_rad``feed_position_rad`
 - feed_duration_sec
 - `opening_max_velocity_rad_s`
 - `feeding_max_velocity_rad_s`

@@ -93,6 +93,7 @@ private:
   // ── パラメータ ──────────────────────────────────────
   double dribble_position_rad_{-0.86};
   double open_position_rad_{-1.27};
+  double home_position_rad_{0.0};
   double bottom_position_rad_{0.0};
   double feed_position_rad_{1.3};
   double feed_duration_sec_{0.6};
