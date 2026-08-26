@@ -135,7 +135,7 @@ private:
   double target_y_{0.0};
   double target_z_{0.0};
   double target_heading_err_{0.0};
-  uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::LEVEL_3};
+  uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool target_valid_{false};
   int locked_target_id_{-1};
   rclcpp::Time state_start_time_;

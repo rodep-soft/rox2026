@@ -197,7 +197,7 @@ void Game2AimNode::reset_sequence()
   active_row_ = 2;
   active_target_id_ = -1;
   locked_target_id_ = -1;
-  target_belt_mode_ = robot_msgs::msg::BeltMode::LEVEL_3;
+  target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
   current_target_tag_ids_.clear();
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
@@ -606,7 +606,7 @@ void Game2AimNode::control_loop()
       "🔍 [Game2 Search] Waiting for target AprilTags... Standing still");
 
     publish_all(
-      cmd, test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_,
+      cmd, robot_msgs::msg::BeltMode::STOP,
       !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
