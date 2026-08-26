@@ -30,23 +30,23 @@ SpringEduliteController::SpringEduliteController()
   standby_offset_rad_ = declare_double_parameter("standby_offset_rad", 0.0);
   belt_clearance_ready_travel_rad_ =
     declare_double_parameter("belt_clearance_ready_travel_rad", 3.0);
-  position_tolerance_rad_ =
+  pos_tolerance_rad_ =
     declare_double_parameter("position_tolerance_rad", 0.05);
-  limit_switch_bit_offset_ =
+  limit_sw_bit_offset_ =
     declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ =
     declare_double_parameter("fire_increment_rad", -6.283185307);
-  slow_fire_target_position_rad_ =
+  slow_fire_target_pos_rad_ =
     declare_double_parameter("slow_fire_target_position_rad", 13.5);
-  slow_fire_base_velocity_rad_s_ =
+  slow_fire_base_vel_rad_s_ =
     declare_double_parameter("slow_fire_base_velocity_rad_s", 12.0);
-  slow_fire_velocity_gain_rad_per_m_ =
+  slow_fire_vel_gain_rad_per_m_ =
     declare_double_parameter("slow_fire_velocity_gain_rad_per_m", 0.0);
-  slow_fire_min_velocity_rad_s_ =
+  slow_fire_min_vel_rad_s_ =
     declare_double_parameter("slow_fire_min_velocity_rad_s", 1.0);
-  slow_fire_max_velocity_rad_s_ =
+  slow_fire_max_vel_rad_s_ =
     declare_double_parameter("slow_fire_max_velocity_rad_s", 20.0);
-  slow_fire_return_velocity_rad_s_ =
+  slow_fire_return_vel_rad_s_ =
     declare_double_parameter("slow_fire_return_velocity_rad_s", 6.0);
   slow_fire_settle_timeout_sec_ =
     declare_double_parameter("slow_fire_settle_timeout_sec", 3.0);
@@ -54,13 +54,13 @@ SpringEduliteController::SpringEduliteController()
     declare_parameter<bool>("slow_fire_move_spring", true);
   slow_fire_arm_only_duration_sec_ =
     declare_double_parameter("slow_fire_arm_only_duration_sec", 0.5);
-  homing_velocity_rad_s_ =
+  homing_vel_rad_s_ =
     declare_double_parameter("homing_velocity_rad_s", 0.5);
   homing_timeout_sec_ = declare_double_parameter("homing_timeout_sec", 30.0);
   motion_timeout_sec_ = declare_double_parameter("motion_timeout_sec", 10.0);
-  stopped_velocity_threshold_rad_s_ =
+  stopped_vel_threshold_rad_s_ =
     declare_double_parameter("stopped_velocity_threshold_rad_s", 0.05);
-  required_stable_feedback_count_ =
+  required_stable_fb_count_ =
     declare_parameter<int>("required_stable_feedback_count", 3);
   cmd_vel_timeout_sec_ = declare_double_parameter("cmd_vel_timeout_sec", 0.2);
   command_period_ms_ = declare_parameter<int>("command_period_ms", 10);
@@ -88,25 +88,25 @@ SpringEduliteController::SpringEduliteController()
   const auto command_qos = rclcpp::QoS(qos_depth);
   const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
 
-  fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+  fire_req_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos,
     std::bind(
       &SpringEduliteController::fire_request_callback, this,
       std::placeholders::_1));
 
-  slow_fire_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+  slow_fire_req_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/slow_fire_request", command_qos,
     std::bind(
       &SpringEduliteController::slow_fire_request_callback, this,
       std::placeholders::_1));
 
-  emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
+  e_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos,
     std::bind(
       &SpringEduliteController::emergency_stop_callback, this,
       std::placeholders::_1));
 
-  belt_clearance_request_sub_ = create_subscription<std_msgs::msg::Bool>(
+  belt_clearance_req_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/belt_clearance_request", command_qos,
     std::bind(
       &SpringEduliteController::belt_clearance_request_callback, this,
@@ -118,7 +118,7 @@ SpringEduliteController::SpringEduliteController()
       &SpringEduliteController::cmd_vel_callback, this,
       std::placeholders::_1));
 
-  limit_switch_sub_ = create_subscription<std_msgs::msg::UInt8>(
+  limit_sw_sub_ = create_subscription<std_msgs::msg::UInt8>(
     "/hardware/limit_switches", command_qos,
     std::bind(
       &SpringEduliteController::limit_switch_callback, this,
@@ -130,20 +130,20 @@ SpringEduliteController::SpringEduliteController()
       &SpringEduliteController::actuator_state_callback, this,
       std::placeholders::_1));
 
-  position_command_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
+  pos_cmd_pub_ = create_publisher<actuator_msgs::msg::ActuatorTarget>(
     target_topic, command_qos);
 
   // 装填・待機完了しているかどうかを見るtopic
   actuator_ready_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/actuator_ready", rclcpp::QoS(1).reliable().transient_local());
-  operation_state_pub_ =
+  op_state_pub_ =
     create_publisher<robot_msgs::msg::SpringOperationState>(
     "/spring/operation_state",
     rclcpp::QoS(1).reliable().transient_local());
 
   // spring_controller -> hardware_driver: 原点検出後の現在位置を0
   // radに設定する。
-  set_position_client_ =
+  set_pos_client_ =
     create_client<actuator_msgs::srv::SetPosition>(set_position_service);
 
   control_timer_ = create_wall_timer(
@@ -160,7 +160,7 @@ SpringEduliteController::SpringEduliteController()
     "SpringEduliteController initialized. Parameters: "
     "standby_offset_rad=%.3f rad, slow_fire_target_position_rad=%.3f "
     "rad, fire_increment_rad=%.3f rad.",
-    standby_offset_rad_, slow_fire_target_position_rad_,
+    standby_offset_rad_, slow_fire_target_pos_rad_,
     fire_increment_rad_);
 }
 
@@ -170,40 +170,40 @@ SpringEduliteController::SpringEduliteController()
 /// @brief ばね発射のリクエスト関数
 void SpringEduliteController::fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data && !fire_requested_) {
-    fire_request_pending_ = true;
+  if (msg->data && !fire_req_active_) {
+    fire_req_pending_ = true;
   }
-  fire_requested_ = msg->data;
+  fire_req_active_ = msg->data;
 }
 
 /// @brief スロー発射のリクエスト関数
 void SpringEduliteController::slow_fire_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data && !slow_fire_requested_) {
-    slow_fire_request_pending_ = true;
+  if (msg->data && !slow_fire_req_active_) {
+    slow_fire_req_pending_ = true;
   }
-  slow_fire_requested_ = msg->data;
+  slow_fire_req_active_ = msg->data;
 }
 
 /// @brief 非常停止を受信する関数
 void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data == emergency_stop_active_) {
+  if (msg->data == e_stop_active_) {
     return;
   }
 
-  emergency_stop_active_ = msg->data;
-  if (!emergency_stop_active_) {
-    resume_after_emergency_stop_ = true;
+  e_stop_active_ = msg->data;
+  if (!e_stop_active_) {
+    resume_after_e_stop_ = true;
     return;
   }
 
-  resume_after_emergency_stop_ = false;
+  resume_after_e_stop_ = false;
   // 非常停止だけは制御周期を待たず、受信時に現在位置を保持する
-  emergency_hold_position_rad_ =
-    actuator_pos_received_ ? actuator_pos_rad_ : target_position_rad_;
-  stable_feedback_count_ = 0;
-  publish_target(emergency_hold_position_rad_);
+  e_stop_hold_pos_rad_ =
+    actuator_pos_received_ ? actuator_pos_rad_ : target_pos_rad_;
+  stable_fb_count_ = 0;
+  publish_target(e_stop_hold_pos_rad_);
 
   // 機構の準備ができていないことを送信する
   std_msgs::msg::Bool ready_msg;
@@ -211,7 +211,7 @@ void SpringEduliteController::emergency_stop_callback(const std_msgs::msg::Bool:
   actuator_ready_pub_->publish(ready_msg);
   RCLCPP_WARN(
     get_logger(), "Emergency stop: immediately holding spring at %.3f rad",
-    emergency_hold_position_rad_);
+    e_stop_hold_pos_rad_);
 }
 
 void SpringEduliteController::belt_clearance_request_callback(
@@ -223,43 +223,43 @@ void SpringEduliteController::belt_clearance_request_callback(
 void SpringEduliteController::start_belt_clearance_motion()
 {
   is_belt_clearance_active_ = true;
-  belt_clearance_return_position_rad_ = target_position_rad_;
-  belt_clearance_position_rad_ =
-    belt_clearance_return_position_rad_ - standby_offset_rad_;
-  target_position_rad_ = belt_clearance_position_rad_;
+  belt_clearance_return_pos_rad_ = target_pos_rad_;
+  belt_clearance_pos_rad_ =
+    belt_clearance_return_pos_rad_ - standby_offset_rad_;
+  target_pos_rad_ = belt_clearance_pos_rad_;
   state_ = State::MOVING_TO_STANDBY;
-  stable_feedback_count_ = 0;
+  stable_fb_count_ = 0;
   RCLCPP_INFO(
     get_logger(),
     "Retracting spring for belt shot: %.3f -> %.3f rad "
     "(offset: %.3f rad)",
-    belt_clearance_return_position_rad_, belt_clearance_position_rad_,
+    belt_clearance_return_pos_rad_, belt_clearance_pos_rad_,
     standby_offset_rad_);
 }
 
 void SpringEduliteController::finish_belt_clearance_motion()
 {
   is_belt_clearance_active_ = false;
-  target_position_rad_ = belt_clearance_return_position_rad_;
+  target_pos_rad_ = belt_clearance_return_pos_rad_;
   state_ = State::MOVING_TO_STANDBY;
-  stable_feedback_count_ = 0;
+  stable_fb_count_ = 0;
   RCLCPP_INFO(
     get_logger(), "Returning spring after belt shot: target %.3f rad",
-    target_position_rad_);
+    target_pos_rad_);
 }
 
 void SpringEduliteController::cmd_vel_callback(
   const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-  commanded_forward_speed_m_s_ = std::max(0.0, msg->linear.x);
+  cmd_forward_vel_m_s_ = std::max(0.0, msg->linear.x);
   last_cmd_vel_time_ = now();
 }
 
 void SpringEduliteController::limit_switch_callback(
   const std_msgs::msg::UInt8::SharedPtr msg)
 {
-  limit_switch_active_ =
-    ((msg->data >> limit_switch_bit_offset_) & 0x01U) != 0U;
+  limit_sw_active_ =
+    ((msg->data >> limit_sw_bit_offset_) & 0x01U) != 0U;
 }
 
 void SpringEduliteController::actuator_state_callback(
@@ -274,9 +274,9 @@ void SpringEduliteController::actuator_state_callback(
     msg->state == actuator_msgs::msg::ActuatorState::STATE_READY;
   position_ref_set_ = msg->position_reference_set;
   actuator_pos_rad_ = msg->position;
-  actuator_velocity_rad_s_ = msg->velocity;
+  actuator_vel_rad_s_ = msg->velocity;
   actuator_pos_received_ = true;
-  new_actuator_feedback_ = true;
+  new_actuator_fb_ = true;
 }
 
 // ------------------------------------------------------------------------------------
@@ -285,8 +285,8 @@ void SpringEduliteController::actuator_state_callback(
 void SpringEduliteController::control_timer_callback()
 {
   // 前のタイマー周期との間でフィードバックが来ているか確認
-  const bool has_new_feedback = new_actuator_feedback_;
-  new_actuator_feedback_ = false;
+  const bool has_new_feedback = new_actuator_fb_;
+  new_actuator_fb_ = false;
 
   // eduliteの状態からばね発射機構の状態を更新
   if (actuator_state_ == actuator_msgs::msg::ActuatorState::STATE_ERROR) {
@@ -300,13 +300,13 @@ void SpringEduliteController::control_timer_callback()
     }
     state_ = State::WAITING_FOR_ACTUATOR_READY;
     homing_required_ = true;
-    zero_service_pending_ = false;
-    zero_service_response_received_ = false;
+    zero_srv_pending_ = false;
+    zero_srv_response_received_ = false;
   } else if (state_ == State::WAITING_FOR_ACTUATOR_READY) {
     // ドライバ初期化完了と、ばね機構のゼロ点取得を別状態として扱う
-    target_position_rad_ = actuator_pos_rad_;
-    emergency_hold_position_rad_ = actuator_pos_rad_;
-    stable_feedback_count_ = 0;
+    target_pos_rad_ = actuator_pos_rad_;
+    e_stop_hold_pos_rad_ = actuator_pos_rad_;
+    stable_fb_count_ = 0;
     if (position_ref_set_) {
       homing_required_ = false;
       state_ = State::READY;
@@ -324,7 +324,7 @@ void SpringEduliteController::control_timer_callback()
   std_msgs::msg::Bool ready_msg;
   ready_msg.data = actuator_ready_ && position_ref_set_ &&
     state_ == State::READY && !is_belt_clearance_active_ &&
-    !emergency_stop_active_;
+    !e_stop_active_;
   actuator_ready_pub_->publish(ready_msg);
 
   // driver側からのREADYもしくはERRORが来ている場合は今の状態を送信して終了
@@ -334,51 +334,51 @@ void SpringEduliteController::control_timer_callback()
   }
 
   // 非常停止中は現在位置を保持し、発射リクエストを拒否する
-  if (emergency_stop_active_) {
-    if (fire_request_pending_ || slow_fire_request_pending_) {
-      fire_request_pending_ = false;
-      slow_fire_request_pending_ = false;
+  if (e_stop_active_) {
+    if (fire_req_pending_ || slow_fire_req_pending_) {
+      fire_req_pending_ = false;
+      slow_fire_req_pending_ = false;
       RCLCPP_WARN(
         get_logger(), "Spring fire request rejected during emergency stop");
     }
-    publish_target(emergency_hold_position_rad_);
+    publish_target(e_stop_hold_pos_rad_);
     publish_operation_state();
     return;
   }
 
-  if (resume_after_emergency_stop_) {
-    resume_after_emergency_stop_ = false;
+  if (resume_after_e_stop_) {
+    resume_after_e_stop_ = false;
     homing_start_time_ = now();
     slow_fire_phase_start_time_ = now();
     motion_start_time_ = now();
-    stable_feedback_count_ = 0;
+    stable_fb_count_ = 0;
   }
 
   // 非常停止解除後にゼロ点設定サービスの結果を反映する
-  if (zero_service_response_received_) {
-    zero_service_response_received_ = false;
-    if (!zero_service_succeeded_) {
+  if (zero_srv_response_received_) {
+    zero_srv_response_received_ = false;
+    if (!zero_srv_succeeded_) {
       enter_error_with_position_hold(
-        actuator_pos_rad_, zero_service_response_message_.c_str());
+        actuator_pos_rad_, zero_srv_response_msg_.c_str());
       publish_operation_state();
       return;
     }
     RCLCPP_INFO(get_logger(), "Spring position successfully zeroed to 0.0 rad.");
     homing_required_ = false;
     position_ref_set_ = true;
-    target_position_rad_ = standby_offset_rad_;
+    target_pos_rad_ = standby_offset_rad_;
     state_ = State::MOVING_TO_STANDBY;
-    stable_feedback_count_ = 0;
+    stable_fb_count_ = 0;
     motion_start_time_ = now();
   }
 
   // ゼロ点取りの開始
   if (state_ == State::WAITING_FOR_HOMING) {
     state_ = State::HOMING;
-    target_position_rad_ =
+    target_pos_rad_ =
       actuator_pos_received_ ? actuator_pos_rad_ : 0.0;
-    stable_feedback_count_ = 0;
-    zero_service_pending_ = false;
+    stable_fb_count_ = 0;
+    zero_srv_pending_ = false;
     homing_start_time_ = now();
   }
 
@@ -394,26 +394,26 @@ void SpringEduliteController::control_timer_callback()
     start_belt_clearance_motion();
     motion_start_time_ = now();
   }
-  if (state_ == State::READY && !is_belt_clearance_active_ && fire_request_pending_) {
-    fire_request_pending_ = false;
-    target_position_rad_ += fire_increment_rad_;
+  if (state_ == State::READY && !is_belt_clearance_active_ && fire_req_pending_) {
+    fire_req_pending_ = false;
+    target_pos_rad_ += fire_increment_rad_;
     state_ = State::FIRING;
-    stable_feedback_count_ = 0;
+    stable_fb_count_ = 0;
     motion_start_time_ = now();
     RCLCPP_INFO(
-      get_logger(), "Spring firing: target %.3f rad", target_position_rad_);
+      get_logger(), "Spring firing: target %.3f rad", target_pos_rad_);
   } else if (state_ == State::READY && !is_belt_clearance_active_ &&
-    slow_fire_request_pending_)
+    slow_fire_req_pending_)
   {
-    slow_fire_request_pending_ = false;
-    stable_feedback_count_ = 0;
+    slow_fire_req_pending_ = false;
+    stable_fb_count_ = 0;
     slow_fire_phase_start_time_ = now();
     if (!slow_fire_move_spring_) {
       state_ = State::SLOW_FIRE_ARM_ONLY;
     } else {
-      slow_fire_base_rad_ = target_position_rad_;
+      slow_fire_base_rad_ = target_pos_rad_;
       const double stroke_rad = std::max(
-        0.0, slow_fire_target_position_rad_ - standby_offset_rad_);
+        0.0, slow_fire_target_pos_rad_ - standby_offset_rad_);
       slow_fire_peak_rad_ = slow_fire_base_rad_ + stroke_rad;
       state_ = State::SLOW_FIRING_EXTENDING;
     }
@@ -429,21 +429,21 @@ void SpringEduliteController::control_timer_callback()
           actuator_pos_rad_, "Spring homing timed out");
       } else if (state_ == State::HOMING) {
         // リミットスイッチに当たるまでは一定速度で目標値を動かす
-        if (limit_switch_active_) {
+        if (limit_sw_active_) {
           state_ = State::WAITING_FOR_STOP;
-          stable_feedback_count_ = 0;
+          stable_fb_count_ = 0;
         } else {
           const double period_sec =
             static_cast<double>(command_period_ms_) / 1000.0;
-          target_position_rad_ -= homing_velocity_rad_s_ * period_sec;
+          target_pos_rad_ -= homing_vel_rad_s_ * period_sec;
         }
-      } else if (has_new_feedback && limit_switch_active_ && !zero_service_pending_) {
-        if (std::fabs(actuator_velocity_rad_s_) <= stopped_velocity_threshold_rad_s_) {
-          ++stable_feedback_count_;
+      } else if (has_new_feedback && limit_sw_active_ && !zero_srv_pending_) {
+        if (std::fabs(actuator_vel_rad_s_) <= stopped_vel_threshold_rad_s_) {
+          ++stable_fb_count_;
         } else {
-          stable_feedback_count_ = 0;
+          stable_fb_count_ = 0;
         }
-        if (stable_feedback_count_ >= required_stable_feedback_count_) {
+        if (stable_fb_count_ >= required_stable_fb_count_) {
           request_zero_reference();
         }
       }
@@ -457,12 +457,12 @@ void SpringEduliteController::control_timer_callback()
       } else if (has_new_feedback) {
         actuator_msgs::msg::ActuatorState feedback;
         feedback.position = actuator_pos_rad_;
-        feedback.velocity = actuator_velocity_rad_s_;
+        feedback.velocity = actuator_vel_rad_s_;
         const double clearance_delta_rad =
-          belt_clearance_position_rad_ - belt_clearance_return_position_rad_;
+          belt_clearance_pos_rad_ - belt_clearance_return_pos_rad_;
         const double clearance_direction = clearance_delta_rad < 0.0 ? -1.0 : 1.0;
         const double clearance_travel_rad =
-          (actuator_pos_rad_ - belt_clearance_return_position_rad_) *
+          (actuator_pos_rad_ - belt_clearance_return_pos_rad_) *
           clearance_direction;
         const double required_clearance_travel_rad = std::min(
           belt_clearance_ready_travel_rad_, std::fabs(clearance_delta_rad));
@@ -471,7 +471,7 @@ void SpringEduliteController::control_timer_callback()
           clearance_travel_rad >= required_clearance_travel_rad;
         if (belt_clearance_reached || update_settled(feedback)) {
           state_ = State::READY;
-          stable_feedback_count_ = 0;
+          stable_fb_count_ = 0;
         }
       }
       break;
@@ -490,34 +490,34 @@ void SpringEduliteController::control_timer_callback()
         const bool cmd_vel_fresh = last_cmd_vel_time_.nanoseconds() > 0 &&
           (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
         const double forward_speed =
-          cmd_vel_fresh ? commanded_forward_speed_m_s_ : 0.0;
+          cmd_vel_fresh ? cmd_forward_vel_m_s_ : 0.0;
         const double extension_velocity = std::clamp(
-          slow_fire_base_velocity_rad_s_ -
-          forward_speed * slow_fire_velocity_gain_rad_per_m_,
-          slow_fire_min_velocity_rad_s_, slow_fire_max_velocity_rad_s_);
-        target_position_rad_ = std::min(
-          slow_fire_peak_rad_, target_position_rad_ + extension_velocity * period_sec);
+          slow_fire_base_vel_rad_s_ -
+          forward_speed * slow_fire_vel_gain_rad_per_m_,
+          slow_fire_min_vel_rad_s_, slow_fire_max_vel_rad_s_);
+        target_pos_rad_ = std::min(
+          slow_fire_peak_rad_, target_pos_rad_ + extension_velocity * period_sec);
 
         const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
-        const double expected_duration_sec = slow_fire_min_velocity_rad_s_ > 0.0 ?
-          stroke_rad / slow_fire_min_velocity_rad_s_ : 1.0;
+        const double expected_duration_sec = slow_fire_min_vel_rad_s_ > 0.0 ?
+          stroke_rad / slow_fire_min_vel_rad_s_ : 1.0;
         if ((now() - slow_fire_phase_start_time_).seconds() >=
           expected_duration_sec + slow_fire_settle_timeout_sec_)
         {
           enter_error_with_position_hold(
             actuator_pos_rad_, "Slow fire extension timed out");
         } else if (has_new_feedback &&
-          actuator_pos_rad_ >= slow_fire_peak_rad_ - position_tolerance_rad_ &&
-          target_position_rad_ >= slow_fire_peak_rad_)
+          actuator_pos_rad_ >= slow_fire_peak_rad_ - pos_tolerance_rad_ &&
+          target_pos_rad_ >= slow_fire_peak_rad_)
         {
-          ++stable_feedback_count_;
-          if (stable_feedback_count_ >= required_stable_feedback_count_) {
+          ++stable_fb_count_;
+          if (stable_fb_count_ >= required_stable_fb_count_) {
             state_ = State::SLOW_FIRING_RETURNING;
-            stable_feedback_count_ = 0;
+            stable_fb_count_ = 0;
             slow_fire_phase_start_time_ = now();
           }
         } else if (has_new_feedback) {
-          stable_feedback_count_ = 0;
+          stable_fb_count_ = 0;
         }
       }
       break;
@@ -525,12 +525,12 @@ void SpringEduliteController::control_timer_callback()
     case State::SLOW_FIRING_RETURNING:
       {
         const double period_sec = static_cast<double>(command_period_ms_) / 1000.0;
-        target_position_rad_ = std::max(
+        target_pos_rad_ = std::max(
           slow_fire_base_rad_,
-          target_position_rad_ - slow_fire_return_velocity_rad_s_ * period_sec);
+          target_pos_rad_ - slow_fire_return_vel_rad_s_ * period_sec);
         const double stroke_rad = std::fabs(slow_fire_peak_rad_ - slow_fire_base_rad_);
-        const double expected_duration_sec = slow_fire_return_velocity_rad_s_ > 0.0 ?
-          stroke_rad / slow_fire_return_velocity_rad_s_ : 1.0;
+        const double expected_duration_sec = slow_fire_return_vel_rad_s_ > 0.0 ?
+          stroke_rad / slow_fire_return_vel_rad_s_ : 1.0;
         if ((now() - slow_fire_phase_start_time_).seconds() >=
           expected_duration_sec + slow_fire_settle_timeout_sec_)
         {
@@ -538,18 +538,18 @@ void SpringEduliteController::control_timer_callback()
             actuator_pos_rad_, "Slow fire return timed out");
         } else if (has_new_feedback &&
           std::fabs(actuator_pos_rad_ - slow_fire_base_rad_) <=
-          position_tolerance_rad_ &&
-          std::fabs(actuator_velocity_rad_s_) <= stopped_velocity_threshold_rad_s_ &&
-          target_position_rad_ <= slow_fire_base_rad_ + 1e-4)
+          pos_tolerance_rad_ &&
+          std::fabs(actuator_vel_rad_s_) <= stopped_vel_threshold_rad_s_ &&
+          target_pos_rad_ <= slow_fire_base_rad_ + 1e-4)
         {
-          ++stable_feedback_count_;
-          if (stable_feedback_count_ >= required_stable_feedback_count_) {
-            target_position_rad_ = slow_fire_base_rad_;
+          ++stable_fb_count_;
+          if (stable_fb_count_ >= required_stable_fb_count_) {
+            target_pos_rad_ = slow_fire_base_rad_;
             state_ = State::READY;
-            stable_feedback_count_ = 0;
+            stable_fb_count_ = 0;
           }
         } else if (has_new_feedback) {
-          stable_feedback_count_ = 0;
+          stable_fb_count_ = 0;
         }
       }
       break;
@@ -559,7 +559,7 @@ void SpringEduliteController::control_timer_callback()
     case State::ERROR:
       break;
   }
-  publish_target(target_position_rad_);
+  publish_target(target_pos_rad_);
   publish_operation_state();
 }
 
@@ -569,49 +569,49 @@ void SpringEduliteController::control_timer_callback()
 /// @brief
 void SpringEduliteController::request_zero_reference()
 {
-  if (zero_service_pending_ || !set_position_client_->service_is_ready()) {
+  if (zero_srv_pending_ || !set_pos_client_->service_is_ready()) {
     return;
   }
 
-  zero_service_pending_ = true;
+  zero_srv_pending_ = true;
   auto request = std::make_shared<actuator_msgs::srv::SetPosition::Request>();
   request->logical_id = logical_id_;
   request->position = 0.0f;
 
-  set_position_client_->async_send_request(
+  set_pos_client_->async_send_request(
     request,
     [this](rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedFuture
     future) {
       const auto response = future.get();
-      zero_service_pending_ = false;
-      zero_service_succeeded_ = response->success;
-      zero_service_response_message_ = response->success ?
-      std::string{} : "Failed to zero spring position: " + response->message;
-      zero_service_response_received_ = true;
+      zero_srv_pending_ = false;
+      zero_srv_succeeded_ = response->success;
+      zero_srv_response_msg_ = response->success ?
+        std::string{} : "Failed to zero spring position: " + response->message;
+      zero_srv_response_received_ = true;
     });
 }
 
 void SpringEduliteController::enter_error_with_position_hold(
   double current_position_rad, const char * reason)
 {
-  target_position_rad_ = current_position_rad;
-  stable_feedback_count_ = 0;
+  target_pos_rad_ = current_position_rad;
+  stable_fb_count_ = 0;
   state_ = State::ERROR;
-  publish_target(target_position_rad_);
+  publish_target(target_pos_rad_);
   RCLCPP_ERROR(
     get_logger(), "%s. Holding current position at %.3f rad.",
-    reason, target_position_rad_);
+    reason, target_pos_rad_);
 }
 
 bool SpringEduliteController::update_settled(
   const actuator_msgs::msg::ActuatorState & feedback)
 {
   const bool settled =
-    std::fabs(feedback.position - target_position_rad_) <=
-    position_tolerance_rad_ &&
-    std::fabs(feedback.velocity) <= stopped_velocity_threshold_rad_s_;
-  stable_feedback_count_ = settled ? stable_feedback_count_ + 1 : 0;
-  return stable_feedback_count_ >= required_stable_feedback_count_;
+    std::fabs(feedback.position - target_pos_rad_) <=
+    pos_tolerance_rad_ &&
+    std::fabs(feedback.velocity) <= stopped_vel_threshold_rad_s_;
+  stable_fb_count_ = settled ? stable_fb_count_ + 1 : 0;
+  return stable_fb_count_ >= required_stable_fb_count_;
 }
 
 /// @brief
@@ -621,7 +621,7 @@ void SpringEduliteController::publish_target(double target_rad)
   actuator_msgs::msg::ActuatorTarget cmd;
   cmd.logical_id = logical_id_;
   cmd.target = static_cast<float>(target_rad);
-  position_command_pub_->publish(cmd);
+  pos_cmd_pub_->publish(cmd);
 }
 
 /// @brief 現在のばね発射機構の状態を送信する
@@ -645,13 +645,13 @@ void SpringEduliteController::publish_operation_state()
   } else if (state_ == State::ERROR) {
     operation = robot_msgs::msg::SpringOperationState::ERROR;
   }
-  if (operation == last_published_operation_state_) {
+  if (operation == last_pub_op_state_) {
     return;
   }
   robot_msgs::msg::SpringOperationState msg;
   msg.state = operation;
-  operation_state_pub_->publish(msg);
-  last_published_operation_state_ = operation;
+  op_state_pub_->publish(msg);
+  last_pub_op_state_ = operation;
 }
 
 rcl_interfaces::msg::SetParametersResult
@@ -681,15 +681,15 @@ SpringEduliteController::parameters_callback(
 
       // READY または MOVING_TO_STANDBY 状態であれば、即座に新しい待機位置へ移動
       if (state_ == State::READY || state_ == State::MOVING_TO_STANDBY) {
-        target_position_rad_ =
+        target_pos_rad_ =
           is_belt_clearance_active_ ? 0.0 : standby_offset_rad_;
-        stable_feedback_count_ = 0;
+        stable_fb_count_ = 0;
         state_ = State::MOVING_TO_STANDBY;
         motion_start_time_ = now();
-        publish_target(target_position_rad_);
+        publish_target(target_pos_rad_);
         RCLCPP_INFO(
           get_logger(), "Applying new standby position: %.3f rad.",
-          target_position_rad_);
+          target_pos_rad_);
       }
     } else if (name == "belt_clearance_ready_travel_rad") {
       double value = 0.0;
@@ -710,7 +710,7 @@ SpringEduliteController::parameters_callback(
       belt_clearance_ready_travel_rad_ = value;
     } else if (name == "position_tolerance_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        position_tolerance_rad_ = param.as_double();
+        pos_tolerance_rad_ = param.as_double();
       }
     } else if (name == "fire_increment_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
@@ -742,23 +742,23 @@ SpringEduliteController::parameters_callback(
       slow_fire_arm_only_duration_sec_ = value;
     } else if (name == "slow_fire_target_position_rad") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_target_position_rad_ = param.as_double();
+        slow_fire_target_pos_rad_ = param.as_double();
       }
     } else if (name == "slow_fire_base_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_base_velocity_rad_s_ = param.as_double();
+        slow_fire_base_vel_rad_s_ = param.as_double();
       }
     } else if (name == "slow_fire_velocity_gain_rad_per_m") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_velocity_gain_rad_per_m_ = param.as_double();
+        slow_fire_vel_gain_rad_per_m_ = param.as_double();
       }
     } else if (name == "slow_fire_min_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_min_velocity_rad_s_ = param.as_double();
+        slow_fire_min_vel_rad_s_ = param.as_double();
       }
     } else if (name == "slow_fire_max_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        slow_fire_max_velocity_rad_s_ = param.as_double();
+        slow_fire_max_vel_rad_s_ = param.as_double();
       }
     } else if (name == "slow_fire_settle_timeout_sec") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
@@ -770,7 +770,7 @@ SpringEduliteController::parameters_callback(
       }
     } else if (name == "homing_velocity_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        homing_velocity_rad_s_ = param.as_double();
+        homing_vel_rad_s_ = param.as_double();
       }
     } else if (name == "homing_timeout_sec") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
@@ -782,11 +782,11 @@ SpringEduliteController::parameters_callback(
       }
     } else if (name == "stopped_velocity_threshold_rad_s") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
-        stopped_velocity_threshold_rad_s_ = param.as_double();
+        stopped_vel_threshold_rad_s_ = param.as_double();
       }
     } else if (name == "required_stable_feedback_count") {
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
-        required_stable_feedback_count_ = static_cast<int>(param.as_int());
+        required_stable_fb_count_ = static_cast<int>(param.as_int());
       }
     }
   }

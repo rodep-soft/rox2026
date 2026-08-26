@@ -57,58 +57,58 @@ private:
   bool update_settled(const actuator_msgs::msg::ActuatorState & feedback);
 
   State state_{State::WAITING_FOR_ACTUATOR_READY};
-  bool emergency_stop_active_{true};
-  bool resume_after_emergency_stop_{false};
-  bool fire_requested_{false};
-  bool fire_request_pending_{false};
-  bool slow_fire_requested_{false};
-  bool slow_fire_request_pending_{false};
+  bool e_stop_active_{true};
+  bool resume_after_e_stop_{false};
+  bool fire_req_active_{false};
+  bool fire_req_pending_{false};
+  bool slow_fire_req_active_{false};
+  bool slow_fire_req_pending_{false};
   bool slow_fire_move_spring_{true};
-  bool limit_switch_active_{false};
+  bool limit_sw_active_{false};
   bool actuator_ready_{false};
   bool position_ref_set_{false};
-  bool zero_service_pending_{false};
+  bool zero_srv_pending_{false};
   bool actuator_pos_received_{false};
   bool homing_required_{true};
   bool belt_clearance_request_active_{false};
   bool is_belt_clearance_active_{false};
-  bool new_actuator_feedback_{false};
-  bool zero_service_response_received_{false};
-  bool zero_service_succeeded_{false};
+  bool new_actuator_fb_{false};
+  bool zero_srv_response_received_{false};
+  bool zero_srv_succeeded_{false};
 
-  int limit_switch_bit_offset_{0};
+  int limit_sw_bit_offset_{0};
   int command_period_ms_{10};
-  int stable_feedback_count_{0};
-  int required_stable_feedback_count_{3};
+  int stable_fb_count_{0};
+  int required_stable_fb_count_{3};
 
   double standby_offset_rad_{0.0};
   double belt_clearance_ready_travel_rad_{3.0};
-  double position_tolerance_rad_{0.05};
+  double pos_tolerance_rad_{0.05};
   double fire_increment_rad_{-6.283185307};
-  double slow_fire_target_position_rad_{13.5};
-  double slow_fire_base_velocity_rad_s_{12.0};
-  double slow_fire_velocity_gain_rad_per_m_{0.0};
-  double slow_fire_min_velocity_rad_s_{1.0};
-  double slow_fire_max_velocity_rad_s_{20.0};
+  double slow_fire_target_pos_rad_{13.5};
+  double slow_fire_base_vel_rad_s_{12.0};
+  double slow_fire_vel_gain_rad_per_m_{0.0};
+  double slow_fire_min_vel_rad_s_{1.0};
+  double slow_fire_max_vel_rad_s_{20.0};
   double slow_fire_settle_timeout_sec_{3.0};
   double slow_fire_arm_only_duration_sec_{0.5};
-  double slow_fire_return_velocity_rad_s_{6.0};
-  double homing_velocity_rad_s_{0.5};
+  double slow_fire_return_vel_rad_s_{6.0};
+  double homing_vel_rad_s_{0.5};
   double homing_timeout_sec_{30.0};
   double motion_timeout_sec_{10.0};
-  double stopped_velocity_threshold_rad_s_{0.05};
-  double target_position_rad_{0.0};
+  double stopped_vel_threshold_rad_s_{0.05};
+  double target_pos_rad_{0.0};
   double slow_fire_base_rad_{0.0};
   double slow_fire_peak_rad_{0.0};
   double actuator_pos_rad_{0.0};
-  double actuator_velocity_rad_s_{0.0};
-  double emergency_hold_position_rad_{0.0};
-  double belt_clearance_position_rad_{0.0};
-  double belt_clearance_return_position_rad_{0.0};
-  double commanded_forward_speed_m_s_{0.0};
+  double actuator_vel_rad_s_{0.0};
+  double e_stop_hold_pos_rad_{0.0};
+  double belt_clearance_pos_rad_{0.0};
+  double belt_clearance_return_pos_rad_{0.0};
+  double cmd_forward_vel_m_s_{0.0};
   double cmd_vel_timeout_sec_{0.2};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
-  uint8_t last_published_operation_state_{255};
+  uint8_t last_pub_op_state_{255};
   uint8_t actuator_state_{actuator_msgs::msg::ActuatorState::STATE_OFFLINE};
   uint16_t logical_id_{4};
 
@@ -118,26 +118,26 @@ private:
   rclcpp::Time homing_start_time_;
   rclcpp::Time slow_fire_phase_start_time_;
   rclcpp::Time motion_start_time_;
-  std::string zero_service_response_message_;
+  std::string zero_srv_response_msg_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
     params_callback_handle_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr actuator_ready_pub_;
   rclcpp::Publisher<robot_msgs::msg::SpringOperationState>::SharedPtr
-    operation_state_pub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_request_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr slow_fire_request_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+    op_state_pub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr fire_req_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr slow_fire_req_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr e_stop_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-    belt_clearance_request_sub_;
+    belt_clearance_req_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_switch_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr limit_sw_sub_;
   rclcpp::Subscription<actuator_msgs::msg::ActuatorState>::SharedPtr
     actuator_state_sub_;
   rclcpp::Publisher<actuator_msgs::msg::ActuatorTarget>::SharedPtr
-    position_command_pub_;
+    pos_cmd_pub_;
   rclcpp::Client<actuator_msgs::srv::SetPosition>::SharedPtr
-    set_position_client_;
+    set_pos_client_;
   rclcpp::TimerBase::SharedPtr control_timer_;
 };
 
