@@ -26,7 +26,7 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
 
   // Subscriptions
   detections_sub_ = create_subscription<apriltag_msgs::msg::AprilTagDetectionArray>(
-    "/detections", cmd_qos,
+    detections_topic_, cmd_qos,
     std::bind(&Game2AimNode::tag_detections_callback, this, std::placeholders::_1));
 
   // /camera_info から実際のカメラ内部パラメータ行列 K を自動取得 (未受信時はYAML値で動作)
@@ -89,6 +89,7 @@ void Game2AimNode::load_parameters()
 {
   base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
   cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel_heading");
+  detections_topic_ = declare_parameter<std::string>("detections_topic", "/apriltag/detections");
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
 
   // Control gains & Limits

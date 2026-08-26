@@ -107,6 +107,7 @@ private:
   // Parameters
   std::string base_frame_{"base_link"};
   std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
+  std::string detections_topic_{"/apriltag/detections"};
   std::string tag_prefix_{"tag16h5:"};
   double kp_yaw_{2.2};
   double kd_yaw_{0.10};
