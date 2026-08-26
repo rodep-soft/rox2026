@@ -241,7 +241,7 @@ private:
     // the timeout. Rebase here as well so a restarted IMU cannot apply its new
     // reference frame to the heading target retained from before the outage.
     if (recovered_after_timeout) {
-      reset_heading_hold();
+      reset_heading_hold_state();
       RCLCPP_WARN(
         get_logger(),
         "IMU data has recovered after a timeout; rebasing the heading-hold target");
