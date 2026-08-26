@@ -31,6 +31,7 @@ private:
   void publish_emergency_stop(bool active);
   void publish_belt_mode(uint8_t mode);
   void publish_arm_position(uint8_t position);
+  void toggle_manual_arm_position(uint8_t target_position);
   void publish_dribble_enabled(bool enabled);
   void publish_drive_reversed(bool reversed);
   void publish_stop_commands();
@@ -96,6 +97,7 @@ private:
   bool is_emergency_stop_{true};
   uint8_t belt_rpm_mode_{robot_msgs::msg::BeltMode::STOP};
   bool dribble_enabled_{false};
+  uint8_t manual_arm_position_{robot_msgs::msg::ArmPosition::DRIBBLE};
   bool dribble_enabled_before_spring_{false};
   bool spring_fire_pending_{false};
   int spring_fire_decel_delay_ms_{150};

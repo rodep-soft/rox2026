@@ -308,19 +308,17 @@ void JoyControllerNode::loop_callback()
 
   // 2. DPAD 入力処理
   if (is_r2_active) {
-    // R2 + DPAD 左右で手動アーム位置変更 (左: DRIBBLE, 右: OPEN)
+    // R2 + DPAD左右で手動アーム位置をDRIBBLEとのトグルで変更する。
     if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
         false))                          // DPAD 右 (-1.0)
     {
-      publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
-      RCLCPP_INFO(get_logger(), "Manual arm position -> OPEN");
+      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
     } else if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
         true))                                 // DPAD 左 (+1.0)
     {
-      publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
-      RCLCPP_INFO(get_logger(), "Manual arm position -> DRIBBLE");
+      toggle_manual_arm_position(robot_msgs::msg::ArmPosition::OPEN);
     }
   } else {
     // R2非押下時: DPAD 上/下でベルトレベル昇降
@@ -430,6 +428,7 @@ void JoyControllerNode::loop_callback()
   {
     // 1) アームを OPEN 姿勢へ開く
     publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+    manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
 
     // 2) アームがOPEN方向へ動き始める時間を確保
     RCLCPP_INFO(
@@ -490,6 +489,7 @@ void JoyControllerNode::loop_callback()
     if (is_ready_rising || elapsed_ms >= spring_arm_restore_delay_ms_) {
       spring_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
+      manual_arm_position_ = robot_msgs::msg::ArmPosition::DRIBBLE;
       RCLCPP_INFO(
         get_logger(),
         "Spring shot complete -> Arm automatically restored to "
@@ -591,6 +591,19 @@ void JoyControllerNode::publish_arm_position(uint8_t position)
   robot_msgs::msg::ArmPosition msg;
   msg.position = position;
   arm_position_mode_pub_->publish(msg);
+}
+
+void JoyControllerNode::toggle_manual_arm_position(uint8_t target_position)
+{
+  manual_arm_position_ = manual_arm_position_ == target_position ?
+    robot_msgs::msg::ArmPosition::DRIBBLE : target_position;
+  publish_arm_position(manual_arm_position_);
+  RCLCPP_INFO(
+    get_logger(), "Manual arm position -> %s",
+    manual_arm_position_ == robot_msgs::msg::ArmPosition::DRIBBLE ?
+    "DRIBBLE" :
+    (manual_arm_position_ == robot_msgs::msg::ArmPosition::OPEN ?
+    "OPEN" : "HOME"));
 }
 
 void JoyControllerNode::publish_dribble_enabled(bool enabled)
