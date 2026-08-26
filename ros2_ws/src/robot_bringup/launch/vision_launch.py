@@ -112,6 +112,22 @@ def launch_setup(context, *args, **kwargs):
 
     if enable_apriltag:
         # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
+        # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
+        mono_script = os.path.join(bringup_share, "scripts", "nv12_to_mono8_node.py")
+        mono_node = ExecuteProcess(
+            cmd=[
+                "python3",
+                mono_script,
+                "--ros-args",
+                "-p",
+                "input_topic:=/image_left_raw",
+                "-p",
+                "output_topic:=/camera/left_mono8",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(mono_node)
+
         # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
         from launch_ros.actions import Node
 
@@ -149,8 +165,8 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=list(
                 {
                     "node_name": "apriltag_csi_node",
-                    "image_topic": "/image_left_raw",
-                    "camera_info_topic": "/image_combine_raw/left/camera_info",
+                    "image_topic": "/camera/left_mono8",
+                    "camera_info_topic": "/camera/camera_info",
                     "camera_frame_id": "default_cam",
                     "tag_family": tag_family,
                     "tag_size": tag_size,

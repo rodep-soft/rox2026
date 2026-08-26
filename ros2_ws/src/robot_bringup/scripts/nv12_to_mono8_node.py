@@ -57,6 +57,8 @@ class Nv12ToMono8Node(Node):
         y_size = min(len(msg.data), msg.width * msg.height)
         mono_msg = Image()
         mono_msg.header = msg.header
+        if not mono_msg.header.frame_id:
+            mono_msg.header.frame_id = "default_cam"
         mono_msg.height = msg.height
         mono_msg.width = msg.width
         mono_msg.encoding = "mono8"
