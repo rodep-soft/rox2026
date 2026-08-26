@@ -13,8 +13,6 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
 
   const auto init_now = this->now();
   state_start_time_ = init_now;
-  shoot_start_time_ = init_now;
-  ball_detected_time_ = init_now;
   last_imu_time_ = init_now;
   last_loop_time_ = init_now;
 
@@ -42,18 +40,6 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/imu/data", rclcpp::SensorDataQoS(),
     std::bind(&Game2AimNode::imu_callback, this, std::placeholders::_1));
 
-  ball_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/dribble/ball_detected", cmd_qos,
-    std::bind(&Game2AimNode::ball_callback, this, std::placeholders::_1));
-
-  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
-    "/joy", rclcpp::SensorDataQoS(),
-    std::bind(&Game2AimNode::joy_callback, this, std::placeholders::_1));
-
-  shot_cycle_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/dribble/shot_cycle_request", cmd_qos,
-    std::bind(&Game2AimNode::shot_cycle_request_callback, this, std::placeholders::_1));
-
   emergency_stop_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/system/emergency_stop", estop_qos,
     std::bind(&Game2AimNode::emergency_stop_callback, this, std::placeholders::_1));
@@ -61,8 +47,6 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", cmd_qos);
-  belt_rpm_pub_ = create_publisher<std_msgs::msg::Float32>("/belt/command_rpm", cmd_qos);
-  shoot_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/belt/shoot_trigger", cmd_qos);
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", cmd_qos);
   arm_position_pub_ =
     create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", cmd_qos);
@@ -115,31 +99,8 @@ void Game2AimNode::load_parameters()
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.015);
   dist_tolerance_ = declare_parameter<double>("dist_tolerance", 0.05);
 
-  // ── 🚀 ベルト射出パラメータ (robot_bringup/config/belt_controller.yaml と連動) ──
-  // Row 0 (下段): Level 1 (Under / Upper)
-  underbelt_level_1_rpm_ = declare_parameter<int>("underbelt_level_1_rpm", 2050);
-  upperbelt_level_1_rpm_ = declare_parameter<int>("upperbelt_level_1_rpm", 2050);
-  // Row 1 (中段): Level 2 (Under / Upper)
-  underbelt_level_2_rpm_ = declare_parameter<int>("underbelt_level_2_rpm", 2300);
-  upperbelt_level_2_rpm_ = declare_parameter<int>("upperbelt_level_2_rpm", 2300);
-  // Row 2 (上段): Level 3 (Under / Upper)
-  underbelt_level_3_rpm_ = declare_parameter<int>("underbelt_level_3_rpm", 2700);
-  upperbelt_level_3_rpm_ = declare_parameter<int>("upperbelt_level_3_rpm", 2700);
-
-  // ── 🎮 手動射出 (L2+○) 連動パラメータ (robot_bringup/config/joy_controller.yaml と連動) ──
-  left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
-  circle_button_ = declare_parameter<int>("circle_button", 2);
-  axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.7);
-  manual_shot_wait_duration_ = declare_parameter<double>("manual_shot_wait_duration", 1.0);
-
-  open_duration_ = declare_parameter<double>("open_duration", 0.3);
-  shoot_hold_duration_ = declare_parameter<double>("shoot_hold_duration", 0.8);
-  ball_settle_duration_ = declare_parameter<double>("ball_settle_duration", 0.3);
   tag_lost_timeout_ = declare_parameter<double>("tag_lost_timeout", 0.5);
   aligning_timeout_ = declare_parameter<double>("aligning_timeout", 10.0);
-  shooting_timeout_ = declare_parameter<double>("shooting_timeout", 3.0);
-  max_shots_per_panel_ = declare_parameter<int>("max_shots_per_panel", 1);
-  require_ball_detected_ = declare_parameter<bool>("require_ball_detected", false);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   auto_advance_rows_ = declare_parameter<bool>("auto_advance_rows", true);
   enable_double_panel_midpoint_targeting_ =
@@ -161,8 +122,6 @@ void Game2AimNode::load_parameters()
         info.tag_id = id;
         info.row = row;
         info.col = static_cast<int>(col);
-        info.shot_completed = false;
-        info.shot_count = 0;
         info.last_seen = this->now();
         panel_grid_[id] = info;
       }
@@ -200,39 +159,11 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       camera_fx_ = param.as_double();
     } else if (name == "camera_offset_y") {
       camera_offset_y_ = param.as_double();
-    } else if (name == "underbelt_level_1_rpm") {
-      underbelt_level_1_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: underbelt_level_1_rpm = %d", underbelt_level_1_rpm_);
-    } else if (name == "upperbelt_level_1_rpm") {
-      upperbelt_level_1_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: upperbelt_level_1_rpm = %d", upperbelt_level_1_rpm_);
-    } else if (name == "underbelt_level_2_rpm") {
-      underbelt_level_2_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: underbelt_level_2_rpm = %d", underbelt_level_2_rpm_);
-    } else if (name == "upperbelt_level_2_rpm") {
-      upperbelt_level_2_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: upperbelt_level_2_rpm = %d", upperbelt_level_2_rpm_);
-    } else if (name == "underbelt_level_3_rpm") {
-      underbelt_level_3_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: underbelt_level_3_rpm = %d", underbelt_level_3_rpm_);
-    } else if (name == "upperbelt_level_3_rpm") {
-      upperbelt_level_3_rpm_ = static_cast<int>(param.as_int());
-      RCLCPP_INFO(get_logger(), "Param updated: upperbelt_level_3_rpm = %d", upperbelt_level_3_rpm_);
-    } else if (name == "left_trigger_axis") {
-      left_trigger_axis_ = static_cast<int>(param.as_int());
-    } else if (name == "circle_button") {
-      circle_button_ = static_cast<int>(param.as_int());
-    } else if (name == "axis_on_threshold") {
-      axis_on_threshold_ = param.as_double();
-    } else if (name == "manual_shot_wait_duration") {
-      manual_shot_wait_duration_ = param.as_double();
     } else if (name == "test_alignment_only") {
       test_alignment_only_ = param.as_bool();
       RCLCPP_INFO(
         get_logger(), "Param updated: test_alignment_only = %s",
         test_alignment_only_ ? "true" : "false");
-    } else if (name == "require_ball_detected") {
-      require_ball_detected_ = param.as_bool();
     } else if (name == "enable_double_panel_midpoint_targeting") {
       enable_double_panel_midpoint_targeting_ = param.as_bool();
       RCLCPP_INFO(
@@ -267,17 +198,11 @@ void Game2AimNode::reset_sequence()
   active_target_id_ = -1;
   locked_target_id_ = -1;
   target_belt_mode_ = robot_msgs::msg::BeltMode::LEVEL_3;
-  const auto [upper, under] = get_target_belt_rpms(2);
-  target_upper_rpm_ = upper;
-  target_under_rpm_ = under;
   current_target_tag_ids_.clear();
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
-  prev_circle_pressed_ = false;
 
   for (auto & [id, panel] : panel_grid_) {
-    panel.shot_completed = false;
-    panel.shot_count = 0;
     panel.detected = false;
   }
 }
@@ -285,24 +210,10 @@ void Game2AimNode::reset_sequence()
 uint8_t Game2AimNode::get_target_belt_mode(int row) const
 {
   switch (row) {
-    case 0: return robot_msgs::msg::BeltMode::LEVEL_1; // 下段 -> Level 1
-    case 1: return robot_msgs::msg::BeltMode::LEVEL_2; // 中段 -> Level 2
-    case 2: return robot_msgs::msg::BeltMode::LEVEL_3; // 上段 -> Level 3
+    case 0: return robot_msgs::msg::BeltMode::LEVEL_1; // 下段 (Row 0) -> Level 1
+    case 1: return robot_msgs::msg::BeltMode::LEVEL_2; // 中段 (Row 1) -> Level 2
+    case 2: return robot_msgs::msg::BeltMode::LEVEL_3; // 上段 (Row 2) -> Level 3
     default: return robot_msgs::msg::BeltMode::LEVEL_1;
-  }
-}
-
-std::pair<int, int> Game2AimNode::get_target_belt_rpms(int row) const
-{
-  switch (row) {
-    case 0: // 下段 (Row 0) -> Level 1 (Upper, Under/Bottom)
-      return {upperbelt_level_1_rpm_, underbelt_level_1_rpm_};
-    case 1: // 中段 (Row 1) -> Level 2 (Upper, Under/Bottom)
-      return {upperbelt_level_2_rpm_, underbelt_level_2_rpm_};
-    case 2: // 上段 (Row 2) -> Level 3 (Upper, Under/Bottom)
-      return {upperbelt_level_3_rpm_, underbelt_level_3_rpm_};
-    default:
-      return {upperbelt_level_1_rpm_, underbelt_level_1_rpm_};
   }
 }
 
@@ -316,8 +227,6 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     yaw_ = 0.0;
     const auto start_time = this->now();
     state_start_time_ = start_time;
-    ball_detected_time_ = start_time;
-    shoot_start_time_ = start_time;
     last_imu_time_ = start_time;
     last_loop_time_ = start_time;
     RCLCPP_INFO(
@@ -341,88 +250,8 @@ void Game2AimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr 
     reset_sequence();
     RCLCPP_WARN(get_logger(), "Emergency Stop Triggered! Game 2 Auto Sequence ABORTED.");
     publish_all(
-      geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false, false,
+      geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false,
       robot_msgs::msg::ArmPosition::DRIBBLE, false);
-  }
-}
-
-void Game2AimNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
-{
-  if (!is_enabled_) {
-    prev_circle_pressed_ = false;
-    return;
-  }
-
-  // 1. L2 トリガー (left_trigger_axis_) の押下判定 (robot_bringup/config/joy_controller.yaml 連動)
-  bool is_l2_active = false;
-  if (left_trigger_axis_ >= 0 && static_cast<size_t>(left_trigger_axis_) < msg->axes.size()) {
-    is_l2_active = (msg->axes[left_trigger_axis_] <= -axis_on_threshold_);
-  }
-
-  // 2. ○ (circle_button_) ボタンの押下判定 (robot_bringup/config/joy_controller.yaml 連動)
-  bool is_circle_pressed = false;
-  if (circle_button_ >= 0 && static_cast<size_t>(circle_button_) < msg->buttons.size()) {
-    is_circle_pressed = (msg->buttons[circle_button_] == 1);
-  }
-
-  const bool circle_just_pressed = (is_circle_pressed && !prev_circle_pressed_);
-  prev_circle_pressed_ = is_circle_pressed;
-
-  // 3. L2 + ○ 手動射出トリガー検知
-  if (is_l2_active && circle_just_pressed) {
-    if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-        state_ == robot_msgs::msg::Game2State::ALIGNING)
-    {
-      RCLCPP_INFO(
-        get_logger(),
-        "🎯 [Manual Shot Triggered (L2+Circle)] Shot executed! Target Tag(s) marked completed. Waiting %.1fs before SEARCHING...",
-        manual_shot_wait_duration_);
-
-      // 対象ターゲットを射出完了とマーク
-      for (const int tid : current_target_tag_ids_) {
-        auto it = panel_grid_.find(tid);
-        if (it != panel_grid_.end()) {
-          it->second.shot_count++;
-          if (it->second.shot_count >= max_shots_per_panel_) {
-            it->second.shot_completed = true;
-          }
-        }
-      }
-
-      state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
-      manual_shot_trigger_time_ = now();
-      state_start_time_ = now();
-    }
-  }
-}
-
-void Game2AimNode::shot_cycle_request_callback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-  if (!is_enabled_ || !msg->data) {
-    return;
-  }
-
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-      state_ == robot_msgs::msg::Game2State::ALIGNING)
-  {
-    RCLCPP_INFO(
-      get_logger(),
-      "🎯 [Manual Shot Cycle Request Received] Shot executed! Target Tag(s) marked completed. Waiting %.1fs before SEARCHING...",
-      manual_shot_wait_duration_);
-
-    for (const int tid : current_target_tag_ids_) {
-      auto it = panel_grid_.find(tid);
-      if (it != panel_grid_.end()) {
-        it->second.shot_count++;
-        if (it->second.shot_count >= max_shots_per_panel_) {
-          it->second.shot_completed = true;
-        }
-      }
-    }
-
-    state_ = robot_msgs::msg::Game2State::WAITING_RESULT;
-    manual_shot_trigger_time_ = now();
-    state_start_time_ = now();
   }
 }
 
@@ -626,7 +455,7 @@ void Game2AimNode::select_target_and_aim()
       }
 
       if (pattern == TargetPattern::MIDPOINT_0_1) {
-        if (p0 && p1 && !p0->shot_completed && !p1->shot_completed && p0->detected && p1->detected) {
+        if (p0 && p1 && p0->detected && p1->detected) {
           current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
           target_x_ = (p0->x + p1->x) * 0.5;
           target_y_ = (p0->y + p1->y) * 0.5;
@@ -637,20 +466,17 @@ void Game2AimNode::select_target_and_aim()
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
-          const auto [upper_rpm, under_rpm] = get_target_belt_rpms(row);
-          target_upper_rpm_ = upper_rpm;
-          target_under_rpm_ = under_rpm;
 
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "💥 [Target Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | Mode: LEVEL_%d [Upper: %d, Under: %d RPM])",
+            "💥 [Target Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
-            target_belt_mode_, target_upper_rpm_, target_under_rpm_);
+            target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::MIDPOINT_1_2) {
-        if (p1 && p2 && !p1->shot_completed && !p2->shot_completed && p1->detected && p2->detected) {
+        if (p1 && p2 && p1->detected && p2->detected) {
           current_target_tag_ids_ = {p1->tag_id, p2->tag_id};
           target_x_ = (p1->x + p2->x) * 0.5;
           target_y_ = (p1->y + p2->y) * 0.5;
@@ -661,20 +487,17 @@ void Game2AimNode::select_target_and_aim()
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
-          const auto [upper_rpm, under_rpm] = get_target_belt_rpms(row);
-          target_upper_rpm_ = upper_rpm;
-          target_under_rpm_ = under_rpm;
 
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "💥 [Target Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | Mode: LEVEL_%d [Upper: %d, Under: %d RPM])",
+            "💥 [Target Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, p2->tag_id, target_heading_err_ * 180.0 / M_PI,
-            target_belt_mode_, target_upper_rpm_, target_under_rpm_);
+            target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_0) {
-        if (p0 && !p0->shot_completed && p0->detected) {
+        if (p0 && p0->detected) {
           current_target_tag_ids_ = {p0->tag_id};
           target_x_ = p0->x;
           target_y_ = p0->y;
@@ -685,20 +508,17 @@ void Game2AimNode::select_target_and_aim()
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
-          const auto [upper_rpm, under_rpm] = get_target_belt_rpms(row);
-          target_upper_rpm_ = upper_rpm;
-          target_under_rpm_ = under_rpm;
 
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "🎯 [Target Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | Mode: LEVEL_%d [Upper: %d, Under: %d RPM])",
+            "🎯 [Target Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, target_heading_err_ * 180.0 / M_PI,
-            target_belt_mode_, target_upper_rpm_, target_under_rpm_);
+            target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_1) {
-        if (p1 && !p1->shot_completed && p1->detected) {
+        if (p1 && p1->detected) {
           current_target_tag_ids_ = {p1->tag_id};
           target_x_ = p1->x;
           target_y_ = p1->y;
@@ -709,20 +529,17 @@ void Game2AimNode::select_target_and_aim()
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
-          const auto [upper_rpm, under_rpm] = get_target_belt_rpms(row);
-          target_upper_rpm_ = upper_rpm;
-          target_under_rpm_ = under_rpm;
 
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "🎯 [Target Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | Mode: LEVEL_%d [Upper: %d, Under: %d RPM])",
+            "🎯 [Target Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, target_heading_err_ * 180.0 / M_PI,
-            target_belt_mode_, target_upper_rpm_, target_under_rpm_);
+            target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_2) {
-        if (p2 && !p2->shot_completed && p2->detected) {
+        if (p2 && p2->detected) {
           current_target_tag_ids_ = {p2->tag_id};
           target_x_ = p2->x;
           target_y_ = p2->y;
@@ -733,32 +550,17 @@ void Game2AimNode::select_target_and_aim()
           target_valid_ = true;
 
           target_belt_mode_ = get_target_belt_mode(row);
-          const auto [upper_rpm, under_rpm] = get_target_belt_rpms(row);
-          target_upper_rpm_ = upper_rpm;
-          target_under_rpm_ = under_rpm;
 
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "🎯 [Target Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | Mode: LEVEL_%d [Upper: %d, Under: %d RPM])",
+            "🎯 [Target Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p2->tag_id, target_heading_err_ * 180.0 / M_PI,
-            target_belt_mode_, target_upper_rpm_, target_under_rpm_);
+            target_belt_mode_);
           return;
         }
       }
     }
-  }
-}
-
-void Game2AimNode::ball_callback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-  const bool prev = ball_detected_;
-  ball_detected_ = msg->data;
-  if (!prev && ball_detected_) {
-    ball_detected_time_ = now();
-    RCLCPP_INFO(get_logger(), "⚽ Game2: Ball DETECTED in dribble intake!");
-  } else if (prev && !ball_detected_) {
-    RCLCPP_INFO(get_logger(), "💨 Game2: Ball LEFT dribble intake (Shot or Lost)!");
   }
 }
 
@@ -771,45 +573,29 @@ void Game2AimNode::control_loop()
   }
   last_loop_time_ = current_time;
 
-  // Publish current state
-  robot_msgs::msg::Game2State state_msg;
-  state_msg.state = state_;
-  state_pub_->publish(state_msg);
-
   if (!is_enabled_ || emergency_stop_active_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
+    state_ = robot_msgs::msg::Game2State::STANDBY;
     last_cmd_wz_ = 0.0;
+    robot_msgs::msg::Game2State state_msg;
+    state_msg.state = state_;
+    state_pub_->publish(state_msg);
+
     publish_all(
       geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
-      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
   update_panel_states();
   select_target_and_aim();
 
-  // Check if all target panels are completed
-  bool all_panels_completed = true;
-  for (const auto & [id, panel] : panel_grid_) {
-    if (!panel.shot_completed) {
-      all_panels_completed = false;
-      break;
-    }
-  }
-
-  if (all_panels_completed && !panel_grid_.empty()) {
-    state_ = robot_msgs::msg::Game2State::COMPLETED;
-    RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 3000, "🏆 Game 2: All target panels successfully cleared!");
-    publish_all(
-      geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
-      false, false, robot_msgs::msg::ArmPosition::DRIBBLE, true);
-    return;
-  }
-
   // Target not detected: Search mode
   if (!target_valid_) {
     state_ = robot_msgs::msg::Game2State::SEARCHING;
+    robot_msgs::msg::Game2State state_msg;
+    state_msg.state = state_;
+    state_pub_->publish(state_msg);
+
     geometry_msgs::msg::Twist cmd;
     cmd.angular.z = 0.0;
     last_cmd_wz_ = 0.0;
@@ -821,162 +607,64 @@ void Game2AimNode::control_loop()
 
     publish_all(
       cmd, test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_,
-      false, !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
     return;
   }
 
+  // Target is valid: Aligning / Aiming mode
+  state_ = robot_msgs::msg::Game2State::ALIGNING;
+  robot_msgs::msg::Game2State state_msg;
+  state_msg.state = state_;
+  state_pub_->publish(state_msg);
+
   geometry_msgs::msg::Twist cmd;
-  bool shoot_trigger = false;
-  uint8_t arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-  const double state_elapsed = (current_time - state_start_time_).seconds();
+  const double heading_err = target_heading_err_;
+  const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
 
-  switch (state_) {
-    case robot_msgs::msg::Game2State::SEARCHING:
-    case robot_msgs::msg::Game2State::ALIGNING: {
-        state_ = robot_msgs::msg::Game2State::ALIGNING;
+  if (is_aligned) {
+    cmd.angular.z = 0.0;
+  } else {
+    // Proportional visual error + IMU Gyro damping (PD control)
+    double desired_wz = kp_yaw_ * heading_err;
+    if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
+      desired_wz -= kd_yaw_ * gyro_z_;
+    }
 
-        const double heading_err = target_heading_err_;
-        const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+    // Stiction overcoming minimum angular velocity
+    if (std::abs(desired_wz) < min_angular_z_) {
+      desired_wz = std::copysign(min_angular_z_, desired_wz);
+    }
+    desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
 
-        if (is_aligned) {
-          cmd.angular.z = 0.0;
-        } else {
-          // Proportional visual error + IMU Gyro damping (PD control)
-          double desired_wz = kp_yaw_ * heading_err;
-          if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
-            desired_wz -= kd_yaw_ * gyro_z_;
-          }
+    // Slew rate limiter on angular acceleration
+    const double max_wz_step = max_angular_accel_ * dt;
+    if (desired_wz > last_cmd_wz_ + max_wz_step) {
+      desired_wz = last_cmd_wz_ + max_wz_step;
+    } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
+      desired_wz = last_cmd_wz_ - max_wz_step;
+    }
 
-          // Stiction overcoming minimum angular velocity
-          if (std::abs(desired_wz) < min_angular_z_) {
-            desired_wz = std::copysign(min_angular_z_, desired_wz);
-          }
-          desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
-
-          // Slew rate limiter on angular acceleration
-          const double max_wz_step = max_angular_accel_ * dt;
-          if (desired_wz > last_cmd_wz_ + max_wz_step) {
-            desired_wz = last_cmd_wz_ + max_wz_step;
-          } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
-            desired_wz = last_cmd_wz_ - max_wz_step;
-          }
-
-          cmd.angular.z = desired_wz;
-        }
-        last_cmd_wz_ = cmd.angular.z;
-
-        const bool is_ball_settled = !require_ball_detected_ || (
-          ball_detected_ &&
-          ((current_time - ball_detected_time_).seconds() >= ball_settle_duration_));
-
-        // Diagnostics output (200ms)
-        RCLCPP_INFO_THROTTLE(
-          get_logger(),
-          *get_clock(), 200,
-          "🎯 [Game2 Track Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s | Ball: %s",
-          active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z,
-          is_aligned ? "✨ ALIGNED" : "🔄 TURNING",
-          ball_detected_ ? "YES" : "NO");
-
-        if (test_alignment_only_) {
-          if (is_aligned) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "✨ [Game2 TEST] Target Perfect Aligned! Holding heading.");
-          }
-        } else {
-          if (is_aligned && is_ball_settled) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "🚀 [Game2 Aim Ready] Target Aligned! Belt spinning (Mode: LEVEL_%d [Upper: %d, Under: %d RPM]). Waiting for Manual Shot (L2+Circle)...",
-              target_belt_mode_, target_upper_rpm_, target_under_rpm_);
-            state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-            state_start_time_ = current_time;
-          } else if (is_aligned && !is_ball_settled && require_ball_detected_) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1500,
-              "⏳ [Game2] Aligned to Target Tag #%d, waiting for ball to settle in dribble...",
-              active_target_id_);
-          }
-        }
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-
-        // Maintain fine alignment while waiting for manual trigger
-        const double heading_err = target_heading_err_;
-        if (std::abs(heading_err) < yaw_tolerance_) {
-          cmd.angular.z = 0.0;
-        } else {
-          double desired_wz = kp_yaw_ * heading_err;
-          if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
-            desired_wz -= kd_yaw_ * gyro_z_;
-          }
-          if (std::abs(desired_wz) < min_angular_z_) {
-            desired_wz = std::copysign(min_angular_z_, desired_wz);
-          }
-          desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
-          cmd.angular.z = desired_wz;
-        }
-        last_cmd_wz_ = cmd.angular.z;
-
-        RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 1000,
-          "🎯 [Game2 AIM LOCK] Holding Aim at Tag #%d | Belt: LEVEL_%d (Upper: %d, Under: %d RPM) | Press L2+Circle to Shoot!",
-          active_target_id_, target_belt_mode_, target_upper_rpm_, target_under_rpm_);
-
-        // Do NOT automatically transition to SHOOTING (manual assist mode)
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::SHOOTING: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::WAITING_RESULT: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-
-        if (state_elapsed >= manual_shot_wait_duration_) {
-          RCLCPP_INFO(
-            get_logger(),
-            "🔄 [Game2] Manual shot wait elapsed (%.1fs). Transitioning to SEARCHING for next target...",
-            manual_shot_wait_duration_);
-          state_ = robot_msgs::msg::Game2State::SEARCHING;
-          state_start_time_ = current_time;
-        }
-        break;
-      }
-
-    case robot_msgs::msg::Game2State::COMPLETED: {
-        arm_mode = robot_msgs::msg::ArmPosition::DRIBBLE;
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-        break;
-      }
-
-    default:
-      break;
+    cmd.angular.z = desired_wz;
   }
+  last_cmd_wz_ = cmd.angular.z;
+
+  RCLCPP_INFO_THROTTLE(
+    get_logger(),
+    *get_clock(), 200,
+    "🎯 [Game2 Aim Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+    active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z,
+    is_aligned ? "✨ ALIGNED" : "🔄 TURNING");
 
   publish_all(
     cmd, test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_,
-    false,
-    test_alignment_only_ ? false : true,
-    arm_mode, state_ == robot_msgs::msg::Game2State::COMPLETED);
+    !test_alignment_only_,
+    robot_msgs::msg::ArmPosition::DRIBBLE,
+    false);
 }
 
 void Game2AimNode::publish_all(
   const geometry_msgs::msg::Twist & cmd_vel,
   uint8_t belt_mode,
-  bool shoot_trigger,
   bool dribble_enabled,
   uint8_t arm_mode,
   bool completed)
@@ -986,14 +674,6 @@ void Game2AimNode::publish_all(
   robot_msgs::msg::BeltMode mode_msg;
   mode_msg.mode = belt_mode;
   belt_mode_pub_->publish(mode_msg);
-
-  std_msgs::msg::Float32 rpm_msg;
-  rpm_msg.data = 0.0f;
-  belt_rpm_pub_->publish(rpm_msg);
-
-  std_msgs::msg::Bool shoot_msg;
-  shoot_msg.data = shoot_trigger;
-  shoot_trigger_pub_->publish(shoot_msg);
 
   std_msgs::msg::Bool dribble_msg;
   dribble_msg.data = dribble_enabled;

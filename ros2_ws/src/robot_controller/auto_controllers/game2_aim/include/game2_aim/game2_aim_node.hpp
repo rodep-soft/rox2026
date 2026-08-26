@@ -18,9 +18,7 @@
 #include "robot_msgs/msg/game2_state.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/imu.hpp"
-#include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/float32.hpp"
 #include "tf2/exceptions.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
@@ -34,8 +32,6 @@ struct PanelTagInfo
   int row{0};     // 0: Bottom, 1: Middle, 2: Top
   int col{0};     // 0: Left, 1: Center, 2: Right
   bool detected{false};
-  bool shot_completed{false};
-  int shot_count{0};
   double x{0.0};
   double y{0.0};
   double z{0.0};
@@ -58,9 +54,6 @@ private:
   void camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
-  void ball_callback(const std_msgs::msg::Bool::SharedPtr msg);
-  void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
-  void shot_cycle_request_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
   void update_panel_states();
@@ -69,12 +62,10 @@ private:
   void reset_sequence();
 
   uint8_t get_target_belt_mode(int row) const;
-  std::pair<int, int> get_target_belt_rpms(int row) const; // {upper, under(bottom)}
 
   void publish_all(
     const geometry_msgs::msg::Twist & cmd_vel,
     uint8_t belt_mode,
-    bool shoot_trigger,
     bool dribble_enabled,
     uint8_t arm_mode,
     bool completed);
@@ -88,15 +79,10 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr ball_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr belt_rpm_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shoot_trigger_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
   rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
@@ -131,31 +117,8 @@ private:
   double yaw_tolerance_{0.015}; // rad (~0.85 deg)
   double dist_tolerance_{0.05};
 
-  // ── 🚀 ベルト射出パラメータ (belt_controller.yaml 連動: under / upper) ──
-  // Row 0 (下段): Level 1
-  int underbelt_level_1_rpm_{2050};
-  int upperbelt_level_1_rpm_{2050};
-  // Row 1 (中段): Level 2
-  int underbelt_level_2_rpm_{2300};
-  int upperbelt_level_2_rpm_{2300};
-  // Row 2 (上段): Level 3
-  int underbelt_level_3_rpm_{2700};
-  int upperbelt_level_3_rpm_{2700};
-
-  // ── 🎮 手動射出 (L2+○) 連動パラメータ (joy_controller.yaml 連動) ──
-  int left_trigger_axis_{3};             // L2トリガー軸番号
-  int circle_button_{2};                 // ○ボタン番号
-  double axis_on_threshold_{0.7};        // トリガー押下判定しきい値
-  double manual_shot_wait_duration_{1.0}; // [s] 手動射出後SEARCHINGへ移るまでの待機時間
-
-  double open_duration_{0.3};
-  double shoot_hold_duration_{0.8};
-  double ball_settle_duration_{0.3};
   double tag_lost_timeout_{0.5};
   double aligning_timeout_{10.0};
-  double shooting_timeout_{3.0};
-  int max_shots_per_panel_{1};
-  bool require_ball_detected_{false};    // false: ボール検知センサーOFFで即座にエイム完了
   bool test_alignment_only_{false};
   bool auto_advance_rows_{true};
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
@@ -164,10 +127,6 @@ private:
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
   bool is_enabled_{false};
   bool emergency_stop_active_{false};
-  bool ball_detected_{false};
-  bool prev_circle_pressed_{false};
-  rclcpp::Time ball_detected_time_;
-  rclcpp::Time manual_shot_trigger_time_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;
   int active_row_{2}; // 0: Bottom, 1: Middle, 2: Top (優先順: 2 -> 1 -> 0)
   int active_target_id_{-1};
@@ -177,12 +136,9 @@ private:
   double target_z_{0.0};
   double target_heading_err_{0.0};
   uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::LEVEL_3};
-  int target_upper_rpm_{2700};
-  int target_under_rpm_{2700};
   bool target_valid_{false};
   int locked_target_id_{-1};
   rclcpp::Time state_start_time_;
-  rclcpp::Time shoot_start_time_;
   rclcpp::Time last_loop_time_;
   double last_cmd_wz_{0.0};
 

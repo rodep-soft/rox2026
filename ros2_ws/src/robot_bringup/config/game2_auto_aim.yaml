@@ -25,35 +25,12 @@
     dist_tolerance: 0.05    # [m] 距離誤差許容値
 
     # ── 🧪 テストモード切替 ──
-    # true: ドリブル・ベルト・ばねを動かさず、車体の角度合わせ（旋回）だけをテスト
-    # false: ボール保持検知・ベルト昇降・ばね射出を含む本番フル自動射出
+    # true: ドリブル・ベルトを動かさず、車体の角度合わせ（旋回）だけをテスト
+    # false: BeltMode連動を含むエイムアシスト (下段: LEVEL_1, 中段: LEVEL_2, 上段: LEVEL_3)
     test_alignment_only: false
 
-    # ── 🚀 射出・ボール制御パラメータ (robot_bringup/config/belt_controller.yaml 連動) ──
-    # ボールを上下から挟むデュアルフライホイール (upper: 上側ベルト, under: 下側/底面ベルト)
-    # Row 0 (下段): level 1 (underbelt_level_1_rpm, upperbelt_level_1_rpm)
-    # Row 1 (中段): level 2 (underbelt_level_2_rpm, upperbelt_level_2_rpm)
-    # Row 2 (上段): level 3 (underbelt_level_3_rpm, upperbelt_level_3_rpm)
-    underbelt_level_1_rpm: 2050
-    upperbelt_level_1_rpm: 2050
-    underbelt_level_2_rpm: 2300
-    upperbelt_level_2_rpm: 2300
-    underbelt_level_3_rpm: 2700
-    upperbelt_level_3_rpm: 2700
-    # ── 🎮 手動射出 (L2+○) 連動パラメータ (robot_bringup/config/joy_controller.yaml 連動) ──
-    left_trigger_axis: 3        # L2トリガー軸番号
-    circle_button: 2            # ○ボタン番号
-    axis_on_threshold: 0.7      # トリガー押下判定しきい値
-    manual_shot_wait_duration: 1.0 # [s] 手動射出後、次のターゲット探索(SEARCHING)へ移るまでの待機時間
-
-    open_duration: 0.3      # [s] アームOPEN展開所要時間
-    shoot_hold_duration: 0.8 # [s] FEED押し込み保持時間
-    ball_settle_duration: 0.3 # [s] ボール吸着安定待ち時間
     tag_lost_timeout: 0.5   # [s] AprilTag見失い判定タイムアウト
     aligning_timeout: 10.0  # [s] 照準タイムアウト
-    shooting_timeout: 3.0   # [s] 射出タイムアウト
-    max_shots_per_panel: 1  # 1枚あたりの射出回数
-    require_ball_detected: false # false: ボール検知センサーOFFで即座にエイム完了・手動射出待機へ
     auto_advance_rows: true # true: 段内のタグを射出完了したら自動で次段へ移行
     enable_double_panel_midpoint_targeting: true # true: 列間中点狙い (1-2列間, 2-3列間) を有効化し2枚抜きを優先 (左から1-2間->2-3間->左->中->右 の順かつ 上段->中段->下段)
 
