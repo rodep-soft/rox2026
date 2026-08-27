@@ -97,14 +97,16 @@ private:
   uint16_t upper_belt_logical_id_{10};
   uint16_t under_belt_logical_id_{11};
 
-  // ── 運動補正パラメータ (後退・急減速時のボール安定化) ──
+  // ── 運動補正パラメータ ──
   bool enable_motion_compensation_{true};
+  double forward_velocity_reduction_rpm_per_mps_{50.0};
   double backward_velocity_boost_rpm_per_mps_{500.0};
   double backward_acc_rpm_per_mps2_{200.0};
   double turning_boost_rpm_per_rad_s_{30.0};
   double cmd_vel_acc_lpf_alpha_{0.2};
   double cmd_vel_timeout_sec_{0.2};
   int max_boost_rpm_{1200};
+  int max_reduction_rpm_{200};
   std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
 
   // ── 状態変数 ────────────────────────────────────────
@@ -120,7 +122,7 @@ private:
   double commanded_ax_m_s2_{0.0};
   double last_commanded_vx_m_s_{0.0};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
-  int current_motion_boost_rpm_{0};
+  int current_motion_compensation_rpm_{0};
 
   bool is_arm_moving_{false};
   rclcpp::Time arm_move_start_time_;

@@ -489,15 +489,19 @@ void DribbleControllerNode::control_timer_callback()
   const bool cmd_vel_fresh = last_cmd_vel_time_.nanoseconds() > 0 &&
     (now() - last_cmd_vel_time_).seconds() <= cmd_vel_timeout_sec_;
   if (!enable_motion_compensation_ || emergency_stop_active_ || !cmd_vel_fresh) {
-    current_motion_boost_rpm_ = 0;
+    current_motion_compensation_rpm_ = 0;
   } else {
+    const double forward_speed = std::max(0.0, commanded_vx_m_s_);
     const double backward_speed = std::max(0.0, -commanded_vx_m_s_);
     const double backward_acc = std::max(0.0, -commanded_ax_m_s2_);
     const double turning_speed = std::abs(commanded_wz_rad_s_);
-    const double raw_boost = backward_speed * backward_velocity_boost_rpm_per_mps_ +
+    const double raw_compensation =
+      backward_speed * backward_velocity_boost_rpm_per_mps_ +
       backward_acc * backward_acc_rpm_per_mps2_ +
-      turning_speed * turning_boost_rpm_per_rad_s_;
-    current_motion_boost_rpm_ = std::min(max_boost_rpm_, static_cast<int>(std::round(raw_boost)));
+      turning_speed * turning_boost_rpm_per_rad_s_ -
+      forward_speed * forward_velocity_reduction_rpm_per_mps_;
+    current_motion_compensation_rpm_ = std::clamp(
+      static_cast<int>(std::round(raw_compensation)), -max_reduction_rpm_, max_boost_rpm_);
   }
   update_and_publish_roller_command();
 
@@ -644,9 +648,9 @@ int DribbleControllerNode::roller_target_rpm() const
     return 0;
   }
   int base_rpm = dribble_on_rpm_;
-  // 運動補正ブーストを加算 (後退・急減速時の慣性力対策)
-  if (enable_motion_compensation_ && current_motion_boost_rpm_ > 0) {
-    return std::min(4000, base_rpm + current_motion_boost_rpm_);
+  // 前進時は減速し、後退・急減速・旋回時は加速する。
+  if (enable_motion_compensation_) {
+    return std::clamp(base_rpm + current_motion_compensation_rpm_, 0, 4000);
   }
   return base_rpm;
 }
@@ -816,6 +820,8 @@ void DribbleControllerNode::load_parameters()
   // 走行中のドリブル補正
   enable_motion_compensation_ = declare_parameter(
     "enable_motion_compensation", enable_motion_compensation_);
+  forward_velocity_reduction_rpm_per_mps_ = declare_parameter(
+    "forward_velocity_reduction_rpm_per_mps", forward_velocity_reduction_rpm_per_mps_);
   backward_velocity_boost_rpm_per_mps_ = declare_parameter(
     "backward_velocity_boost_rpm_per_mps", backward_velocity_boost_rpm_per_mps_);
   backward_acc_rpm_per_mps2_ = declare_parameter(
@@ -826,6 +832,7 @@ void DribbleControllerNode::load_parameters()
     "cmd_vel_acc_lpf_alpha", cmd_vel_acc_lpf_alpha_);
   cmd_vel_timeout_sec_ = declare_parameter("cmd_vel_timeout_sec", cmd_vel_timeout_sec_);
   max_boost_rpm_ = declare_parameter("max_boost_rpm", max_boost_rpm_);
+  max_reduction_rpm_ = declare_parameter("max_reduction_rpm", max_reduction_rpm_);
   cmd_vel_topic_ = declare_parameter("cmd_vel_topic", cmd_vel_topic_);
 
   const auto load_id = [this](const char * name, uint16_t default_value) {
@@ -969,6 +976,9 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       updated = update_double(parameter, cmd_vel_timeout_sec_, positive_min, any_double_max);
     } else if (name == "cmd_vel_acc_lpf_alpha") {
       updated = update_double(parameter, cmd_vel_acc_lpf_alpha_, positive_min, 1.0);
+    } else if (name == "forward_velocity_reduction_rpm_per_mps") {
+      updated = update_double(
+        parameter, forward_velocity_reduction_rpm_per_mps_, 0.0, any_double_max);
     } else if (name == "backward_velocity_boost_rpm_per_mps") {
       updated = update_double(parameter, backward_velocity_boost_rpm_per_mps_, 0.0, any_double_max);
     } else if (name == "backward_acc_rpm_per_mps2") {
@@ -989,6 +999,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
       updated = update_int(parameter, shot_cycle_belt_spinup_level_, 1, 4);
     } else if (name == "max_boost_rpm") {
       updated = update_int(parameter, max_boost_rpm_, 0, any_int_max);
+    } else if (name == "max_reduction_rpm") {
+      updated = update_int(parameter, max_reduction_rpm_, 0, any_int_max);
     } else if (name == "ball_detection_debounce_count") {
       updated = update_int(parameter, ball_detection_debounce_count_, 1, any_int_max);
     } else if (name == "ball_lost_debounce_count") {
