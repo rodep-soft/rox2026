@@ -21,7 +21,6 @@ MecanumControllerNode::MecanumControllerNode()
     "target_array_topic",
     "/edulite/target_array");
   auto emergency_stop_period_ms = declare_parameter<int>("emergency_stop_period_ms", 20);
-  auto qos_depth = declare_parameter<int>("qos_depth", 1);
 
   if (cmd_vel_topic.empty() || emergency_stop_topic.empty() || target_array_topic.empty()) {
     throw std::runtime_error("topic parameters must not be empty");
@@ -30,14 +29,13 @@ MecanumControllerNode::MecanumControllerNode()
     RCLCPP_WARN(get_logger(), "emergency_stop_period_ms must be positive. Using 20 ms.");
     emergency_stop_period_ms = 20;
   }
-  if (qos_depth <= 0) {
-    RCLCPP_WARN(get_logger(), "qos_depth must be positive. Using 1.");
-    qos_depth = 1;
-  }
+
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
 
   // /mecanum/cmd_vel: joy_controllerから機体座標系の速度指令を受け取る。
   cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-    cmd_vel_topic, rclcpp::QoS(qos_depth),
+    cmd_vel_topic, command_qos,
     std::bind(&MecanumControllerNode::cmd_vel_callback, this, std::placeholders::_1));
 
   // /emergency_stop: joy_controllerから非常停止状態を受け取る。
@@ -48,7 +46,7 @@ MecanumControllerNode::MecanumControllerNode()
 
   // /edulite/target_array: hardware_driverへ4輪の目標角速度[rad/s]を送る。
   target_array_pub_ = create_publisher<actuator_msgs::msg::ActuatorTargetArray>(
-    target_array_topic, rclcpp::QoS(qos_depth));
+    target_array_topic, command_qos);
 
   // 非常停止中だけ全輪ゼロを周期再送し、単発メッセージの欠落や遅延に備える。
   emergency_stop_timer_ = create_wall_timer(

@@ -1,9 +1,7 @@
 .PHONY: build build-test build-package test reconfigure-ninja launch sync clean
 
-.DEFAULT_GOAL := build
-
-BUILD_JOBS ?= 4
-PARALLEL_WORKERS ?= 2
+BUILD_JOBS ?= 2
+PARALLEL_WORKERS ?= 4
 EXECUTOR ?= parallel
 
 # BUILD_JOBS ?= 8

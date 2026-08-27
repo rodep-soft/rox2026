@@ -17,4 +17,3 @@
 
     # 緊急停止時のデータ配信周期
     emergency_stop_period_ms: 50
-    qos_depth: 1

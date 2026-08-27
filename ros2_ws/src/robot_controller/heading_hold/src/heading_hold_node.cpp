@@ -10,6 +10,7 @@
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
@@ -37,16 +38,24 @@ public:
   {
     configure_parameters();
 
+    // raw cmd_velを受け取り、IMU補正後のcmd_vel_headingとして出力する。
     command_sub_ = create_subscription<geometry_msgs::msg::Twist>(
-      raw_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_),
+      raw_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile(),
       [this](const geometry_msgs::msg::Twist::SharedPtr message) {
         receive_command(*message);
       });
     imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
       imu_topic_, rclcpp::SensorDataQoS(),
       [this](const sensor_msgs::msg::Imu::SharedPtr message) {receive_imu(*message);});
+    heading_enable_sub_ = create_subscription<std_msgs::msg::Bool>(
+      heading_enable_topic_, rclcpp::QoS(1).reliable().transient_local(),
+      [this](const std_msgs::msg::Bool::SharedPtr message) {
+        set_heading_hold_enabled(message->data);
+      });
     corrected_command_pub_ = create_publisher<geometry_msgs::msg::Twist>(
-      corrected_cmd_vel_topic_, rclcpp::QoS(command_qos_depth_));
+      corrected_cmd_vel_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile());
 
     parameter_callback_ = add_on_set_parameters_callback(
       [this](const std::vector<rclcpp::Parameter> & parameters) {
@@ -78,12 +87,13 @@ private:
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
-    command_qos_depth_ = declare_parameter("command_qos_depth", 10);
     raw_cmd_vel_topic_ =
       declare_parameter<std::string>("raw_cmd_vel_topic", "/mecanum/cmd_vel");
     imu_topic_ = declare_parameter<std::string>("imu_topic", "/imu/data");
     corrected_cmd_vel_topic_ =
       declare_parameter<std::string>("corrected_cmd_vel_topic", "/mecanum/cmd_vel_heading");
+    heading_enable_topic_ =
+      declare_parameter<std::string>("heading_enable_topic", "/heading_control/enable");
 
     validate_non_negative("kp", kp_);
     validate_non_negative("ki", ki_);
@@ -94,9 +104,9 @@ private:
     validate_non_negative("rotation_settle_velocity_rad_s", rotation_settle_velocity_rad_s_);
     validate_positive("max_correction_rad_s", max_correction_rad_s_);
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
-      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0 || command_qos_depth_ <= 0)
+      command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
     {
-      throw std::invalid_argument("period, timeout, and QoS parameters must be positive");
+      throw std::invalid_argument("period and timeout parameters must be positive");
     }
   }
 
@@ -198,6 +208,10 @@ private:
 
   void receive_imu(const sensor_msgs::msg::Imu & message)
   {
+    const auto reception_time = now();
+    const bool recovered_after_timeout = last_imu_time_.nanoseconds() != 0 &&
+      (reception_time - last_imu_time_).nanoseconds() > imu_timeout_ms_ * 1000000LL;
+
     const auto & orientation = message.orientation;
     if (!std::isfinite(orientation.x) || !std::isfinite(orientation.y) ||
       !std::isfinite(orientation.z) || !std::isfinite(orientation.w) ||
@@ -222,10 +236,21 @@ private:
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
     current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
-    last_imu_time_ = now();
+
+    // The IMU callback can update last_imu_time_ before the control timer observes
+    // the timeout. Rebase here as well so a restarted IMU cannot apply its new
+    // reference frame to the heading target retained from before the outage.
+    if (recovered_after_timeout) {
+      reset_heading_hold_state();
+      RCLCPP_WARN(
+        get_logger(),
+        "IMU data has recovered after a timeout; rebasing the heading-hold target");
+    }
+
+    last_imu_time_ = reception_time;
   }
 
-  void reset_heading_hold()
+  void reset_heading_hold_state()
   {
     target_yaw_initialized_ = false;
     integral_error_rad_s_ = 0.0;
@@ -233,45 +258,79 @@ private:
     settle_velocity_is_stable_ = false;
   }
 
-  void control()
+  void publish_output_command(const geometry_msgs::msg::Twist & command)
   {
-    const auto current_time = now();
-    const double dt_s = (current_time - last_control_time_).seconds();
-    last_control_time_ = current_time;
+    corrected_command_pub_->publish(command);
+  }
 
-    if (last_command_time_.nanoseconds() == 0 ||
-      (current_time - last_command_time_).nanoseconds() > command_timeout_ms_ * 1000000LL)
-    {
-      corrected_command_pub_->publish(geometry_msgs::msg::Twist());
-      reset_heading_hold();
+  void set_heading_hold_enabled(const bool enabled)
+  {
+    if (heading_hold_enabled_ == enabled) {
+      return;
+    }
+
+    // OFF時は補正状態を破棄し、入力cmd_velをそのまま通す。
+    heading_hold_enabled_ = enabled;
+    reset_heading_hold_state();
+    if (!heading_hold_enabled_) {
+      publish_output_command(latest_command_);
+    }
+    RCLCPP_INFO(
+      get_logger(), "Heading hold %s; mecanum command is %s",
+      heading_hold_enabled_ ? "enabled" : "disabled",
+      heading_hold_enabled_ ? "IMU-corrected" : "passed through");
+  }
+
+  bool command_is_fresh(const rclcpp::Time & current_time) const
+  {
+    return last_command_time_.nanoseconds() != 0 &&
+           (current_time - last_command_time_).nanoseconds() <=
+           command_timeout_ms_ * 1000000LL;
+  }
+
+  bool imu_is_fresh(const rclcpp::Time & current_time) const
+  {
+    return last_imu_time_.nanoseconds() != 0 &&
+           (current_time - last_imu_time_).nanoseconds() <= imu_timeout_ms_ * 1000000LL;
+  }
+
+  geometry_msgs::msg::Twist select_output_command(
+    const rclcpp::Time & current_time, const double dt_s)
+  {
+    // cmd_vel途絶時は、安全のため補正状態をリセットする。
+    if (!command_is_fresh(current_time)) {
+      reset_heading_hold_state();
       if (!cmd_vel_timeout_logged_) {
         RCLCPP_INFO(get_logger(), "cmd_vel idle / timed out; publishing zero velocity");
         cmd_vel_timeout_logged_ = true;
       }
-      return;
+      return geometry_msgs::msg::Twist();
     }
 
-    const bool imu_is_fresh = last_imu_time_.nanoseconds() != 0 &&
-      (current_time - last_imu_time_).nanoseconds() <= imu_timeout_ms_ * 1000000LL;
-    if (!imu_is_fresh) {
-      corrected_command_pub_->publish(latest_command_);
-      reset_heading_hold();
+    if (!heading_hold_enabled_) {
+      return latest_command_;
+    }
+
+    // IMU途絶時は補正せず、入力cmd_velをそのまま出力する。
+    if (!imu_is_fresh(current_time)) {
+      reset_heading_hold_state();
       RCLCPP_WARN_THROTTLE(
         get_logger(), *get_clock(), 2000,
         "IMU data is unavailable; passing through the upstream cmd_vel without correction");
-      return;
+      return latest_command_;
     }
 
+    // 旋回入力中はHeading Holdを適用せず、操作者の旋回指令をそのまま出力する。
     if (std::abs(latest_command_.angular.z) > rotation_input_deadband_rad_s_) {
       target_yaw_rad_ = current_yaw_rad_;
       target_yaw_initialized_ = true;
       integral_error_rad_s_ = 0.0;
       rotation_state_ = RotationState::MANUAL_ROTATION;
-      corrected_command_pub_->publish(latest_command_);
-      return;
+      return latest_command_;
     }
 
     if (rotation_state_ == RotationState::MANUAL_ROTATION) {
+      // 旋回停止後、機体が静止するまで待ってから新しい保持角度を設定する。
       rotation_state_ = RotationState::SETTLING;
       settle_velocity_is_stable_ = false;
     }
@@ -283,25 +342,24 @@ private:
 
       auto settling_command = latest_command_;
       settling_command.angular.z = 0.0;
-      corrected_command_pub_->publish(settling_command);
 
       if (std::abs(current_angular_velocity_z_rad_s_) >
         rotation_settle_velocity_rad_s_)
       {
         settle_velocity_is_stable_ = false;
-        return;
+        return settling_command;
       }
 
       if (!settle_velocity_is_stable_) {
         settle_velocity_is_stable_ = true;
         settle_stable_since_ = current_time;
-        return;
+        return settling_command;
       }
 
       if ((current_time - settle_stable_since_).nanoseconds() <
         rotation_settle_duration_ms_ * 1000000LL)
       {
-        return;
+        return settling_command;
       }
 
       rotation_state_ = RotationState::HOLDING;
@@ -313,6 +371,7 @@ private:
       target_yaw_rad_ = current_yaw_rad_;
       target_yaw_initialized_ = true;
       integral_error_rad_s_ = 0.0;
+      return latest_command_;
     }
 
     const double safe_dt_s =
@@ -333,11 +392,21 @@ private:
 
     auto corrected_command = latest_command_;
     corrected_command.angular.z = correction_rad_s;
-    corrected_command_pub_->publish(corrected_command);
+    return corrected_command;
+  }
+
+  void control()
+  {
+    const auto current_time = now();
+    const double dt_s = (current_time - last_control_time_).seconds();
+    last_control_time_ = current_time;
+
+    publish_output_command(select_output_command(current_time, dt_s));
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr heading_enable_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr corrected_command_pub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_;
@@ -353,6 +422,7 @@ private:
   double target_yaw_rad_{0.0};
   double integral_error_rad_s_{0.0};
   bool target_yaw_initialized_{false};
+  bool heading_hold_enabled_{true};
   bool cmd_vel_timeout_logged_{false};
 
   double kp_{4.0};
@@ -370,10 +440,10 @@ private:
   int control_period_ms_{20};
   int command_timeout_ms_{500};
   int imu_timeout_ms_{250};
-  int command_qos_depth_{10};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;
+  std::string heading_enable_topic_;
 };
 
 int main(int argc, char ** argv)
