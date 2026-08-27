@@ -80,7 +80,7 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
 void Game2AimNode::load_parameters()
 {
   base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
-  cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel_heading");
+  cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/drive/cmd_vel");
   detections_topic_ = declare_parameter<std::string>("detections_topic", "/detections");
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
   camera_info_topic_ =

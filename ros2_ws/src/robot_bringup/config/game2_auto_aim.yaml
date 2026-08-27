@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     base_frame: "base_link"
-    cmd_vel_topic: "/mecanum/cmd_vel_heading"
+    cmd_vel_topic: "/drive/cmd_vel"
     detections_topic: "/detections"
     camera_info_topic: "/camera/camera_info"
     target_distance: 4.0
