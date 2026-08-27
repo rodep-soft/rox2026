@@ -202,78 +202,55 @@ void Game2AimNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::Shar
   }
 }
 
-void Game2AimNode::reset_sequence()
+void Game2AimNode::clear_target()
 {
-  active_row_ = 2;
-  active_target_id_ = -1;
-  target_locked_ = false;
-  locked_is_midpoint_ = false;
-  locked_target_tag_ids_.clear();
   current_target_tag_ids_.clear();
+  is_midpoint_target_ = false;
+  active_target_id_ = -1;
   target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
-  target_valid_ = false;
-  last_cmd_wz_ = 0.0;
-  locked_target_x_ = 0.0;
-  locked_target_y_ = 0.0;
-  locked_target_z_ = 0.0;
-  locked_yaw_at_detection_ = 0.0;
-  locked_tag_offset_x_ = 0.0;
-  locked_tag_offset_y_ = 0.0;
+  target_x_ = 0.0;
+  target_y_ = 0.0;
+  target_z_ = 0.0;
+  target_yaw_at_detection_ = 0.0;
+  target_tag_offset_x_ = 0.0;
+  target_tag_offset_y_ = 0.0;
+  target_heading_err_ = 0.0;
   shot_requested_ = false;
-  prev_shot_cycle_state_ = robot_msgs::msg::ShotCycleState::IDLE;
-
-  for (auto & [id, panel] : panel_grid_) {
-    panel.detected = false;
-  }
 }
 
-void Game2AimNode::unlock_target(const std::string & reason)
+void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
 {
-  if (target_locked_) {
-    RCLCPP_INFO(
-      get_logger(),
-      "🔓 [Game2 Target UNLOCKED] %s. Resetting target lock -> SEARCHING",
-      reason.c_str());
-    target_locked_ = false;
-    target_valid_ = false;
-    locked_is_midpoint_ = false;
-    locked_target_tag_ids_.clear();
-    current_target_tag_ids_.clear();
-    active_target_id_ = -1;
-    target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
-    shot_requested_ = false;
-    if (state_ != robot_msgs::msg::Game2State::STANDBY) {
-      state_ = robot_msgs::msg::Game2State::SEARCHING;
-      state_start_time_ = now();
+  if (state_ == new_state) {
+    return;
+  }
+  const auto get_state_name = [](uint8_t s) -> const char * {
+    switch (s) {
+      case robot_msgs::msg::Game2State::STANDBY: return "STANDBY";
+      case robot_msgs::msg::Game2State::SEARCHING: return "SEARCHING";
+      case robot_msgs::msg::Game2State::ALIGNING: return "ALIGNING";
+      case robot_msgs::msg::Game2State::PREPARING_SHOOT: return "PREPARING_SHOOT";
+      case robot_msgs::msg::Game2State::SHOOTING: return "SHOOTING";
+      case robot_msgs::msg::Game2State::WAITING_RESULT: return "WAITING_RESULT";
+      case robot_msgs::msg::Game2State::COMPLETED: return "COMPLETED";
+      default: return "UNKNOWN";
     }
-  }
-}
+  };
 
-void Game2AimNode::shot_cycle_state_callback(
-  const robot_msgs::msg::ShotCycleState::SharedPtr msg)
-{
-  const uint8_t current_state = msg->state;
-  // FEEDING（射出押し込み開始）または RETURNING（射出完了・アーム復帰開始）遷移時にターゲット固定を解除
-  if ((current_state == robot_msgs::msg::ShotCycleState::FEEDING &&
-       prev_shot_cycle_state_ != robot_msgs::msg::ShotCycleState::FEEDING) ||
-      (current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
-       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING))
-  {
-    unlock_target("Shot cycle firing/feeding detected via /dribble/shot_cycle_state");
-  }
-  prev_shot_cycle_state_ = current_state;
-}
+  RCLCPP_INFO(
+    get_logger(),
+    "🔄 [Game2 State Transition] %s -> %s (Reason: %s)",
+    get_state_name(state_), get_state_name(new_state), reason.c_str());
 
-void Game2AimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-  if (msg->data && is_enabled_) {
-    shot_requested_ = true;
-    shot_requested_time_ = now();
-    RCLCPP_INFO(
-      get_logger(),
-      "🎯 [Game2] Shot cycle requested (L2+Circle). Insurance timer started (%.1fs timeout)",
-      shot_fallback_timeout_);
+  state_ = new_state;
+  state_start_time_ = now();
+
+  if (state_ == robot_msgs::msg::Game2State::STANDBY || state_ == robot_msgs::msg::Game2State::SEARCHING) {
+    clear_target();
   }
+
+  robot_msgs::msg::Game2State state_msg;
+  state_msg.state = state_;
+  state_pub_->publish(state_msg);
 }
 
 uint8_t Game2AimNode::get_target_belt_mode(int row) const
@@ -289,32 +266,18 @@ uint8_t Game2AimNode::get_target_belt_mode(int row) const
 void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data) {
-    is_enabled_ = true;
-    reset_sequence();
-    state_ = robot_msgs::msg::Game2State::SEARCHING;
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
     const auto start_time = this->now();
-    state_start_time_ = start_time;
     last_imu_time_ = start_time;
     last_loop_time_ = start_time;
-    RCLCPP_INFO(
-      get_logger(),
-      "=== [Game2 START] Sequence Activated -> SEARCHING (IMU Yaw Zero-Reset Offset: %.3f rad, TestMode: %s) ===",
-      yaw_offset_, test_alignment_only_ ? "ON" : "OFF");
+    transition_to(robot_msgs::msg::Game2State::SEARCHING, "Start command received (true)");
   } else {
-    if (is_enabled_) {
-      is_enabled_ = false;
-      state_ = robot_msgs::msg::Game2State::STANDBY;
-      reset_sequence();
-      RCLCPP_INFO(get_logger(), "=== [Game2 STOP] Sequence Disengaged -> STANDBY ===");
-      // 安全のため停止した瞬間に1度だけアクチュエータ停止指令を送信
+    if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+      transition_to(robot_msgs::msg::Game2State::STANDBY, "Start command received (false)");
       publish_all(
         geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
         false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
-      robot_msgs::msg::Game2State state_msg;
-      state_msg.state = state_;
-      state_pub_->publish(state_msg);
     }
   }
 }
@@ -322,14 +285,41 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 void Game2AimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   emergency_stop_active_ = msg->data;
-  if (emergency_stop_active_ && is_enabled_) {
-    is_enabled_ = false;
-    state_ = robot_msgs::msg::Game2State::STANDBY;
-    reset_sequence();
+  if (emergency_stop_active_ && state_ != robot_msgs::msg::Game2State::STANDBY) {
     RCLCPP_WARN(get_logger(), "Emergency Stop Triggered! Game 2 Auto Sequence ABORTED.");
+    transition_to(robot_msgs::msg::Game2State::STANDBY, "Emergency stop active");
     publish_all(
       geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false,
       robot_msgs::msg::ArmPosition::DRIBBLE, false);
+  }
+}
+
+void Game2AimNode::shot_cycle_state_callback(
+  const robot_msgs::msg::ShotCycleState::SharedPtr msg)
+{
+  const uint8_t current_state = msg->state;
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT || state_ == robot_msgs::msg::Game2State::ALIGNING) {
+    // FEEDING（射出押し込み開始）または RETURNING（射出完了・アーム復帰開始）遷移時に次の探索へ移行
+    if ((current_state == robot_msgs::msg::ShotCycleState::FEEDING &&
+         prev_shot_cycle_state_ != robot_msgs::msg::ShotCycleState::FEEDING) ||
+        (current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
+         prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING))
+    {
+      transition_to(robot_msgs::msg::Game2State::SEARCHING, "Shot cycle firing/feeding detected via /dribble/shot_cycle_state");
+    }
+  }
+  prev_shot_cycle_state_ = current_state;
+}
+
+void Game2AimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data && state_ != robot_msgs::msg::Game2State::STANDBY) {
+    shot_requested_ = true;
+    shot_requested_time_ = now();
+    RCLCPP_INFO(
+      get_logger(),
+      "🎯 [Game2] Shot cycle requested (L2+Circle). Insurance timer started (%.1fs timeout)",
+      shot_fallback_timeout_);
   }
 }
 
@@ -387,12 +377,9 @@ void Game2AimNode::tag_detections_callback(
       it->second.yaw_at_detection = yaw_;
 
       // ── 📐 厳密な3D幾何学座標変換 (カメラ光学座標系 -> ロボット旋回/射出口座標系) ──
-      // 1. カメラ光学系におけるターゲット相対位置 (X_cam: 前方深度, Y_cam: 左方距離)
       const double z_cam = target_distance_;
       const double y_cam_left = -(it->second.pixel_x - camera_cx_) * z_cam / camera_fx_;
 
-      // 2. カメラオフセット (X: +265mm前方, Y: +35mm左方) を加算してロボット座標系へ変換
-      //    ロボット中心/射出口から見たターゲット位置 (x_robot, y_robot)
       it->second.x = z_cam + camera_offset_x_;
       it->second.y = y_cam_left + camera_offset_y_;
       it->second.z = camera_offset_z_;
@@ -411,126 +398,44 @@ void Game2AimNode::update_panel_states()
   }
 }
 
-void Game2AimNode::select_target_and_aim()
+bool Game2AimNode::find_best_target()
 {
   if (test_alignment_only_) {
-    if (!target_locked_) {
-      int best_id = -1;
-      double min_heading_err_abs = 1e9;
-      for (const auto & [id, panel] : panel_grid_) {
-        if (panel.detected) {
-          const double heading_err = std::atan2(panel.y, panel.x);
-          if (std::abs(heading_err) < min_heading_err_abs) {
-            min_heading_err_abs = std::abs(heading_err);
-            best_id = id;
-          }
+    int best_id = -1;
+    double min_heading_err_abs = 1e9;
+    for (const auto & [id, panel] : panel_grid_) {
+      if (panel.detected) {
+        const double heading_err = std::atan2(panel.y, panel.x);
+        if (std::abs(heading_err) < min_heading_err_abs) {
+          min_heading_err_abs = std::abs(heading_err);
+          best_id = id;
         }
       }
-
-      if (best_id != -1) {
-        target_locked_ = true;
-        locked_is_midpoint_ = false;
-        locked_target_tag_ids_ = {best_id};
-        locked_row_ = panel_grid_[best_id].row;
-        locked_belt_mode_ = get_target_belt_mode(locked_row_);
-        locked_target_x_ = panel_grid_[best_id].x;
-        locked_target_y_ = panel_grid_[best_id].y;
-        locked_target_z_ = panel_grid_[best_id].z;
-        locked_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
-        RCLCPP_INFO(
-          get_logger(),
-          "🔒 [Game2 TEST Target LOCKED] Tag #%d (Row %d) Locked!",
-          best_id, locked_row_);
-      }
     }
 
-    if (target_locked_ && !locked_target_tag_ids_.empty()) {
-      const int target_id = locked_target_tag_ids_[0];
-      const auto it = panel_grid_.find(target_id);
-      if (it != panel_grid_.end() && it->second.detected) {
-        locked_target_x_ = it->second.x;
-        locked_target_y_ = it->second.y;
-        locked_target_z_ = it->second.z;
-        locked_yaw_at_detection_ = it->second.yaw_at_detection;
-      }
-      target_x_ = locked_target_x_;
-      target_y_ = locked_target_y_;
-      target_z_ = locked_target_z_;
-      active_target_id_ = target_id;
-      active_row_ = locked_row_;
-      target_belt_mode_ = locked_belt_mode_;
-      current_target_tag_ids_ = locked_target_tag_ids_;
-
-      const double raw_heading_err = std::atan2(target_y_, target_x_);
-      const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-      target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-      target_valid_ = true;
-    } else {
-      target_valid_ = false;
+    if (best_id != -1) {
+      is_midpoint_target_ = false;
+      current_target_tag_ids_ = {best_id};
+      active_target_id_ = best_id;
+      active_row_ = panel_grid_[best_id].row;
+      target_belt_mode_ = get_target_belt_mode(active_row_);
+      target_x_ = panel_grid_[best_id].x;
+      target_y_ = panel_grid_[best_id].y;
+      target_z_ = panel_grid_[best_id].z;
+      target_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
+      target_tag_offset_x_ = 0.0;
+      target_tag_offset_y_ = 0.0;
+      target_heading_err_ = std::atan2(target_y_, target_x_);
+      RCLCPP_INFO(
+        get_logger(),
+        "🎯 [Game2 TEST Target Selected] Tag #%d (Row %d) | Err: %+.2f deg",
+        best_id, active_row_, target_heading_err_ * 180.0 / M_PI);
+      return true;
     }
-    return;
+    return false;
   }
 
-  // ── 🎯 ターゲットロック中: 毎ループの的変更を行わず、ロックされたターゲットのみを追従 ──
-  if (target_locked_) {
-    if (locked_is_midpoint_ && locked_target_tag_ids_.size() >= 2) {
-      const int id_a = locked_target_tag_ids_[0];
-      const int id_b = locked_target_tag_ids_[1];
-      const auto it_a = panel_grid_.find(id_a);
-      const auto it_b = panel_grid_.find(id_b);
-
-      const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected);
-      const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected);
-
-      if (a_detected && b_detected) {
-        locked_target_x_ = (it_a->second.x + it_b->second.x) * 0.5;
-        locked_target_y_ = (it_a->second.y + it_b->second.y) * 0.5;
-        locked_target_z_ = (it_a->second.z + it_b->second.z) * 0.5;
-        locked_yaw_at_detection_ = (it_a->second.yaw_at_detection + it_b->second.yaw_at_detection) * 0.5;
-        locked_tag_offset_x_ = locked_target_x_ - it_a->second.x;
-        locked_tag_offset_y_ = locked_target_y_ - it_a->second.y;
-      } else if (a_detected) {
-        locked_target_x_ = it_a->second.x + locked_tag_offset_x_;
-        locked_target_y_ = it_a->second.y + locked_tag_offset_y_;
-        locked_target_z_ = it_a->second.z;
-        locked_yaw_at_detection_ = it_a->second.yaw_at_detection;
-      } else if (b_detected) {
-        locked_target_x_ = it_b->second.x - locked_tag_offset_x_;
-        locked_target_y_ = it_b->second.y - locked_tag_offset_y_;
-        locked_target_z_ = it_b->second.z;
-        locked_yaw_at_detection_ = it_b->second.yaw_at_detection;
-      }
-      // 両方未検出の場合は最後に取得した座標・yawを保持（IMU姿勢補間で追従）
-    } else if (!locked_target_tag_ids_.empty()) {
-      const int id = locked_target_tag_ids_[0];
-      const auto it = panel_grid_.find(id);
-      if (it != panel_grid_.end() && it->second.detected) {
-        locked_target_x_ = it->second.x;
-        locked_target_y_ = it->second.y;
-        locked_target_z_ = it->second.z;
-        locked_yaw_at_detection_ = it->second.yaw_at_detection;
-      }
-    }
-
-    target_x_ = locked_target_x_;
-    target_y_ = locked_target_y_;
-    target_z_ = locked_target_z_;
-    active_row_ = locked_row_;
-    target_belt_mode_ = locked_belt_mode_;
-    current_target_tag_ids_ = locked_target_tag_ids_;
-    active_target_id_ = locked_target_tag_ids_[0];
-
-    const double raw_heading_err = std::atan2(target_y_, target_x_);
-    const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-    target_valid_ = true;
-    return;
-  }
-
-  // ── 🔍 未ロック時: 優先パターンに従ってターゲットを探索し、決定した瞬間にロック ──
-  target_valid_ = false;
-  current_target_tag_ids_.clear();
-
+  // ── 🎯 Column優先ターゲットパターン定義 (5段階) ──
   enum class TargetPattern
   {
     MIDPOINT_0_1 = 0,
@@ -585,171 +490,169 @@ void Game2AimNode::select_target_and_aim()
 
       if (pattern == TargetPattern::MIDPOINT_0_1) {
         if (p0 && p1 && p0->detected && p1->detected) {
-          target_locked_ = true;
-          locked_is_midpoint_ = true;
-          locked_target_tag_ids_ = {p0->tag_id, p1->tag_id};
-          locked_row_ = row;
-          locked_belt_mode_ = get_target_belt_mode(row);
-          locked_target_x_ = (p0->x + p1->x) * 0.5;
-          locked_target_y_ = (p0->y + p1->y) * 0.5;
-          locked_target_z_ = (p0->z + p1->z) * 0.5;
-          locked_yaw_at_detection_ = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
-          locked_tag_offset_x_ = locked_target_x_ - p0->x;
-          locked_tag_offset_y_ = locked_target_y_ - p0->y;
-
-          current_target_tag_ids_ = locked_target_tag_ids_;
-          target_x_ = locked_target_x_;
-          target_y_ = locked_target_y_;
-          target_z_ = locked_target_z_;
-          active_row_ = row;
+          is_midpoint_target_ = true;
+          current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
           active_target_id_ = p0->tag_id;
-          target_belt_mode_ = locked_belt_mode_;
-
-          const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-          target_valid_ = true;
+          active_row_ = row;
+          target_belt_mode_ = get_target_belt_mode(row);
+          target_x_ = (p0->x + p1->x) * 0.5;
+          target_y_ = (p0->y + p1->y) * 0.5;
+          target_z_ = (p0->z + p1->z) * 0.5;
+          target_yaw_at_detection_ = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
+          target_tag_offset_x_ = target_x_ - p0->x;
+          target_tag_offset_y_ = target_y_ - p0->y;
+          target_heading_err_ = std::atan2(target_y_, target_x_);
 
           RCLCPP_INFO(
             get_logger(),
-            "🔒 [Target LOCKED: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target Locked: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
-          return;
+          return true;
         }
       } else if (pattern == TargetPattern::MIDPOINT_1_2) {
         if (p1 && p2 && p1->detected && p2->detected) {
-          target_locked_ = true;
-          locked_is_midpoint_ = true;
-          locked_target_tag_ids_ = {p1->tag_id, p2->tag_id};
-          locked_row_ = row;
-          locked_belt_mode_ = get_target_belt_mode(row);
-          locked_target_x_ = (p1->x + p2->x) * 0.5;
-          locked_target_y_ = (p1->y + p2->y) * 0.5;
-          locked_target_z_ = (p1->z + p2->z) * 0.5;
-          locked_yaw_at_detection_ = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
-          locked_tag_offset_x_ = locked_target_x_ - p1->x;
-          locked_tag_offset_y_ = locked_target_y_ - p1->y;
-
-          current_target_tag_ids_ = locked_target_tag_ids_;
-          target_x_ = locked_target_x_;
-          target_y_ = locked_target_y_;
-          target_z_ = locked_target_z_;
-          active_row_ = row;
+          is_midpoint_target_ = true;
+          current_target_tag_ids_ = {p1->tag_id, p2->tag_id};
           active_target_id_ = p1->tag_id;
-          target_belt_mode_ = locked_belt_mode_;
-
-          const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-          target_valid_ = true;
+          active_row_ = row;
+          target_belt_mode_ = get_target_belt_mode(row);
+          target_x_ = (p1->x + p2->x) * 0.5;
+          target_y_ = (p1->y + p2->y) * 0.5;
+          target_z_ = (p1->z + p2->z) * 0.5;
+          target_yaw_at_detection_ = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
+          target_tag_offset_x_ = target_x_ - p1->x;
+          target_tag_offset_y_ = target_y_ - p1->y;
+          target_heading_err_ = std::atan2(target_y_, target_x_);
 
           RCLCPP_INFO(
             get_logger(),
-            "🔒 [Target LOCKED: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target Locked: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, p2->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
-          return;
+          return true;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_0) {
         if (p0 && p0->detected) {
-          target_locked_ = true;
-          locked_is_midpoint_ = false;
-          locked_target_tag_ids_ = {p0->tag_id};
-          locked_row_ = row;
-          locked_belt_mode_ = get_target_belt_mode(row);
-          locked_target_x_ = p0->x;
-          locked_target_y_ = p0->y;
-          locked_target_z_ = p0->z;
-          locked_yaw_at_detection_ = p0->yaw_at_detection;
-
-          current_target_tag_ids_ = locked_target_tag_ids_;
-          target_x_ = locked_target_x_;
-          target_y_ = locked_target_y_;
-          target_z_ = locked_target_z_;
-          active_row_ = row;
+          is_midpoint_target_ = false;
+          current_target_tag_ids_ = {p0->tag_id};
           active_target_id_ = p0->tag_id;
-          target_belt_mode_ = locked_belt_mode_;
-
-          const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-          target_valid_ = true;
+          active_row_ = row;
+          target_belt_mode_ = get_target_belt_mode(row);
+          target_x_ = p0->x;
+          target_y_ = p0->y;
+          target_z_ = p0->z;
+          target_yaw_at_detection_ = p0->yaw_at_detection;
+          target_tag_offset_x_ = 0.0;
+          target_tag_offset_y_ = 0.0;
+          target_heading_err_ = std::atan2(target_y_, target_x_);
 
           RCLCPP_INFO(
             get_logger(),
-            "🔒 [Target LOCKED: Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target Locked: Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
-          return;
+          return true;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_1) {
         if (p1 && p1->detected) {
-          target_locked_ = true;
-          locked_is_midpoint_ = false;
-          locked_target_tag_ids_ = {p1->tag_id};
-          locked_row_ = row;
-          locked_belt_mode_ = get_target_belt_mode(row);
-          locked_target_x_ = p1->x;
-          locked_target_y_ = p1->y;
-          locked_target_z_ = p1->z;
-          locked_yaw_at_detection_ = p1->yaw_at_detection;
-
-          current_target_tag_ids_ = locked_target_tag_ids_;
-          target_x_ = locked_target_x_;
-          target_y_ = locked_target_y_;
-          target_z_ = locked_target_z_;
-          active_row_ = row;
+          is_midpoint_target_ = false;
+          current_target_tag_ids_ = {p1->tag_id};
           active_target_id_ = p1->tag_id;
-          target_belt_mode_ = locked_belt_mode_;
-
-          const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-          target_valid_ = true;
+          active_row_ = row;
+          target_belt_mode_ = get_target_belt_mode(row);
+          target_x_ = p1->x;
+          target_y_ = p1->y;
+          target_z_ = p1->z;
+          target_yaw_at_detection_ = p1->yaw_at_detection;
+          target_tag_offset_x_ = 0.0;
+          target_tag_offset_y_ = 0.0;
+          target_heading_err_ = std::atan2(target_y_, target_x_);
 
           RCLCPP_INFO(
             get_logger(),
-            "🔒 [Target LOCKED: Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target Locked: Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
-          return;
+          return true;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_2) {
         if (p2 && p2->detected) {
-          target_locked_ = true;
-          locked_is_midpoint_ = false;
-          locked_target_tag_ids_ = {p2->tag_id};
-          locked_row_ = row;
-          locked_belt_mode_ = get_target_belt_mode(row);
-          locked_target_x_ = p2->x;
-          locked_target_y_ = p2->y;
-          locked_target_z_ = p2->z;
-          locked_yaw_at_detection_ = p2->yaw_at_detection;
-
-          current_target_tag_ids_ = locked_target_tag_ids_;
-          target_x_ = locked_target_x_;
-          target_y_ = locked_target_y_;
-          target_z_ = locked_target_z_;
-          active_row_ = row;
+          is_midpoint_target_ = false;
+          current_target_tag_ids_ = {p2->tag_id};
           active_target_id_ = p2->tag_id;
-          target_belt_mode_ = locked_belt_mode_;
-
-          const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
-          target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-          target_valid_ = true;
+          active_row_ = row;
+          target_belt_mode_ = get_target_belt_mode(row);
+          target_x_ = p2->x;
+          target_y_ = p2->y;
+          target_z_ = p2->z;
+          target_yaw_at_detection_ = p2->yaw_at_detection;
+          target_tag_offset_x_ = 0.0;
+          target_tag_offset_y_ = 0.0;
+          target_heading_err_ = std::atan2(target_y_, target_x_);
 
           RCLCPP_INFO(
             get_logger(),
-            "🔒 [Target LOCKED: Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target Locked: Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p2->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
-          return;
+          return true;
         }
       }
     }
   }
+
+  return false;
+}
+
+void Game2AimNode::update_active_target_tracking()
+{
+  if (current_target_tag_ids_.empty()) {
+    return;
+  }
+
+  if (is_midpoint_target_ && current_target_tag_ids_.size() >= 2) {
+    const int id_a = current_target_tag_ids_[0];
+    const int id_b = current_target_tag_ids_[1];
+    const auto it_a = panel_grid_.find(id_a);
+    const auto it_b = panel_grid_.find(id_b);
+
+    const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected);
+    const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected);
+
+    if (a_detected && b_detected) {
+      target_x_ = (it_a->second.x + it_b->second.x) * 0.5;
+      target_y_ = (it_a->second.y + it_b->second.y) * 0.5;
+      target_z_ = (it_a->second.z + it_b->second.z) * 0.5;
+      target_yaw_at_detection_ = (it_a->second.yaw_at_detection + it_b->second.yaw_at_detection) * 0.5;
+      target_tag_offset_x_ = target_x_ - it_a->second.x;
+      target_tag_offset_y_ = target_y_ - it_a->second.y;
+    } else if (a_detected) {
+      target_x_ = it_a->second.x + target_tag_offset_x_;
+      target_y_ = it_a->second.y + target_tag_offset_y_;
+      target_z_ = it_a->second.z;
+      target_yaw_at_detection_ = it_a->second.yaw_at_detection;
+    } else if (b_detected) {
+      target_x_ = it_b->second.x - target_tag_offset_x_;
+      target_y_ = it_b->second.y - target_tag_offset_y_;
+      target_z_ = it_b->second.z;
+      target_yaw_at_detection_ = it_b->second.yaw_at_detection;
+    }
+  } else {
+    const int id = current_target_tag_ids_[0];
+    const auto it = panel_grid_.find(id);
+    if (it != panel_grid_.end() && it->second.detected) {
+      target_x_ = it->second.x;
+      target_y_ = it->second.y;
+      target_z_ = it->second.z;
+      target_yaw_at_detection_ = it->second.yaw_at_detection;
+    }
+  }
+
+  // IMUオドメトリ姿勢補間（デッドレコニング）
+  const double raw_heading_err = std::atan2(target_y_, target_x_);
+  const double rotated = std::remainder(yaw_ - target_yaw_at_detection_, 2.0 * M_PI);
+  target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
 }
 
 void Game2AimNode::control_loop()
@@ -761,112 +664,117 @@ void Game2AimNode::control_loop()
   }
   last_loop_time_ = current_time;
 
-  if (!is_enabled_ || emergency_stop_active_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
-    state_ = robot_msgs::msg::Game2State::STANDBY;
+  // 非常停止チェック
+  if (emergency_stop_active_ && state_ != robot_msgs::msg::Game2State::STANDBY) {
+    transition_to(robot_msgs::msg::Game2State::STANDBY, "Emergency stop active");
+  }
+
+  // STANDBY時は手動操作 (joy_controller / heading_hold) にトピックを譲るため何も出力せずreturn
+  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
     last_cmd_wz_ = 0.0;
     robot_msgs::msg::Game2State state_msg;
     state_msg.state = state_;
     state_pub_->publish(state_msg);
-    // STANDBY時は手動操作 (joy_controller / heading_hold) にトピックを譲るため
-    // 周期的なゼロ速度・停止コマンドのパブリッシュは行わない
     return;
   }
 
-  // ── 保険タイマー: 射出要求から一定秒経過しても完了通知が来ない場合のフェイルセーフ ──
-  if (shot_requested_ && (current_time - shot_requested_time_).seconds() >= shot_fallback_timeout_) {
-    unlock_target("Shot fallback timeout elapsed (insurance timer fired)");
-  }
-
+  // AprilTag 見失いタイムアウト更新
   update_panel_states();
-  select_target_and_aim();
 
-  // Target not detected: Search mode
-  if (!target_valid_) {
-    state_ = robot_msgs::msg::Game2State::SEARCHING;
-    robot_msgs::msg::Game2State state_msg;
-    state_msg.state = state_;
-    state_pub_->publish(state_msg);
-
-    geometry_msgs::msg::Twist cmd;
-    cmd.angular.z = search_angular_z_;
-    last_cmd_wz_ = search_angular_z_;
-
-    if (std::abs(search_angular_z_) > 0.001) {
-      RCLCPP_INFO_THROTTLE(
-        get_logger(),
-        *get_clock(), 1000,
-        "🔍 [Game2 Search] Scanning for target AprilTags... Rotating %+.2f rad/s",
-        search_angular_z_);
-    } else {
-      RCLCPP_INFO_THROTTLE(
-        get_logger(),
-        *get_clock(), 1000,
-        "🔍 [Game2 Search] Waiting for target AprilTags... Standing still");
-    }
-
-    publish_all(
-      cmd, robot_msgs::msg::BeltMode::STOP,
-      !test_alignment_only_, robot_msgs::msg::ArmPosition::DRIBBLE, false);
-    return;
+  // 保険タイマー: 射出ボタン押下から一定時間経過しても完了ステートが来ない場合のフォールバック
+  if (shot_requested_ && (current_time - shot_requested_time_).seconds() >= shot_fallback_timeout_) {
+    transition_to(robot_msgs::msg::Game2State::SEARCHING, "Shot fallback timeout elapsed (insurance timer fired)");
   }
 
-  // Target is valid: check alignment
   geometry_msgs::msg::Twist cmd;
-  const double heading_err = target_heading_err_;
-  const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
   uint8_t current_belt_mode = robot_msgs::msg::BeltMode::STOP;
 
-  if (is_aligned) {
-    // 照準完了 -> PREPARING_SHOOT (ベルト回転開始)
-    state_ = robot_msgs::msg::Game2State::PREPARING_SHOOT;
-    cmd.angular.z = 0.0;
-    last_cmd_wz_ = 0.0;
-    current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
+  switch (state_) {
+    case robot_msgs::msg::Game2State::SEARCHING: {
+      current_belt_mode = robot_msgs::msg::BeltMode::STOP;
+      cmd.angular.z = search_angular_z_;
+      last_cmd_wz_ = search_angular_z_;
 
-    RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 500,
-      "🚀 [Game2 PREPARING_SHOOT] Tag #%d (Row %d) Aligned! Spinning Belt (Mode: %u)",
-      active_target_id_, active_row_, current_belt_mode);
-  } else {
-    // 照準旋回中 -> ALIGNING (ベルト停止)
-    state_ = robot_msgs::msg::Game2State::ALIGNING;
-    current_belt_mode = robot_msgs::msg::BeltMode::STOP;
-
-    // Proportional visual error + IMU Gyro damping (PD control)
-    // 機体ハードウェアの旋回方向（+wz = CW右旋回）に合わせて符号を設定
-    double desired_wz = -kp_yaw_ * heading_err;
-    if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
-      desired_wz -= kd_yaw_ * gyro_z_;
+      if (find_best_target()) {
+        transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel found and locked");
+      } else {
+        if (std::abs(search_angular_z_) > 0.001) {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "🔍 [Game2 SEARCHING] Scanning for target AprilTags... Rotating %+.2f rad/s",
+            search_angular_z_);
+        } else {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "🔍 [Game2 SEARCHING] Waiting for target AprilTags... Standing still");
+        }
+      }
+      break;
     }
 
-    // Stiction overcoming minimum angular velocity
-    if (std::abs(desired_wz) < min_angular_z_) {
-      desired_wz = std::copysign(min_angular_z_, desired_wz);
+    case robot_msgs::msg::Game2State::ALIGNING: {
+      current_belt_mode = robot_msgs::msg::BeltMode::STOP;
+      update_active_target_tracking();
+
+      const double heading_err = target_heading_err_;
+      const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+
+      if (is_aligned) {
+        cmd.angular.z = 0.0;
+        last_cmd_wz_ = 0.0;
+        transition_to(robot_msgs::msg::Game2State::PREPARING_SHOOT, "Target aligned within tolerance");
+        current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
+      } else {
+        // PD Control (IMU Gyro damping)
+        double desired_wz = -kp_yaw_ * heading_err;
+        if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
+          desired_wz -= kd_yaw_ * gyro_z_;
+        }
+
+        if (std::abs(desired_wz) < min_angular_z_) {
+          desired_wz = std::copysign(min_angular_z_, desired_wz);
+        }
+        desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
+
+        const double max_wz_step = max_angular_accel_ * dt;
+        if (desired_wz > last_cmd_wz_ + max_wz_step) {
+          desired_wz = last_cmd_wz_ + max_wz_step;
+        } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
+          desired_wz = last_cmd_wz_ - max_wz_step;
+        }
+
+        cmd.angular.z = desired_wz;
+        last_cmd_wz_ = cmd.angular.z;
+
+        RCLCPP_INFO_THROTTLE(
+          get_logger(), *get_clock(), 200,
+          "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | 🔄 TURNING",
+          active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z);
+      }
+      break;
     }
-    desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
 
-    // Slew rate limiter on angular acceleration
-    const double max_wz_step = max_angular_accel_ * dt;
-    if (desired_wz > last_cmd_wz_ + max_wz_step) {
-      desired_wz = last_cmd_wz_ + max_wz_step;
-    } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
-      desired_wz = last_cmd_wz_ - max_wz_step;
+    case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
+      cmd.angular.z = 0.0;
+      last_cmd_wz_ = 0.0;
+      current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
+      update_active_target_tracking();
+
+      // 外力等で誤差が許容値を超えてズレた場合は ALIGNING へ戻って再照準
+      if (std::abs(target_heading_err_) > yaw_tolerance_ * 1.5) {
+        transition_to(robot_msgs::msg::Game2State::ALIGNING, "Heading error exceeded tolerance in PREPARING_SHOOT");
+      } else {
+        RCLCPP_INFO_THROTTLE(
+          get_logger(), *get_clock(), 500,
+          "🚀 [Game2 PREPARING_SHOOT] Tag #%d (Row %d) Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
+          active_target_id_, active_row_, current_belt_mode);
+      }
+      break;
     }
 
-    cmd.angular.z = desired_wz;
-    last_cmd_wz_ = cmd.angular.z;
-
-    RCLCPP_INFO_THROTTLE(
-      get_logger(),
-      *get_clock(), 200,
-      "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | 🔄 TURNING",
-      active_target_id_, active_row_, heading_err * 180.0 / M_PI, cmd.angular.z);
+    default:
+      break;
   }
-
-  robot_msgs::msg::Game2State state_msg;
-  state_msg.state = state_;
-  state_pub_->publish(state_msg);
 
   publish_all(
     cmd, current_belt_mode,

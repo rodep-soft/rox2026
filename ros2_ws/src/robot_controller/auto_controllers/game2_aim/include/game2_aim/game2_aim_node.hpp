@@ -61,10 +61,11 @@ private:
   void shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
   void update_panel_states();
-  void select_target_and_aim();
+  bool find_best_target();
+  void update_active_target_tracking();
+  void clear_target();
+  void transition_to(uint8_t new_state, const std::string & reason);
   void control_loop();
-  void reset_sequence();
-  void unlock_target(const std::string & reason);
 
   uint8_t get_target_belt_mode(int row) const;
 
@@ -130,33 +131,26 @@ private:
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
   double shot_fallback_timeout_{2.0}; // [s] 射出ボタン押下後の保険タイムアウト
 
-  // State Variables
+  // ── State Machine State (唯一の状態変数) ──
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
-  bool is_enabled_{false};
   bool emergency_stop_active_{false};
   std::unordered_map<int, PanelTagInfo> panel_grid_;
-  int active_row_{2}; // 0: Bottom, 1: Middle, 2: Top (優先順: 2 -> 1 -> 0)
+
+  // ── Active Target Information (ALIGNING / PREPARING_SHOOT 中に保持される追従情報) ──
+  std::vector<int> current_target_tag_ids_; // 狙っているタグIDリスト（単体: 1個, 中点: 2個）
+  bool is_midpoint_target_{false};
+  int active_row_{2}; // 0: Bottom, 1: Middle, 2: Top
   int active_target_id_{-1};
-  std::vector<int> current_target_tag_ids_; // 狙っているタグIDリスト（中点狙い時は2個）
+  uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   double target_x_{0.0};
   double target_y_{0.0};
   double target_z_{0.0};
+  double target_yaw_at_detection_{0.0};
+  double target_tag_offset_x_{0.0};
+  double target_tag_offset_y_{0.0};
   double target_heading_err_{0.0};
-  uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::STOP};
-  bool target_valid_{false};
 
-  // Target Lock State Variables (一度決めたターゲットの固定用)
-  bool target_locked_{false};
-  bool locked_is_midpoint_{false};
-  std::vector<int> locked_target_tag_ids_;
-  int locked_row_{2};
-  uint8_t locked_belt_mode_{robot_msgs::msg::BeltMode::STOP};
-  double locked_target_x_{0.0};
-  double locked_target_y_{0.0};
-  double locked_target_z_{0.0};
-  double locked_yaw_at_detection_{0.0};
-  double locked_tag_offset_x_{0.0};
-  double locked_tag_offset_y_{0.0};
+  // ── Shot Detection & Insurance Timer State ──
   uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
   bool shot_requested_{false};
   rclcpp::Time shot_requested_time_;
