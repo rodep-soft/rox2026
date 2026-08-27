@@ -88,7 +88,7 @@ def launch_setup(context, *args, **kwargs):
             output="screen",
             parameters=[
                 {
-                    "video_device_name": "default",
+                    "video_device": "default",
                     "channel": int(mipi_channel),
                     #"channel2": int(mipi_channel2),
                     "device_mode": "single",
@@ -96,8 +96,8 @@ def launch_setup(context, *args, **kwargs):
                     "framerate": 5.0,
                     "image_width": 1920,
                     "image_height": 1080,
-                    "out_format_name": "nv12",
-                    "io_method_name": "ros",
+                    "out_format": "nv12",
+                    "io_method": "ros",
                     "cal_alpha": 0.0,
                     "gdc_enable": True,
                     "lpwm_enable": False,
@@ -120,11 +120,16 @@ def launch_setup(context, *args, **kwargs):
             name="nv12_to_mono8_node",
             output="screen",
             parameters=[{
-                "input_topic": "/image_left_raw",
+                "input_topic": "/image_raw",
                 "output_topic": "/camera/left_mono8",
-                "camera_info_topic": "/camera_left_info",
+                "camera_info_topic": "/camera_info",
                 "output_camera_info_topic": "/camera/camera_info",
                 "target_fps": 5.0,
+                "use_fallback_camera_info": True,
+                "camera_fx": 800.0,
+                "camera_fy": 800.0,
+                "camera_cx": 960.0,
+                "camera_cy": 540.0,
             }],
         )
         launch_nodes.append(mono_node)

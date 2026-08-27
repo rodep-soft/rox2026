@@ -24,6 +24,11 @@ class Nv12ToMono8Node(Node):
         self.declare_parameter("camera_info_topic", "/camera_left_info")
         self.declare_parameter("output_camera_info_topic", "/camera/camera_info")
         self.declare_parameter("target_fps", 5.0)
+        self.declare_parameter("use_fallback_camera_info", False)
+        self.declare_parameter("camera_fx", 800.0)
+        self.declare_parameter("camera_fy", 800.0)
+        self.declare_parameter("camera_cx", 960.0)
+        self.declare_parameter("camera_cy", 540.0)
 
         input_topic = self.get_parameter("input_topic").value
         output_topic = self.get_parameter("output_topic").value
@@ -31,6 +36,13 @@ class Nv12ToMono8Node(Node):
         output_camera_info_topic = self.get_parameter(
             "output_camera_info_topic"
         ).value
+        self.use_fallback_camera_info_ = self.get_parameter(
+            "use_fallback_camera_info"
+        ).value
+        self.camera_fx_ = float(self.get_parameter("camera_fx").value)
+        self.camera_fy_ = float(self.get_parameter("camera_fy").value)
+        self.camera_cx_ = float(self.get_parameter("camera_cx").value)
+        self.camera_cy_ = float(self.get_parameter("camera_cy").value)
         self.target_fps_ = self.get_parameter("target_fps").value
         self.min_interval_sec_ = 1.0 / self.target_fps_ if self.target_fps_ > 0 else 0.0
         self.last_pub_time_ = 0.0
@@ -83,11 +95,12 @@ class Nv12ToMono8Node(Node):
             return
 
         if self.last_camera_info_ is None:
-            self.get_logger().warn(
-                "Waiting for CameraInfo; image is not forwarded yet",
-                throttle_duration_sec=5.0,
-            )
-            return
+            if not self.use_fallback_camera_info_:
+                self.get_logger().warn(
+                    "Waiting for CameraInfo; image is not forwarded yet",
+                    throttle_duration_sec=5.0,
+                )
+                return
 
         self.last_pub_time_ = now_sec
         mono_msg = Image()
@@ -101,7 +114,35 @@ class Nv12ToMono8Node(Node):
         mono_msg.step = msg.width
         mono_msg.data = msg.data[:y_size]
 
-        info_msg = copy.deepcopy(self.last_camera_info_)
+        if self.last_camera_info_ is not None:
+            info_msg = copy.deepcopy(self.last_camera_info_)
+        else:
+            info_msg = CameraInfo()
+            info_msg.width = msg.width
+            info_msg.height = msg.height
+            info_msg.distortion_model = "plumb_bob"
+            info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
+            info_msg.k = [
+                self.camera_fx_,
+                0.0,
+                self.camera_cx_,
+                0.0,
+                self.camera_fy_,
+                self.camera_cy_,
+                0.0,
+                0.0,
+                1.0,
+            ]
+            info_msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            info_msg.p = [
+                self.camera_fx_, 0.0, self.camera_cx_, 0.0,
+                0.0, self.camera_fy_, self.camera_cy_, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+            ]
+            self.get_logger().warn(
+                "Using fallback CameraInfo; calibrate camera for accurate pose",
+                throttle_duration_sec=30.0,
+            )
         info_msg.header = msg.header
         self.pub_.publish(mono_msg)
         self.camera_info_pub_.publish(info_msg)
