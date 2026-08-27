@@ -1,10 +1,10 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body (CAN + PID Integration + 3 Motors + LED)
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body (CAN + BNO055 + Limit Switch + LED)
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -18,66 +18,100 @@
 /* USER CODE BEGIN Includes */
 #include "limit_switch.h"
 #include "LED_lite.h"
+#include "LED_effects.h"
+#include "bno055_hal.h"
+#include "bno055_calibration.h"
+//#include "bno055_uart.h"
 #include <stdbool.h>
 
-// --- PID制御用の構造体と変数 ---
-typedef struct {
-    float Kp;
-    float Ki;
-    float Kd;
-    float prev_error;
-    float integral;
-    float out_min; // PWM最小値
-    float out_max; // PWM最大値
-} PID_Controller;
-
-PID_Controller upper_belt_pid = {0.02f, 0.1f, 0.00f, 0.0f, 0.0f, 0.0f, 500.0f};
-PID_Controller under_belt_pid = {0.04f, 0.1f, 0.00f, 0.0f, 0.0f, 0.0f, 500.0f};
-
-// --- エンコーダとRPM計算用の変数 ---
-#define ENCODER_PPR 2048
-#define DT_SEC 0.01f // PID制御の周期 (10ms = 0.01秒)
-// 割り算をコンパイル時に終わらせる高速化マクロ
-#define RPM_CALC_FACTOR (60.0f / DT_SEC / ((float)ENCODER_PPR * 4.0f))
-
-volatile int is_called_PID = 0;
-
 // --- CANから受け取る指令値 ---
-
-
 volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
 volatile int received_LED_cmd;
+volatile int received_LED_status;
 
 // --- CAN通信用の変数 ---
-volatile uint16_t received_rpm_1_2;
 CAN_RxHeaderTypeDef RxHeader;
 uint8_t RxData[8];
 volatile uint8_t DataReadyFlag = 0;
 #define CAN_TIMEOUT_MS 500
 volatile uint32_t last_can_rx_time = 0;
 volatile uint8_t is_timeout = 1;
+volatile int32_t debug_can_rx_elapsed_ms = 0;
 
 volatile uint32_t debug_last_id = 0;       // 最後に受信したID
-volatile uint8_t  debug_last_data[8] = {0};// 最後に受信したデータ
+volatile uint8_t debug_last_data[8] = { 0 };       // 最後に受信したデータ
 volatile uint32_t debug_last_dlc = 0;      // 最後に受信したデータ長 (0〜8)
 volatile uint32_t debug_rx_count = 0;
 
 
+#define LOOP_TIME                   10U
 
-int16_t  prev_pos1 = 0;
-int16_t  prev_pos2 = 0;
-volatile float upper_belt_target_rpm = 0;
-volatile float under_belt_target_rpm = 0;
-volatile float dribble_target_rpm = 0;
-float upper_belt_target_pwm = 1000;
-float under_belt_target_pwm = 1000;
-float dribble_target_pwm    = 1000;
-uint32_t upper_belt_current_rpm;
-uint32_t under_belt_current_rpm;
+#define BNO055_ACTIVE_MODE BNO055_MODE_IMUPLUS
+#define BNO055_RETRY_INTERVAL_MS  1000U
+#define BNO055_MAX_READ_ERRORS    3U
+#define BNO055_CALIBRATION_CHECK_PERIOD_MS 1000U
+#define BNO055_CALIBRATION_STABLE_SAMPLES 5U
+#define CAN_RETRY_INTERVAL_MS       1000U
+#define CAN_MAX_TX_ERRORS           10U
 
-uint8_t r;
-uint8_t g;
-uint8_t b;
+volatile bool can_connected = false;
+volatile uint32_t last_can_retry_time = 0;
+uint32_t can_tx_error_count = 0;
+uint32_t can_init_error_count = 0;
+uint32_t can_restart_count = 0;
+
+bool bno055_connected = false;
+uint32_t last_bno055_retry_time = 0;
+uint32_t bno055_init_error_count = 0;
+uint32_t bno055_read_error_count = 0;
+uint32_t bno055_tx_count = 0;
+uint8_t bno055_sample_phase = 0U;
+volatile BNO055_Status debug_bno_init_status = BNO055_ERROR;
+volatile BNO055_Status debug_bno_read_status = BNO055_ERROR;
+volatile uint16_t debug_bno_i2c_address = 0U;
+volatile uint32_t debug_bno_i2c_error = HAL_I2C_ERROR_NONE;
+uint32_t last_bno055_calibration_check_time = 0;
+uint32_t bno055_calibration_save_error_count = 0;
+bool bno055_calibration_profile_saved = false;
+bool bno055_calibration_profile_restored = false;
+uint8_t bno055_calibration_stable_count = 0U;
+
+BNO055_Handle bno055;
+BNO055_Quaternion imu_quat;
+BNO055_Vector3Int16 imu_angular_velocity;
+BNO055_Vector3Int16 imu_linear_acceleration;
+BNO055_Euler imu_euler;
+BNO055_Calibration imu_calib;
+
+uint32_t last_loop_time;
+uint32_t last_bno_com_time;
+uint32_t bno_com_priod;
+
+volatile uint32_t debug_invalid_quat_count = 0;
+volatile int16_t debug_bad_qx = 0;
+volatile int16_t debug_bad_qy = 0;
+volatile int16_t debug_bad_qz = 0;
+volatile int16_t debug_bad_qw = 0;
+volatile uint32_t debug_bad_norm_sq = 0;
+
+volatile uint8_t debug_page_id = 0;
+volatile uint8_t debug_system_status = 0;
+//volatile uint8_t debug_self_test = 0;
+volatile uint8_t debug_system_error = 0;
+
+volatile uint8_t debug_operation_mode  = 0xFFU;
+volatile uint8_t debug_sys_status = 0xFFU;
+volatile uint8_t debug_self_test = 0xFFU;
+volatile uint8_t debug_sys_error = 0xFFU;
+
+volatile int16_t debug_gyro_x = 0;
+volatile int16_t debug_gyro_y = 0;
+volatile int16_t debug_gyro_z = 0;
+volatile BNO055_Status debug_gyro_status = BNO055_ERROR;
+volatile int16_t debug_accel_x = 0;
+volatile int16_t debug_accel_y = 0;
+volatile int16_t debug_accel_z = 0;
+volatile BNO055_Status debug_accel_status = BNO055_ERROR;
 
 /* USER CODE END Includes */
 
@@ -105,199 +139,277 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//map関数
-int16_t map(int16_t x,int16_t in_min, int16_t in_max,int16_t out_min, int16_t out_max)
-{
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-static inline float clampf(float value, float min, float max)
-{
-    if (value < min) {return min;}
-    if (value > max) {return max;}
-    return value;
-}
-// RPM計算関数
-float Calc_RPM(int16_t  now, int16_t  *prev_val)
-{
-    int16_t diff = now - *prev_val;
-    *prev_val = now;
+/*
+ * Recover an I2C bus held busy by a slave: release SDA, pulse SCL up to
+ * nine times, generate a STOP condition, then restore I2C1 alternate pins.
+ */
+static void BNO055_RecoverI2CBus(void) {
+	GPIO_InitTypeDef gpio = { 0 };
 
-    // オーバーフロー補正
-    if (diff > 32767)  diff -= 65536;
-    if (diff < -32768) diff += 65536;
+	(void)HAL_I2C_DeInit(&hi2c1);
+	__HAL_RCC_GPIOB_CLK_ENABLE();
 
-    // 高速化のため割り算を使わず係数を掛ける
-    return (float)diff * RPM_CALC_FACTOR;
-}
+	gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+	gpio.Mode = GPIO_MODE_OUTPUT_OD;
+	gpio.Pull = GPIO_PULLUP;
+	gpio.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &gpio);
 
-// PID計算関数
-float Compute_PID(PID_Controller *pid, float target, float current, float dt)
-{
-	is_called_PID = 1;
-    float error = target - current;
-    pid->integral += error * dt;
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_Delay(2U);
 
-    // 積分項の発散防止
-    float max_integral = 500.0f;
-    if (pid->integral > max_integral) pid->integral = max_integral;
-    if (pid->integral < -max_integral) pid->integral = -max_integral;
-
-    // 微分項の計算
-    float derivative = (error - pid->prev_error) * (1.0f / dt);
-    pid->prev_error = error;
-
-    float output = (pid->Kp * error) + (pid->Ki * pid->integral) + (pid->Kd * derivative);
-
-    // 出力制限
-    if (output > pid->out_max) output = pid->out_max;
-    if (output < pid->out_min) output = pid->out_min;
-
-    if (target <= 0.0f) {
-        output = pid->out_min;
-        pid->integral = 0.0f;
-    }
-
-    return output;
-}
-
-void shining_LED(int received_LED_cmd) {
-	 static unsigned int count_led = 0;
-	 int i_count;
-	 int phase;
-	 int step_val;
-
-	 switch (received_LED_cmd) {
-	 	 case 1:/*虹色グラデーション*/
-	 		 for(int i = 0; i < 30; i++) {
-	 			 i_count = count_led + (10 * i);
-	 			 i_count %= 256 * 6;
-	 			 phase = i_count / 256;
-	 			 step_val = i_count % 256;
-	 			 switch (phase) {
-		 	     	 case 0: r = 255;            g = step_val;       b = 0;              break;
-		 	     	 case 1: r = 255 - step_val; g = 255;            b = 0;              break;
-		 	     	 case 2: r = 0;              g = 255;            b = step_val;       break;
-		 			 case 3: r = 0;              g = 255 - step_val; b = 255;            break;
-		 			 case 4: r = step_val;       g = 0;              b = 255;            break;
-		 			 case 5: r = 255;            g = 0;              b = 255 - step_val; break;
-	 			 }
-		    	 setPixel(i, r, g, b);
-	 		 }
-	 		 break;
-
-	 	 case 2:/*緊急停止用真っ赤*/
-	 		 for(int i = 0; i < 30; i++) {
-	 			 r = 255; g = 0; b = 0;
-	 			 setPixel(i, r, g, b);
-	 		 }
-	 		 break;
-
-	 	 case 3:/*異常事態用赤点滅*/
-	 		 for(int i = 0; i < 30; i++) {
-	 			 if((count_led % 20) < 10) {
-	 				 r = 0; g = 0; b = 0;
-	 			 } else {
-	 				 r = 255; g = 0; b = 0;
-	 			 }
-	 			 setPixel(i, r, g, b);
-	 		 }
-	 		 break;
-
-	 	 case 4:/*上下のグラデーション*/
-	 		int r = 0, g = 0, b = 0;
-	 		int step_time = count_led / 10;
-	 		int d = step_time % 11;
-	 		int color_idx = (step_time / 11) % 6;
-
-	 		switch (color_idx) {
-	 	 		case 0: r = 255; g = 0;   b = 0;   break; // R
-	 	 		case 1: r = 0;   g = 255; b = 0;   break; // G
-	 	 		case 2: r = 0;   g = 0;   b = 255; break; // B
-	 	 		case 3: r = 170; g = 170; b = 0;   break; // RG (黄)
-	 	 		case 4: r = 0;   g = 170; b = 170; break; // GB (水色)
-	 	 		case 5: r = 170; g = 0;   b = 170; break; // BR (紫)
-	 		}
-	 		for(int i = 0; i < 30; i++) {
-	 			setPixel(i, 0, 0, 0);
-	 		}
-	 		// --- 1〜20の縦列 (Index: 0〜9 と 19〜10) ---
-	 		for(int i = 0; i < 10; i++) {
-	 			if (i >= d && i <= d + 2) {
-	 				setPixel(i, r, g, b);
-	 				setPixel(19 - i, r, g, b);
-	 			}
-	 		}
-	 		// --- 21〜30の横列 (Index: 20〜29) ---
-	 		for(int j = 0; j < 5; j++) {
-	 			if (j == d || j == d - 1) {
-	 				setPixel(24 - j, r, g, b);
-	 				setPixel(25 + j, r, g, b);
-	 			}
-	 		}
-	 		break;
-	 case 5:/*点滅*/
-		 int wave = (count_led * 2) % 512;
-		 if (wave > 255) {
-			 wave = 511 - wave; // 256を超えたら折り返して減らす
-		 }
-
-		 int bright_even = wave;         // 0 -> 255 -> 0
-		 int bright_odd  = 255 - wave;   // 255 -> 0 -> 255
-
-		 for(int i = 0; i < 30; i++) {
-			 int r = 0, g = 0, b = 0;
-
-			 if (i % 2 == 0) {
-				 // 偶数(Index: 0, 2, 4...)：シアン（水色）
-				 r = 0;
-				 g = bright_even;
-				 b = bright_even;
-			 } else {
-				 // 奇数(Index: 1, 3, 5...)：マゼンタ（紫）
-				 r = bright_odd;
-				 g = 0;
-				 b = bright_odd;
-			 }
-
-			 setPixel(i, r, g, b);
-		 }
-		 break;
-	 case 6:/*RODEPというモールス信号*/
-	 {
-		 int seq[56] = {
-				 1,0,2,2,2,0,1,0,0,0,
-				 2,2,2,0,2,2,2,0,2,2,2,0,0,0,
-				 2,2,2,0,1,0,1,0,0,0,
-				 1,0,0,0,
-				 1,0,2,2,2,0,2,2,2,0,1,0,0,0,0,0,0,0
-		 };
-		 int tu = count_led / 8;
-
-		 for(int i = 0; i < 30; i++) {
-			 int idx = (tu - i) % 56;
-			 if (idx < 0) {
-				 idx += 56;
-			 }
-
-			 int state = seq[idx];
-			 int r = 0, g = 0, b = 0;
-
-			 if (state == 1) {
-				 b = 255;
-			 } else if (state == 2) {
-				 r = 255;
-				 g = 255;
-			 }
-
-			 setPixel(i, r, g, b);
-		 }
-		 break;
-	 }
+	for (uint32_t pulse = 0U;
+			(pulse < 9U) &&
+			(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == GPIO_PIN_RESET);
+			++pulse) {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+		HAL_Delay(1U);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+		HAL_Delay(1U);
 	}
-	 count_led += 1; //色が変わる速さ
-     show();
+
+	/* STOP: SDA low -> SCL high -> SDA high. */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+	HAL_Delay(1U);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	HAL_Delay(1U);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_Delay(2U);
+
+	HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6 | GPIO_PIN_7);
+	MX_I2C1_Init();
+}
+//BNO055の初期化関数
+static bool BNO055_TryInitialize(void) {
+	BNO055_Status status;
+	uint8_t calibration_profile[BNO055_CALIBRATION_PROFILE_SIZE];
+
+	/*
+	 * IMUPLUS uses the accelerometer and gyroscope without the magnetometer.
+	 * This provides a gravity-referenced relative orientation and avoids magnetic
+	 * disturbances from motors and the robot frame.
+	 */
+	status = BNO055_Init(&bno055, &hi2c1,
+		BNO055_I2C_ADDR_LOW, BNO055_ACTIVE_MODE);
+	if (status != BNO055_OK) {
+		status = BNO055_Init(&bno055, &hi2c1,
+			BNO055_I2C_ADDR_HIGH, BNO055_ACTIVE_MODE);
+	}
+	debug_bno_init_status = status;
+	debug_bno_i2c_address = bno055.address;
+	debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+
+	/* A valid Flash profile removes the need for manual calibration at boot. */
+	bno055_calibration_profile_restored = false;
+	bno055_calibration_profile_saved =
+			BNO055_CalibrationStorageLoad(calibration_profile);
+	if ((status == BNO055_OK) && bno055_calibration_profile_saved) {
+		const BNO055_Status calibration_status =
+			BNO055_ApplyCalibrationProfile(&bno055, calibration_profile);
+		bno055_calibration_profile_restored =
+			(calibration_status == BNO055_OK);
+		/* Optional calibration restore must not mark the sensor disconnected. */
+		if (calibration_status != BNO055_OK) {
+			(void)BNO055_SetMode(&bno055, BNO055_ACTIVE_MODE);
+		}
+	}
+
+	//初期化に成功したら，デバック用に各種ステータスを読み取って終了
+	if (status == BNO055_OK) {
+		bno055_connected = true;
+		bno055_read_error_count = 0;
+		HAL_Delay(10);
+		(void)BNO055_ReadOperationMode(&bno055,
+				(uint8_t*) &debug_operation_mode );
+		HAL_Delay(2U);
+		(void)BNO055_ReadSystemStatus(&bno055,
+				(uint8_t*) &debug_sys_status, (uint8_t*) &debug_self_test,
+				(uint8_t*) &debug_sys_error);
+		return true;
+	}
+	// 失敗したら，再度呼ばれるまで待機
+	bno055_connected = false;
+	bno055_init_error_count++;
+
+	return false;
 }
 
+static void BNO055_CalibrationTask(uint32_t now_ms) {
+	uint8_t calibration_profile[BNO055_CALIBRATION_PROFILE_SIZE];
+
+	if (!bno055_connected || bno055_calibration_profile_saved) {
+		return;
+	}
+	if ((uint32_t)(now_ms - last_bno055_calibration_check_time) <
+			BNO055_CALIBRATION_CHECK_PERIOD_MS) {
+		return;
+	}
+	last_bno055_calibration_check_time = now_ms;
+
+	if (BNO055_ReadCalibration(&bno055, &imu_calib) != BNO055_OK) {
+		bno055_calibration_stable_count = 0U;
+		return;
+	}
+	/* IMUPLUS does not use the magnetometer, so mag calibration is irrelevant. */
+	if ((imu_calib.system != 3U) || (imu_calib.gyro != 3U) ||
+		(imu_calib.accel != 3U)) {
+		bno055_calibration_stable_count = 0U;
+		return;
+	}
+	if (bno055_calibration_stable_count < BNO055_CALIBRATION_STABLE_SAMPLES) {
+		bno055_calibration_stable_count++;
+	}
+	if (bno055_calibration_stable_count < BNO055_CALIBRATION_STABLE_SAMPLES) {
+		return;
+	}
+
+	/* This path runs only once in the lifetime of the saved profile. */
+	if ((BNO055_ReadCalibrationProfile(&bno055, calibration_profile) == BNO055_OK) &&
+			BNO055_CalibrationStorageSave(calibration_profile)) {
+		bno055_calibration_profile_saved = true;
+	} else {
+		bno055_calibration_save_error_count++;
+	}
+}
+
+/* Reset a wedged I2C peripheral before attempting to configure the sensor. */
+static bool BNO055_Recover(void) {
+	BNO055_RecoverI2CBus();
+	return BNO055_TryInitialize();
+}
+static bool CAN_TryInitialize(void) {
+	CAN_FilterTypeDef filter = { 0 };
+	HAL_CAN_DeactivateNotification(&hcan,
+	CAN_IT_RX_FIFO0_MSG_PENDING |
+	CAN_IT_BUSOFF |
+	CAN_IT_ERROR);
+	HAL_CAN_Stop(&hcan);
+	HAL_CAN_DeInit(&hcan);
+	MX_CAN_Init();
+
+	// Filter 0
+	filter.FilterBank = 0;
+	filter.FilterMode = CAN_FILTERMODE_IDMASK;
+	filter.FilterScale = CAN_FILTERSCALE_32BIT;
+	filter.FilterIdHigh = (0x200 << 5);
+	filter.FilterIdLow = 0x0000;
+	filter.FilterMaskIdHigh = (0x7F0 << 5);
+	filter.FilterMaskIdLow = 0x0000;
+	filter.FilterFIFOAssignment = CAN_RX_FIFO0;
+	filter.FilterActivation = ENABLE;
+	filter.SlaveStartFilterBank = 14;
+
+	if (HAL_CAN_ConfigFilter(&hcan, &filter) != HAL_OK) {
+		can_connected = false;
+		can_init_error_count++;
+		return false;
+	}
+
+	// Filter 1
+	filter.FilterBank = 1;
+	filter.FilterIdHigh = (0x100 << 5);
+
+	if (HAL_CAN_ConfigFilter(&hcan, &filter) != HAL_OK) {
+		can_connected = false;
+		can_init_error_count++;
+		return false;
+	}
+
+	if (HAL_CAN_Start(&hcan) != HAL_OK) {
+		can_connected = false;
+		can_init_error_count++;
+		return false;
+	}
+
+	if (HAL_CAN_ActivateNotification(&hcan,
+	CAN_IT_RX_FIFO0_MSG_PENDING |
+	CAN_IT_BUSOFF |
+	CAN_IT_ERROR) != HAL_OK) {
+		can_connected = false;
+		can_init_error_count++;
+		return false;
+	}
+
+	can_connected = true;
+	can_tx_error_count = 0;
+	can_restart_count++;
+	CAN_ResetTxDiagnostics();
+	LimitSwitch_Init(HAL_GetTick());
+
+	return true;
+}
+
+static bool BNO055_ReadAndSend(void) {
+	BNO055_Status status = BNO055_ReadQuaternion(&bno055, &imu_quat);
+	debug_bno_read_status = status;
+	if (status != BNO055_OK) {
+		debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+		return false;
+	}
+
+	/* Quaternion is sampled every slot (100 Hz). Read only one vector in each
+	 * slot so that I2C work and CAN traffic remain bounded: gyro and linear
+	 * acceleration alternate at 50 Hz each. */
+	const bool read_gyro = (bno055_sample_phase == 0U);
+	if (read_gyro) {
+		debug_gyro_status = BNO055_ReadGyroscope(
+				&bno055, &imu_angular_velocity);
+		status = debug_gyro_status;
+		if (status == BNO055_OK) {
+			debug_gyro_x = imu_angular_velocity.x;
+			debug_gyro_y = imu_angular_velocity.y;
+			debug_gyro_z = imu_angular_velocity.z;
+		}
+	} else {
+		debug_accel_status = BNO055_ReadLinearAcceleration(
+				&bno055, &imu_linear_acceleration);
+		status = debug_accel_status;
+		if (status == BNO055_OK) {
+			debug_accel_x = imu_linear_acceleration.x;
+			debug_accel_y = imu_linear_acceleration.y;
+			debug_accel_z = imu_linear_acceleration.z;
+		}
+	}
+	const bool vector_valid = (status == BNO055_OK);
+	if (!vector_valid) {
+		debug_bno_read_status = status;
+		debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+	}
+
+	debug_bno_i2c_error = HAL_I2C_GetError(&hi2c1);
+
+	const CAN_SendResult quat_result = CAN_SendBno055Quaternion(
+			imu_quat.x, imu_quat.y, imu_quat.z, imu_quat.w);
+	/* A valid quaternion is sent even when the alternating vector read failed.
+	 * This keeps the 100 Hz attitude stream continuous while the I2C recovery
+	 * logic handles the failed gyro/acceleration transaction. */
+	const CAN_SendResult vector_result = vector_valid && read_gyro
+			? CAN_SendBno055AngularVelocity(
+					imu_angular_velocity.x, imu_angular_velocity.y,
+					imu_angular_velocity.z)
+			: vector_valid
+			? CAN_SendBno055LinearAcceleration(
+					imu_linear_acceleration.x, imu_linear_acceleration.y,
+					imu_linear_acceleration.z)
+			: CAN_SEND_OK;
+
+	if ((quat_result == CAN_SEND_ERROR) ||
+			(vector_result == CAN_SEND_ERROR)) {
+		can_tx_error_count++;
+	} else if ((quat_result == CAN_SEND_OK) &&
+			(vector_result == CAN_SEND_OK)) {
+		bno055_sample_phase ^= 1U;
+		if (vector_valid) {
+			bno055_read_error_count = 0U;
+		}
+		can_tx_error_count = 0U;
+		bno055_tx_count++;
+		const uint32_t tx_now = HAL_GetTick();
+		bno_com_priod = tx_now - last_bno_com_time;
+		last_bno_com_time = tx_now;
+	}
+	return vector_valid;
+}
 /* USER CODE END 0 */
 
 /**
@@ -331,148 +443,122 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_CAN_Init();
-  MX_TIM1_Init();
   MX_TIM15_Init();
   MX_TIM3_Init();
   MX_TIM17_Init();
-  MX_TIM2_Init();
   MX_I2C1_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
+	BNO055_RecoverI2CBus();
+	HAL_Delay(1500);
+	//BNO055初期化
+	bno055_connected = BNO055_TryInitialize();
+	last_bno055_retry_time = HAL_GetTick();
 
-  // LEDの初期化
-  clear();
-  for(int i = 0; i < 30; i++) {
-      setPixel(i, 0, 0, 0); // 最初は消灯
-  }
-  show();
+	can_connected = CAN_TryInitialize();
+	last_can_retry_time = HAL_GetTick();
 
-  // PWMスタート
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1); // モーター1 (MAD PWM直結)
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2); // モーター2 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_1); // モーター2 (MAD RPM制御)
-  HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1);
+	//駆動電源の出力をON,OFFするピン
+	//HIGH出力で，電源入る，LOW出力でOFFに
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
 
-  // エンコーダのカウント開始
-  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
-  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
-
-  // CANフィルタ設定 (ID 0x100番台と0x200番台 のみ受信する設定)
-  CAN_FilterTypeDef sFilterConfig;
-  sFilterConfig.FilterBank = 0;
-  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = 0x200 << 5;
-  sFilterConfig.FilterIdLow = 0x0000;
-  sFilterConfig.FilterMaskIdHigh = 0x7F0 << 5;
-  sFilterConfig.FilterMaskIdLow = 0x0000;
-  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-  sFilterConfig.FilterActivation = ENABLE;
-  sFilterConfig.SlaveStartFilterBank = 14;
-  if(HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK) {
-      Error_Handler();
-  }
-  sFilterConfig.FilterBank = 1;
-  sFilterConfig.FilterIdHigh = (0x100 << 5);
-  if(HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK) {
-      Error_Handler();
-  }
-
-  if(HAL_CAN_Start(&hcan) != HAL_OK) {
-      Error_Handler();
-  }
-  if(HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
-      Error_Handler();
-  }
-
-
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000.0f);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 1000.0f);
-  __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, 1000.0f);
-
-  HAL_Delay(4000);
-  last_can_rx_time = HAL_GetTick();
+	// LEDの初期化
+#if LED_FEATURE_ENABLED
+	LED_Effects_Init();
+#endif
+	last_can_rx_time = HAL_GetTick();
+	last_loop_time = HAL_GetTick();
+	last_bno_com_time = last_loop_time;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-      uint32_t loop_start_time = HAL_GetTick();
+	while (1) {
+		//ループ周期調整
+		uint32_t now = HAL_GetTick();
+		if ((uint32_t)(now - last_loop_time) < LOOP_TIME) {
+			HAL_Delay(1U);
+			continue;
+		}
+		last_loop_time = now;
 
-      // ==========================================
-      // 【デバッグ用】CAN通信を無視して目標値を強制設定
-      // ==========================================
-      //target_rpm1 = 5000.0f; // モーター1: 2000 RPM
-      //target_rpm2 = 5000.0f; // モーター2: 2000 RPM
-      //target_rpm3 = 1100.0f;
+		/* Stop the previous LED DMA/timers before any BNO055 I2C access. */
+		LED_WaitForIdle();
 
-      // --- 1. 通信のタイムアウト＆非常停止の監視 ---
-      if ((HAL_GetTick() - last_can_rx_time) > CAN_TIMEOUT_MS) {
-          is_timeout = 1;
-          shining_LED(3);
-      }
-      else{
-          // --- 6. LEDの点灯更新 ---
-          shining_LED(received_LED_cmd);
-      }
+		// CANが切れていないかの確認
+		if (!can_connected) {
+			if ((uint32_t) (now - last_can_retry_time) >= CAN_RETRY_INTERVAL_MS) {
+				last_can_retry_time = now;
+				CAN_TryInitialize();
+			}
+		}
+		if (can_tx_error_count >= CAN_MAX_TX_ERRORS) {
+			can_connected = false;
+			can_tx_error_count = 0;
+			last_can_retry_time = now;
+		}
+		if (can_connected && !CAN_TxHealthTask(now)) {
+			/* Mailboxes stayed full: abort stale frames and restart immediately. */
+			can_connected = false;
+			can_tx_error_count = 0;
+			last_can_retry_time = now;
+			(void)CAN_TryInitialize();
+		}
+		if (!bno055_connected) {
+			if ((uint32_t) (now - last_bno055_retry_time)
+					>= BNO055_RETRY_INTERVAL_MS) {
+				last_bno055_retry_time = now;
+				bno055_connected = BNO055_Recover();
+			}
+			// errorの許容値を超えたら再起動を試みる
+		}
+		if (bno055_read_error_count >= BNO055_MAX_READ_ERRORS) {
+			bno055_connected = false;
+			bno055_read_error_count = 0;
+			last_bno055_retry_time = now;
+		}
 
-      // タイムアウト、または非常停止フラグが立っている場合はモーターを強制停止
-      if (is_timeout || emergency_stop_flag != 0) {
-    	  upper_belt_target_rpm = 0;
-    	  under_belt_target_rpm = 0;
-    	  dribble_target_rpm = 0;
-      }
+		BNO055_CalibrationTask(now);
 
-      // --- 2. エンコーダから現在RPMを取得 (モーター1, 2) ---
-      int16_t  pos1 = __HAL_TIM_GET_COUNTER(&htim1);
-      under_belt_current_rpm = Calc_RPM(pos1, &prev_pos1);
-
-      int16_t  pos2 = __HAL_TIM_GET_COUNTER(&htim2);
-      upper_belt_current_rpm = Calc_RPM(pos2, &prev_pos2);
-
-      // --- 3. 出力PWMの決定 ---
-      // モーター1, 2 はPIDで計算,近似式の追加でフィードフォワードせぎょっぽく
-      float upper_belt_cal_target = Compute_PID(&upper_belt_pid, upper_belt_target_rpm, upper_belt_current_rpm, DT_SEC);
-      float under_belt_cal_target = Compute_PID(&under_belt_pid, under_belt_target_rpm, under_belt_current_rpm, DT_SEC);
-//      float under_belt_cal_target =0;
-//      float upper_belt_cal_target =0;
-      upper_belt_target_pwm = clampf(0.1433 * (float)upper_belt_target_rpm + 1030 + upper_belt_cal_target, 1000, 2000);
-      under_belt_target_pwm = clampf(0.1400 * (float)under_belt_target_rpm + 1043 + under_belt_cal_target, 1000, 2000);
-
-      if(upper_belt_target_rpm <= 400){
-    	  upper_belt_target_pwm = 1000;
-      }
-      if(under_belt_target_rpm <= 400){
-    	  under_belt_target_pwm = 1000;
-      }
-
-      dribble_target_pwm = map(dribble_target_rpm, 0, 5000, 1000, 2000);
-      // --- 4. モーターへPWM出力 ---
-      //TIM3 CH1  PA6
-      //TIM3 CH2  PA4
-      //TIM15 CH1 PA2
-      //TIN17 CH1 PA7 ←LEDにした
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)upper_belt_target_pwm);
-      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (uint32_t)under_belt_target_pwm);
-      __HAL_TIM_SET_COMPARE(&htim15, TIM_CHANNEL_1, (uint32_t)dribble_target_pwm);
-      //ドリブルは赤ブラシへ変更したため消した。
-
-      // --- 5. リミットスイッチの状態を更新＆送信 ---
-      LimitSwitch_UpdateAndSend(&hcan);
-
-      // --- 7. PID周期を安定させるための待機 (DT_SEC=10ms) ---
-      // 処理にかかった時間を差し引いて正確に10msループを作る
-      while ((HAL_GetTick() - loop_start_time) < 10) {
-          // 待機
-      }
-
-      (void)debug_rx_count;
-
+		/* ---- Deterministic 10 ms CAN slot ----
+		 * LimitSW/heartbeat are due on different slots and consume at most one
+		 * mailbox. Quaternion plus one vector consume the remaining two. */
+		if (can_connected) {
+			if (CAN_HeartbeatTask(now) == CAN_SEND_ERROR) {
+				can_tx_error_count++;
+			}
+			if (!LimitSwitch_Task(now)) {
+				can_tx_error_count++;
+			}
+			if (bno055_connected && !BNO055_ReadAndSend()) {
+				bno055_read_error_count++;
+			}
+		}
+#if LED_FEATURE_ENABLED
+			/* Separate the final BNO055 I2C edge from the WS2812 DMA start. */
+			if (bno055_connected) {
+				HAL_Delay(2U);
+			}
+			/* HAL_GetTick() must be sampled here, not at the beginning of the
+			 * loop. A CAN IRQ may make last_can_rx_time newer than the old loop
+			 * timestamp; signed subtraction treats that race as "not timed out"
+			 * instead of wrapping to a huge uint32_t value. */
+			const uint32_t timeout_now = HAL_GetTick();
+			debug_can_rx_elapsed_ms =
+					(int32_t)(timeout_now - last_can_rx_time);
+			if (debug_can_rx_elapsed_ms > (int32_t)CAN_TIMEOUT_MS) {
+				is_timeout = 1U;
+				LED_Effects_Render(LED_MODE_ERROR, (uint8_t)received_LED_status);
+			} else {
+				// --- 6. LEDの点灯更新 ---
+				LED_Effects_Render((uint8_t)received_LED_cmd, (uint8_t)received_LED_status);
+			}
+#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -513,9 +599,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
-  PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -524,41 +609,42 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
-    // CANの受信バッファ(FIFO0)からデータを読み出す
-    if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK) {
+	// CANの受信バッファ(FIFO0)からデータを読み出す
+	if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK) {
 
-        // --- デバッグ用：受信した全メッセージを無条件で記録 ---
+		// --- デバッグ用：受信した全メッセージを無条件で記録 ---
 //        debug_last_id = RxHeader.StdId;
 //        debug_last_dlc = RxHeader.DLC;
 //        for(uint8_t i = 0; i < RxHeader.DLC; i++) {
 //            debug_last_data[i] = RxData[i];
 //        }
-        debug_rx_count++;
-        // ------------------------------------------------------------
-        // --- 指定フォーマットの解析処理（ID: 0x20n） ---
-         if(RxHeader.StdId == 0x101) {
-        	//空送信による通信状態管理
-        	last_can_rx_time = HAL_GetTick();
-        	is_timeout = 0;
-        }
-         else if(RxHeader.StdId == 0x201) {
-         	//LEDの光り方指定
-         	received_LED_cmd = (int)RxData[0];
-         	emergency_stop_flag = (bool)(RxData[0] && 0b00000001);
-         }
-         else if(RxHeader.StdId == 0x230 && RxHeader.DLC == 2) {
-        	//MADモーターのRPM指定(ベルト下側)
-            upper_belt_target_rpm = (int16_t)(RxData[0] | (RxData[1] << 8));
-        }
-         else if(RxHeader.StdId == 0x231 && RxHeader.DLC == 2) {
-        	//MADモーターのRPM指定(ベルト上側)
-        	under_belt_target_rpm = (int16_t)(RxData[0] | (RxData[1] << 8));
-        }
-         else if(RxHeader.StdId == 0x232 && RxHeader.DLC == 2) {
-        	//MADモーターのRPM指定(ドリブル)
-        	dribble_target_rpm = (int16_t)(RxData[0] | (RxData[1] << 8));
-        }
-    }
+		debug_rx_count++;
+		/* Any successfully received CAN frame proves that the bus is alive.
+		 * Do not flash the LEDs merely because heartbeat ID 0x101 was delayed. */
+		last_can_rx_time = HAL_GetTick();
+		is_timeout = 0U;
+		// ------------------------------------------------------------
+		// --- 指定フォーマットの解析処理（ID: 0x20n） ---
+		if (RxHeader.StdId == 0x101) {
+			//空送信による通信状態管理
+			last_can_rx_time = HAL_GetTick();
+			is_timeout = 0;
+		} else if ((RxHeader.StdId == 0x201U) && (RxHeader.DLC == 2U)) {
+			//LEDの光り方指定
+			received_LED_cmd = (int) RxData[0];
+			received_LED_status = RxData[1];
+			//emergency_stop_flag = (bool)(RxData[0] && 0b00000001);
+		}
+	}
+}
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan) {
+	uint32_t err = HAL_CAN_GetError(hcan);
+	if ((err & HAL_CAN_ERROR_BOF) != 0U) {
+		can_connected = false;
+		last_can_retry_time = HAL_GetTick();
+	} else if (err != HAL_CAN_ERROR_NONE) {
+		can_tx_error_count++;
+	}
 }
 /* USER CODE END 4 */
 
@@ -569,11 +655,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
