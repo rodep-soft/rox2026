@@ -91,10 +91,10 @@ def launch_setup(context, *args, **kwargs):
                 {
                     "video_device_name": "default",
                     "channel": int(mipi_channel),
-                    "channel2": int(mipi_channel2),
-                    "device_mode": "dual",
+                    #"channel2": int(mipi_channel2),
+                    "device_mode": "single",
                     "dual_combine": 1,
-                    "framerate": 10.0,
+                    "framerate": 5.0,
                     "image_width": 1920,
                     "image_height": 1080,
                     "out_format_name": "nv12",
