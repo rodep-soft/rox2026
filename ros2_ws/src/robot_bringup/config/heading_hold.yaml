@@ -9,6 +9,11 @@
     heading_deadband_rad: 0.01
     rotation_input_deadband_rad_s: 0.01
     max_correction_rad_s: 3.0
+    # 並進速度に応じてP/D補正を滑らかに強める
+    speed_boost_start_m_s: 1.5
+    speed_boost_full_m_s: 3.0
+    speed_boost_multiplier: 1.5
+
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
 

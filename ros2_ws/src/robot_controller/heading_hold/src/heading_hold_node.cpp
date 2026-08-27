@@ -84,6 +84,9 @@ private:
       declare_parameter("rotation_settle_velocity_rad_s", 0.08);
     rotation_settle_duration_ms_ = declare_parameter("rotation_settle_duration_ms", 100);
     max_correction_rad_s_ = declare_parameter("max_correction_rad_s", 1.5);
+    speed_boost_start_m_s_ = declare_parameter("speed_boost_start_m_s", 1.5);
+    speed_boost_full_m_s_ = declare_parameter("speed_boost_full_m_s", 3.0);
+    speed_boost_multiplier_ = declare_parameter("speed_boost_multiplier", 1.5);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
@@ -103,6 +106,15 @@ private:
     validate_non_negative("rotation_input_deadband_rad_s", rotation_input_deadband_rad_s_);
     validate_non_negative("rotation_settle_velocity_rad_s", rotation_settle_velocity_rad_s_);
     validate_positive("max_correction_rad_s", max_correction_rad_s_);
+    validate_non_negative("speed_boost_start_m_s", speed_boost_start_m_s_);
+    validate_positive("speed_boost_full_m_s", speed_boost_full_m_s_);
+    validate_positive("speed_boost_multiplier", speed_boost_multiplier_);
+    if (speed_boost_full_m_s_ <= speed_boost_start_m_s_ || speed_boost_multiplier_ < 1.0) {
+      throw std::invalid_argument(
+              "speed_boost_full_m_s must exceed speed_boost_start_m_s and "
+              "speed_boost_multiplier must be at least 1.0");
+    }
+
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
       command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
     {
@@ -138,6 +150,9 @@ private:
     double next_heading_deadband = heading_deadband_rad_;
     double next_rotation_deadband = rotation_input_deadband_rad_s_;
     double next_max_correction = max_correction_rad_s_;
+    double next_speed_boost_start = speed_boost_start_m_s_;
+    double next_speed_boost_full = speed_boost_full_m_s_;
+    double next_speed_boost_multiplier = speed_boost_multiplier_;
 
     double next_settle_velocity = rotation_settle_velocity_rad_s_;
     int next_settle_duration_ms = rotation_settle_duration_ms_;
@@ -157,6 +172,12 @@ private:
         next_rotation_deadband = parameter.as_double();
       } else if (name == "max_correction_rad_s") {
         next_max_correction = parameter.as_double();
+      } else if (name == "speed_boost_start_m_s") {
+        next_speed_boost_start = parameter.as_double();
+      } else if (name == "speed_boost_full_m_s") {
+        next_speed_boost_full = parameter.as_double();
+      } else if (name == "speed_boost_multiplier") {
+        next_speed_boost_multiplier = parameter.as_double();
       } else if (name == "rotation_settle_velocity_rad_s") {
         next_settle_velocity = parameter.as_double();
       } else if (name == "rotation_settle_duration_ms") {
@@ -169,11 +190,14 @@ private:
     if (!std::isfinite(next_kp) || !std::isfinite(next_ki) || !std::isfinite(next_kd) ||
       !std::isfinite(next_integral_limit) || !std::isfinite(next_heading_deadband) ||
       !std::isfinite(next_rotation_deadband) || !std::isfinite(next_settle_velocity) ||
-      !std::isfinite(next_max_correction) ||
+      !std::isfinite(next_max_correction) || !std::isfinite(next_speed_boost_start) ||
+      !std::isfinite(next_speed_boost_full) || !std::isfinite(next_speed_boost_multiplier) ||
       next_kp < 0.0 || next_ki < 0.0 || next_kd < 0.0 || next_integral_limit < 0.0 ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
       next_settle_velocity < 0.0 || next_settle_duration_ms <= 0 ||
-      next_max_correction <= 0.0)
+      next_max_correction <= 0.0 || next_speed_boost_start < 0.0 ||
+      next_speed_boost_full <= next_speed_boost_start ||
+      next_speed_boost_multiplier < 1.0)
     {
       result.reason = "PID gains and limits must be finite and non-negative";
       return result;
@@ -188,6 +212,9 @@ private:
     rotation_settle_velocity_rad_s_ = next_settle_velocity;
     rotation_settle_duration_ms_ = next_settle_duration_ms;
     max_correction_rad_s_ = next_max_correction;
+    speed_boost_start_m_s_ = next_speed_boost_start;
+    speed_boost_full_m_s_ = next_speed_boost_full;
+    speed_boost_multiplier_ = next_speed_boost_multiplier;
     result.successful = true;
     result.reason = "success";
     RCLCPP_INFO(get_logger(), "Heading-hold parameters updated");
@@ -235,7 +262,8 @@ private:
     double pitch_rad = 0.0;
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
-    current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
+    // Keep angular velocity in the same heading coordinate system as yaw.
+    current_angular_velocity_z_rad_s_ = -message.angular_velocity.z;
 
     // The IMU callback can update last_imu_time_ before the control timer observes
     // the timeout. Rebase here as well so a restarted IMU cannot apply its new
@@ -385,9 +413,20 @@ private:
       integral_error_rad_s_ + heading_error_rad * safe_dt_s,
       -integral_limit_rad_s_, integral_limit_rad_s_);
 
+    const double linear_speed_m_s = std::hypot(
+      latest_command_.linear.x, latest_command_.linear.y);
+    const double speed_boost_ratio = std::clamp(
+      (linear_speed_m_s - speed_boost_start_m_s_) /
+      (speed_boost_full_m_s_ - speed_boost_start_m_s_),
+      0.0, 1.0);
+    const double speed_gain =
+      1.0 + speed_boost_ratio * (speed_boost_multiplier_ - 1.0);
+
+    // Boost P and D continuously while keeping their damping ratio unchanged.
     const double correction_rad_s = std::clamp(
-      kp_ * heading_error_rad + ki_ * integral_error_rad_s_ -
-      kd_ * current_angular_velocity_z_rad_s_,
+      speed_gain *
+      (kp_ * heading_error_rad - kd_ * current_angular_velocity_z_rad_s_) +
+      ki_ * integral_error_rad_s_,
       -max_correction_rad_s_, max_correction_rad_s_);
 
     auto corrected_command = latest_command_;
@@ -439,6 +478,9 @@ private:
   double max_correction_rad_s_{1.5};
   int control_period_ms_{20};
   int command_timeout_ms_{500};
+  double speed_boost_start_m_s_{1.5};
+  double speed_boost_full_m_s_{3.0};
+  double speed_boost_multiplier_{1.5};
   int imu_timeout_ms_{250};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
