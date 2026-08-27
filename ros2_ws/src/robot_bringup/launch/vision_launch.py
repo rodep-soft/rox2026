@@ -4,7 +4,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
     IncludeLaunchDescription,
     OpaqueFunction,
 )
@@ -113,24 +112,24 @@ def launch_setup(context, *args, **kwargs):
     if enable_apriltag:
         # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
         # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
-        mono_script = os.path.join(bringup_share, "scripts", "nv12_to_mono8_node.py")
-        mono_node = ExecuteProcess(
-            cmd=[
-                "python3",
-                mono_script,
-                "--ros-args",
-                "-p",
-                "input_topic:=/image_left_raw",
-                "-p",
-                "output_topic:=/camera/left_mono8",
-            ],
+        from launch_ros.actions import Node
+
+        mono_node = Node(
+            package="robot_bringup",
+            executable="nv12_to_mono8_node.py",
+            name="nv12_to_mono8_node",
             output="screen",
+            parameters=[{
+                "input_topic": "/image_left_raw",
+                "output_topic": "/camera/left_mono8",
+                "camera_info_topic": "/camera_left_info",
+                "output_camera_info_topic": "/camera/camera_info",
+                "target_fps": 5.0,
+            }],
         )
         launch_nodes.append(mono_node)
 
         # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
-        from launch_ros.actions import Node
-
         camera_tf_node = Node(
             package="tf2_ros",
             executable="static_transform_publisher",
