@@ -71,12 +71,6 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
   EXPECT_FALSE(
     belt_node->set_parameter(
       rclcpp::Parameter("underbelt_level_3_rpm", -1)).successful);
-  EXPECT_FALSE(
-    belt_node->set_parameter(
-      rclcpp::Parameter("qos_depth", 2)).successful);
-  EXPECT_TRUE(
-    belt_node->set_parameter(
-      rclcpp::Parameter("qos_depth", 1)).successful);
 
   // Level 3を受信した時点で、上下個別のRPMを即時送信する。
   std_msgs::msg::UInt8 mode_msg;
@@ -158,6 +152,15 @@ TEST_F(RobotControllerTest, BeltControllerLevelAndEmergencyStopTest)
 TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
 {
   auto spring_node = std::make_shared<SpringEduliteController>();
+  EXPECT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_delay_sec", 0.1)).successful);
+  EXPECT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_return_velocity_rad_s", 8.0)).successful);
+  EXPECT_FALSE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("slow_fire_delay_sec", -0.1)).successful);
   auto test_node = std::make_shared<rclcpp::Node>("test_spring_client");
 
   float last_position_rad = 0.0f;
@@ -177,7 +180,7 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
   auto fire_pub = test_node->create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", 1);
   auto emergency_stop_pub = test_node->create_publisher<std_msgs::msg::Bool>(
-    "/emergency_stop", rclcpp::QoS(1).reliable().transient_local());
+    "/system/emergency_stop", rclcpp::QoS(1).reliable().transient_local());
 
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(spring_node);
@@ -188,6 +191,9 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
   state_msg.state = actuator_msgs::msg::ActuatorState::STATE_READY;
   state_msg.position_reference_set = true;
   state_pub->publish(state_msg);
+  std_msgs::msg::Bool initial_emergency_stop_msg;
+  initial_emergency_stop_msg.data = false;
+  emergency_stop_pub->publish(initial_emergency_stop_msg);
 
   auto start = std::chrono::steady_clock::now();
   while (received_command_count == 0 &&
@@ -210,6 +216,24 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
   }
   EXPECT_NEAR(last_position_rad, -6.283185307f, 0.01f);
 
+  // 発射完了後に同じYAML値を再ロードしても、累積目標位置を維持する
+  state_msg.position = last_position_rad;
+  state_msg.velocity = 0.0f;
+  for (int i = 0; i < 5; ++i) {
+    state_pub->publish(state_msg);
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+  }
+  ASSERT_TRUE(
+    spring_node->set_parameter(
+      rclcpp::Parameter("standby_offset_rad", 0.0)).successful);
+  start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(50)) {
+    executor.spin_some();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  EXPECT_NEAR(last_position_rad, -6.283185307f, 0.01f);
+
   fire_msg.data = false;
   fire_pub->publish(fire_msg);
   std_msgs::msg::Bool emergency_stop_msg;
@@ -217,7 +241,6 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
   emergency_stop_pub->publish(emergency_stop_msg);
   executor.spin_some();
 
-  const float position_before_rejected_fire = last_position_rad;
   fire_msg.data = true;
   fire_pub->publish(fire_msg);
   start = std::chrono::steady_clock::now();
@@ -225,7 +248,7 @@ TEST_F(RobotControllerTest, SpringControllerReadyFireAndEmergencyStopTest)
     executor.spin_some();
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
-  EXPECT_NEAR(last_position_rad, position_before_rejected_fire, 0.001f);
+  EXPECT_NEAR(last_position_rad, state_msg.position, 0.001f);
 }
 
 TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
@@ -258,10 +281,6 @@ TEST_F(RobotControllerTest, DribbleControllerEnableAndEmergencyStopTest)
   EXPECT_FALSE(
     dribble_node->set_parameter(rclcpp::Parameter("dribble_on_rpm", -1))
     .successful);
-  EXPECT_FALSE(
-    dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 2)).successful);
-  EXPECT_TRUE(
-    dribble_node->set_parameter(rclcpp::Parameter("qos_depth", 1)).successful);
 
   // 1. runtime parameterで変更した900 RPMを出力する。
   std_msgs::msg::Bool enable_msg;
@@ -326,7 +345,7 @@ TEST_F(RobotControllerTest, DribbleControllerPositionSequenceTest)
   const auto position_update = dribble_node->set_parameters_atomically(
   {
     rclcpp::Parameter("open_position_rad", -0.5),
-    rclcpp::Parameter("opening_max_velocity_rad_s", 10.0)});
+    rclcpp::Parameter("opening_max_rad_s", 10.0)});
   ASSERT_TRUE(position_update.successful);
 
   // 状態1: runtime parameterで変更したOPEN位置 (-0.5 rad) へ遷移

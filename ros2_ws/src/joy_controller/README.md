@@ -55,7 +55,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | 操作 (ボタン・コンボ) | 機能・動作 |
 |---|---|
 | **タッチパッド (Home / Button 13)** | **非常停止 (TOGGLE)** (ACTIVE ↔ STOP) |
-| **Share / Create ボタン (Button 8)** | **Heading Hold (IMU姿勢補正) ON / OFF トグル** (異常時等の手動直結バイパス) |
+| **Share / Create ボタン (Button 8)** | **Heading Hold (IMU姿勢補正) ON / OFF トグル**（OFF時はJoy速度指令をmecanumへそのまま通す） |
 | **PS ボタン (Button 12)** | **操縦 前後反転** (FORWARD ↔ REVERSED) |
 | **Options ボタン (Button 9)** | **Game 2 自動戦術モード ON / OFF** (手動スティック入力で自動解除) |
 | **R1** | **ドリブラー正回転 ON / OFF (トグル)** |
@@ -64,7 +64,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
 | **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms 減速後に発射 ➔ 発射完了後に自動でDRIBBLE姿勢へ復帰) |
-| **R2 + DPAD 右** | **【手動アーム操作】 HOME ↔ DRIBBLE** (`home_position_rad`で設定するホーム姿勢と切替) |
+| **R2 + □** | **【手動アーム操作】 HOME ↔ DRIBBLE** (`home_position_rad`で設定するホーム姿勢と切替) |
 | **R2 + DPAD 左** | **【手動アーム操作】 OPEN ↔ DRIBBLE** |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
@@ -77,13 +77,13 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 1. Homeの立ち上がりで非常停止を切り替える。
 2. 非常停止中でなければ、R2の状態とDPAD上下でbelt levelを変更する。
 3. R1でdribbler、PSで走行反転、L2+○でshot cycle、OptionsでGame2を操作する。
-4. L1+R1+△でSpring発射、DPAD左右でarm位置を切り替える。
+4. L1+R1+△でSpring発射、R2+□またはR2+DPAD左でarm位置を切り替える。
 5. Game2が有効でなければ、stick入力を`cmd_vel`へ変換してpublishする。
 6. 現在の入力を前回値として保存する。
 
 button操作は基本的に立ち上がり判定なので、押し続けてもmodeやlevelは連続変化しない。
-SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続けても再発射しない。
-再発射する場合は、どちらか一方を離してから再度同時押しする。
+SpringはL2とR2を押している間、毎周期trueを送る。受信側はREADYになった周期で1回だけ受理し、
+押し続けても再発射しない。再発射する場合は、両トリガーを離してから再度同時押しする。
 
 ## stick処理
 
@@ -118,7 +118,6 @@ SpringはL2とR2が同時に押された瞬間だけtrueを送り、押し続け
 
 | parameter | 型 | 説明 |
 |---|---|---|
-| `command_qos_depth` | int | 通常command topicのqueue depth。0以下なら1 |
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `dribble_enable_button` | int | dribble ON/OFFのbutton index |
@@ -147,7 +146,7 @@ ros2 param load /joy_controller \
   src/robot_bringup/config/joy_controller.yaml
 ```
 
-`command_qos_depth`と`state_publish_period_ms`はROS interfaceまたはtimerの再生成が
+`state_publish_period_ms`はtimerの再生成が
 必要になるため、実行中には変更できない。YAML内の値が現在値と同じ場合は、そのまま
 読み込みを許可する。
 
@@ -182,7 +181,7 @@ button・axis indexもすべてparameterである。対応表を変更する場�
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
-| publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
+| publish | `/dribble/command_position` | `std_msgs/msg/UInt8` |
 | publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
 | publish | `/game2/start` | `std_msgs/msg/Bool` |

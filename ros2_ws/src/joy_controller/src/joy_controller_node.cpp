@@ -9,7 +9,6 @@
 JoyControllerNode::JoyControllerNode()
 : Node("joy_controller_node")
 {
-  command_qos_depth_ = declare_parameter<int>("command_qos_depth", 1);
   joy_timeout_ms_ = declare_parameter<int>("joy_timeout_ms", 200);
   state_publish_period_ms_ =
     declare_parameter<int>("state_publish_period_ms", 20);
@@ -37,6 +36,7 @@ JoyControllerNode::JoyControllerNode()
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
+  square_button_ = declare_parameter<int>("square_button", 0);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
@@ -45,6 +45,8 @@ JoyControllerNode::JoyControllerNode()
   slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
+  spring_arm_open_delay_ms_ =
+    declare_parameter<int>("spring_arm_open_delay_ms", 0);
   spring_arm_restore_delay_ms_ =
     declare_parameter<int>("spring_arm_restore_delay_ms", 600);
 
@@ -56,10 +58,11 @@ JoyControllerNode::JoyControllerNode()
   dpad_horizontal_axis_ = declare_parameter<int>("dpad_horizontal_axis", 6);
   dpad_vertical_axis_ = declare_parameter<int>("dpad_vertical_axis", 7);
 
-  if (command_qos_depth_ <= 0 || joy_timeout_ms_ <= 0 ||
-    state_publish_period_ms_ <= 0)
-  {
-    throw std::runtime_error("QoS depth and timer periods must be positive");
+  if (joy_timeout_ms_ <= 0 || state_publish_period_ms_ <= 0) {
+    throw std::runtime_error("timer periods must be positive");
+  }
+  if (spring_arm_open_delay_ms_ < 0 || spring_arm_restore_delay_ms_ < 0) {
+    throw std::runtime_error("spring arm delays must be non-negative");
   }
   if (!std::isfinite(max_vel_x_m_s_) || max_vel_x_m_s_ < 0.0 ||
     !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
@@ -84,13 +87,20 @@ JoyControllerNode::JoyControllerNode()
     "/joy", rclcpp::SensorDataQoS(),
     std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
-  const auto command_qos = rclcpp::QoS(command_qos_depth_);
-  const auto emergency_stop_qos = rclcpp::QoS(1).reliable().transient_local();
+  // 周期送信する指令は最新値だけを保持する。
+  const auto command_qos =
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
+  // ボタン操作ごとに一度だけ送る要求は、短時間に連続しても欠落しないよう
+  // 十分な履歴を持たせて確実配送する。古い操作の再実行を避けるためvolatileとする。
+  const auto request_qos =
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
+  const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
+  const auto emergency_stop_qos = state_qos;
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/system/emergency_stop", emergency_stop_qos);
 
   spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
-    "/spring/actuator_ready", command_qos,
+    "/spring/actuator_ready", state_qos,
     std::bind(
       &JoyControllerNode::spring_actuator_ready_callback, this,
       std::placeholders::_1));
@@ -105,19 +115,19 @@ JoyControllerNode::JoyControllerNode()
     "/spring/slow_fire_request", command_qos);
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-    "/belt/command_mode", command_qos);
+    "/belt/command_mode", request_qos);
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/dribble/command_enabled", command_qos);
 
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/dribble/shot_cycle_request", command_qos);
+    "/dribble/shot_cycle_request", request_qos);
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
-    "/dribble/command_position", command_qos);
+    "/dribble/command_position", request_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
-    "/game2/command_start", command_qos);
+    "/game2/command_start", request_qos);
 
   heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
@@ -160,11 +170,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     const auto & name = param.get_name();
 
     // 再起動が必要なパラメータの変更を拒否
-    if (name == "command_qos_depth" || name == "state_publish_period_ms") {
-      if (param.as_int() != (name == "command_qos_depth" ?
-        command_qos_depth_ :
-        state_publish_period_ms_))
-      {
+    if (name == "state_publish_period_ms") {
+      if (param.as_int() != state_publish_period_ms_) {
         result.successful = false;
         result.reason = name + " requires a node restart";
         return result;
@@ -191,6 +198,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       }
       if (name == "joy_timeout_ms") {
         joy_timeout_ms_ = val;
+      } else if (name == "spring_arm_open_delay_ms") {
+        spring_arm_open_delay_ms_ = val;
       } else if (name == "spring_arm_restore_delay_ms") {
         spring_arm_restore_delay_ms_ = val;
       } else if (name == "ps_button") {
@@ -199,6 +208,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         home_button_ = val;
       } else if (name == "circle_button") {
         circle_button_ = val;
+      } else if (name == "square_button") {
+        square_button_ = val;
       } else if (name == "dribble_enable_button") {
         dribble_enable_button_ = val;
       } else if (name == "game2_start_button") {
@@ -308,11 +319,8 @@ void JoyControllerNode::loop_callback()
 
   // 2. DPAD 入力処理
   if (is_r2_active) {
-    // R2 + DPAD左右で手動アーム位置をDRIBBLEとのトグルで変更する。
-    if (is_axis_just_triggered(
-        joy_msg_, dpad_horizontal_axis_,
-        false))                          // DPAD 右 (-1.0)
-    {
+    // R2 + □でHOME、R2 + DPAD左でOPENをDRIBBLEとのトグルで変更する。
+    if (is_button_just_pressed(joy_msg_, square_button_)) {
       toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
     } else if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,
@@ -408,85 +416,57 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. L2とR2を同時に押した瞬間にスプリング発射シーケンスを開始
-  const bool was_l2_active =
-    last_joy_msg_.has_value() &&
-    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
-    -axis_on_threshold_;
-  const bool was_r2_active =
-    last_joy_msg_.has_value() &&
-    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
-    -axis_on_threshold_;
-  const bool spring_fire_input_triggered =
-    is_l2_active && is_r2_active && !(was_l2_active && was_r2_active);
-  const bool is_ready_rising = spring_actuator_ready_ && !was_spring_ready_;
+  // 8. L2とR2の同時押しでスプリング発射を要求
+  const auto now_tp = std::chrono::steady_clock::now();
+  const bool spring_fire_input = is_l2_active && is_r2_active;
+  const bool spring_fire_requested = spring_fire_input && spring_actuator_ready_;
 
-  bool should_publish_spring_fire = false;
-
-  if (spring_fire_input_triggered && spring_actuator_ready_ &&
-    !spring_fire_pending_ && !spring_arm_restore_pending_)
+  // 初回だけアームOPENの遅延シーケンスを開始する。
+  if (spring_fire_requested && spring_actuator_ready_ &&
+    !spring_fire_command_started_ && !spring_arm_restore_pending_)
   {
-    // 1) アームを OPEN 姿勢へ開く
-    publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
-    manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
-
-    // 2) アームがOPEN方向へ動き始める時間を確保
+    spring_fire_command_started_ = true;
+    spring_arm_open_pending_ = true;
+    spring_arm_restore_pending_ = true;
+    spring_sequence_start_time_ = now_tp;
+    spring_fire_released_time_ = now_tp;
     RCLCPP_INFO(
       get_logger(),
-      "Spring fire sequence started: Opening arm (OPEN) and "
-      "decelerating dribble roller to 300 RPM...");
-
-    // 3) OPEN移動待機モードにセット
-    spring_fire_pending_ = true;
-    spring_fire_pending_start_time_ = std::chrono::steady_clock::now();
+      "Spring fire accepted: arm OPEN delay=%d ms",
+      spring_arm_open_delay_ms_);
+  } else if (!spring_fire_requested) {
+    spring_fire_command_started_ = false;
   }
 
-  // ドリブルの滑らか減速時間 (150ms) が経過したら実際にキッカーばねを解放
-  // (FIRE!)
-  if (spring_fire_pending_) {
-    const auto now_tp = std::chrono::steady_clock::now();
+  if (spring_arm_open_pending_) {
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
-      now_tp - spring_fire_pending_start_time_)
-      .count();
-    if (elapsed_ms >= spring_fire_decel_delay_ms_) {
-      should_publish_spring_fire = true;
-      spring_fire_pending_ = false;
-      spring_arm_restore_pending_ = true;
-      spring_fire_released_time_ = now_tp;
-      RCLCPP_INFO(
-        get_logger(),
-        "Arm opening delay complete -> Spring FIRE released!");
+      now_tp - spring_sequence_start_time_).count();
+    if (elapsed_ms >= spring_arm_open_delay_ms_) {
+      spring_arm_open_pending_ = false;
+      publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
+      manual_arm_position_ = robot_msgs::msg::ArmPosition::OPEN;
     }
   }
 
+  // 押している間は毎周期送信し、spring_controller側で1要求にラッチする。
   std_msgs::msg::Bool spring_fire_msg;
-  spring_fire_msg.data = should_publish_spring_fire;
+  spring_fire_msg.data = spring_fire_requested;
   spring_fire_pub_->publish(spring_fire_msg);
 
-  // L1: spring publishes its operation state; dribble follows that state
-  // directly.
-  const bool slow_fire_input_triggered =
-    (slow_fire_button_ >= 0) &&
-    is_button_just_pressed(joy_msg_, slow_fire_button_);
+  // L1を押している間も毎周期スロー発射要求を送信する。
+  const bool slow_fire_requested =
+    slow_fire_button_ >= 0 && is_button_down(joy_msg_, slow_fire_button_);
   std_msgs::msg::Bool slow_fire_msg;
-  slow_fire_msg.data = slow_fire_input_triggered && spring_actuator_ready_ &&
-    !spring_fire_pending_ && !spring_arm_restore_pending_;
+  slow_fire_msg.data = slow_fire_requested;
   slow_fire_pub_->publish(slow_fire_msg);
-  if (slow_fire_msg.data) {
-    RCLCPP_INFO(
-      get_logger(),
-      "Spring slow fire requested; dribble follows spring state");
-  }
 
-  // ばねの再充填・準備完了(is_ready_rising)、または発射後一定時間経過でアームをDRIBBLEへ自動復帰
-  if (spring_arm_restore_pending_) {
-    const auto now_tp = std::chrono::steady_clock::now();
+  // 発射開始から設定時間が経過したらアームをDRIBBLEへ戻す。
+  if (spring_arm_restore_pending_ && !spring_arm_open_pending_) {
     const auto elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(
-      now_tp - spring_fire_released_time_)
-      .count();
-    if (is_ready_rising || elapsed_ms >= spring_arm_restore_delay_ms_) {
+      now_tp - spring_fire_released_time_).count();
+    if (elapsed_ms >= spring_arm_restore_delay_ms_) {
       spring_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
       manual_arm_position_ = robot_msgs::msg::ArmPosition::DRIBBLE;
@@ -497,8 +477,6 @@ void JoyControllerNode::loop_callback()
         dribble_enabled_ ? "ON" : "OFF");
     }
   }
-
-  was_spring_ready_ = spring_actuator_ready_;
 
   // アナログスティック走行コマンド算出 (Game 2 非アクティブ時)
   if (!game2_active_) {
@@ -567,7 +545,6 @@ void JoyControllerNode::joy_timeout_timer_callback()
 void JoyControllerNode::state_publish_timer_callback()
 {
   publish_emergency_stop(is_emergency_stop_);
-  publish_belt_mode(belt_rpm_mode_);
   publish_dribble_enabled(dribble_enabled_);
   publish_drive_reversed(is_drive_reversed_);
 }

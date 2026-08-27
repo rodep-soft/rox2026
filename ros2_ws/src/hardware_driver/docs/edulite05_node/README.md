@@ -28,7 +28,7 @@ Type 21の32bit詳細故障コード、またはType 2の故障要約が0以外�
 
 PP/CSPはモーターごとの`position_reference_mode`で位置基準の設定方法を選ぶ。
 
-- `service`: 最初の有効な位置を一時原点として、ホーミング用の位置指令を許可する。この間も`position_reference_set=false`のため、上位ノードは通常動作を開始しない。`/edulite/set_position`が成功すると正式な位置基準になる。サービスの`position`には、呼び出し時点のモーター位置として扱いたい角度[rad]を指定する。
+- `service`: driverを起動するたびに最初の有効な位置を一時原点として、ホーミング用の位置指令を許可する。この間も`position_reference_set=false`のため、上位ノードは通常動作を開始しない。`/edulite/set_position`が成功すると正式な位置基準になる。サービスの`position`には、呼び出し時点のモーター位置として扱いたい角度[rad]を指定する。
 - `yaml_offset`: エンコーダの絶対角に`position_offset_rad`を加え、最初の有効な位置を受信した時点で正式な位置基準にする。
 
 状態メッセージの`position_reference_set`は、serviceまたはYAMLによる正式な位置基準が確定した場合だけtrueになる。`TEMPORARY`な位置基準はホーミング指令にだけ使用し、正式な原点としては通知しない。サービスはPP/CSPかつフィードバック受信済みの場合だけ成功し、速度制御モーター、未知の`logical_id`、NaN/Infを拒否する。

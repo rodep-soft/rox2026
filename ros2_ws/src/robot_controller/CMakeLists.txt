@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(robot_controller)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -26,13 +26,23 @@ find_package(tf2_ros REQUIRED)
 function(add_controller target directory implementation)
   set(library_target ${target}_implementation)
 
-  add_library(${library_target} STATIC ${directory}/src/${implementation})
-  target_include_directories(${library_target}
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
-  ament_target_dependencies(${library_target} ${ARGN})
+  if(BUILD_TESTING)
+    # Tests link against the implementation without pulling in main().
+    add_library(${library_target} STATIC ${directory}/src/${implementation})
+    target_include_directories(${library_target}
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
+    ament_target_dependencies(${library_target} ${ARGN})
 
-  add_executable(${target} ${directory}/src/main.cpp)
-  target_link_libraries(${target} PRIVATE ${library_target})
+    add_executable(${target} ${directory}/src/main.cpp)
+    target_link_libraries(${target} PRIVATE ${library_target})
+  else()
+    # Compile implementation and main as one translation unit. This avoids
+    # parsing the controller's ROS headers twice in normal RDK builds.
+    add_executable(${target} ${directory}/src/${implementation} ${directory}/src/main.cpp)
+    set_target_properties(${target} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 2)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include)
+    ament_target_dependencies(${target} ${ARGN})
+  endif()
 
   set(controller_nodes
       ${controller_nodes} ${target}
@@ -111,7 +121,14 @@ add_controller(
   sensor_msgs
   std_msgs
   robot_msgs)
-add_controller(led_controller_node led_controller led_controller.cpp rclcpp std_msgs robot_msgs)
+add_controller(
+  led_controller_node
+  led_controller
+  led_controller.cpp
+  actuator_msgs
+  rclcpp
+  std_msgs
+  robot_msgs)
 
 add_executable(mecanum_odometry_node mecanum_controller/src/mecanum_odometry_node.cpp)
 target_include_directories(
