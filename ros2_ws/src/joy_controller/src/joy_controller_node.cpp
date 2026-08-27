@@ -36,6 +36,7 @@ JoyControllerNode::JoyControllerNode()
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
+  square_button_ = declare_parameter<int>("square_button", 0);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
@@ -207,6 +208,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         home_button_ = val;
       } else if (name == "circle_button") {
         circle_button_ = val;
+      } else if (name == "square_button") {
+        square_button_ = val;
       } else if (name == "dribble_enable_button") {
         dribble_enable_button_ = val;
       } else if (name == "game2_start_button") {
@@ -316,11 +319,8 @@ void JoyControllerNode::loop_callback()
 
   // 2. DPAD 入力処理
   if (is_r2_active) {
-    // R2 + DPAD左右で手動アーム位置をDRIBBLEとのトグルで変更する。
-    if (is_axis_just_triggered(
-        joy_msg_, dpad_horizontal_axis_,
-        false))                          // DPAD 右 (-1.0)
-    {
+    // R2 + □でHOME、R2 + DPAD左でOPENをDRIBBLEとのトグルで変更する。
+    if (is_button_just_pressed(joy_msg_, square_button_)) {
       toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
     } else if (is_axis_just_triggered(
         joy_msg_, dpad_horizontal_axis_,

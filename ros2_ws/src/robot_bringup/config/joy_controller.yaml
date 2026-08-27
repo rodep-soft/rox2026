@@ -10,6 +10,7 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
+    square_button: 0        # R2 + □でアームをHOME（ボトム側）へ切替
     spring_arm_open_delay_ms: 150     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間
     spring_arm_restore_delay_ms: 800  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
 
@@ -20,7 +21,7 @@
     # DPAD上/下でbelt levelを上げ下げする
     dpad_vertical_axis: 7
 
-    # DPAD左右でarm位置を変更する(左側の十字キー)
+    # DPAD左でarmをOPENへ切替（HOME（ボトム側）はR2 + □）
     dpad_horizontal_axis: 6
 
     # 左スティックで前後左右並進、右スティック左右で旋回

@@ -64,7 +64,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **DPAD 左 / 右** *(R2非押下時)* | **自動シュート(Shot Cycle)時の待機回転数 変更** (`+200 RPM` / `-200 RPM`) |
 | **L2 + ○** | **自動シュート(Shot Cycle) 実行要求** |
 | **L2 + R2 同時押し** | **キッカー（ばね）発射** (アームをOPENに遷移させ、150ms 減速後に発射 ➔ 発射完了後に自動でDRIBBLE姿勢へ復帰) |
-| **R2 + DPAD 右** | **【手動アーム操作】 HOME ↔ DRIBBLE** (`home_position_rad`で設定するホーム姿勢と切替) |
+| **R2 + □** | **【手動アーム操作】 HOME ↔ DRIBBLE** (`home_position_rad`で設定するホーム姿勢と切替) |
 | **R2 + DPAD 左** | **【手動アーム操作】 OPEN ↔ DRIBBLE** |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
@@ -77,7 +77,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 1. Homeの立ち上がりで非常停止を切り替える。
 2. 非常停止中でなければ、R2の状態とDPAD上下でbelt levelを変更する。
 3. R1でdribbler、PSで走行反転、L2+○でshot cycle、OptionsでGame2を操作する。
-4. L1+R1+△でSpring発射、DPAD左右でarm位置を切り替える。
+4. L1+R1+△でSpring発射、R2+□またはR2+DPAD左でarm位置を切り替える。
 5. Game2が有効でなければ、stick入力を`cmd_vel`へ変換してpublishする。
 6. 現在の入力を前回値として保存する。
 
