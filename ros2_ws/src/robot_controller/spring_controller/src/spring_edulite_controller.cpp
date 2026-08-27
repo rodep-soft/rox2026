@@ -36,6 +36,8 @@ SpringEduliteController::SpringEduliteController()
     declare_parameter<int>("limit_switch_bit_offset", 0);
   fire_increment_rad_ =
     declare_double_parameter("fire_increment_rad", -6.283185307);
+  slow_fire_retract_travel_rad_ =
+    declare_double_parameter("slow_fire_retract_travel_rad", 0.0);
   slow_fire_stroke_rad_ =
     declare_double_parameter("slow_fire_stroke_rad", 5.0);
   slow_fire_base_vel_rad_s_ =
@@ -78,7 +80,8 @@ SpringEduliteController::SpringEduliteController()
     "cmd_vel_topic", "/mecanum/cmd_vel_heading");
 
   if (belt_clearance_ready_travel_rad_ < 0.0 ||
-    slow_fire_stroke_rad_ < 0.0 || slow_fire_delay_sec_ < 0.0 ||
+    slow_fire_retract_travel_rad_ < 0.0 || slow_fire_stroke_rad_ < 0.0 ||
+    slow_fire_delay_sec_ < 0.0 ||
     slow_fire_arm_only_duration_sec_ < 0.0 ||
     logical_id < 0 ||
     logical_id > 65535 || target_topic.empty() || state_topic.empty() ||
@@ -482,7 +485,7 @@ void SpringEduliteController::control_timer_callback()
         } else {
           slow_fire_return_pos_rad_ = target_pos_rad_;
           slow_fire_base_rad_ =
-            slow_fire_return_pos_rad_ - standby_offset_rad_;
+            slow_fire_return_pos_rad_ - slow_fire_retract_travel_rad_;
           target_pos_rad_ = slow_fire_base_rad_;
           state_ = State::SLOW_FIRE_RETRACTING;
           motion_start_time_ = now();
@@ -799,6 +802,23 @@ SpringEduliteController::parameters_callback(
         return result;
       }
       slow_fire_arm_only_duration_sec_ = value;
+    } else if (name == "slow_fire_retract_travel_rad") {
+      double value = 0.0;
+      if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        value = param.as_double();
+      } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        value = static_cast<double>(param.as_int());
+      } else {
+        result.successful = false;
+        result.reason = "slow_fire_retract_travel_rad must be a number";
+        return result;
+      }
+      if (!std::isfinite(value) || value < 0.0) {
+        result.successful = false;
+        result.reason = "slow_fire_retract_travel_rad must be finite and non-negative";
+        return result;
+      }
+      slow_fire_retract_travel_rad_ = value;
     } else if (name == "slow_fire_stroke_rad") {
       double value = 0.0;
       if (param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE) {
