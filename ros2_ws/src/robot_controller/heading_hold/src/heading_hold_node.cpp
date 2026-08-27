@@ -95,8 +95,14 @@ private:
       declare_parameter("acceleration_boost_multiplier", 1.8);
     acceleration_filter_time_constant_sec_ =
       declare_parameter("acceleration_filter_time_constant_sec", 0.08);
-    acceleration_feedforward_x_gain_ = declare_parameter("acceleration_feedforward_x_gain", 0.0);
-    acceleration_feedforward_y_gain_ = declare_parameter("acceleration_feedforward_y_gain", 0.0);
+    acceleration_feedforward_x_positive_gain_ =
+      declare_parameter("acceleration_feedforward_x_positive_gain", 0.0);
+    acceleration_feedforward_x_negative_gain_ =
+      declare_parameter("acceleration_feedforward_x_negative_gain", 0.0);
+    acceleration_feedforward_y_positive_gain_ =
+      declare_parameter("acceleration_feedforward_y_positive_gain", 0.0);
+    acceleration_feedforward_y_negative_gain_ =
+      declare_parameter("acceleration_feedforward_y_negative_gain", 0.0);
     max_acceleration_feedforward_rad_s_ =
       declare_parameter("max_acceleration_feedforward_rad_s", 0.5);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
@@ -138,14 +144,14 @@ private:
               "acceleration_boost_full_m_s2 must exceed acceleration_boost_start_m_s2 and "
               "acceleration_boost_multiplier must be at least 1.0");
     }
-    if (!std::isfinite(acceleration_feedforward_x_gain_) ||
-      !std::isfinite(acceleration_feedforward_y_gain_))
+    if (!std::isfinite(acceleration_feedforward_x_positive_gain_) ||
+      !std::isfinite(acceleration_feedforward_x_negative_gain_) ||
+      !std::isfinite(acceleration_feedforward_y_positive_gain_) ||
+      !std::isfinite(acceleration_feedforward_y_negative_gain_))
     {
       throw std::invalid_argument("acceleration feedforward gains must be finite");
     }
     validate_positive("max_acceleration_feedforward_rad_s", max_acceleration_feedforward_rad_s_);
-
-
 
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
       command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
@@ -189,8 +195,14 @@ private:
     double next_acceleration_boost_full = acceleration_boost_full_m_s2_;
     double next_acceleration_boost_multiplier = acceleration_boost_multiplier_;
     double next_acceleration_filter_time_constant = acceleration_filter_time_constant_sec_;
-    double next_acceleration_feedforward_x_gain = acceleration_feedforward_x_gain_;
-    double next_acceleration_feedforward_y_gain = acceleration_feedforward_y_gain_;
+    double next_acceleration_feedforward_x_positive_gain =
+      acceleration_feedforward_x_positive_gain_;
+    double next_acceleration_feedforward_x_negative_gain =
+      acceleration_feedforward_x_negative_gain_;
+    double next_acceleration_feedforward_y_positive_gain =
+      acceleration_feedforward_y_positive_gain_;
+    double next_acceleration_feedforward_y_negative_gain =
+      acceleration_feedforward_y_negative_gain_;
     double next_max_acceleration_feedforward = max_acceleration_feedforward_rad_s_;
 
     double next_settle_velocity = rotation_settle_velocity_rad_s_;
@@ -225,10 +237,14 @@ private:
         next_acceleration_boost_multiplier = parameter.as_double();
       } else if (name == "acceleration_filter_time_constant_sec") {
         next_acceleration_filter_time_constant = parameter.as_double();
-      } else if (name == "acceleration_feedforward_x_gain") {
-        next_acceleration_feedforward_x_gain = parameter.as_double();
-      } else if (name == "acceleration_feedforward_y_gain") {
-        next_acceleration_feedforward_y_gain = parameter.as_double();
+      } else if (name == "acceleration_feedforward_x_positive_gain") {
+        next_acceleration_feedforward_x_positive_gain = parameter.as_double();
+      } else if (name == "acceleration_feedforward_x_negative_gain") {
+        next_acceleration_feedforward_x_negative_gain = parameter.as_double();
+      } else if (name == "acceleration_feedforward_y_positive_gain") {
+        next_acceleration_feedforward_y_positive_gain = parameter.as_double();
+      } else if (name == "acceleration_feedforward_y_negative_gain") {
+        next_acceleration_feedforward_y_negative_gain = parameter.as_double();
       } else if (name == "max_acceleration_feedforward_rad_s") {
         next_max_acceleration_feedforward = parameter.as_double();
       } else if (name == "rotation_settle_velocity_rad_s") {
@@ -251,8 +267,10 @@ private:
       !std::isfinite(next_acceleration_boost_multiplier) ||
       !std::isfinite(next_acceleration_filter_time_constant) ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
-      !std::isfinite(next_acceleration_feedforward_x_gain) ||
-      !std::isfinite(next_acceleration_feedforward_y_gain) ||
+      !std::isfinite(next_acceleration_feedforward_x_positive_gain) ||
+      !std::isfinite(next_acceleration_feedforward_x_negative_gain) ||
+      !std::isfinite(next_acceleration_feedforward_y_positive_gain) ||
+      !std::isfinite(next_acceleration_feedforward_y_negative_gain) ||
       !std::isfinite(next_max_acceleration_feedforward) ||
       next_settle_velocity < 0.0 || next_settle_duration_ms <= 0 ||
       next_max_correction <= 0.0 || next_speed_boost_start < 0.0 ||
@@ -283,11 +301,17 @@ private:
     acceleration_boost_full_m_s2_ = next_acceleration_boost_full;
     acceleration_boost_multiplier_ = next_acceleration_boost_multiplier;
     acceleration_filter_time_constant_sec_ = next_acceleration_filter_time_constant;
+    acceleration_feedforward_x_positive_gain_ =
+      next_acceleration_feedforward_x_positive_gain;
+    acceleration_feedforward_x_negative_gain_ =
+      next_acceleration_feedforward_x_negative_gain;
+    acceleration_feedforward_y_positive_gain_ =
+      next_acceleration_feedforward_y_positive_gain;
+    acceleration_feedforward_y_negative_gain_ =
+      next_acceleration_feedforward_y_negative_gain;
+    max_acceleration_feedforward_rad_s_ = next_max_acceleration_feedforward;
     result.successful = true;
     result.reason = "success";
-    acceleration_feedforward_x_gain_ = next_acceleration_feedforward_x_gain;
-    acceleration_feedforward_y_gain_ = next_acceleration_feedforward_y_gain;
-    max_acceleration_feedforward_rad_s_ = next_max_acceleration_feedforward;
     RCLCPP_INFO(get_logger(), "Heading-hold parameters updated");
     return result;
   }
@@ -526,10 +550,16 @@ private:
       1.0 + acceleration_boost_ratio * (acceleration_boost_multiplier_ - 1.0);
     const double heading_gain = std::max(speed_gain, acceleration_gain);
 
-    // Boost P and D continuously while keeping their damping ratio unchanged.
+    // Select an independent feedforward gain for each acceleration direction.
+    const double acceleration_feedforward_x_gain =
+      latest_linear_acceleration_x_m_s2_ >= 0.0 ?
+      acceleration_feedforward_x_positive_gain_ : acceleration_feedforward_x_negative_gain_;
+    const double acceleration_feedforward_y_gain =
+      latest_linear_acceleration_y_m_s2_ >= 0.0 ?
+      acceleration_feedforward_y_positive_gain_ : acceleration_feedforward_y_negative_gain_;
     const double acceleration_feedforward_rad_s = std::clamp(
-      acceleration_feedforward_x_gain_ * latest_linear_acceleration_x_m_s2_ +
-      acceleration_feedforward_y_gain_ * latest_linear_acceleration_y_m_s2_,
+      acceleration_feedforward_x_gain * latest_linear_acceleration_x_m_s2_ +
+      acceleration_feedforward_y_gain * latest_linear_acceleration_y_m_s2_,
       -max_acceleration_feedforward_rad_s_, max_acceleration_feedforward_rad_s_);
 
     const double feedback_correction_rad_s =
@@ -600,8 +630,10 @@ private:
   double acceleration_filter_time_constant_sec_{0.08};
   double latest_linear_acceleration_m_s2_{0.0};
   double filtered_linear_acceleration_m_s2_{0.0};
-  double acceleration_feedforward_x_gain_{0.0};
-  double acceleration_feedforward_y_gain_{0.0};
+  double acceleration_feedforward_x_positive_gain_{0.0};
+  double acceleration_feedforward_x_negative_gain_{0.0};
+  double acceleration_feedforward_y_positive_gain_{0.0};
+  double acceleration_feedforward_y_negative_gain_{0.0};
   double max_acceleration_feedforward_rad_s_{0.5};
   double latest_linear_acceleration_x_m_s2_{0.0};
   double latest_linear_acceleration_y_m_s2_{0.0};
