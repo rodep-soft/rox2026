@@ -47,9 +47,9 @@ class Nv12ToMono8Node(Node):
         self.min_interval_sec_ = 1.0 / self.target_fps_ if self.target_fps_ > 0 else 0.0
         self.last_pub_time_ = 0.0
 
-        self.pub_ = self.create_publisher(Image, output_topic, qos_profile_sensor_data)
+        self.pub_ = self.create_publisher(Image, output_topic, 10)
         self.camera_info_pub_ = self.create_publisher(
-            CameraInfo, output_camera_info_topic, qos_profile_sensor_data
+            CameraInfo, output_camera_info_topic, 10
         )
 
         self.last_camera_info_ = None
