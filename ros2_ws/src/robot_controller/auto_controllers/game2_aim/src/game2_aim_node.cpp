@@ -453,8 +453,8 @@ bool Game2AimNode::find_best_target()
   const std::vector<TargetPattern> patterns = {
     TargetPattern::MIDPOINT_0_1,
     TargetPattern::MIDPOINT_1_2,
-    TargetPattern::SINGLE_COL_0,
     TargetPattern::SINGLE_COL_1,
+    TargetPattern::SINGLE_COL_0,
     TargetPattern::SINGLE_COL_2
   };
 
