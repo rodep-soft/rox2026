@@ -14,7 +14,9 @@
     fire_increment_rad: -43.9822971
     
     # ── ゆっくり射出 ──
+    # retract_travel_radは現在の待機位置から収納方向へ動かす量。
     slow_fire_move_spring: true           # false: ばねは保持し、アームとローラのみ動作
+    slow_fire_retract_travel_rad: 3.6      # [rad] スロー発射前に収納方向へ動かす回転量
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
     slow_fire_stroke_rad: 8.0              # [rad] 収納位置からゆっくり押し出す回転量
