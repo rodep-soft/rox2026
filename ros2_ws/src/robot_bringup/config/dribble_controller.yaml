@@ -3,7 +3,7 @@
     
     # 10度 = 約 0.1745 rad
     # [rad] 各アーム目標位置
-    dribble_position_rad: -0.95    # DRIBBLE姿勢
+    dribble_position_rad: -0.93    # DRIBBLE姿勢
     open_position_rad: -1.35       # OPEN姿勢 (ボールを出すときの姿勢)
     home_position_rad: 0.2        # R2 + DPAD右で切替えるホーム姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
