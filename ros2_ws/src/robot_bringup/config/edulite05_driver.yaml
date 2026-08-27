@@ -24,7 +24,7 @@
       can_id: 32             # CAN ID(足回り左前のモータ)         
       control_mode: velocity # 制御モード(velocity:速度制御, pp:位置制御, csp:位置制御+速度制限)
       current_limit: 11.0    # [ A ] 電流制限値
-      acceleration: 200.0    # [ rad/s^2 ] 加速度制限値
+      acceleration: 150.0    # [ rad/s^2 ] 加速度制限値
       speed_limit: 50.0      # [ rad/s ] 速度制限値
       current_feedback_enabled: false  #電流値フィードバックを取得するかどうか
       current_feedback_period_ms: 100 #電流値のフィードバックを受け取る周期
@@ -36,7 +36,7 @@
       can_id: 33
       control_mode: velocity
       current_limit: 11.0
-      acceleration: 200.0
+      acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
@@ -48,7 +48,7 @@
       can_id: 34
       control_mode: velocity
       current_limit: 11.0
-      acceleration: 200.0
+      acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
@@ -60,7 +60,7 @@
       can_id: 35
       control_mode: velocity
       current_limit: 11.0
-      acceleration: 200.0
+      acceleration: 150.0
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
@@ -72,8 +72,8 @@
       can_id: 40
       control_mode: pp
       current_limit: 11.0
-      acceleration: 150.0
-      speed_limit: 30.0    # 最大速度は 33 rad/s
+      acceleration: 140.0
+      speed_limit: 28.0    # 最大速度は 28 rad/s
 
       position_reference_mode: service # ゼロ点の取り方(serviceを使って位置決めをする)
       minimum_position_rad: -1000000.0 # 

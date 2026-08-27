@@ -23,6 +23,7 @@ def generate_launch_description():
                 parameters=[
                     {
                         "device_id": ParameterValue(joy_device_id, value_type=int),
+                        "deadzone": 0.10,
                         "autorepeat_rate": 100.0,
                         "coalesce_interval_ms": 10,
                     }
