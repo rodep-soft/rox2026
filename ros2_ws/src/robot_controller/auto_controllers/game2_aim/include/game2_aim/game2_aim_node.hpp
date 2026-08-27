@@ -105,6 +105,7 @@ private:
   std::string camera_info_topic_{"/camera/camera_info"};
   std::string tag_prefix_{"tag16h5:"};
   double kp_yaw_{1.8};
+  double yaw_command_sign_{-1.0};
   double kd_yaw_{0.12};
   double min_angular_z_{0.12};
   double max_angular_z_{0.40};

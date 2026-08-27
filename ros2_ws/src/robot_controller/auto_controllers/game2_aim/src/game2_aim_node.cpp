@@ -88,6 +88,7 @@ void Game2AimNode::load_parameters()
 
   // Control gains & Limits
   kp_yaw_ = declare_parameter<double>("kp_yaw", 1.8);
+  yaw_command_sign_ = declare_parameter<double>("yaw_command_sign", -1.0);
   kd_yaw_ = declare_parameter<double>("kd_yaw", 0.12);
   min_angular_z_ = declare_parameter<double>("min_angular_z", 0.12);
   max_angular_z_ = declare_parameter<double>("max_angular_z", 0.40);
@@ -152,6 +153,8 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
     if (name == "kp_yaw") {
       kp_yaw_ = param.as_double();
       RCLCPP_INFO(get_logger(), "Param updated: kp_yaw = %.3f", kp_yaw_);
+    } else if (name == "yaw_command_sign") {
+      yaw_command_sign_ = param.as_double();
     } else if (name == "kd_yaw") {
       kd_yaw_ = param.as_double();
       RCLCPP_INFO(get_logger(), "Param updated: kd_yaw = %.3f", kd_yaw_);
@@ -728,7 +731,7 @@ void Game2AimNode::control_loop()
         current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
       } else {
         // PD Control (IMU Gyro damping)
-        double desired_wz = kp_yaw_ * heading_err;
+        double desired_wz = yaw_command_sign_ * kp_yaw_ * heading_err;
         if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
           desired_wz -= kd_yaw_ * gyro_z_;
         }

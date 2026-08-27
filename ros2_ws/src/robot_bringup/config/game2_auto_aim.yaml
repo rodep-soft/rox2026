@@ -19,6 +19,7 @@
 
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
     kp_yaw: 1.8             # 比例ゲイン (視覚誤差)
+    yaw_command_sign: -1.0  # 機体のangular.z符号に合わせる（実機ログで確認済み）
     kd_yaw: 0.12            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)
     min_angular_z: 0.12     # [rad/s] 静止摩擦補償最小角速度
     max_angular_z: 0.40     # [rad/s] 最大旋回角速度 (カメラブレ防止: 約23 deg/s)
