@@ -14,6 +14,12 @@
     speed_boost_full_m_s: 2.5
     speed_boost_multiplier: 2.5
 
+    # 急加減速・方向反転時は速度が低くてもP/D補正を強める
+    acceleration_boost_start_m_s2: 0.5
+    acceleration_boost_full_m_s2: 4.5
+    acceleration_boost_multiplier: 1.8
+    acceleration_filter_time_constant_sec: 0.08
+
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
 

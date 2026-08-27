@@ -87,6 +87,14 @@ private:
     speed_boost_start_m_s_ = declare_parameter("speed_boost_start_m_s", 1.5);
     speed_boost_full_m_s_ = declare_parameter("speed_boost_full_m_s", 3.0);
     speed_boost_multiplier_ = declare_parameter("speed_boost_multiplier", 1.5);
+    acceleration_boost_start_m_s2_ =
+      declare_parameter("acceleration_boost_start_m_s2", 0.5);
+    acceleration_boost_full_m_s2_ =
+      declare_parameter("acceleration_boost_full_m_s2", 4.5);
+    acceleration_boost_multiplier_ =
+      declare_parameter("acceleration_boost_multiplier", 1.8);
+    acceleration_filter_time_constant_sec_ =
+      declare_parameter("acceleration_filter_time_constant_sec", 0.08);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
@@ -114,6 +122,19 @@ private:
               "speed_boost_full_m_s must exceed speed_boost_start_m_s and "
               "speed_boost_multiplier must be at least 1.0");
     }
+    validate_non_negative("acceleration_boost_start_m_s2", acceleration_boost_start_m_s2_);
+    validate_positive("acceleration_boost_full_m_s2", acceleration_boost_full_m_s2_);
+    validate_positive("acceleration_boost_multiplier", acceleration_boost_multiplier_);
+    validate_positive(
+      "acceleration_filter_time_constant_sec", acceleration_filter_time_constant_sec_);
+    if (acceleration_boost_full_m_s2_ <= acceleration_boost_start_m_s2_ ||
+      acceleration_boost_multiplier_ < 1.0)
+    {
+      throw std::invalid_argument(
+              "acceleration_boost_full_m_s2 must exceed acceleration_boost_start_m_s2 and "
+              "acceleration_boost_multiplier must be at least 1.0");
+    }
+
 
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
       command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
@@ -153,6 +174,10 @@ private:
     double next_speed_boost_start = speed_boost_start_m_s_;
     double next_speed_boost_full = speed_boost_full_m_s_;
     double next_speed_boost_multiplier = speed_boost_multiplier_;
+    double next_acceleration_boost_start = acceleration_boost_start_m_s2_;
+    double next_acceleration_boost_full = acceleration_boost_full_m_s2_;
+    double next_acceleration_boost_multiplier = acceleration_boost_multiplier_;
+    double next_acceleration_filter_time_constant = acceleration_filter_time_constant_sec_;
 
     double next_settle_velocity = rotation_settle_velocity_rad_s_;
     int next_settle_duration_ms = rotation_settle_duration_ms_;
@@ -178,6 +203,14 @@ private:
         next_speed_boost_full = parameter.as_double();
       } else if (name == "speed_boost_multiplier") {
         next_speed_boost_multiplier = parameter.as_double();
+      } else if (name == "acceleration_boost_start_m_s2") {
+        next_acceleration_boost_start = parameter.as_double();
+      } else if (name == "acceleration_boost_full_m_s2") {
+        next_acceleration_boost_full = parameter.as_double();
+      } else if (name == "acceleration_boost_multiplier") {
+        next_acceleration_boost_multiplier = parameter.as_double();
+      } else if (name == "acceleration_filter_time_constant_sec") {
+        next_acceleration_filter_time_constant = parameter.as_double();
       } else if (name == "rotation_settle_velocity_rad_s") {
         next_settle_velocity = parameter.as_double();
       } else if (name == "rotation_settle_duration_ms") {
@@ -193,11 +226,18 @@ private:
       !std::isfinite(next_max_correction) || !std::isfinite(next_speed_boost_start) ||
       !std::isfinite(next_speed_boost_full) || !std::isfinite(next_speed_boost_multiplier) ||
       next_kp < 0.0 || next_ki < 0.0 || next_kd < 0.0 || next_integral_limit < 0.0 ||
+      !std::isfinite(next_acceleration_boost_start) ||
+      !std::isfinite(next_acceleration_boost_full) ||
+      !std::isfinite(next_acceleration_boost_multiplier) ||
+      !std::isfinite(next_acceleration_filter_time_constant) ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
       next_settle_velocity < 0.0 || next_settle_duration_ms <= 0 ||
       next_max_correction <= 0.0 || next_speed_boost_start < 0.0 ||
       next_speed_boost_full <= next_speed_boost_start ||
-      next_speed_boost_multiplier < 1.0)
+      next_speed_boost_multiplier < 1.0 || next_acceleration_boost_start < 0.0 ||
+      next_acceleration_boost_full <= next_acceleration_boost_start ||
+      next_acceleration_boost_multiplier < 1.0 ||
+      next_acceleration_filter_time_constant <= 0.0)
     {
       result.reason = "PID gains and limits must be finite and non-negative";
       return result;
@@ -215,6 +255,10 @@ private:
     speed_boost_start_m_s_ = next_speed_boost_start;
     speed_boost_full_m_s_ = next_speed_boost_full;
     speed_boost_multiplier_ = next_speed_boost_multiplier;
+    acceleration_boost_start_m_s2_ = next_acceleration_boost_start;
+    acceleration_boost_full_m_s2_ = next_acceleration_boost_full;
+    acceleration_boost_multiplier_ = next_acceleration_boost_multiplier;
+    acceleration_filter_time_constant_sec_ = next_acceleration_filter_time_constant;
     result.successful = true;
     result.reason = "success";
     RCLCPP_INFO(get_logger(), "Heading-hold parameters updated");
@@ -228,8 +272,19 @@ private:
         get_logger(), *get_clock(), 2000, "Ignored a non-finite cmd_vel message");
       return;
     }
+    const auto reception_time = now();
+    if (last_command_time_.nanoseconds() != 0) {
+      const double command_dt_s = (reception_time - last_command_time_).seconds();
+      if (command_dt_s > 0.0 && command_dt_s < 0.5) {
+        latest_linear_acceleration_m_s2_ = std::hypot(
+          message.linear.x - latest_command_.linear.x,
+          message.linear.y - latest_command_.linear.y) / command_dt_s;
+      } else {
+        latest_linear_acceleration_m_s2_ = 0.0;
+      }
+    }
     latest_command_ = message;
-    last_command_time_ = now();
+    last_command_time_ = reception_time;
     cmd_vel_timeout_logged_ = false;
   }
 
@@ -282,6 +337,8 @@ private:
   {
     target_yaw_initialized_ = false;
     integral_error_rad_s_ = 0.0;
+    latest_linear_acceleration_m_s2_ = 0.0;
+    filtered_linear_acceleration_m_s2_ = 0.0;
     rotation_state_ = RotationState::HOLDING;
     settle_velocity_is_stable_ = false;
   }
@@ -422,9 +479,22 @@ private:
     const double speed_gain =
       1.0 + speed_boost_ratio * (speed_boost_multiplier_ - 1.0);
 
+
+    const double acceleration_filter_alpha = std::clamp(
+      safe_dt_s / (acceleration_filter_time_constant_sec_ + safe_dt_s), 0.0, 1.0);
+    filtered_linear_acceleration_m_s2_ += acceleration_filter_alpha *
+      (latest_linear_acceleration_m_s2_ - filtered_linear_acceleration_m_s2_);
+    const double acceleration_boost_ratio = std::clamp(
+      (filtered_linear_acceleration_m_s2_ - acceleration_boost_start_m_s2_) /
+      (acceleration_boost_full_m_s2_ - acceleration_boost_start_m_s2_),
+      0.0, 1.0);
+    const double acceleration_gain =
+      1.0 + acceleration_boost_ratio * (acceleration_boost_multiplier_ - 1.0);
+    const double heading_gain = std::max(speed_gain, acceleration_gain);
+
     // Boost P and D continuously while keeping their damping ratio unchanged.
     const double correction_rad_s = std::clamp(
-      speed_gain *
+      heading_gain *
       (kp_ * heading_error_rad - kd_ * current_angular_velocity_z_rad_s_) +
       ki_ * integral_error_rad_s_,
       -max_correction_rad_s_, max_correction_rad_s_);
@@ -482,6 +552,12 @@ private:
   double speed_boost_full_m_s_{3.0};
   double speed_boost_multiplier_{1.5};
   int imu_timeout_ms_{250};
+  double acceleration_boost_start_m_s2_{0.5};
+  double acceleration_boost_full_m_s2_{4.5};
+  double acceleration_boost_multiplier_{1.8};
+  double acceleration_filter_time_constant_sec_{0.08};
+  double latest_linear_acceleration_m_s2_{0.0};
+  double filtered_linear_acceleration_m_s2_{0.0};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;
