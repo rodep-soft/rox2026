@@ -71,6 +71,7 @@ private:
   int ps_button_{12};
   int home_button_{13};
   int circle_button_{2};
+  int square_button_{0};
   int dribble_enable_button_{5};
   int game2_start_button_{9};
   int heading_hold_toggle_button_{8};
