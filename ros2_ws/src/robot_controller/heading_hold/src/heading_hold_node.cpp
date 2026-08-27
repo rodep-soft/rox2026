@@ -105,6 +105,10 @@ private:
       declare_parameter("acceleration_feedforward_y_negative_gain", 0.0);
     max_acceleration_feedforward_rad_s_ =
       declare_parameter("max_acceleration_feedforward_rad_s", 0.5);
+    wheel_radius_m_ = declare_parameter("wheel_radius", 0.075);
+    robot_length_m_ = declare_parameter("robot_length", 0.355);
+    robot_width_m_ = declare_parameter("robot_width", 0.353);
+    max_wheel_velocity_rad_s_ = declare_parameter("max_wheel_velocity_rad_s", 50.0);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
@@ -152,6 +156,10 @@ private:
       throw std::invalid_argument("acceleration feedforward gains must be finite");
     }
     validate_positive("max_acceleration_feedforward_rad_s", max_acceleration_feedforward_rad_s_);
+    validate_positive("wheel_radius", wheel_radius_m_);
+    validate_positive("robot_length", robot_length_m_);
+    validate_positive("robot_width", robot_width_m_);
+    validate_positive("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
 
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
       command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
@@ -424,6 +432,35 @@ private:
       heading_hold_enabled_ ? "IMU-corrected" : "passed through");
   }
 
+  void prioritize_heading_correction(geometry_msgs::msg::Twist & command) const
+  {
+    const double rotation_radius_m = (robot_length_m_ + robot_width_m_) / 2.0;
+    const double maximum_wheel_linear_velocity_m_s =
+      wheel_radius_m_ * max_wheel_velocity_rad_s_;
+
+    // Reserve wheel-speed capacity for yaw correction first. Any remaining
+    // capacity is shared by x/y translation without changing its direction.
+    const double maximum_angular_velocity_rad_s =
+      maximum_wheel_linear_velocity_m_s / rotation_radius_m;
+    command.angular.z = std::clamp(
+      command.angular.z, -maximum_angular_velocity_rad_s, maximum_angular_velocity_rad_s);
+
+    const double translation_demand_m_s =
+      std::abs(command.linear.x) + std::abs(command.linear.y);
+    if (translation_demand_m_s <= 0.0) {
+      return;
+    }
+
+    const double remaining_translation_capacity_m_s = std::max(
+      0.0,
+      maximum_wheel_linear_velocity_m_s -
+      rotation_radius_m * std::abs(command.angular.z));
+    const double translation_scale = std::min(
+      1.0, remaining_translation_capacity_m_s / translation_demand_m_s);
+    command.linear.x *= translation_scale;
+    command.linear.y *= translation_scale;
+  }
+
   bool command_is_fresh(const rclcpp::Time & current_time) const
   {
     return last_command_time_.nanoseconds() != 0 &&
@@ -573,6 +610,7 @@ private:
       acceleration_feedforward_rad_s + feedback_correction_rad_s,
       -max_correction_rad_s_, max_correction_rad_s_);
     corrected_command.angular.z = correction_rad_s;
+    prioritize_heading_correction(corrected_command);
     return corrected_command;
   }
 
@@ -637,6 +675,10 @@ private:
   double max_acceleration_feedforward_rad_s_{0.5};
   double latest_linear_acceleration_x_m_s2_{0.0};
   double latest_linear_acceleration_y_m_s2_{0.0};
+  double wheel_radius_m_{0.075};
+  double robot_length_m_{0.355};
+  double robot_width_m_{0.353};
+  double max_wheel_velocity_rad_s_{50.0};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;

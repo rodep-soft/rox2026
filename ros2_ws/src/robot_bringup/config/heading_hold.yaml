@@ -27,6 +27,12 @@
     acceleration_feedforward_y_negative_gain: 0.0 #0.92
     max_acceleration_feedforward_rad_s: 0.01 #0.3
 
+    # メカナム車輪上限内で旋回補正を先に確保し、残りを並進に割り当てる
+    wheel_radius: 0.075
+    robot_length: 0.355
+    robot_width: 0.353
+    max_wheel_velocity_rad_s: 50.0
+
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
 
