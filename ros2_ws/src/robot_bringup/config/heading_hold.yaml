@@ -20,6 +20,11 @@
     acceleration_boost_multiplier: 1.0
     acceleration_filter_time_constant_sec: 0.03
 
+    # 符号付き指令加速度から、角度がずれる前にyaw補正を加える
+    acceleration_feedforward_x_gain: 0.0
+    acceleration_feedforward_y_gain: 0.0
+    max_acceleration_feedforward_rad_s: 0.5
+
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
 
