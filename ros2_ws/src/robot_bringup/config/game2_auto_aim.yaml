@@ -3,6 +3,7 @@
     base_frame: "base_link"
     cmd_vel_topic: "/mecanum/cmd_vel_heading"
     detections_topic: "/detections"
+    camera_info_topic: "/camera/camera_info"
     target_distance: 4.0
 
     # ── 📐 カメラ物理・光学パラメータ ──

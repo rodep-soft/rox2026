@@ -29,7 +29,7 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
 
   // /camera_info から実際のカメラ内部パラメータ行列 K を自動取得 (未受信時はYAML値で動作)
   camera_info_sub_ = create_subscription<sensor_msgs::msg::CameraInfo>(
-    "/image_combine_raw/left/camera_info", cmd_qos,
+    camera_info_topic_, cmd_qos,
     std::bind(&Game2AimNode::camera_info_callback, this, std::placeholders::_1));
 
   start_sub_ = create_subscription<std_msgs::msg::Bool>(
@@ -83,6 +83,8 @@ void Game2AimNode::load_parameters()
   cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/mecanum/cmd_vel_heading");
   detections_topic_ = declare_parameter<std::string>("detections_topic", "/detections");
   tag_prefix_ = declare_parameter<std::string>("tag_prefix", "tag16h5:");
+  camera_info_topic_ =
+    declare_parameter<std::string>("camera_info_topic", "/camera/camera_info");
 
   // Control gains & Limits
   kp_yaw_ = declare_parameter<double>("kp_yaw", 1.8);
@@ -726,7 +728,7 @@ void Game2AimNode::control_loop()
         current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : target_belt_mode_;
       } else {
         // PD Control (IMU Gyro damping)
-        double desired_wz = -kp_yaw_ * heading_err;
+        double desired_wz = kp_yaw_ * heading_err;
         if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
           desired_wz -= kd_yaw_ * gyro_z_;
         }

@@ -102,6 +102,7 @@ private:
   std::string base_frame_{"base_link"};
   std::string cmd_vel_topic_{"/mecanum/cmd_vel_heading"};
   std::string detections_topic_{"/detections"};
+  std::string camera_info_topic_{"/camera/camera_info"};
   std::string tag_prefix_{"tag16h5:"};
   double kp_yaw_{1.8};
   double kd_yaw_{0.12};
