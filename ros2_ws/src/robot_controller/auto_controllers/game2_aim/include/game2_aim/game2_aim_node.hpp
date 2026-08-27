@@ -16,6 +16,7 @@
 #include "robot_msgs/msg/arm_position.hpp"
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "robot_msgs/msg/game2_state.hpp"
+#include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -56,11 +57,14 @@ private:
   void start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg);
+  void shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
   void update_panel_states();
   void select_target_and_aim();
   void control_loop();
   void reset_sequence();
+  void unlock_target(const std::string & reason);
 
   uint8_t get_target_belt_mode(int row) const;
 
@@ -81,6 +85,8 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr start_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
+  rclcpp::Subscription<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_req_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
@@ -122,6 +128,7 @@ private:
   double search_angular_z_{0.15};
   bool test_alignment_only_{false};
   bool enable_double_panel_midpoint_targeting_{true}; // 2枚連続時に中点を狙い1発2枚抜き
+  double shot_fallback_timeout_{2.0}; // [s] 射出ボタン押下後の保険タイムアウト
 
   // State Variables
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};
@@ -137,7 +144,23 @@ private:
   double target_heading_err_{0.0};
   uint8_t target_belt_mode_{robot_msgs::msg::BeltMode::STOP};
   bool target_valid_{false};
-  int locked_target_id_{-1};
+
+  // Target Lock State Variables (一度決めたターゲットの固定用)
+  bool target_locked_{false};
+  bool locked_is_midpoint_{false};
+  std::vector<int> locked_target_tag_ids_;
+  int locked_row_{2};
+  uint8_t locked_belt_mode_{robot_msgs::msg::BeltMode::STOP};
+  double locked_target_x_{0.0};
+  double locked_target_y_{0.0};
+  double locked_target_z_{0.0};
+  double locked_yaw_at_detection_{0.0};
+  double locked_tag_offset_x_{0.0};
+  double locked_tag_offset_y_{0.0};
+  uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
+  bool shot_requested_{false};
+  rclcpp::Time shot_requested_time_;
+
   rclcpp::Time state_start_time_;
   rclcpp::Time last_loop_time_;
   double last_cmd_wz_{0.0};

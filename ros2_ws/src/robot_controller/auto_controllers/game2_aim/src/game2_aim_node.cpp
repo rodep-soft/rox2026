@@ -44,6 +44,14 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/system/emergency_stop", estop_qos,
     std::bind(&Game2AimNode::emergency_stop_callback, this, std::placeholders::_1));
 
+  shot_cycle_state_sub_ = create_subscription<robot_msgs::msg::ShotCycleState>(
+    "/dribble/shot_cycle_state", rclcpp::QoS(1).reliable().transient_local(),
+    std::bind(&Game2AimNode::shot_cycle_state_callback, this, std::placeholders::_1));
+
+  shot_cycle_req_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/dribble/shot_cycle_request", cmd_qos,
+    std::bind(&Game2AimNode::shot_cycle_req_callback, this, std::placeholders::_1));
+
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", cmd_qos);
@@ -104,6 +112,7 @@ void Game2AimNode::load_parameters()
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   enable_double_panel_midpoint_targeting_ =
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", true);
+  shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 2.0);
 
   // AprilTag Panel Configuration (Row 0: Bottom, 1: Middle, 2: Top)
   const std::vector<int64_t> default_bottom = {20, 21, 22};
@@ -158,6 +167,8 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       camera_fx_ = param.as_double();
     } else if (name == "camera_offset_y") {
       camera_offset_y_ = param.as_double();
+    } else if (name == "shot_fallback_timeout") {
+      shot_fallback_timeout_ = param.as_double();
     } else if (name == "test_alignment_only") {
       test_alignment_only_ = param.as_bool();
       RCLCPP_INFO(
@@ -195,14 +206,73 @@ void Game2AimNode::reset_sequence()
 {
   active_row_ = 2;
   active_target_id_ = -1;
-  locked_target_id_ = -1;
-  target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
+  target_locked_ = false;
+  locked_is_midpoint_ = false;
+  locked_target_tag_ids_.clear();
   current_target_tag_ids_.clear();
+  target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
   target_valid_ = false;
   last_cmd_wz_ = 0.0;
+  locked_target_x_ = 0.0;
+  locked_target_y_ = 0.0;
+  locked_target_z_ = 0.0;
+  locked_yaw_at_detection_ = 0.0;
+  locked_tag_offset_x_ = 0.0;
+  locked_tag_offset_y_ = 0.0;
+  shot_requested_ = false;
+  prev_shot_cycle_state_ = robot_msgs::msg::ShotCycleState::IDLE;
 
   for (auto & [id, panel] : panel_grid_) {
     panel.detected = false;
+  }
+}
+
+void Game2AimNode::unlock_target(const std::string & reason)
+{
+  if (target_locked_) {
+    RCLCPP_INFO(
+      get_logger(),
+      "🔓 [Game2 Target UNLOCKED] %s. Resetting target lock -> SEARCHING",
+      reason.c_str());
+    target_locked_ = false;
+    target_valid_ = false;
+    locked_is_midpoint_ = false;
+    locked_target_tag_ids_.clear();
+    current_target_tag_ids_.clear();
+    active_target_id_ = -1;
+    target_belt_mode_ = robot_msgs::msg::BeltMode::STOP;
+    shot_requested_ = false;
+    if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+      state_ = robot_msgs::msg::Game2State::SEARCHING;
+      state_start_time_ = now();
+    }
+  }
+}
+
+void Game2AimNode::shot_cycle_state_callback(
+  const robot_msgs::msg::ShotCycleState::SharedPtr msg)
+{
+  const uint8_t current_state = msg->state;
+  // FEEDING（射出押し込み開始）または RETURNING（射出完了・アーム復帰開始）遷移時にターゲット固定を解除
+  if ((current_state == robot_msgs::msg::ShotCycleState::FEEDING &&
+       prev_shot_cycle_state_ != robot_msgs::msg::ShotCycleState::FEEDING) ||
+      (current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
+       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING))
+  {
+    unlock_target("Shot cycle firing/feeding detected via /dribble/shot_cycle_state");
+  }
+  prev_shot_cycle_state_ = current_state;
+}
+
+void Game2AimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  if (msg->data && is_enabled_) {
+    shot_requested_ = true;
+    shot_requested_time_ = now();
+    RCLCPP_INFO(
+      get_logger(),
+      "🎯 [Game2] Shot cycle requested (L2+Circle). Insurance timer started (%.1fs timeout)",
+      shot_fallback_timeout_);
   }
 }
 
@@ -328,55 +398,6 @@ void Game2AimNode::tag_detections_callback(
       it->second.z = camera_offset_z_;
     }
   }
-
-  // テストモード時: 最も射出口正面に近いタグを選択
-  if (test_alignment_only_) {
-    int best_id = -1;
-    double min_heading_err_abs = 1e9;
-    double best_heading_err = 0.0;
-    double best_pixel_x = 0.0;
-
-    for (const auto & detection : msg->detections) {
-      const int id = detection.id;
-      if (panel_grid_.find(id) != panel_grid_.end()) {
-        const double u = static_cast<double>(detection.centre.x);
-        const double z_cam = target_distance_;
-        const double y_cam_left = -(u - camera_cx_) * z_cam / camera_fx_;
-        const double x_robot = z_cam + camera_offset_x_;
-        const double y_robot = y_cam_left + camera_offset_y_;
-        const double heading_err = std::atan2(y_robot, x_robot);
-
-        if (std::abs(heading_err) < min_heading_err_abs) {
-          min_heading_err_abs = std::abs(heading_err);
-          best_id = id;
-          best_heading_err = heading_err;
-          best_pixel_x = u;
-        }
-      }
-    }
-
-    if (best_id != -1) {
-      active_target_id_ = best_id;
-      const auto & target = panel_grid_[best_id];
-      target_x_ = target.x;
-      target_y_ = target.y;
-      target_z_ = target.z;
-      const double raw_heading_err = std::atan2(target_y_, target_x_);
-      const double rotated = std::remainder(yaw_ - target.yaw_at_detection, 2.0 * M_PI);
-      target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
-      target_valid_ = true;
-
-      // 射出口と完全に一致する理論目標ピクセル (例: 960 + (35mm / 4m) * 800 = 967px)
-      const double aligned_target_pixel = camera_cx_ + (camera_offset_y_ / target_distance_) *
-        camera_fx_;
-
-      RCLCPP_INFO_THROTTLE(
-        get_logger(),
-        *get_clock(), 200,
-        "📷 [VisualServo Track Tag #%d] HeadingErr: %+.2f deg | Pixel: %.1f px (TargetAligned: %.1f px)",
-        best_id, best_heading_err * 180.0 / M_PI, best_pixel_x, aligned_target_pixel);
-    }
-  }
 }
 
 void Game2AimNode::update_panel_states()
@@ -393,29 +414,123 @@ void Game2AimNode::update_panel_states()
 void Game2AimNode::select_target_and_aim()
 {
   if (test_alignment_only_) {
-    // In test mode, target is updated in tag_detections_callback
-    if (active_target_id_ != -1) {
-      const auto it = panel_grid_.find(active_target_id_);
-      if (it == panel_grid_.end() || !it->second.detected) {
-        target_valid_ = false;
-      } else {
-        const double raw_heading_err = std::atan2(target_y_, target_x_);
-        const double rotated = std::remainder(yaw_ - it->second.yaw_at_detection, 2.0 * M_PI);
-        target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
+    if (!target_locked_) {
+      int best_id = -1;
+      double min_heading_err_abs = 1e9;
+      for (const auto & [id, panel] : panel_grid_) {
+        if (panel.detected) {
+          const double heading_err = std::atan2(panel.y, panel.x);
+          if (std::abs(heading_err) < min_heading_err_abs) {
+            min_heading_err_abs = std::abs(heading_err);
+            best_id = id;
+          }
+        }
       }
+
+      if (best_id != -1) {
+        target_locked_ = true;
+        locked_is_midpoint_ = false;
+        locked_target_tag_ids_ = {best_id};
+        locked_row_ = panel_grid_[best_id].row;
+        locked_belt_mode_ = get_target_belt_mode(locked_row_);
+        locked_target_x_ = panel_grid_[best_id].x;
+        locked_target_y_ = panel_grid_[best_id].y;
+        locked_target_z_ = panel_grid_[best_id].z;
+        locked_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
+        RCLCPP_INFO(
+          get_logger(),
+          "🔒 [Game2 TEST Target LOCKED] Tag #%d (Row %d) Locked!",
+          best_id, locked_row_);
+      }
+    }
+
+    if (target_locked_ && !locked_target_tag_ids_.empty()) {
+      const int target_id = locked_target_tag_ids_[0];
+      const auto it = panel_grid_.find(target_id);
+      if (it != panel_grid_.end() && it->second.detected) {
+        locked_target_x_ = it->second.x;
+        locked_target_y_ = it->second.y;
+        locked_target_z_ = it->second.z;
+        locked_yaw_at_detection_ = it->second.yaw_at_detection;
+      }
+      target_x_ = locked_target_x_;
+      target_y_ = locked_target_y_;
+      target_z_ = locked_target_z_;
+      active_target_id_ = target_id;
+      active_row_ = locked_row_;
+      target_belt_mode_ = locked_belt_mode_;
+      current_target_tag_ids_ = locked_target_tag_ids_;
+
+      const double raw_heading_err = std::atan2(target_y_, target_x_);
+      const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
+      target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
+      target_valid_ = true;
+    } else {
+      target_valid_ = false;
     }
     return;
   }
 
+  // ── 🎯 ターゲットロック中: 毎ループの的変更を行わず、ロックされたターゲットのみを追従 ──
+  if (target_locked_) {
+    if (locked_is_midpoint_ && locked_target_tag_ids_.size() >= 2) {
+      const int id_a = locked_target_tag_ids_[0];
+      const int id_b = locked_target_tag_ids_[1];
+      const auto it_a = panel_grid_.find(id_a);
+      const auto it_b = panel_grid_.find(id_b);
+
+      const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected);
+      const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected);
+
+      if (a_detected && b_detected) {
+        locked_target_x_ = (it_a->second.x + it_b->second.x) * 0.5;
+        locked_target_y_ = (it_a->second.y + it_b->second.y) * 0.5;
+        locked_target_z_ = (it_a->second.z + it_b->second.z) * 0.5;
+        locked_yaw_at_detection_ = (it_a->second.yaw_at_detection + it_b->second.yaw_at_detection) * 0.5;
+        locked_tag_offset_x_ = locked_target_x_ - it_a->second.x;
+        locked_tag_offset_y_ = locked_target_y_ - it_a->second.y;
+      } else if (a_detected) {
+        locked_target_x_ = it_a->second.x + locked_tag_offset_x_;
+        locked_target_y_ = it_a->second.y + locked_tag_offset_y_;
+        locked_target_z_ = it_a->second.z;
+        locked_yaw_at_detection_ = it_a->second.yaw_at_detection;
+      } else if (b_detected) {
+        locked_target_x_ = it_b->second.x - locked_tag_offset_x_;
+        locked_target_y_ = it_b->second.y - locked_tag_offset_y_;
+        locked_target_z_ = it_b->second.z;
+        locked_yaw_at_detection_ = it_b->second.yaw_at_detection;
+      }
+      // 両方未検出の場合は最後に取得した座標・yawを保持（IMU姿勢補間で追従）
+    } else if (!locked_target_tag_ids_.empty()) {
+      const int id = locked_target_tag_ids_[0];
+      const auto it = panel_grid_.find(id);
+      if (it != panel_grid_.end() && it->second.detected) {
+        locked_target_x_ = it->second.x;
+        locked_target_y_ = it->second.y;
+        locked_target_z_ = it->second.z;
+        locked_yaw_at_detection_ = it->second.yaw_at_detection;
+      }
+    }
+
+    target_x_ = locked_target_x_;
+    target_y_ = locked_target_y_;
+    target_z_ = locked_target_z_;
+    active_row_ = locked_row_;
+    target_belt_mode_ = locked_belt_mode_;
+    current_target_tag_ids_ = locked_target_tag_ids_;
+    active_target_id_ = locked_target_tag_ids_[0];
+
+    const double raw_heading_err = std::atan2(target_y_, target_x_);
+    const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
+    target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
+    target_valid_ = true;
+    return;
+  }
+
+  // ── 🔍 未ロック時: 優先パターンに従ってターゲットを探索し、決定した瞬間にロック ──
   target_valid_ = false;
   current_target_tag_ids_.clear();
 
-  // ── 🎯 Column優先ターゲットパターン定義 (5段階) ──
-  // 0: 左から1列目と2列目の間 (Col 0 & Col 1 中点)
-  // 1: 2列目と3列目の間 (Col 1 & Col 2 中点)
-  // 2: 左 (Col 0)
-  // 3: 中 (Col 1)
-  // 4: 右 (Col 2)
   enum class TargetPattern
   {
     MIDPOINT_0_1 = 0,
@@ -433,7 +548,6 @@ void Game2AimNode::select_target_and_aim()
     TargetPattern::SINGLE_COL_2
   };
 
-  // 各パターン内での段の走査順序: 上段 (Row 2) -> 中段 (Row 1) -> 下段 (Row 0)
   const std::vector<int> rows_order = {2, 1, 0};
 
   auto get_row_name = [](int r) -> const char * {
@@ -471,117 +585,164 @@ void Game2AimNode::select_target_and_aim()
 
       if (pattern == TargetPattern::MIDPOINT_0_1) {
         if (p0 && p1 && p0->detected && p1->detected) {
-          current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
-          target_x_ = (p0->x + p1->x) * 0.5;
-          target_y_ = (p0->y + p1->y) * 0.5;
-          target_z_ = (p0->z + p1->z) * 0.5;
+          target_locked_ = true;
+          locked_is_midpoint_ = true;
+          locked_target_tag_ids_ = {p0->tag_id, p1->tag_id};
+          locked_row_ = row;
+          locked_belt_mode_ = get_target_belt_mode(row);
+          locked_target_x_ = (p0->x + p1->x) * 0.5;
+          locked_target_y_ = (p0->y + p1->y) * 0.5;
+          locked_target_z_ = (p0->z + p1->z) * 0.5;
+          locked_yaw_at_detection_ = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
+          locked_tag_offset_x_ = locked_target_x_ - p0->x;
+          locked_tag_offset_y_ = locked_target_y_ - p0->y;
+
+          current_target_tag_ids_ = locked_target_tag_ids_;
+          target_x_ = locked_target_x_;
+          target_y_ = locked_target_y_;
+          target_z_ = locked_target_z_;
           active_row_ = row;
           active_target_id_ = p0->tag_id;
+          target_belt_mode_ = locked_belt_mode_;
+
           const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double avg_yaw = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
-          const double rotated = std::remainder(yaw_ - avg_yaw, 2.0 * M_PI);
+          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
           target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
-          target_belt_mode_ = get_target_belt_mode(row);
-
-          RCLCPP_INFO_THROTTLE(
+          RCLCPP_INFO(
             get_logger(),
-            *get_clock(), 500,
-            "💥 [Target Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target LOCKED: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::MIDPOINT_1_2) {
         if (p1 && p2 && p1->detected && p2->detected) {
-          current_target_tag_ids_ = {p1->tag_id, p2->tag_id};
-          target_x_ = (p1->x + p2->x) * 0.5;
-          target_y_ = (p1->y + p2->y) * 0.5;
-          target_z_ = (p1->z + p2->z) * 0.5;
+          target_locked_ = true;
+          locked_is_midpoint_ = true;
+          locked_target_tag_ids_ = {p1->tag_id, p2->tag_id};
+          locked_row_ = row;
+          locked_belt_mode_ = get_target_belt_mode(row);
+          locked_target_x_ = (p1->x + p2->x) * 0.5;
+          locked_target_y_ = (p1->y + p2->y) * 0.5;
+          locked_target_z_ = (p1->z + p2->z) * 0.5;
+          locked_yaw_at_detection_ = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
+          locked_tag_offset_x_ = locked_target_x_ - p1->x;
+          locked_tag_offset_y_ = locked_target_y_ - p1->y;
+
+          current_target_tag_ids_ = locked_target_tag_ids_;
+          target_x_ = locked_target_x_;
+          target_y_ = locked_target_y_;
+          target_z_ = locked_target_z_;
           active_row_ = row;
           active_target_id_ = p1->tag_id;
+          target_belt_mode_ = locked_belt_mode_;
+
           const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double avg_yaw = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
-          const double rotated = std::remainder(yaw_ - avg_yaw, 2.0 * M_PI);
+          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
           target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
-          target_belt_mode_ = get_target_belt_mode(row);
-
-          RCLCPP_INFO_THROTTLE(
+          RCLCPP_INFO(
             get_logger(),
-            *get_clock(), 500,
-            "💥 [Target Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target LOCKED: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, p2->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_0) {
         if (p0 && p0->detected) {
-          current_target_tag_ids_ = {p0->tag_id};
-          target_x_ = p0->x;
-          target_y_ = p0->y;
-          target_z_ = p0->z;
+          target_locked_ = true;
+          locked_is_midpoint_ = false;
+          locked_target_tag_ids_ = {p0->tag_id};
+          locked_row_ = row;
+          locked_belt_mode_ = get_target_belt_mode(row);
+          locked_target_x_ = p0->x;
+          locked_target_y_ = p0->y;
+          locked_target_z_ = p0->z;
+          locked_yaw_at_detection_ = p0->yaw_at_detection;
+
+          current_target_tag_ids_ = locked_target_tag_ids_;
+          target_x_ = locked_target_x_;
+          target_y_ = locked_target_y_;
+          target_z_ = locked_target_z_;
           active_row_ = row;
           active_target_id_ = p0->tag_id;
+          target_belt_mode_ = locked_belt_mode_;
+
           const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - p0->yaw_at_detection, 2.0 * M_PI);
+          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
           target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
-          target_belt_mode_ = get_target_belt_mode(row);
-
-          RCLCPP_INFO_THROTTLE(
+          RCLCPP_INFO(
             get_logger(),
-            *get_clock(), 500,
-            "🎯 [Target Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target LOCKED: Single Left (Col 0) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p0->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_1) {
         if (p1 && p1->detected) {
-          current_target_tag_ids_ = {p1->tag_id};
-          target_x_ = p1->x;
-          target_y_ = p1->y;
-          target_z_ = p1->z;
+          target_locked_ = true;
+          locked_is_midpoint_ = false;
+          locked_target_tag_ids_ = {p1->tag_id};
+          locked_row_ = row;
+          locked_belt_mode_ = get_target_belt_mode(row);
+          locked_target_x_ = p1->x;
+          locked_target_y_ = p1->y;
+          locked_target_z_ = p1->z;
+          locked_yaw_at_detection_ = p1->yaw_at_detection;
+
+          current_target_tag_ids_ = locked_target_tag_ids_;
+          target_x_ = locked_target_x_;
+          target_y_ = locked_target_y_;
+          target_z_ = locked_target_z_;
           active_row_ = row;
           active_target_id_ = p1->tag_id;
+          target_belt_mode_ = locked_belt_mode_;
+
           const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - p1->yaw_at_detection, 2.0 * M_PI);
+          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
           target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
-          target_belt_mode_ = get_target_belt_mode(row);
-
-          RCLCPP_INFO_THROTTLE(
+          RCLCPP_INFO(
             get_logger(),
-            *get_clock(), 500,
-            "🎯 [Target Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target LOCKED: Single Center (Col 1) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p1->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
           return;
         }
       } else if (pattern == TargetPattern::SINGLE_COL_2) {
         if (p2 && p2->detected) {
-          current_target_tag_ids_ = {p2->tag_id};
-          target_x_ = p2->x;
-          target_y_ = p2->y;
-          target_z_ = p2->z;
+          target_locked_ = true;
+          locked_is_midpoint_ = false;
+          locked_target_tag_ids_ = {p2->tag_id};
+          locked_row_ = row;
+          locked_belt_mode_ = get_target_belt_mode(row);
+          locked_target_x_ = p2->x;
+          locked_target_y_ = p2->y;
+          locked_target_z_ = p2->z;
+          locked_yaw_at_detection_ = p2->yaw_at_detection;
+
+          current_target_tag_ids_ = locked_target_tag_ids_;
+          target_x_ = locked_target_x_;
+          target_y_ = locked_target_y_;
+          target_z_ = locked_target_z_;
           active_row_ = row;
           active_target_id_ = p2->tag_id;
+          target_belt_mode_ = locked_belt_mode_;
+
           const double raw_heading_err = std::atan2(target_y_, target_x_);
-          const double rotated = std::remainder(yaw_ - p2->yaw_at_detection, 2.0 * M_PI);
+          const double rotated = std::remainder(yaw_ - locked_yaw_at_detection_, 2.0 * M_PI);
           target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
           target_valid_ = true;
 
-          target_belt_mode_ = get_target_belt_mode(row);
-
-          RCLCPP_INFO_THROTTLE(
+          RCLCPP_INFO(
             get_logger(),
-            *get_clock(), 500,
-            "🎯 [Target Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+            "🔒 [Target LOCKED: Single Right (Col 2) | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
             get_row_name(row), p2->tag_id, target_heading_err_ * 180.0 / M_PI,
             target_belt_mode_);
           return;
@@ -609,6 +770,11 @@ void Game2AimNode::control_loop()
     // STANDBY時は手動操作 (joy_controller / heading_hold) にトピックを譲るため
     // 周期的なゼロ速度・停止コマンドのパブリッシュは行わない
     return;
+  }
+
+  // ── 保険タイマー: 射出要求から一定秒経過しても完了通知が来ない場合のフェイルセーフ ──
+  if (shot_requested_ && (current_time - shot_requested_time_).seconds() >= shot_fallback_timeout_) {
+    unlock_target("Shot fallback timeout elapsed (insurance timer fired)");
   }
 
   update_panel_states();
