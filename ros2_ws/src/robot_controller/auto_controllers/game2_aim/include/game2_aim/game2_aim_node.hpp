@@ -160,6 +160,7 @@ private:
   rclcpp::Time state_start_time_;
   rclcpp::Time last_loop_time_;
   double last_cmd_wz_{0.0};
+  std::optional<uint8_t> last_published_arm_mode_;
 
   // IMU Feedback State (Full Telemetry)
   bool imu_received_{false};

@@ -805,9 +805,14 @@ void Game2AimNode::publish_all(
   dribble_msg.data = dribble_enabled;
   dribble_enabled_pub_->publish(dribble_msg);
 
-  robot_msgs::msg::ArmPosition arm_msg;
-  arm_msg.position = arm_mode;
-  arm_position_pub_->publish(arm_msg);
+  if (!last_published_arm_mode_.has_value() ||
+    last_published_arm_mode_.value() != arm_mode)
+  {
+    robot_msgs::msg::ArmPosition arm_msg;
+    arm_msg.position = arm_mode;
+    arm_position_pub_->publish(arm_msg);
+    last_published_arm_mode_ = arm_mode;
+  }
 
   std_msgs::msg::Bool completed_msg;
   completed_msg.data = completed;

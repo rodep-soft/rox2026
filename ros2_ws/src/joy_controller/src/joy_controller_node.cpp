@@ -105,9 +105,14 @@ JoyControllerNode::JoyControllerNode()
       &JoyControllerNode::spring_actuator_ready_callback, this,
       std::placeholders::_1));
 
+  game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
+    "/game2/state", state_qos,
+    [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
+      game2_state_ = msg->state;
+    });
+
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/drive/cmd_vel", command_qos);
-
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
 
@@ -379,10 +384,19 @@ void JoyControllerNode::loop_callback()
 
   // 5. 自動シュートサイクル要求 (L2 + ○)
   if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
-    RCLCPP_INFO(get_logger(), "Shot cycle requested!");
-    std_msgs::msg::Bool req;
-    req.data = true;
-    shot_cycle_request_pub_->publish(req);
+    const bool shot_allowed = !game2_active_ ||
+      game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT;
+    if (shot_allowed) {
+      RCLCPP_INFO(get_logger(), "Shot cycle requested!");
+      std_msgs::msg::Bool req;
+      req.data = true;
+      shot_cycle_request_pub_->publish(req);
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "Shot request ignored: Game 2 is not in PREPARING_SHOOT (state=%u)",
+        static_cast<unsigned>(game2_state_));
+    }
   }
 
   // 6. Game 2 自動戦術モード切替 (OPTIONS)
