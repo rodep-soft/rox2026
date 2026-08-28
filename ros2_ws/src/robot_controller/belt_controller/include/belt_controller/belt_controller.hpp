@@ -37,6 +37,7 @@ private:
   uint8_t belt_mode_{robot_msgs::msg::BeltMode::STOP};
   int direct_target_rpm_{0};
   bool use_direct_target_rpm_{false};
+  int rpm_offset_step_count_{0};
 
   float underbelt_measured_rpm_{0.0f};
   float upperbelt_measured_rpm_{0.0f};
@@ -46,6 +47,7 @@ private:
   // ── パラメータ ──────────────────────────────────────
   std::array<int, num_levels> underbelt_rpms_{3000, 3500, 4000, 4500};
   std::array<int, num_levels> upperbelt_rpms_{3000, 3500, 4000, 4500};
+  int rpm_offset_per_step_{100};
   int emergency_stop_period_ms_{50};
   uint16_t underbelt_logical_id_{11};
   uint16_t upperbelt_logical_id_{10};
