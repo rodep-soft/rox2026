@@ -57,9 +57,6 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", cmd_qos);
-  dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>("/dribble/command_enabled", cmd_qos);
-  arm_position_pub_ =
-    create_publisher<robot_msgs::msg::ArmPosition>("/dribble/command_position", cmd_qos);
   state_pub_ =
     create_publisher<robot_msgs::msg::Game2State>("/game2/state", rclcpp::QoS(1).reliable().transient_local());
   completed_pub_ =
@@ -217,9 +214,7 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
   } else {
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {
       transition_to(robot_msgs::msg::Game2State::STANDBY, "Start command received (false)");
-      publish_all(
-        geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP,
-        false, robot_msgs::msg::ArmPosition::DRIBBLE, false);
+      publish_all(geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false);
     }
   }
 }
@@ -230,9 +225,7 @@ void Game2AimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr 
   if (emergency_stop_active_ && state_ != robot_msgs::msg::Game2State::STANDBY) {
     RCLCPP_WARN(get_logger(), "Emergency Stop Triggered! Game 2 Auto Sequence ABORTED.");
     transition_to(robot_msgs::msg::Game2State::STANDBY, "Emergency stop active");
-    publish_all(
-      geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false,
-      robot_msgs::msg::ArmPosition::DRIBBLE, false);
+    publish_all(geometry_msgs::msg::Twist{}, robot_msgs::msg::BeltMode::STOP, false);
   }
 }
 
@@ -455,18 +448,12 @@ void Game2AimNode::control_loop()
       break;
   }
 
-  publish_all(
-    cmd, current_belt_mode,
-    !test_alignment_only_,
-    robot_msgs::msg::ArmPosition::DRIBBLE,
-    false);
+  publish_all(cmd, current_belt_mode, false);
 }
 
 void Game2AimNode::publish_all(
   const geometry_msgs::msg::Twist & cmd_vel,
   uint8_t belt_mode,
-  bool dribble_enabled,
-  uint8_t arm_mode,
   bool completed)
 {
   cmd_vel_pub_->publish(cmd_vel);
@@ -474,19 +461,6 @@ void Game2AimNode::publish_all(
   robot_msgs::msg::BeltMode mode_msg;
   mode_msg.mode = belt_mode;
   belt_mode_pub_->publish(mode_msg);
-
-  std_msgs::msg::Bool dribble_msg;
-  dribble_msg.data = dribble_enabled;
-  dribble_enabled_pub_->publish(dribble_msg);
-
-  if (!last_published_arm_mode_.has_value() ||
-    last_published_arm_mode_.value() != arm_mode)
-  {
-    robot_msgs::msg::ArmPosition arm_msg;
-    arm_msg.position = arm_mode;
-    arm_position_pub_->publish(arm_msg);
-    last_published_arm_mode_ = arm_mode;
-  }
 
   std_msgs::msg::Bool completed_msg;
   completed_msg.data = completed;

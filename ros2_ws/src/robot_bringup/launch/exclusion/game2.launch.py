@@ -16,12 +16,28 @@ def generate_launch_description():
         description="Path to the game2 controller config yaml file",
     )
 
+    test_alignment_only_arg = DeclareLaunchArgument(
+        "test_alignment_only",
+        default_value="false",
+        description="Only test automatic alignment without shooting",
+    )
+
     game2_node = Node(
         package="robot_controller",
         executable="game2_auto_node",
         name="game2_auto_node",
         output="screen",
-        parameters=[LaunchConfiguration("config_file")],
+        parameters=[
+            LaunchConfiguration("config_file"),
+            {"test_alignment_only": LaunchConfiguration("test_alignment_only")},
+        ],
+        remappings=[
+            ("/image_combine_raw/left/camera_info", "/camera/camera_info"),
+        ],
     )
 
-    return LaunchDescription([config_file_arg, game2_node])
+    return LaunchDescription([
+        config_file_arg,
+        test_alignment_only_arg,
+        game2_node,
+    ])
