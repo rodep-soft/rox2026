@@ -38,9 +38,9 @@
     search_angular_z: 0.0   # [rad/s] タグ未検出時の探索旋回速度 (0.0で静止待機, 推奨: 0.15)
     enable_double_panel_midpoint_targeting: true # 2枚立っている時は中点を狙う (左-中中点を最優先)
     midpoint_blend_ratio: 0.50      # 端列へのシフト比率 (0.50: 幾何学的真の中点)
-    min_standing_aspect_ratio: 0.70 # 倒れ判定最小アスペクト比
-    max_standing_tilt_deg: 30.0     # [deg] 倒れ判定最大法線傾き角 (30度以上傾いたら倒れと判定)
-    max_standing_height_drop: 0.07  # [m] 倒れ判定最大落下量 (初期起立高さから7cm以上落下で倒れと判定)
+    min_standing_aspect_ratio: 0.40 # 倒れ判定最小アスペクト比 (90度倒れ構造に合わせて0.40未満で倒れ)
+    max_standing_tilt_deg: 60.0     # [deg] 倒れ判定最大法線傾き角 (90度倒れ構造に合わせて60度以上で倒れ)
+    max_standing_height_drop: 0.15  # [m] 倒れ判定最大落下量 (初期起立高さから15cm以上落下で倒れと判定)
     post_shot_delay_sec: 2.0        # [s] 射出完了から次探索までの着弾・打倒待ち時間 (2秒で確実に倒れを確認)
     shot_target_cooldown_sec: 2.0   # [s] 直前に撃った的の再照準禁止クールダウン
     shot_fallback_timeout: 5.0 # [s] ばね退避・ベルト待機・FEED完了を待つ保険タイムアウト

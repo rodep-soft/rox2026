@@ -561,7 +561,7 @@ public:
   std::string get_grid_visual_summary() const
   {
     std::stringstream ss;
-    ss << "\n═══════════════ 🎯 9マス起立・倒れ検出モニター ═══════════════\n";
+    ss << "\n═══════════════ 🎯 9マス起立検出モニター ═══════════════\n";
     for (int r = 2; r >= 0; --r) {
       const char* rname = (r == 2) ? "[上段]" : ((r == 1) ? "[中段]" : "[下段]");
       ss << " " << rname << " │";
@@ -573,26 +573,20 @@ public:
             break;
           }
         }
-        if (!pt) {
-          ss << "  ??? ⚪ ( --)  │";
-        } else if (!pt->detected) {
-          char buf[32];
-          std::snprintf(buf, sizeof(buf), "  #%2d ⚪ ( --)  │", pt->tag_id);
-          ss << buf;
-        } else if (pt->is_standing) {
-          char buf[32];
-          std::snprintf(buf, sizeof(buf), "  #%2d 🟢 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
-          ss << buf;
+        char buf[32];
+        if (pt && pt->detected && pt->is_standing) {
+          std::snprintf(buf, sizeof(buf), "  #%2d 🟢  │", pt->tag_id);
+        } else if (pt) {
+          std::snprintf(buf, sizeof(buf), "  #%2d 🔴  │", pt->tag_id);
         } else {
-          char buf[32];
-          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
-          ss << buf;
+          std::snprintf(buf, sizeof(buf), "  ??? 🔴  │");
         }
+        ss << buf;
       }
       ss << "\n";
     }
-    ss << " 凡例: 🟢 立 (STAND)   🔴 倒 (FALLEN)   ⚪ 未 (画面外/未検出)\n"
-       << "════════════════════════════════════════════════════════════";
+    ss << " 凡例: 🟢 狙える (立)    🔴 狙わない (倒れ / 未検出)\n"
+       << "════════════════════════════════════════════════════════";
     return ss.str();
   }
 
