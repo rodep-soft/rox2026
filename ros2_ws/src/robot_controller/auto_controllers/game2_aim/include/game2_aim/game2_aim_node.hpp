@@ -92,10 +92,11 @@ private:
   bool test_alignment_only_{false};
   double shot_fallback_timeout_{5.0}; // [s] 射出ボタン押下後の保険タイムアウト
 
-  // ── 新規パラメータ: 信頼度判定・タイムアウト ──
+  // ── 新規パラメータ: 信頼度判定・タイムアウト・照準オフセット ──
   int min_detection_frames_{2};
   double visual_valid_timeout_{0.3}; // [s] 照準完了判定に必要な直近視覚有効時間
   double align_lost_timeout_{1.0};   // [s] ALIGNING中の完全ロスト判定時間
+  double aim_yaw_offset_deg_{0.0};   // [deg] 照準左右微調整オフセット
 
   // ── ターゲット追従・認識エンジン ──
   TargetTracker tracker_;

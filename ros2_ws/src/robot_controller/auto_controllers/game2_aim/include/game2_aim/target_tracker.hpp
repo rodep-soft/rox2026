@@ -57,6 +57,7 @@ public:
     bool enable_double_panel_midpoint_targeting{false};
     bool test_alignment_only{false};
     int min_detection_frames{2};
+    double aim_yaw_offset_rad{0.0};
   };
 
   TargetTracker() = default;
@@ -210,7 +211,7 @@ public:
           target_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
           target_tag_offset_x_ = 0.0;
           target_tag_offset_y_ = 0.0;
-          target_heading_err_ = std::atan2(target_y_, target_x_);
+          target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
           last_visually_confirmed_time_ = now;
 
           RCLCPP_INFO(
@@ -303,7 +304,7 @@ public:
               target_yaw_at_detection_ = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
               target_tag_offset_x_ = target_x_ - p0->x;
               target_tag_offset_y_ = target_y_ - p0->y;
-              target_heading_err_ = std::atan2(target_y_, target_x_);
+              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
@@ -319,7 +320,7 @@ public:
               target_yaw_at_detection_ = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
               target_tag_offset_x_ = target_x_ - p1->x;
               target_tag_offset_y_ = target_y_ - p1->y;
-              target_heading_err_ = std::atan2(target_y_, target_x_);
+              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
@@ -337,7 +338,7 @@ public:
               target_yaw_at_detection_ = p->yaw_at_detection;
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::atan2(target_y_, target_x_);
+              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Single Col %d | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
@@ -414,7 +415,7 @@ public:
     // IMUオドメトリ姿勢補間（デッドレコニング）
     const double raw_heading_err = std::atan2(target_y_, target_x_);
     const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(raw_heading_err - rotated, 2.0 * M_PI);
+    target_heading_err_ = std::remainder(raw_heading_err - rotated + config_.aim_yaw_offset_rad, 2.0 * M_PI);
   }
 
   bool has_locked_target() const { return target_locked_; }

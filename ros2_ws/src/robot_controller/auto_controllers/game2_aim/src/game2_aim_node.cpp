@@ -102,6 +102,7 @@ void Game2AimNode::load_parameters()
   min_detection_frames_ = declare_parameter<int>("min_detection_frames", 2);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
   align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
+  aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
 
   // Tracker Config Setup
   TargetTracker::Config tracker_cfg;
@@ -122,6 +123,7 @@ void Game2AimNode::load_parameters()
     declare_parameter<bool>("enable_double_panel_midpoint_targeting", false);
   tracker_cfg.test_alignment_only = test_alignment_only_;
   tracker_cfg.min_detection_frames = min_detection_frames_;
+  tracker_cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
   tracker_.set_config(tracker_cfg);
 
   // AprilTag Panel IDs
@@ -177,6 +179,11 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       visual_valid_timeout_ = param.as_double();
     } else if (name == "align_lost_timeout") {
       align_lost_timeout_ = param.as_double();
+    } else if (name == "aim_yaw_offset_deg") {
+      aim_yaw_offset_deg_ = param.as_double();
+      tracker_cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
+      tracker_cfg_changed = true;
+      RCLCPP_INFO(get_logger(), "Param updated: aim_yaw_offset_deg = %+.2f deg", aim_yaw_offset_deg_);
     } else if (name == "enable_double_panel_midpoint_targeting") {
       tracker_cfg.enable_double_panel_midpoint_targeting = param.as_bool();
       tracker_cfg_changed = true;
