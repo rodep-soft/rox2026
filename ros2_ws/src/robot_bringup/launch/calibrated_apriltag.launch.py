@@ -20,6 +20,10 @@ def launch_setup(context, *args, **kwargs):
     detector_blur = LaunchConfiguration("detector_blur").perform(context)
     detector_refine = LaunchConfiguration("detector_refine").perform(context)
     detector_sharpening = LaunchConfiguration("detector_sharpening").perform(context)
+    enable_foxglove = LaunchConfiguration("enable_foxglove").perform(
+        context
+    ).lower() in ("true", "1")
+    foxglove_port = LaunchConfiguration("foxglove_port").perform(context)
 
     mipi_node = Node(
         package="mipi_cam",
@@ -97,7 +101,18 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    return [mipi_node, mono_node, camera_tf_node, apriltag_launch]
+    launch_nodes = [mipi_node, mono_node, camera_tf_node, apriltag_launch]
+    if enable_foxglove:
+        launch_nodes.append(
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(bringup_share, "launch", "foxglove_bridge.launch.py")
+                ),
+                launch_arguments={"port": foxglove_port}.items(),
+            )
+        )
+
+    return launch_nodes
 
 
 def generate_launch_description():
@@ -156,6 +171,16 @@ def generate_launch_description():
             "detector_sharpening",
             default_value="0.25",
             description="Conservative decoding sharpening for changing illumination",
+        ),
+        DeclareLaunchArgument(
+            "enable_foxglove",
+            default_value="false",
+            description="Start Foxglove Bridge for detection inspection",
+        ),
+        DeclareLaunchArgument(
+            "foxglove_port",
+            default_value="8765",
+            description="Foxglove Bridge WebSocket port",
         ),
         OpaqueFunction(function=launch_setup),
     ])
