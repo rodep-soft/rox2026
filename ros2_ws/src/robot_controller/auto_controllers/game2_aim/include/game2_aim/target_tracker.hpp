@@ -27,6 +27,9 @@ struct PanelTagInfo
   int row{0};     // 0: Bottom, 1: Middle, 2: Top
   int col{0};     // 0: Left, 1: Center, 2: Right
   bool detected{false};
+  bool is_standing{true};
+  double aspect_ratio{1.0};
+  double tilt_deg{0.0};
   double x{0.0};
   double y{0.0};
   double z{0.0};
@@ -58,6 +61,8 @@ public:
     bool test_alignment_only{false};
     int min_detection_frames{2};
     double aim_yaw_offset_rad{0.0};
+    double min_standing_aspect_ratio{0.65};
+    double max_standing_tilt_deg{40.0};
   };
 
   TargetTracker() = default;
@@ -132,11 +137,46 @@ public:
       }
 
       auto & panel = it->second;
-      panel.detected = true;
       panel.last_seen = now;
       panel.pixel_x = det.centre.x;
       panel.pixel_y = det.centre.y;
       panel.yaw_at_detection = current_yaw;
+
+      // ── 📐 アスペクト比 (縦幅 / 横幅) の算出 ──
+      double aspect_ratio = 1.0;
+      if (det.corners.size() >= 4) {
+        const double w1 = std::hypot(det.corners[1].x - det.corners[0].x, det.corners[1].y - det.corners[0].y);
+        const double w2 = std::hypot(det.corners[2].x - det.corners[3].x, det.corners[2].y - det.corners[3].y);
+        const double h1 = std::hypot(det.corners[3].x - det.corners[0].x, det.corners[3].y - det.corners[0].y);
+        const double h2 = std::hypot(det.corners[2].x - det.corners[1].x, det.corners[2].y - det.corners[1].y);
+        const double w_avg = (w1 + w2) * 0.5;
+        const double h_avg = (h1 + h2) * 0.5;
+        if (w_avg > 1.0) {
+          aspect_ratio = h_avg / w_avg;
+        }
+      }
+      panel.aspect_ratio = aspect_ratio;
+
+      // ── 📐 3D Tilt 角 (法線の傾き) の算出 ──
+      double tilt_deg = 0.0;
+      const auto & ori = det.pose.pose.pose.orientation;
+      if (ori.w != 0.0 || ori.x != 0.0 || ori.y != 0.0 || ori.z != 0.0) {
+        const double nz = 1.0 - 2.0 * (ori.x * ori.x + ori.y * ori.y);
+        const double clamped_nz = std::clamp(std::abs(nz), 0.0, 1.0);
+        tilt_deg = std::acos(clamped_nz) * 180.0 / M_PI;
+      }
+      panel.tilt_deg = tilt_deg;
+
+      // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
+      bool standing = true;
+      if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
+        standing = false;
+      }
+      if (tilt_deg > config_.max_standing_tilt_deg) {
+        standing = false;
+      }
+      panel.is_standing = standing;
+      panel.detected = standing;
 
       const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance / config_.camera_fx;
       const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance / config_.camera_fy;
@@ -466,6 +506,24 @@ public:
       case 2: return "Top (Row 2)";
       default: return "Unknown Row";
     }
+  }
+
+  std::string get_detection_summary(const rclcpp::Time & now) const
+  {
+    std::stringstream ss;
+    bool found_any = false;
+    for (const auto & [id, panel] : panel_grid_) {
+      if ((now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
+        if (found_any) ss << " | ";
+        ss << "#" << id << "(R" << panel.row << "C" << panel.col << ": "
+           << (panel.is_standing ? "STAND" : "FALLEN")
+           << " Asp=" << std::fixed << std::setprecision(2) << panel.aspect_ratio
+           << " Tilt=" << std::setprecision(1) << panel.tilt_deg << "°)";
+        found_any = true;
+      }
+    }
+    if (!found_any) return "No tags in view";
+    return ss.str();
   }
 
 private:
