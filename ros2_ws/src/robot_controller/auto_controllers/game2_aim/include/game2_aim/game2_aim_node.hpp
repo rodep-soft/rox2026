@@ -90,6 +90,7 @@ private:
 
   double search_angular_z_{0.15};
   bool test_alignment_only_{false};
+  bool test_panel_state_display_{true}; // 0.5秒ごとにターミナルへ9マス色付き起立/倒れ診断グリッドを出力
   double shot_fallback_timeout_{5.0}; // [s] 射出ボタン押下後の保険タイムアウト
 
   // ── 新規パラメータ: 信頼度判定・タイムアウト・照準オフセット・倒れ判定・射出後ディレイ ──

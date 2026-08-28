@@ -97,18 +97,19 @@ void Game2AimNode::load_parameters()
   target_distance_ = declare_parameter<double>("target_distance", 4.0);
   search_angular_z_ = declare_parameter<double>("search_angular_z", 0.15);
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
+  test_panel_state_display_ = declare_parameter<bool>("test_panel_state_display", true);
   shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 5.0);
 
   min_detection_frames_ = declare_parameter<int>("min_detection_frames", 2);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
   align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
-  min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.80);
-  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 20.0);
+  min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.70);
+  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
   max_standing_height_drop_ = declare_parameter<double>("max_standing_height_drop", 0.07);
-  post_shot_delay_sec_ = declare_parameter<double>("post_shot_delay_sec", 0.8);
+  post_shot_delay_sec_ = declare_parameter<double>("post_shot_delay_sec", 2.0);
   shot_target_cooldown_sec_ = declare_parameter<double>("shot_target_cooldown_sec", 2.0);
-  midpoint_blend_ratio_ = declare_parameter<double>("midpoint_blend_ratio", 0.65);
+  midpoint_blend_ratio_ = declare_parameter<double>("midpoint_blend_ratio", 0.50);
 
   // Tracker Config Setup
   TargetTracker::Config tracker_cfg;
@@ -180,6 +181,8 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       test_alignment_only_ = param.as_bool();
       tracker_cfg.test_alignment_only = test_alignment_only_;
       tracker_cfg_changed = true;
+    } else if (name == "test_panel_state_display") {
+      test_panel_state_display_ = param.as_bool();
     } else if (name == "shot_fallback_timeout") {
       shot_fallback_timeout_ = param.as_double();
     } else if (name == "min_detection_frames") {
@@ -234,6 +237,12 @@ void Game2AimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
   tracker_.update_detections(*msg, *tf_buffer_, yaw_, now());
+
+  if (test_panel_state_display_) {
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 500,
+      "%s", tracker_.get_grid_visual_summary().c_str());
+  }
 }
 
 void Game2AimNode::camera_info_callback(

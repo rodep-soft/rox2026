@@ -32,15 +32,16 @@
     # true: ドリブル・ベルトを動かさず、車体の角度合わせ（旋回）だけをテスト
     # false: BeltMode連動を含むエイムアシスト (下段: LEVEL_1, 中段: LEVEL_2, 上段: LEVEL_3)
     test_alignment_only: false
+    test_panel_state_display: true # true: 0.5秒ごとにターミナルへ9マス色付き起立/倒れ診断グリッドを出力
 
     tag_lost_timeout: 1.5   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ耐性)
     search_angular_z: 0.0   # [rad/s] タグ未検出時の探索旋回速度 (0.0で静止待機, 推奨: 0.15)
     enable_double_panel_midpoint_targeting: true # 2枚立っている時は中点を狙う (左-中中点を最優先)
     midpoint_blend_ratio: 0.50      # 端列へのシフト比率 (0.50: 幾何学的真の中点)
-    min_standing_aspect_ratio: 0.80 # 倒れ判定最小アスペクト比 (0.80未満は倒れと判定)
-    max_standing_tilt_deg: 15.0     # [deg] 倒れ判定最大法線傾き角 (15度以上傾いたら倒れと判定)
+    min_standing_aspect_ratio: 0.70 # 倒れ判定最小アスペクト比
+    max_standing_tilt_deg: 30.0     # [deg] 倒れ判定最大法線傾き角 (30度以上傾いたら倒れと判定)
     max_standing_height_drop: 0.07  # [m] 倒れ判定最大落下量 (初期起立高さから7cm以上落下で倒れと判定)
-    post_shot_delay_sec: 0.8        # [s] 射出完了から次探索までの着弾・打倒待ち時間
+    post_shot_delay_sec: 2.0        # [s] 射出完了から次探索までの着弾・打倒待ち時間 (2秒で確実に倒れを確認)
     shot_target_cooldown_sec: 2.0   # [s] 直前に撃った的の再照準禁止クールダウン
     shot_fallback_timeout: 5.0 # [s] ばね退避・ベルト待機・FEED完了を待つ保険タイムアウト
     min_detection_frames: 2 # ターゲットロックに必要な連続検出フレーム数 (ノイズ誤検出防止)

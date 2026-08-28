@@ -558,6 +558,44 @@ public:
     return ss.str();
   }
 
+  std::string get_grid_visual_summary() const
+  {
+    std::stringstream ss;
+    ss << "\n═══════════════ 🎯 9マス起立・倒れ検出モニター ═══════════════\n";
+    for (int r = 2; r >= 0; --r) {
+      const char* rname = (r == 2) ? "[上段]" : ((r == 1) ? "[中段]" : "[下段]");
+      ss << " " << rname << " │";
+      for (int c = 0; c < 3; ++c) {
+        const PanelTagInfo* pt = nullptr;
+        for (const auto & [id, p_info] : panel_grid_) {
+          if (p_info.row == r && p_info.col == c) {
+            pt = &p_info;
+            break;
+          }
+        }
+        if (!pt) {
+          ss << "  ??? ⚪ ( --)  │";
+        } else if (!pt->detected) {
+          char buf[32];
+          std::snprintf(buf, sizeof(buf), "  #%2d ⚪ ( --)  │", pt->tag_id);
+          ss << buf;
+        } else if (pt->is_standing) {
+          char buf[32];
+          std::snprintf(buf, sizeof(buf), "  #%2d 🟢 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
+          ss << buf;
+        } else {
+          char buf[32];
+          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
+          ss << buf;
+        }
+      }
+      ss << "\n";
+    }
+    ss << " 凡例: 🟢 立 (STAND)   🔴 倒 (FALLEN)   ⚪ 未 (画面外/未検出)\n"
+       << "════════════════════════════════════════════════════════════";
+    return ss.str();
+  }
+
   void mark_active_target_shot(const rclcpp::Time & now)
   {
     for (int tag_id : current_target_tag_ids_) {
