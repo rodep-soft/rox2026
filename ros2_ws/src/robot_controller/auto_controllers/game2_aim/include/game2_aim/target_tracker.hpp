@@ -157,13 +157,31 @@ public:
       }
       panel.aspect_ratio = aspect_ratio;
 
-      // ── 📐 3D Tilt 角 (法線の傾き) の算出 ──
+      // ── 📐 3D Tilt 角 (法線の傾き) の算出 (Homography 行列またはアスペクト比) ──
       double tilt_deg = 0.0;
-      const auto & ori = det.pose.pose.pose.orientation;
-      if (ori.w != 0.0 || ori.x != 0.0 || ori.y != 0.0 || ori.z != 0.0) {
-        const double nz = 1.0 - 2.0 * (ori.x * ori.x + ori.y * ori.y);
-        const double clamped_nz = std::clamp(std::abs(nz), 0.0, 1.0);
-        tilt_deg = std::acos(clamped_nz) * 180.0 / M_PI;
+      if (det.homography.size() == 9 && config_.camera_fx > 1.0 && config_.camera_fy > 1.0) {
+        // H = K * [r1 r2 t] => r1 = K^-1 * H[:,0], r2 = K^-1 * H[:,1]
+        const double r1_x = (det.homography[0] - config_.camera_cx * det.homography[6]) / config_.camera_fx;
+        const double r1_y = (det.homography[3] - config_.camera_cy * det.homography[6]) / config_.camera_fy;
+        const double r1_z = det.homography[6];
+
+        const double r2_x = (det.homography[1] - config_.camera_cx * det.homography[7]) / config_.camera_fx;
+        const double r2_y = (det.homography[4] - config_.camera_cy * det.homography[7]) / config_.camera_fy;
+        const double r2_z = det.homography[7];
+
+        // 法線ベクトル n = r1 x r2
+        const double nx = r1_y * r2_z - r1_z * r2_y;
+        const double ny = r1_z * r2_x - r1_x * r2_z;
+        const double nz = r1_x * r2_y - r1_y * r2_x;
+        const double norm = std::hypot(nx, ny, nz);
+        if (norm > 1e-6) {
+          const double cos_tilt = std::clamp(std::abs(nz) / norm, 0.0, 1.0);
+          tilt_deg = std::acos(cos_tilt) * 180.0 / M_PI;
+        }
+      } else {
+        // フォールバック: アスペクト比からの傾き推定
+        const double cos_tilt = std::clamp(aspect_ratio, 0.0, 1.0);
+        tilt_deg = std::acos(cos_tilt) * 180.0 / M_PI;
       }
       panel.tilt_deg = tilt_deg;
 
