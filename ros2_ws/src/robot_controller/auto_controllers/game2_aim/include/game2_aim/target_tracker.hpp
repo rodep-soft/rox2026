@@ -28,7 +28,6 @@ struct PanelTagInfo
   int col{0};     // 0: Left, 1: Center, 2: Right
   bool detected{false};
   bool is_standing{true};
-  bool is_permanently_fallen{false}; // 永続撃破ラッチ (一度倒れたら二度とSTANDに戻さない)
   double aspect_ratio{1.0};
   double tilt_deg{0.0};
   double x{0.0};
@@ -223,12 +222,6 @@ public:
       }
 
       // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
-      if (panel.is_permanently_fallen) {
-        panel.is_standing = false;
-        panel.detected = false;
-        continue;
-      }
-
       bool standing = true;
       if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
         standing = false;
@@ -238,10 +231,6 @@ public:
       }
       if (panel.has_initial_z && (panel.initial_standing_z - panel.z) > config_.max_standing_height_drop) {
         standing = false; // 初期高さから設定値(7cm)以上落下した場合は倒れと判定
-      }
-
-      if (!standing) {
-        panel.is_permanently_fallen = true; // 永続撃破ラッチ
       }
 
       panel.is_standing = standing;
@@ -433,12 +422,44 @@ public:
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
               target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
-              RCLCPP_INFO(
-                logger,
-                "🔒 [Target Confirmed: Single Col %d | %s] Tag #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                p->col, get_row_name(row).c_str(), p->tag_id, target_heading_err_ * 180.0 / M_PI,
-                target_belt_mode_);
             }
+
+            // 全グリッド認識状況のサマリー文字列を構築
+            std::stringstream status_ss;
+            for (int r = 2; r >= 0; --r) {
+              const char* rname = (r == 2) ? "上" : ((r == 1) ? "中" : "下");
+              status_ss << "[" << rname << ":";
+              for (int c = 0; c < 3; ++c) {
+                const PanelTagInfo* pt = nullptr;
+                for (const auto & [id, p_info] : panel_grid_) {
+                  if (p_info.row == r && p_info.col == c) {
+                    pt = &p_info;
+                    break;
+                  }
+                }
+                if (!pt) {
+                  status_ss << " ?";
+                } else if (!pt->detected) {
+                  status_ss << " #" << pt->tag_id << "(未)";
+                } else if (pt->is_standing) {
+                  status_ss << " #" << pt->tag_id << "(立)";
+                } else {
+                  status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) << pt->tilt_deg << "°)";
+                }
+              }
+              status_ss << "] ";
+            }
+
+            RCLCPP_INFO(
+              logger,
+              "🔒 [Game2 TARGET LOCK 決定] %s\n"
+              "   ▶ 9枚認識状況: %s\n"
+              "   ▶ 狙い角度: %+.2f deg | ベルト: LEVEL_%d",
+              target_description().c_str(),
+              status_ss.str().c_str(),
+              target_heading_err_ * 180.0 / M_PI,
+              target_belt_mode_);
+
             return true;
           }
           return false;
@@ -562,7 +583,6 @@ public:
   void reset_fallen_states()
   {
     for (auto & [id, panel] : panel_grid_) {
-      panel.is_permanently_fallen = false;
       panel.is_standing = true;
       panel.has_initial_z = false;
       panel.initial_standing_z = 0.0;
