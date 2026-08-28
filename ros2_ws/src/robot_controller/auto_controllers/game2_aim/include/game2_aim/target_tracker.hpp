@@ -137,12 +137,16 @@ public:
       panel.pixel_y = det.centre.y;
       panel.yaw_at_detection = current_yaw;
 
+      const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance / config_.camera_fx;
+      const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance / config_.camera_fy;
+      const double z_c = config_.target_distance;
+
       if (has_tf) {
         geometry_msgs::msg::PoseStamped tag_cam_pose;
         tag_cam_pose.header = msg.header;
-        tag_cam_pose.pose.position.x = det.centre.x;
-        tag_cam_pose.pose.position.y = det.centre.y;
-        tag_cam_pose.pose.position.z = config_.target_distance;
+        tag_cam_pose.pose.position.x = x_c;
+        tag_cam_pose.pose.position.y = y_c;
+        tag_cam_pose.pose.position.z = z_c;
         tag_cam_pose.pose.orientation.w = 1.0;
 
         geometry_msgs::msg::PoseStamped tag_base_pose;
@@ -151,11 +155,7 @@ public:
         panel.y = tag_base_pose.pose.position.y;
         panel.z = tag_base_pose.pose.position.z;
       } else {
-        const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance / config_.camera_fx;
-        const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance / config_.camera_fy;
-        const double z_c = config_.target_distance;
-
-        // Optical to Base Link transform
+        // Optical to Base Link transform fallback
         panel.x = z_c + config_.camera_offset_x;
         panel.y = -x_c + config_.camera_offset_y;
         panel.z = -y_c + config_.camera_offset_z;
