@@ -304,13 +304,16 @@ void Game2AimNode::shot_cycle_state_callback(
 {
   const uint8_t current_state = msg->state;
   if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT || state_ == robot_msgs::msg::Game2State::ALIGNING) {
-    // FEEDING（射出押し込み開始）または RETURNING（射出完了・アーム復帰開始）遷移時に次の探索へ移行
-    if ((current_state == robot_msgs::msg::ShotCycleState::FEEDING &&
-         prev_shot_cycle_state_ != robot_msgs::msg::ShotCycleState::FEEDING) ||
-        (current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
-         prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING))
+    // ボール射出完了（FEEDING -> RETURNING）または サイクル完全終了（-> IDLE）で次の探索へ移行
+    if ((current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
+         prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING) ||
+        (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
+         prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
     {
-      transition_to(robot_msgs::msg::Game2State::SEARCHING, "Shot cycle firing/feeding detected via /dribble/shot_cycle_state");
+      shot_requested_ = false;
+      transition_to(
+        robot_msgs::msg::Game2State::SEARCHING,
+        "Shot completed (ejected). Transitioning to SEARCHING for next target");
     }
   }
   prev_shot_cycle_state_ = current_state;

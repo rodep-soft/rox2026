@@ -629,6 +629,13 @@ void JoyControllerNode::publish_stop_commands()
 
   dribble_enabled_ = false;
   publish_dribble_enabled(dribble_enabled_);
+
+  if (game2_active_) {
+    game2_active_ = false;
+    std_msgs::msg::Bool game2_msg;
+    game2_msg.data = false;
+    game2_start_pub_->publish(game2_msg);
+  }
 }
 
 void JoyControllerNode::publish_limited_velocity(
