@@ -16,14 +16,14 @@
     # ── ゆっくり射出 ──
     # retract_travel_radは現在の待機位置から収納方向へ動かす量。
     slow_fire_move_spring: true           # false: ばねは保持し、アームとローラのみ動作
-    slow_fire_retract_travel_rad: 2.0      # [rad] スロー発射前に収納方向へ動かす回転量
+    slow_fire_retract_travel_rad: 2.3      # [rad] スロー発射前に収納方向へ動かす回転量
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
-    slow_fire_stroke_rad: 7.5              # [rad] 収納位置からゆっくり押し出す回転量
-    slow_fire_base_velocity_rad_s: 11.0    # スロー発射の基準速度
-    slow_fire_velocity_gain_rad_per_m: 7.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
+    slow_fire_stroke_rad: 8.5              # [rad] 収納位置からゆっくり押し出す回転量
+    slow_fire_base_velocity_rad_s: 34.0    # スロー発射の基準速度
+    slow_fire_velocity_gain_rad_per_m: 30.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0      # スロー発射の最小速度
-    slow_fire_max_velocity_rad_s: 30.0     # スロー発射の最大速度
+    slow_fire_max_velocity_rad_s: 40.0     # スロー発射の最大速度
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # IMU補正後の速度指令を受け取って補正する
     cmd_vel_timeout_sec: 0.2               # cmd_velのタイムアウト
     slow_fire_return_velocity_rad_s: 28.0  # スロー発射後に戻る速度
