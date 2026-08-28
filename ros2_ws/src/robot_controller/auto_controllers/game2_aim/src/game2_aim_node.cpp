@@ -104,7 +104,8 @@ void Game2AimNode::load_parameters()
   align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
   min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.80);
-  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
+  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 20.0);
+  max_standing_height_drop_ = declare_parameter<double>("max_standing_height_drop", 0.07);
   post_shot_delay_sec_ = declare_parameter<double>("post_shot_delay_sec", 0.8);
   shot_target_cooldown_sec_ = declare_parameter<double>("shot_target_cooldown_sec", 2.0);
   midpoint_blend_ratio_ = declare_parameter<double>("midpoint_blend_ratio", 0.65);
@@ -131,6 +132,7 @@ void Game2AimNode::load_parameters()
   tracker_cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
   tracker_cfg.min_standing_aspect_ratio = min_standing_aspect_ratio_;
   tracker_cfg.max_standing_tilt_deg = max_standing_tilt_deg_;
+  tracker_cfg.max_standing_height_drop = max_standing_height_drop_;
   tracker_cfg.shot_target_cooldown_sec = shot_target_cooldown_sec_;
   tracker_cfg.midpoint_blend_ratio = midpoint_blend_ratio_;
   tracker_.set_config(tracker_cfg);
@@ -203,6 +205,10 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
     } else if (name == "max_standing_tilt_deg") {
       max_standing_tilt_deg_ = param.as_double();
       tracker_cfg.max_standing_tilt_deg = max_standing_tilt_deg_;
+      tracker_cfg_changed = true;
+    } else if (name == "max_standing_height_drop") {
+      max_standing_height_drop_ = param.as_double();
+      tracker_cfg.max_standing_height_drop = max_standing_height_drop_;
       tracker_cfg_changed = true;
     } else if (name == "post_shot_delay_sec") {
       post_shot_delay_sec_ = param.as_double();

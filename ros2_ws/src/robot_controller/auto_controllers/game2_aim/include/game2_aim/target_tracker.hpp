@@ -38,6 +38,8 @@ struct PanelTagInfo
   double yaw_at_detection{0.0};
   rclcpp::Time last_seen{0, 0, RCL_ROS_TIME};
   rclcpp::Time shot_cooldown_until{0, 0, RCL_ROS_TIME};
+  double initial_standing_z{0.0};
+  bool has_initial_z{false};
 };
 
 class TargetTracker
@@ -63,7 +65,8 @@ public:
     int min_detection_frames{2};
     double aim_yaw_offset_rad{0.0};
     double min_standing_aspect_ratio{0.80};
-    double max_standing_tilt_deg{30.0};
+    double max_standing_tilt_deg{20.0};
+    double max_standing_height_drop{0.07}; // [m] 倒れ判定の高さ落下量 (7cm以上落下で倒れ)
     double shot_target_cooldown_sec{2.0};
     double midpoint_blend_ratio{0.65}; // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
   };
@@ -188,17 +191,6 @@ public:
       }
       panel.tilt_deg = tilt_deg;
 
-      // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
-      bool standing = true;
-      if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
-        standing = false;
-      }
-      if (tilt_deg > config_.max_standing_tilt_deg) {
-        standing = false;
-      }
-      panel.is_standing = standing;
-      panel.detected = standing;
-
       const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance / config_.camera_fx;
       const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance / config_.camera_fy;
       const double z_c = config_.target_distance;
@@ -222,6 +214,26 @@ public:
         panel.y = -x_c + config_.camera_offset_y;
         panel.z = -y_c + config_.camera_offset_z;
       }
+
+      // 初回直立時の基準高さを記憶
+      if (!panel.has_initial_z && tilt_deg < config_.max_standing_tilt_deg && aspect_ratio >= config_.min_standing_aspect_ratio) {
+        panel.initial_standing_z = panel.z;
+        panel.has_initial_z = true;
+      }
+
+      // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
+      bool standing = true;
+      if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
+        standing = false;
+      }
+      if (tilt_deg > config_.max_standing_tilt_deg) {
+        standing = false;
+      }
+      if (panel.has_initial_z && (panel.initial_standing_z - panel.z) > config_.max_standing_height_drop) {
+        standing = false; // 初期高さから設定値(7cm)以上落下した場合は倒れと判定
+      }
+      panel.is_standing = standing;
+      panel.detected = standing;
     }
   }
 
@@ -547,10 +559,11 @@ public:
     for (const auto & [id, panel] : panel_grid_) {
       if ((now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
         if (found_any) ss << " | ";
-        ss << "#" << id << "(R" << panel.row << "C" << panel.col << ": "
+        ss << "#" << id << "(R" << panel.row << "C" << panel.col << ":"
            << (panel.is_standing ? "STAND" : "FALLEN")
-           << " Asp=" << std::fixed << std::setprecision(2) << panel.aspect_ratio
-           << " Tilt=" << std::setprecision(1) << panel.tilt_deg << "°)";
+           << " Y=" << std::showpos << std::fixed << std::setprecision(2) << panel.y
+           << " Z=" << std::noshowpos << std::setprecision(2) << panel.z
+           << " Tilt=" << std::setprecision(0) << panel.tilt_deg << "°)";
         found_any = true;
       }
     }

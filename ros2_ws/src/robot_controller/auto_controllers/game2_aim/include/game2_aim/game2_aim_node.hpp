@@ -98,7 +98,8 @@ private:
   double align_lost_timeout_{1.0};   // [s] ALIGNING中の完全ロスト判定時間
   double aim_yaw_offset_deg_{0.0};   // [deg] 照準左右微調整オフセット
   double min_standing_aspect_ratio_{0.80}; // 倒れ判定最小アスペクト比
-  double max_standing_tilt_deg_{30.0};     // [deg] 倒れ判定最大傾き角
+  double max_standing_tilt_deg_{20.0};     // [deg] 倒れ判定最大傾き角
+  double max_standing_height_drop_{0.07};  // [m] 倒れ判定最大落下量 (7cm以上落下で倒れ)
   double post_shot_delay_sec_{0.8};        // [s] 射出完了から次探索までの着弾・倒れ待ち時間
   double shot_target_cooldown_sec_{2.0};   // [s] 直前に撃った的の再照準禁止クールダウン
   double midpoint_blend_ratio_{0.65};      // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
