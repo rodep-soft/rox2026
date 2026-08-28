@@ -48,8 +48,6 @@ private:
   void publish_all(
     const geometry_msgs::msg::Twist & cmd_vel,
     uint8_t belt_mode,
-    bool dribble_enabled,
-    uint8_t arm_mode,
     bool completed);
 
   // TF Listener
@@ -67,8 +65,6 @@ private:
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
-  rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr arm_position_pub_;
   rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -115,7 +111,6 @@ private:
 
   rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   double last_cmd_wz_{0.0};
-  std::optional<uint8_t> last_published_arm_mode_;
 
   // IMU Feedback State
   bool imu_received_{false};
