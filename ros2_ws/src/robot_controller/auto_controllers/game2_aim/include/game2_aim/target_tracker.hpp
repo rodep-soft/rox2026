@@ -221,20 +221,8 @@ public:
         panel.has_initial_z = true;
       }
 
-      // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
-      bool standing = true;
-      if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
-        standing = false;
-      }
-      if (tilt_deg > config_.max_standing_tilt_deg) {
-        standing = false;
-      }
-      if (panel.has_initial_z && (panel.initial_standing_z - panel.z) > config_.max_standing_height_drop) {
-        standing = false; // 初期高さから設定値(7cm)以上落下した場合は倒れと判定
-      }
-
-      panel.is_standing = standing;
-      panel.detected = standing;
+      panel.is_standing = true;
+      panel.detected = true;
     }
   }
 
@@ -582,18 +570,16 @@ public:
         const bool is_recent_rx = (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
 
         char buf[32];
-        if (!is_recent_rx) {
-          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 ( --)  │", pt->tag_id);
-        } else if (pt->is_standing) {
+        if (is_recent_rx) {
           std::snprintf(buf, sizeof(buf), "  #%2d 🟢 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
         } else {
-          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
+          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 ( --)  │", pt->tag_id);
         }
         ss << buf;
       }
       ss << "\n";
     }
-    ss << " 凡例: 🟢 狙える (立+角度)    🔴 狙わない (倒れ / 未検出--)\n"
+    ss << " 凡例: 🟢 狙える (立/検出中)    🔴 狙わない (倒れ/未検出--)\n"
        << "════════════════════════════════════════════════════════";
     return ss.str();
   }
