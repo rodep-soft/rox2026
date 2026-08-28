@@ -236,12 +236,13 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
 void Game2AimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
-  tracker_.update_detections(*msg, *tf_buffer_, yaw_, now());
+  const auto current_time = now();
+  tracker_.update_detections(*msg, *tf_buffer_, yaw_, current_time);
 
   if (test_panel_state_display_) {
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 500,
-      "%s", tracker_.get_grid_visual_summary().c_str());
+      "%s", tracker_.get_grid_visual_summary(current_time).c_str());
   }
 }
 

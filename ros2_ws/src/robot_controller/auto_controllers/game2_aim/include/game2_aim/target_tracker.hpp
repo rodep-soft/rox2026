@@ -558,7 +558,7 @@ public:
     return ss.str();
   }
 
-  std::string get_grid_visual_summary() const
+  std::string get_grid_visual_summary(const rclcpp::Time & now) const
   {
     std::stringstream ss;
     ss << "\n═══════════════ 🎯 9マス起立検出モニター ═══════════════\n";
@@ -573,19 +573,27 @@ public:
             break;
           }
         }
+        if (!pt) {
+          ss << "  ??? 🔴 ( --)  │";
+          continue;
+        }
+
+        const double dt = (now - pt->last_seen).seconds();
+        const bool is_recent_rx = (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+
         char buf[32];
-        if (pt && pt->detected && pt->is_standing) {
-          std::snprintf(buf, sizeof(buf), "  #%2d 🟢  │", pt->tag_id);
-        } else if (pt) {
-          std::snprintf(buf, sizeof(buf), "  #%2d 🔴  │", pt->tag_id);
+        if (!is_recent_rx) {
+          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 ( --)  │", pt->tag_id);
+        } else if (pt->is_standing) {
+          std::snprintf(buf, sizeof(buf), "  #%2d 🟢 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
         } else {
-          std::snprintf(buf, sizeof(buf), "  ??? 🔴  │");
+          std::snprintf(buf, sizeof(buf), "  #%2d 🔴 (%2.0f°)  │", pt->tag_id, pt->tilt_deg);
         }
         ss << buf;
       }
       ss << "\n";
     }
-    ss << " 凡例: 🟢 狙える (立)    🔴 狙わない (倒れ / 未検出)\n"
+    ss << " 凡例: 🟢 狙える (立+角度)    🔴 狙わない (倒れ / 未検出--)\n"
        << "════════════════════════════════════════════════════════";
     return ss.str();
   }
