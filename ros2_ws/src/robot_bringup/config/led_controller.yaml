@@ -2,4 +2,5 @@
   ros__parameters:
     publish_period_ms: 100  # LEDのコマンド配信周期
     firing_display_ms: 500  # ばね発射のコマンドだけ継続して一定時間配信する
+    belt_offset_display_ms: 1000  # ベルトRPMオフセット変更後に値を表示する時間
     roller_logical_id: 12  # ドリブルローラのlogical_id

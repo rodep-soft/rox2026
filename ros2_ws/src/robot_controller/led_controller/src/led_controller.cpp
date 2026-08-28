@@ -1,5 +1,6 @@
 #include "led_controller/led_controller.hpp"
 
+#include <algorithm>
 #include <functional>
 #include <stdexcept>
 
@@ -11,6 +12,7 @@ constexpr uint8_t DRIVE_REVERSED_FLAG = 1U << 4U;
 constexpr uint8_t GAME2_ENABLED_FLAG = 1U << 5U;
 constexpr uint8_t ROLLER_FORWARD_FLAG = 1U << 6U;
 constexpr uint8_t ROLLER_REVERSE_FLAG = 1U << 7U;
+constexpr int8_t MAX_BELT_RPM_OFFSET_STEPS = 3;
 }  // namespace
 
 LedControllerNode::LedControllerNode()
@@ -18,13 +20,16 @@ LedControllerNode::LedControllerNode()
 {
   const auto publish_period_ms = declare_parameter<int>("publish_period_ms", 100);
   const auto firing_display_ms = declare_parameter<int>("firing_display_ms", 500);
+  const auto belt_offset_display_ms =
+    declare_parameter<int>("belt_offset_display_ms", 1000);
   const auto roller_logical_id = declare_parameter<int>("roller_logical_id", 12);
-  if (publish_period_ms <= 0 || firing_display_ms < 0 ||
+  if (publish_period_ms <= 0 || firing_display_ms < 0 || belt_offset_display_ms < 0 ||
     roller_logical_id < 0 || roller_logical_id > 65535)
   {
     throw std::runtime_error("LED timer parameters are invalid");
   }
   firing_display_duration_ = std::chrono::milliseconds(firing_display_ms);
+  belt_offset_display_duration_ = std::chrono::milliseconds(belt_offset_display_ms);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
 
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
@@ -89,6 +94,14 @@ void LedControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::Shar
 {
   belt_mode_ = msg->mode <=
     robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
+  if (msg->rpm_offset_step != 0) {
+    belt_rpm_offset_steps_ = static_cast<int8_t>(std::clamp(
+      static_cast<int>(belt_rpm_offset_steps_) + static_cast<int>(msg->rpm_offset_step),
+      -static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS),
+      static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS)));
+    belt_offset_display_until_ =
+      std::chrono::steady_clock::now() + belt_offset_display_duration_;
+  }
 }
 
 void LedControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -190,6 +203,10 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
       break;
   }
 
+  if (std::chrono::steady_clock::now() < belt_offset_display_until_) {
+    return belt_offset_display_mode();
+  }
+
   switch (arm_position_) {
     case robot_msgs::msg::ArmPosition::OPEN:    return DisplayMode::SHOT_OPENING;
     case robot_msgs::msg::ArmPosition::FEED:    return DisplayMode::ARM_FEED;
@@ -200,6 +217,19 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
   }
 
   return DisplayMode::READY;
+}
+
+LedControllerNode::DisplayMode LedControllerNode::belt_offset_display_mode() const
+{
+  switch (belt_rpm_offset_steps_) {
+    case -3: return DisplayMode::BELT_OFFSET_MINUS_3;
+    case -2: return DisplayMode::BELT_OFFSET_MINUS_2;
+    case -1: return DisplayMode::BELT_OFFSET_MINUS_1;
+    case 0:  return DisplayMode::BELT_OFFSET_ZERO;
+    case 1:  return DisplayMode::BELT_OFFSET_PLUS_1;
+    case 2:  return DisplayMode::BELT_OFFSET_PLUS_2;
+    default: return DisplayMode::BELT_OFFSET_PLUS_3;
+  }
 }
 
 uint8_t LedControllerNode::make_status_flags() const
