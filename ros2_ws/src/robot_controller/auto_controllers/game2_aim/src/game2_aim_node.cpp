@@ -415,11 +415,14 @@ void Game2AimNode::control_loop()
         cmd.angular.z = desired_wz;
         last_cmd_wz_ = cmd.angular.z;
 
+        const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
+
         RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 200,
-          "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
-          tracker_.active_target_id(), tracker_.active_row(), heading_err * 180.0 / M_PI, cmd.angular.z,
-          is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
+          get_logger(), *get_clock(), 500,
+          "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+          tracker_.active_target_id(), tracker_.active_row(),
+          target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
+          cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
       }
       break;
     }
