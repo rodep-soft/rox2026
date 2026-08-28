@@ -1,0 +1,394 @@
+#!/usr/bin/env python3
+"""Send one Linux evdev input_event stream redundantly to an RDK receiver.
+
+stdin is expected to be the raw stdout of Interception Tools `intercept`.
+The exact same protocol-v2 record is transmitted over:
+  * Wi-Fi UDP
+  * Bluetooth RFCOMM through /dev/rfcomm0
+
+Protocol v2, compatible with rdk_controller_bridge_v2:
+  network header !2sBBII
+    magic      b"RC"
+    version    2
+    kind       0=event, 1=heartbeat
+    session_id random uint32 for this sender process
+    seq        uint32 incremented once per input_event
+  payload
+    native Linux struct input_event (24 bytes on 64-bit ARM)
+
+Heartbeat records are sent at 20 Hz by default while the physical controller
+pipeline is alive. When the controller disappears, `intercept` closes stdout,
+stdin reaches EOF here, this process exits, and heartbeats stop. The RDK can
+therefore distinguish an idle controller from a disconnected controller.
+"""
+
+from __future__ import annotations
+
+import argparse
+import errno
+import os
+import queue
+import secrets
+import selectors
+import socket
+import struct
+import sys
+import termios
+import threading
+import time
+import tty
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
+MAGIC = b"RC"
+VERSION = 2
+KIND_EVENT = 0
+KIND_HEARTBEAT = 1
+HEADER = struct.Struct("!2sBBII")
+INPUT_EVENT = struct.Struct("@llHHi")
+INPUT_EVENT_SIZE = INPUT_EVENT.size
+ZERO_EVENT = b"\x00" * INPUT_EVENT_SIZE
+UINT32_MASK = 0xFFFFFFFF
+
+
+def log(msg: str) -> None:
+    print(f"[controller-net-sender] {msg}", file=sys.stderr, flush=True)
+
+
+@dataclass
+class Stats:
+    events_in: int = 0
+    udp_sent: int = 0
+    udp_errors: int = 0
+    bt_sent: int = 0
+    bt_errors: int = 0
+    bt_queue_drops: int = 0
+    heartbeats: int = 0
+
+
+class UdpSender:
+    def __init__(self, host: str, port: int, interface: str, stats: Stats) -> None:
+        self.host = host
+        self.port = port
+        self.interface = interface
+        self.stats = stats
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(False)
+        if interface:
+            try:
+                self.sock.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_BINDTODEVICE,
+                    interface.encode("utf-8") + b"\x00",
+                )
+                log(f"UDP bound to interface {interface}")
+            except (AttributeError, OSError) as e:
+                raise RuntimeError(f"failed to bind UDP to interface {interface}: {e}") from e
+        self.target: Optional[Tuple[str, int]] = None
+        self.next_resolve = 0.0
+        self.last_error_log = 0.0
+
+    def _resolve(self, now: float) -> bool:
+        if self.target is not None:
+            return True
+        if now < self.next_resolve:
+            return False
+        self.next_resolve = now + 1.0
+        try:
+            infos = socket.getaddrinfo(self.host, self.port, socket.AF_INET, socket.SOCK_DGRAM)
+            if not infos:
+                raise OSError("no IPv4 address returned")
+            address = infos[0][4]
+            self.target = (address[0], address[1])
+            log(f"UDP target resolved: {self.host}:{self.port} -> {self.target[0]}:{self.target[1]}")
+            return True
+        except OSError as e:
+            if now - self.last_error_log >= 5.0:
+                log(f"UDP target resolution failed for {self.host}: {e}")
+                self.last_error_log = now
+            return False
+
+    def send(self, record: bytes) -> None:
+        now = time.monotonic()
+        if not self._resolve(now):
+            return
+        assert self.target is not None
+        try:
+            self.sock.sendto(record, self.target)
+            self.stats.udp_sent += 1
+        except (BlockingIOError, OSError) as e:
+            self.stats.udp_errors += 1
+            # A name may point somewhere different after a network reconfiguration.
+            if isinstance(e, OSError) and e.errno in (
+                errno.ENETUNREACH,
+                errno.EHOSTUNREACH,
+                errno.ENETDOWN,
+                errno.ENODEV,
+                errno.EADDRNOTAVAIL,
+            ):
+                self.target = None
+                self.next_resolve = now + 0.5
+            if now - self.last_error_log >= 5.0:
+                log(f"UDP send error: {e}")
+                self.last_error_log = now
+
+    def close(self) -> None:
+        self.sock.close()
+
+
+class BluetoothWriter(threading.Thread):
+    """Dedicated RFCOMM writer so a stuck Bluetooth path cannot stall UDP."""
+
+    def __init__(self, device: str, retry: float, queue_size: int, stats: Stats) -> None:
+        super().__init__(name="rfcomm-writer", daemon=True)
+        self.device = device
+        self.retry = retry
+        self.stats = stats
+        self.q: queue.Queue[bytes] = queue.Queue(maxsize=queue_size)
+        self.stop_event = threading.Event()
+        self.connected = threading.Event()
+        self.reset_event = threading.Event()
+        self.fd: Optional[int] = None
+        self.last_open_log = 0.0
+
+    def submit(self, record: bytes) -> None:
+        if not self.connected.is_set():
+            return
+        try:
+            self.q.put_nowait(record)
+        except queue.Full:
+            # Never replay a large backlog of old controller actions after recovery.
+            self.stats.bt_queue_drops += 1
+            self.reset_event.set()
+
+    def stop(self) -> None:
+        self.stop_event.set()
+        self.reset_event.set()
+
+    def _drain_queue(self) -> None:
+        while True:
+            try:
+                self.q.get_nowait()
+            except queue.Empty:
+                return
+
+    def _close(self, reason: str = "") -> None:
+        fd = self.fd
+        self.fd = None
+        was_connected = self.connected.is_set()
+        self.connected.clear()
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        self._drain_queue()
+        if was_connected:
+            log(f"Bluetooth RFCOMM writer disconnected{': ' + reason if reason else ''}")
+
+    def _try_open(self) -> bool:
+        now = time.monotonic()
+        try:
+            fd = os.open(self.device, os.O_WRONLY | os.O_NOCTTY | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return False
+        except OSError as e:
+            if now - self.last_open_log >= 5.0 and e.errno not in (
+                errno.ENXIO,
+                errno.ENODEV,
+                errno.EIO,
+                errno.EBUSY,
+                errno.EAGAIN,
+            ):
+                log(f"RFCOMM open error: {e}")
+                self.last_open_log = now
+            return False
+
+        # rfcomm -r already requests raw TTY mode; set it again defensively.
+        try:
+            tty.setraw(fd, when=termios.TCSANOW)
+        except (termios.error, OSError):
+            pass
+        os.set_blocking(fd, True)
+        self.fd = fd
+        self.connected.set()
+        self.reset_event.clear()
+        log(f"Bluetooth RFCOMM writer connected: {self.device}")
+        return True
+
+    def _write_all(self, data: bytes) -> None:
+        assert self.fd is not None
+        view = memoryview(data)
+        while view:
+            written = os.write(self.fd, view)
+            if written <= 0:
+                raise OSError(errno.EIO, "zero-length RFCOMM write")
+            view = view[written:]
+
+    def run(self) -> None:
+        while not self.stop_event.is_set():
+            if self.reset_event.is_set():
+                self._close("queue overflow/reset")
+                self.reset_event.clear()
+
+            if self.fd is None:
+                if not self._try_open():
+                    self.stop_event.wait(self.retry)
+                    continue
+
+            try:
+                record = self.q.get(timeout=0.1)
+            except queue.Empty:
+                continue
+
+            try:
+                self._write_all(record)
+                self.stats.bt_sent += 1
+            except OSError as e:
+                self.stats.bt_errors += 1
+                self._close(str(e))
+                self.stop_event.wait(self.retry)
+
+        self._close("shutdown")
+
+
+class Sender:
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
+        self.stats = Stats()
+        self.session_id = secrets.randbits(32)
+        self.seq = 0
+        self.stdin_fd = sys.stdin.buffer.fileno()
+        self.stdin_buffer = bytearray()
+        self.selector = selectors.DefaultSelector()
+        self.selector.register(self.stdin_fd, selectors.EVENT_READ)
+        self.udp = UdpSender(args.rdk_host, args.udp_port, args.wifi_interface, self.stats)
+        self.bt = BluetoothWriter(args.rfcomm, args.rfcomm_retry, args.bt_queue_size, self.stats)
+        self.next_heartbeat = time.monotonic()
+        self.next_stats = time.monotonic() + args.stats_interval
+
+    def _record(self, kind: int, seq: int, payload: bytes) -> bytes:
+        return HEADER.pack(MAGIC, VERSION, kind, self.session_id, seq) + payload
+
+    def _send_record(self, record: bytes) -> None:
+        # UDP and Bluetooth receive the exact same bytes.
+        self.udp.send(record)
+        self.bt.submit(record)
+
+    def _send_heartbeat(self, now: float) -> None:
+        record = self._record(KIND_HEARTBEAT, self.seq, ZERO_EVENT)
+        self._send_record(record)
+        self.stats.heartbeats += 1
+        self.next_heartbeat = now + self.args.heartbeat_interval
+
+    def _send_event(self, payload: bytes) -> None:
+        record = self._record(KIND_EVENT, self.seq, payload)
+        self._send_record(record)
+        self.stats.events_in += 1
+        self.seq = (self.seq + 1) & UINT32_MASK
+
+    def _read_stdin(self) -> bool:
+        try:
+            chunk = os.read(self.stdin_fd, 4096)
+        except InterruptedError:
+            return True
+        if not chunk:
+            return False
+        self.stdin_buffer.extend(chunk)
+        while len(self.stdin_buffer) >= INPUT_EVENT_SIZE:
+            payload = bytes(self.stdin_buffer[:INPUT_EVENT_SIZE])
+            del self.stdin_buffer[:INPUT_EVENT_SIZE]
+            self._send_event(payload)
+        return True
+
+    def _log_stats(self, now: float) -> None:
+        if now < self.next_stats:
+            return
+        self.next_stats = now + self.args.stats_interval
+        s = self.stats
+        log(
+            f"stats session=0x{self.session_id:08x} seq={self.seq} events={s.events_in} "
+            f"hb={s.heartbeats} udp={s.udp_sent}/{s.udp_errors} "
+            f"bt={s.bt_sent}/{s.bt_errors} bt_connected={self.bt.connected.is_set()} "
+            f"bt_qdrop={s.bt_queue_drops}"
+        )
+
+    def run(self) -> int:
+        log(
+            f"start session=0x{self.session_id:08x}, protocol=v{VERSION}, "
+            f"input_event={INPUT_EVENT_SIZE}B, record={HEADER.size + INPUT_EVENT_SIZE}B, "
+            f"UDP={self.args.rdk_host}:{self.args.udp_port}, RFCOMM={self.args.rfcomm}, "
+            f"heartbeat={self.args.heartbeat_interval * 1000:.0f}ms"
+        )
+        self.bt.start()
+        # Immediate heartbeat causes the RDK to recreate its virtual event device
+        # as soon as this controller pipeline appears, even before the user moves it.
+        self._send_heartbeat(time.monotonic())
+
+        try:
+            while True:
+                now = time.monotonic()
+                timeout = max(0.0, min(self.next_heartbeat - now, 0.25))
+                events = self.selector.select(timeout=timeout)
+                if events and not self._read_stdin():
+                    if self.stdin_buffer:
+                        log(f"stdin EOF with {len(self.stdin_buffer)} trailing byte(s); dropping partial event")
+                    log("controller input stream closed; stopping heartbeat and sender")
+                    return 0
+
+                now = time.monotonic()
+                if now >= self.next_heartbeat:
+                    self._send_heartbeat(now)
+                self._log_stats(now)
+        finally:
+            self.bt.stop()
+            self.bt.join(timeout=0.5)
+            self.udp.close()
+            try:
+                self.selector.unregister(self.stdin_fd)
+            except Exception:
+                pass
+            self.selector.close()
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Redundant evdev sender for RDK controller bridge v2")
+    p.add_argument("--rdk-host", required=True, help="RDK Wi-Fi IPv4 address or resolvable hostname")
+    p.add_argument("--udp-port", type=int, default=5000)
+    p.add_argument("--wifi-interface", default="wlan0", help="Linux interface used for UDP; empty disables SO_BINDTODEVICE")
+    p.add_argument("--rfcomm", default="/dev/rfcomm0")
+    p.add_argument("--rfcomm-retry", type=float, default=0.20)
+    p.add_argument("--heartbeat-interval", type=float, default=0.05)
+    p.add_argument("--bt-queue-size", type=int, default=256)
+    p.add_argument("--stats-interval", type=float, default=10.0)
+    return p.parse_args()
+
+
+def validate(args: argparse.Namespace) -> None:
+    if INPUT_EVENT_SIZE != 24:
+        raise RuntimeError(
+            f"native struct input_event is {INPUT_EVENT_SIZE} bytes, expected 24. "
+            "Raspberry Pi and RDK must use the same 64-bit Linux input ABI."
+        )
+    if not 1 <= args.udp_port <= 65535:
+        raise ValueError("udp-port must be 1..65535")
+    if args.heartbeat_interval <= 0 or args.rfcomm_retry <= 0 or args.stats_interval <= 0:
+        raise ValueError("intervals must be > 0")
+    if args.bt_queue_size < 1:
+        raise ValueError("bt-queue-size must be >= 1")
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        validate(args)
+        return Sender(args).run()
+    except KeyboardInterrupt:
+        return 130
+    except Exception as e:
+        log(f"FATAL: {type(e).__name__}: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

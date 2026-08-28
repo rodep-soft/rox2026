@@ -1,0 +1,8 @@
+# Interception Tools udevmon configuration.
+# Match only the gamepad event node: DualSense also exposes motion/touchpad nodes.
+- JOB: /usr/local/bin/controller-forwarder-job $DEVNODE
+  DEVICE:
+    NAME: '.*(DualSense|Wireless Controller).*'
+    EVENTS:
+      EV_KEY: [BTN_SOUTH]
+      EV_ABS: [ABS_X]

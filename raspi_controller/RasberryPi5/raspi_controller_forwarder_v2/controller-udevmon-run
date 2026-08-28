@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+UDEVMON_BIN="$(command -v udevmon || true)"
+if [[ -z "$UDEVMON_BIN" ]]; then
+  echo "[controller-udevmon-run] udevmon not found" >&2
+  exit 127
+fi
+exec "$UDEVMON_BIN" -c /etc/interception/dualsense-forwarder.yaml
