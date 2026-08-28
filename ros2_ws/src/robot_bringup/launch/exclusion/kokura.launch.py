@@ -39,7 +39,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "enable_vision",
-                default_value="true",
+                default_value="false",
                 description="Enable 230AI MIPI stereo vision launch (mipi_cam / hobot_stereonet / apriltag / yolo)",
             ),
             DeclareLaunchArgument(
@@ -64,7 +64,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "enable_apriltag",
-                default_value="true",
+                default_value="false",
                 description="Enable AprilTag detection node on CSI camera",
             ),
             DeclareLaunchArgument(

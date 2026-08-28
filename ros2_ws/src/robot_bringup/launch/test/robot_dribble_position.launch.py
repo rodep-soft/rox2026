@@ -28,7 +28,7 @@ def generate_launch_description():
             ),
             # spring・dribble position用hardwareだけを起動する。
             include(
-                "hardware.launch.py",
+                "hardware/hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
                     "use_vesc": "false",
@@ -40,6 +40,7 @@ def generate_launch_description():
             ),
             include("input/joy_controller.launch.py"),
             # この構成の対象controller
-            include("controllers/spring_dribble_position.launch.py"),
+            include("controllers/spring_controller.launch.py"),
+            include("controllers/dribble_controller.launch.py"),
         ]
     )
