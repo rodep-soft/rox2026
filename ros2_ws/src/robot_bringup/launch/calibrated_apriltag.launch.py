@@ -189,13 +189,13 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "detector_threads",
-            default_value="4",
+            default_value="2",
             description="AprilTag worker threads",
         ),
         DeclareLaunchArgument(
             "detector_decimate",
-            default_value="1.0",
-            description="Use full 1920x1080 resolution for distant tags",
+            default_value="2.0",
+            description="Downsample image by 2x for high-speed lightweight detection",
         ),
         DeclareLaunchArgument(
             "detector_blur",

@@ -9,6 +9,7 @@ NV12 to mono8 (Grayscale) Zero-Copy Image Converter
 
 import copy
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -132,12 +133,8 @@ class Nv12ToMono8Node(Node):
         if crop_width == msg.width and crop_height == msg.height and input_step == msg.width:
             mono_msg.data = msg.data[: msg.width * msg.height]
         else:
-            cropped = bytearray(crop_width * crop_height)
-            for row in range(crop_height):
-                source_start = (crop_y + row) * input_step + crop_x
-                target_start = row * crop_width
-                cropped[target_start : target_start + crop_width] = msg.data[source_start : source_start + crop_width]
-            mono_msg.data = cropped
+            y_plane = np.frombuffer(msg.data, dtype=np.uint8, count=required_y_size).reshape((msg.height, input_step))
+            mono_msg.data = y_plane[crop_y : crop_y + crop_height, crop_x : crop_x + crop_width].tobytes()
 
         if self.last_camera_info_ is not None:
             info_msg = copy.deepcopy(self.last_camera_info_)
