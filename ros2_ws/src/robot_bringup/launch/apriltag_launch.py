@@ -12,6 +12,11 @@ def launch_setup(context, *args, **kwargs):
     camera_info_topic = LaunchConfiguration("camera_info_topic").perform(context)
     tag_family = LaunchConfiguration("tag_family").perform(context)
     max_hamming = int(LaunchConfiguration("max_hamming").perform(context))
+    detector_threads = int(LaunchConfiguration("detector_threads").perform(context))
+    detector_decimate = float(LaunchConfiguration("detector_decimate").perform(context))
+    detector_blur = float(LaunchConfiguration("detector_blur").perform(context))
+    detector_refine = LaunchConfiguration("detector_refine").perform(context).lower() in ("true", "1")
+    detector_sharpening = float(LaunchConfiguration("detector_sharpening").perform(context))
     tag_size = float(LaunchConfiguration("tag_size").perform(context))
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
@@ -22,11 +27,12 @@ def launch_setup(context, *args, **kwargs):
         "max_hamming": max_hamming,
         "publish_tf": True,
         "pose_estimation_method": "pnp",
-        "decimate": 1.0,
-        "blur": 0.0,
-        "threads": 4,
-        "debug": False,
-        "refine_edges": 1,
+        "detector.threads": detector_threads,
+        "detector.decimate": detector_decimate,
+        "detector.blur": detector_blur,
+        "detector.refine": detector_refine,
+        "detector.sharpening": detector_sharpening,
+        "detector.debug": False,
     }
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
@@ -74,6 +80,31 @@ def generate_launch_description():
                 "max_hamming",
                 default_value="1",
                 description="Maximum corrected bit errors (0 rejects hamming=1 false positives)",
+            ),
+            DeclareLaunchArgument(
+                "detector_threads",
+                default_value="4",
+                description="AprilTag worker threads",
+            ),
+            DeclareLaunchArgument(
+                "detector_decimate",
+                default_value="1.0",
+                description="Quad detection image decimation; 1.0 keeps full resolution",
+            ),
+            DeclareLaunchArgument(
+                "detector_blur",
+                default_value="0.0",
+                description="Gaussian blur sigma; 0.0 is robust across changing light",
+            ),
+            DeclareLaunchArgument(
+                "detector_refine",
+                default_value="true",
+                description="Refine tag corners against image gradients",
+            ),
+            DeclareLaunchArgument(
+                "detector_sharpening",
+                default_value="0.25",
+                description="Decoded-bit sharpening; conservative for variable illumination",
             ),
             DeclareLaunchArgument(
                 "tag_size",

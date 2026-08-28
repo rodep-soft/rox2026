@@ -15,6 +15,11 @@ def launch_setup(context, *args, **kwargs):
     framerate = float(LaunchConfiguration("framerate").perform(context))
     tag_family = LaunchConfiguration("tag_family").perform(context)
     tag_size = LaunchConfiguration("tag_size").perform(context)
+    detector_threads = LaunchConfiguration("detector_threads").perform(context)
+    detector_decimate = LaunchConfiguration("detector_decimate").perform(context)
+    detector_blur = LaunchConfiguration("detector_blur").perform(context)
+    detector_refine = LaunchConfiguration("detector_refine").perform(context)
+    detector_sharpening = LaunchConfiguration("detector_sharpening").perform(context)
 
     mipi_node = Node(
         package="mipi_cam",
@@ -84,6 +89,11 @@ def launch_setup(context, *args, **kwargs):
             "tag_family": tag_family,
             "tag_size": tag_size,
             "max_hamming": "0",
+            "detector_threads": detector_threads,
+            "detector_decimate": detector_decimate,
+            "detector_blur": detector_blur,
+            "detector_refine": detector_refine,
+            "detector_sharpening": detector_sharpening,
         }.items(),
     )
 
@@ -121,6 +131,31 @@ def generate_launch_description():
             "tag_size",
             default_value="0.18",
             description="AprilTag edge length in metres",
+        ),
+        DeclareLaunchArgument(
+            "detector_threads",
+            default_value="4",
+            description="AprilTag worker threads",
+        ),
+        DeclareLaunchArgument(
+            "detector_decimate",
+            default_value="1.0",
+            description="Use full 1920x1080 resolution for distant tags",
+        ),
+        DeclareLaunchArgument(
+            "detector_blur",
+            default_value="0.0",
+            description="Neutral blur for changing illumination",
+        ),
+        DeclareLaunchArgument(
+            "detector_refine",
+            default_value="true",
+            description="Refine detected tag corners",
+        ),
+        DeclareLaunchArgument(
+            "detector_sharpening",
+            default_value="0.25",
+            description="Conservative decoding sharpening for changing illumination",
         ),
         OpaqueFunction(function=launch_setup),
     ])
