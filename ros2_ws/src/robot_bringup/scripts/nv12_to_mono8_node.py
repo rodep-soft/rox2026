@@ -29,6 +29,8 @@ class Nv12ToMono8Node(Node):
         self.declare_parameter("camera_fy", 800.0)
         self.declare_parameter("camera_cx", 960.0)
         self.declare_parameter("camera_cy", 540.0)
+        self.declare_parameter("crop_width", 0)
+        self.declare_parameter("crop_height", 0)
 
         input_topic = self.get_parameter("input_topic").value
         output_topic = self.get_parameter("output_topic").value
@@ -43,6 +45,8 @@ class Nv12ToMono8Node(Node):
         self.camera_fy_ = float(self.get_parameter("camera_fy").value)
         self.camera_cx_ = float(self.get_parameter("camera_cx").value)
         self.camera_cy_ = float(self.get_parameter("camera_cy").value)
+        self.crop_width_ = int(self.get_parameter("crop_width").value)
+        self.crop_height_ = int(self.get_parameter("crop_height").value)
         self.target_fps_ = self.get_parameter("target_fps").value
         self.min_interval_sec_ = 1.0 / self.target_fps_ if self.target_fps_ > 0 else 0.0
         self.last_pub_time_ = 0.0
@@ -91,13 +95,21 @@ class Nv12ToMono8Node(Node):
             )
             return
 
-        y_size = msg.width * msg.height
-        if len(msg.data) < y_size:
+        input_step = msg.step if msg.step >= msg.width else msg.width
+        required_y_size = input_step * msg.height
+        if len(msg.data) < required_y_size:
             self.get_logger().error(
-                f"Image buffer is too short: {len(msg.data)} < {y_size}",
+                f"Image buffer is too short: {len(msg.data)} < {required_y_size}",
                 throttle_duration_sec=5.0,
             )
             return
+
+        requested_width = self.crop_width_ if self.crop_width_ > 0 else msg.width
+        requested_height = self.crop_height_ if self.crop_height_ > 0 else msg.height
+        crop_width = max(1, min(requested_width, msg.width))
+        crop_height = max(1, min(requested_height, msg.height))
+        crop_x = (msg.width - crop_width) // 2
+        crop_y = (msg.height - crop_height) // 2
 
         if self.last_camera_info_ is None:
             if not self.use_fallback_camera_info_:
@@ -112,12 +124,20 @@ class Nv12ToMono8Node(Node):
         mono_msg.header = msg.header
         if not mono_msg.header.frame_id:
             mono_msg.header.frame_id = "default_cam"
-        mono_msg.height = msg.height
-        mono_msg.width = msg.width
+        mono_msg.height = crop_height
+        mono_msg.width = crop_width
         mono_msg.encoding = "mono8"
         mono_msg.is_bigendian = msg.is_bigendian
-        mono_msg.step = msg.width
-        mono_msg.data = msg.data[:y_size]
+        mono_msg.step = crop_width
+        if crop_width == msg.width and crop_height == msg.height and input_step == msg.width:
+            mono_msg.data = msg.data[: msg.width * msg.height]
+        else:
+            cropped = bytearray(crop_width * crop_height)
+            for row in range(crop_height):
+                source_start = (crop_y + row) * input_step + crop_x
+                target_start = row * crop_width
+                cropped[target_start : target_start + crop_width] = msg.data[source_start : source_start + crop_width]
+            mono_msg.data = cropped
 
         if self.last_camera_info_ is not None:
             info_msg = copy.deepcopy(self.last_camera_info_)
@@ -148,7 +168,20 @@ class Nv12ToMono8Node(Node):
                 "Using fallback CameraInfo; calibrate camera for accurate pose",
                 throttle_duration_sec=30.0,
             )
-        info_msg.header = msg.header
+        info_msg.header = mono_msg.header
+        info_msg.width = crop_width
+        info_msg.height = crop_height
+        if len(info_msg.k) == 9:
+            info_msg.k[2] -= crop_x
+            info_msg.k[5] -= crop_y
+        if len(info_msg.p) == 12:
+            info_msg.p[2] -= crop_x
+            info_msg.p[6] -= crop_y
+        info_msg.roi.x_offset = 0
+        info_msg.roi.y_offset = 0
+        info_msg.roi.width = 0
+        info_msg.roi.height = 0
+        info_msg.roi.do_rectify = False
         self.pub_.publish(mono_msg)
         self.camera_info_pub_.publish(info_msg)
 

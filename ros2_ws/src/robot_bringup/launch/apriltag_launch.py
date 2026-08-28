@@ -11,6 +11,12 @@ def launch_setup(context, *args, **kwargs):
     image_topic = LaunchConfiguration("image_topic").perform(context)
     camera_info_topic = LaunchConfiguration("camera_info_topic").perform(context)
     tag_family = LaunchConfiguration("tag_family").perform(context)
+    allowed_tag_ids_text = LaunchConfiguration("allowed_tag_ids").perform(context)
+    allowed_tag_ids = [
+        int(value.strip())
+        for value in allowed_tag_ids_text.split(",")
+        if value.strip()
+    ]
     max_hamming = int(LaunchConfiguration("max_hamming").perform(context))
     detector_threads = int(LaunchConfiguration("detector_threads").perform(context))
     detector_decimate = float(LaunchConfiguration("detector_decimate").perform(context))
@@ -34,6 +40,9 @@ def launch_setup(context, *args, **kwargs):
         "detector.sharpening": detector_sharpening,
         "detector.debug": False,
     }
+    if allowed_tag_ids:
+        node_params["tag.ids"] = allowed_tag_ids
+        node_params["tag.frames"] = [f"{tag_family}:{tag_id}" for tag_id in allowed_tag_ids]
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
 
@@ -75,6 +84,11 @@ def generate_launch_description():
                 "tag_family",
                 default_value="16h5",
                 description="AprilTag family (16h5)",
+            ),
+            DeclareLaunchArgument(
+                "allowed_tag_ids",
+                default_value="",
+                description="Comma-separated tag ID allowlist; empty accepts every family ID",
             ),
             DeclareLaunchArgument(
                 "max_hamming",

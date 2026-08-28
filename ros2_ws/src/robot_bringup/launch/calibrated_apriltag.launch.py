@@ -13,6 +13,9 @@ def launch_setup(context, *args, **kwargs):
     calibration_file = LaunchConfiguration("calibration_file").perform(context)
     mipi_channel = int(LaunchConfiguration("mipi_channel").perform(context))
     framerate = float(LaunchConfiguration("framerate").perform(context))
+    mipi_rotation = float(LaunchConfiguration("mipi_rotation").perform(context))
+    roi_width = int(LaunchConfiguration("roi_width").perform(context))
+    roi_height = int(LaunchConfiguration("roi_height").perform(context))
     tag_family = LaunchConfiguration("tag_family").perform(context)
     tag_size = LaunchConfiguration("tag_size").perform(context)
     detector_threads = LaunchConfiguration("detector_threads").perform(context)
@@ -35,6 +38,7 @@ def launch_setup(context, *args, **kwargs):
             "channel": mipi_channel,
             "device_mode": "single",
             "framerate": framerate,
+            "rotation": mipi_rotation,
             "image_width": 1920,
             "image_height": 1080,
             "out_format": "nv12",
@@ -66,6 +70,8 @@ def launch_setup(context, *args, **kwargs):
             "camera_fy": 810.3272057704562,
             "camera_cx": 959.5,
             "camera_cy": 539.5,
+            "crop_width": roi_width,
+            "crop_height": roi_height,
         }],
     )
 
@@ -106,6 +112,7 @@ def launch_setup(context, *args, **kwargs):
             "tag_size": tag_size,
             "max_hamming": "0",
             "detector_threads": detector_threads,
+            "allowed_tag_ids": "14,15,16,17,18,19,20,21,22",
             "detector_decimate": detector_decimate,
             "detector_blur": detector_blur,
             "detector_refine": detector_refine,
@@ -154,6 +161,21 @@ def generate_launch_description():
             "framerate",
             default_value="5.0",
             description="Camera and AprilTag input rate",
+        ),
+        DeclareLaunchArgument(
+            "mipi_rotation",
+            default_value="180.0",
+            description="Rotate the upside-down camera image in the X5 GDC",
+        ),
+        DeclareLaunchArgument(
+            "roi_width",
+            default_value="1280",
+            description="Centered AprilTag detection width; 0 uses the full image",
+        ),
+        DeclareLaunchArgument(
+            "roi_height",
+            default_value="720",
+            description="Centered AprilTag detection height; 0 uses the full image",
         ),
         DeclareLaunchArgument(
             "tag_family",
