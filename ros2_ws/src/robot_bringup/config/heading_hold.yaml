@@ -31,7 +31,9 @@
     wheel_radius: 0.075
     robot_length: 0.355
     robot_width: 0.353
-    max_wheel_velocity_rad_s: 40.0
+    max_wheel_velocity_rad_s: 50.0
+    # この範囲内では補正量が変化しても並進速度を変えない
+    reserved_correction_rad_s: 1.0
 
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200

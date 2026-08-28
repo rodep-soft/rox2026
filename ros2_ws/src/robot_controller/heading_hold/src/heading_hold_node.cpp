@@ -109,6 +109,7 @@ private:
     robot_length_m_ = declare_parameter("robot_length", 0.355);
     robot_width_m_ = declare_parameter("robot_width", 0.353);
     max_wheel_velocity_rad_s_ = declare_parameter("max_wheel_velocity_rad_s", 50.0);
+    reserved_correction_rad_s_ = declare_parameter("reserved_correction_rad_s", 1.0);
     control_period_ms_ = declare_parameter("control_period_ms", 20);
     command_timeout_ms_ = declare_parameter("command_timeout_ms", 500);
     imu_timeout_ms_ = declare_parameter("imu_timeout_ms", 250);
@@ -160,6 +161,14 @@ private:
     validate_positive("robot_length", robot_length_m_);
     validate_positive("robot_width", robot_width_m_);
     validate_positive("max_wheel_velocity_rad_s", max_wheel_velocity_rad_s_);
+    validate_non_negative("reserved_correction_rad_s", reserved_correction_rad_s_);
+    const double maximum_angular_velocity_rad_s =
+      wheel_radius_m_ * max_wheel_velocity_rad_s_ /
+      ((robot_length_m_ + robot_width_m_) / 2.0);
+    if (reserved_correction_rad_s_ > maximum_angular_velocity_rad_s) {
+      throw std::invalid_argument(
+              "reserved_correction_rad_s must not exceed the physical angular velocity limit");
+    }
 
     if (rotation_settle_duration_ms_ <= 0 || control_period_ms_ <= 0 ||
       command_timeout_ms_ <= 0 || imu_timeout_ms_ <= 0)
@@ -451,10 +460,12 @@ private:
       return;
     }
 
+    const double reserved_angular_velocity_rad_s = std::max(
+      std::abs(command.angular.z), reserved_correction_rad_s_);
     const double remaining_translation_capacity_m_s = std::max(
       0.0,
       maximum_wheel_linear_velocity_m_s -
-      rotation_radius_m * std::abs(command.angular.z));
+      rotation_radius_m * reserved_angular_velocity_rad_s);
     const double translation_scale = std::min(
       1.0, remaining_translation_capacity_m_s / translation_demand_m_s);
     command.linear.x *= translation_scale;
@@ -679,6 +690,7 @@ private:
   double robot_length_m_{0.355};
   double robot_width_m_{0.353};
   double max_wheel_velocity_rad_s_{50.0};
+  double reserved_correction_rad_s_{1.0};
   std::string raw_cmd_vel_topic_;
   std::string imu_topic_;
   std::string corrected_cmd_vel_topic_;
