@@ -11,6 +11,7 @@ def launch_setup(context, *args, **kwargs):
     image_topic = LaunchConfiguration("image_topic").perform(context)
     camera_info_topic = LaunchConfiguration("camera_info_topic").perform(context)
     tag_family = LaunchConfiguration("tag_family").perform(context)
+    max_hamming = int(LaunchConfiguration("max_hamming").perform(context))
     tag_size = float(LaunchConfiguration("tag_size").perform(context))
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
@@ -18,7 +19,7 @@ def launch_setup(context, *args, **kwargs):
         "image_transport": "raw",
         "family": tag_family,
         "size": tag_size,
-        "max_hamming": 1,
+        "max_hamming": max_hamming,
         "publish_tf": True,
         "pose_estimation_method": "pnp",
         "decimate": 1.0,
@@ -68,6 +69,11 @@ def generate_launch_description():
                 "tag_family",
                 default_value="16h5",
                 description="AprilTag family (16h5)",
+            ),
+            DeclareLaunchArgument(
+                "max_hamming",
+                default_value="1",
+                description="Maximum corrected bit errors (0 rejects hamming=1 false positives)",
             ),
             DeclareLaunchArgument(
                 "tag_size",

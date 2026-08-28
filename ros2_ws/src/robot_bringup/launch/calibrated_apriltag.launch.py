@@ -51,7 +51,7 @@ def launch_setup(context, *args, **kwargs):
             "output_topic": "/camera/left_mono8",
             "camera_info_topic": "/image_raw/camera_info",
             "output_camera_info_topic": "/camera/camera_info",
-            "target_fps": framerate,
+            "target_fps": 0.0,
             "use_fallback_camera_info": True,
             "camera_fx": 807.8291351671487,
             "camera_fy": 810.3272057704562,
@@ -83,6 +83,7 @@ def launch_setup(context, *args, **kwargs):
             "camera_frame_id": "default_cam",
             "tag_family": tag_family,
             "tag_size": tag_size,
+            "max_hamming": "0",
         }.items(),
     )
 
