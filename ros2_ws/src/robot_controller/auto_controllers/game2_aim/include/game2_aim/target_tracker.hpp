@@ -65,6 +65,7 @@ public:
     double min_standing_aspect_ratio{0.80};
     double max_standing_tilt_deg{30.0};
     double shot_target_cooldown_sec{2.0};
+    double midpoint_blend_ratio{0.65}; // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
   };
 
   TargetTracker() = default;
@@ -365,12 +366,13 @@ public:
               is_midpoint_target_ = true;
               current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
               active_target_id_ = p0->tag_id;
-              target_x_ = (p0->x + p1->x) * 0.5;
-              target_y_ = (p0->y + p1->y) * 0.5;
-              target_z_ = (p0->z + p1->z) * 0.5;
-              target_yaw_at_detection_ = (p0->yaw_at_detection + p1->yaw_at_detection) * 0.5;
-              target_tag_offset_x_ = target_x_ - p0->x;
-              target_tag_offset_y_ = target_y_ - p0->y;
+              const double r = config_.midpoint_blend_ratio;
+              target_x_ = p0->x * r + p1->x * (1.0 - r);
+              target_y_ = p0->y * r + p1->y * (1.0 - r);
+              target_z_ = p0->z * r + p1->z * (1.0 - r);
+              target_yaw_at_detection_ = p0->yaw_at_detection * r + p1->yaw_at_detection * (1.0 - r);
+              target_tag_offset_x_ = 0.0;
+              target_tag_offset_y_ = 0.0;
               target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
@@ -379,19 +381,20 @@ public:
                 target_belt_mode_);
             } else if (pattern == TargetPattern::MIDPOINT_1_2) {
               is_midpoint_target_ = true;
-              current_target_tag_ids_ = {p1->tag_id, p2->tag_id};
-              active_target_id_ = p1->tag_id;
-              target_x_ = (p1->x + p2->x) * 0.5;
-              target_y_ = (p1->y + p2->y) * 0.5;
-              target_z_ = (p1->z + p2->z) * 0.5;
-              target_yaw_at_detection_ = (p1->yaw_at_detection + p2->yaw_at_detection) * 0.5;
-              target_tag_offset_x_ = target_x_ - p1->x;
-              target_tag_offset_y_ = target_y_ - p1->y;
+              current_target_tag_ids_ = {p2->tag_id, p1->tag_id};
+              active_target_id_ = p2->tag_id;
+              const double r = config_.midpoint_blend_ratio;
+              target_x_ = p2->x * r + p1->x * (1.0 - r);
+              target_y_ = p2->y * r + p1->y * (1.0 - r);
+              target_z_ = p2->z * r + p1->z * (1.0 - r);
+              target_yaw_at_detection_ = p2->yaw_at_detection * r + p1->yaw_at_detection * (1.0 - r);
+              target_tag_offset_x_ = 0.0;
+              target_tag_offset_y_ = 0.0;
               target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                get_row_name(row).c_str(), p1->tag_id, p2->tag_id, target_heading_err_ * 180.0 / M_PI,
+                get_row_name(row).c_str(), p2->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
                 target_belt_mode_);
             } else {
               const PanelTagInfo * p = (pattern == TargetPattern::SINGLE_COL_0) ? p0 :
@@ -443,10 +446,11 @@ public:
       const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected && it_b->second.is_standing);
 
       if (a_detected && b_detected) {
-        target_x_ = (it_a->second.x + it_b->second.x) * 0.5;
-        target_y_ = (it_a->second.y + it_b->second.y) * 0.5;
-        target_z_ = (it_a->second.z + it_b->second.z) * 0.5;
-        target_yaw_at_detection_ = (it_a->second.yaw_at_detection + it_b->second.yaw_at_detection) * 0.5;
+        const double r = config_.midpoint_blend_ratio;
+        target_x_ = it_a->second.x * r + it_b->second.x * (1.0 - r);
+        target_y_ = it_a->second.y * r + it_b->second.y * (1.0 - r);
+        target_z_ = it_a->second.z * r + it_b->second.z * (1.0 - r);
+        target_yaw_at_detection_ = it_a->second.yaw_at_detection * r + it_b->second.yaw_at_detection * (1.0 - r);
         visual_found = true;
       } else if (a_detected || b_detected) {
         // 片方でも見えていれば視覚ロストとは判定せず、前回の target_x_, target_y_ を維持して

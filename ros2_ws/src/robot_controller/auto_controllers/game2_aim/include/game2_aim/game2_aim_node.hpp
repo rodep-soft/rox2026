@@ -101,6 +101,7 @@ private:
   double max_standing_tilt_deg_{30.0};     // [deg] 倒れ判定最大傾き角
   double post_shot_delay_sec_{0.8};        // [s] 射出完了から次探索までの着弾・倒れ待ち時間
   double shot_target_cooldown_sec_{2.0};   // [s] 直前に撃った的の再照準禁止クールダウン
+  double midpoint_blend_ratio_{0.65};      // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
 
   // ── ターゲット追従・認識エンジン ──
   TargetTracker tracker_;

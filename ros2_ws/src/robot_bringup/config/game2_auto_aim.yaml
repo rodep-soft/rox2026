@@ -24,7 +24,7 @@
     min_angular_z: 0.08     # [rad/s] 静止摩擦補償最小角速度 (オーバーシュート抑制)
     max_angular_z: 0.40     # [rad/s] 最大旋回角速度 (カメラブレ防止: 約23 deg/s)
     max_angular_accel: 2.5  # [rad/s^2] 旋回加減速度リミッター (スリップ・ブレ防止)
-    yaw_tolerance: 0.030    # [rad] 角度誤差許容値 (約1.7度)
+    yaw_tolerance: 0.020    # [rad] 角度誤差許容値 (約1.15度に引き締め)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
     aim_yaw_offset_deg: 0.0 # [deg] 射出方向の左右照準オフセット微調整 (右にズレる場合はプラス/マイナスで相殺)
 
@@ -36,6 +36,7 @@
     tag_lost_timeout: 1.5   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ耐性)
     search_angular_z: 0.0   # [rad/s] タグ未検出時の探索旋回速度 (0.0で静止待機, 推奨: 0.15)
     enable_double_panel_midpoint_targeting: true # 2枚立っている時は中点を狙う (左-中中点を最優先)
+    midpoint_blend_ratio: 0.65      # 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り2枚抜きスイートスポット)
     min_standing_aspect_ratio: 0.80 # 倒れ判定最小アスペクト比 (0.80未満は倒れと判定)
     max_standing_tilt_deg: 30.0     # [deg] 倒れ判定最大法線傾き角 (30度以上は倒れと判定)
     post_shot_delay_sec: 0.8        # [s] 射出完了から次探索までの着弾・打倒待ち時間

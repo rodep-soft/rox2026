@@ -107,6 +107,7 @@ void Game2AimNode::load_parameters()
   max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
   post_shot_delay_sec_ = declare_parameter<double>("post_shot_delay_sec", 0.8);
   shot_target_cooldown_sec_ = declare_parameter<double>("shot_target_cooldown_sec", 2.0);
+  midpoint_blend_ratio_ = declare_parameter<double>("midpoint_blend_ratio", 0.65);
 
   // Tracker Config Setup
   TargetTracker::Config tracker_cfg;
@@ -131,6 +132,7 @@ void Game2AimNode::load_parameters()
   tracker_cfg.min_standing_aspect_ratio = min_standing_aspect_ratio_;
   tracker_cfg.max_standing_tilt_deg = max_standing_tilt_deg_;
   tracker_cfg.shot_target_cooldown_sec = shot_target_cooldown_sec_;
+  tracker_cfg.midpoint_blend_ratio = midpoint_blend_ratio_;
   tracker_.set_config(tracker_cfg);
 
   // AprilTag Panel IDs
@@ -207,6 +209,10 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
     } else if (name == "shot_target_cooldown_sec") {
       shot_target_cooldown_sec_ = param.as_double();
       tracker_cfg.shot_target_cooldown_sec = shot_target_cooldown_sec_;
+      tracker_cfg_changed = true;
+    } else if (name == "midpoint_blend_ratio") {
+      midpoint_blend_ratio_ = param.as_double();
+      tracker_cfg.midpoint_blend_ratio = midpoint_blend_ratio_;
       tracker_cfg_changed = true;
     }
   }
