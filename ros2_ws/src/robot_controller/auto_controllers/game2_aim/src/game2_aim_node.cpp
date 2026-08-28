@@ -87,8 +87,8 @@ void Game2AimNode::load_parameters()
   // Control gains & Limits
   kp_yaw_ = declare_parameter<double>("kp_yaw", 1.8);
   yaw_command_sign_ = declare_parameter<double>("yaw_command_sign", -1.0);
-  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.12);
-  min_angular_z_ = declare_parameter<double>("min_angular_z", 0.12);
+  kd_yaw_ = declare_parameter<double>("kd_yaw", 0.18);
+  min_angular_z_ = declare_parameter<double>("min_angular_z", 0.08);
   max_angular_z_ = declare_parameter<double>("max_angular_z", 0.40);
   max_angular_accel_ = declare_parameter<double>("max_angular_accel", 2.5);
   yaw_tolerance_ = declare_parameter<double>("yaw_tolerance", 0.030);
@@ -434,7 +434,7 @@ void Game2AimNode::control_loop()
       tracker_.update_tracking(yaw_, current_time);
 
       // 外力等で誤差が許容値を超えてズレた場合は ALIGNING へ戻って再照準
-      if (std::abs(tracker_.heading_error()) > yaw_tolerance_ * 1.5) {
+      if (std::abs(tracker_.heading_error()) > yaw_tolerance_ * 2.0) {
         transition_to(
           robot_msgs::msg::Game2State::ALIGNING,
           "Heading error exceeded tolerance in PREPARING_SHOOT");

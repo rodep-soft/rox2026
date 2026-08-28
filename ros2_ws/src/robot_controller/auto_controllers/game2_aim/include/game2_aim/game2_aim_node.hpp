@@ -78,8 +78,8 @@ private:
   std::string tag_prefix_{"tag16h5:"};
   double kp_yaw_{1.8};
   double yaw_command_sign_{-1.0};
-  double kd_yaw_{0.12};
-  double min_angular_z_{0.12};
+  double kd_yaw_{0.18};
+  double min_angular_z_{0.08};
   double max_angular_z_{0.40};
   double max_angular_accel_{2.5}; // [rad/s^2]
   double target_distance_{4.0};
