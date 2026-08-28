@@ -28,7 +28,7 @@ def generate_launch_description():
             ),
             # mecanum用EduLite 4台だけを起動する。
             include(
-                "hardware.launch.py",
+                "hardware/hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
                     "use_vesc": "false",

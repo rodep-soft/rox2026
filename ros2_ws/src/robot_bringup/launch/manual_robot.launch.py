@@ -47,7 +47,7 @@ def generate_launch_description():
                 description="Foxglove WebSocket port",
             ),
             include(
-                "hardware.launch.py",
+                "hardware/hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
             include("input/joy_controller.launch.py"),

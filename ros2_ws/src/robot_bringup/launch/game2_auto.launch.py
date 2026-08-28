@@ -49,7 +49,7 @@ def generate_launch_description():
     )
 
     game2_launch = include(
-        "game2.launch.py",
+        "controllers/game2_auto_aim.launch.py",
         IfCondition(LaunchConfiguration("enable_game2_auto")),
         {
             "config_file": LaunchConfiguration("game2_config_file"),
@@ -71,7 +71,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "enable_game2_auto",
             default_value="true",
-            description="Start game2_auto_node",
+            description="Start game2_aim through game2_auto_aim.launch.py",
         ),
         DeclareLaunchArgument(
             "enable_foxglove",
@@ -83,7 +83,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "game2_config_file",
             default_value=os.path.join(
-                bringup_share, "config", "game2_controller.yaml"
+                bringup_share, "config", "game2_auto_aim.yaml"
             ),
         ),
         DeclareLaunchArgument(

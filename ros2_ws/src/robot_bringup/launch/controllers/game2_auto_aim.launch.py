@@ -16,12 +16,25 @@ def generate_launch_description():
         description="Path to the game2 auto aim config yaml file",
     )
 
+    test_alignment_only_arg = DeclareLaunchArgument(
+        "test_alignment_only",
+        default_value="false",
+        description="Only test automatic alignment without shooting",
+    )
+
     game2_node = Node(
         package="robot_controller",
         executable="game2_aim",
-        name="game2_aim",
+        name="game2_aim_node",
         output="screen",
-        parameters=[LaunchConfiguration("config_file")],
+        parameters=[
+            LaunchConfiguration("config_file"),
+            {"test_alignment_only": LaunchConfiguration("test_alignment_only")},
+        ],
     )
 
-    return LaunchDescription([config_file_arg, game2_node])
+    return LaunchDescription([
+        config_file_arg,
+        test_alignment_only_arg,
+        game2_node,
+    ])
