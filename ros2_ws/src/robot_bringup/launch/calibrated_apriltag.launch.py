@@ -1,0 +1,125 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def launch_setup(context, *args, **kwargs):
+    bringup_share = get_package_share_directory("robot_bringup")
+    calibration_file = LaunchConfiguration("calibration_file").perform(context)
+    mipi_channel = int(LaunchConfiguration("mipi_channel").perform(context))
+    framerate = float(LaunchConfiguration("framerate").perform(context))
+    tag_family = LaunchConfiguration("tag_family").perform(context)
+    tag_size = LaunchConfiguration("tag_size").perform(context)
+
+    mipi_node = Node(
+        package="mipi_cam",
+        executable="mipi_cam",
+        name="mipi_cam",
+        output="screen",
+        parameters=[{
+            "video_device": "default",
+            "channel": mipi_channel,
+            "device_mode": "single",
+            "framerate": framerate,
+            "image_width": 1920,
+            "image_height": 1080,
+            "out_format": "nv12",
+            "io_method": "ros",
+            "cal_alpha": 0.0,
+            "gdc_enable": True,
+            "lpwm_enable": False,
+            "frame_id": "default_cam",
+            "camera_calibration_file_path": calibration_file,
+        }],
+        arguments=["--ros-args", "--log-level", "warn"],
+    )
+
+    # Cache the short-lived post-GDC CameraInfo when available. The measured
+    # post-GDC values below keep CameraInfo publishing if that burst is missed.
+    mono_node = Node(
+        package="robot_bringup",
+        executable="nv12_to_mono8_node.py",
+        name="nv12_to_mono8_node",
+        output="screen",
+        parameters=[{
+            "input_topic": "/image_raw",
+            "output_topic": "/camera/left_mono8",
+            "camera_info_topic": "/image_raw/camera_info",
+            "output_camera_info_topic": "/camera/camera_info",
+            "target_fps": framerate,
+            "use_fallback_camera_info": True,
+            "camera_fx": 807.8291351671487,
+            "camera_fy": 810.3272057704562,
+            "camera_cx": 959.5,
+            "camera_cy": 539.5,
+        }],
+    )
+
+    camera_tf_node = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="base_to_camera_tf",
+        arguments=[
+            "--x", "0.265", "--y", "0.035", "--z", "0.193",
+            "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
+            "--frame-id", "base_link", "--child-frame-id", "default_cam",
+        ],
+        output="screen",
+    )
+
+    apriltag_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_share, "launch", "apriltag_launch.py")
+        ),
+        launch_arguments={
+            "node_name": "apriltag_csi_node",
+            "image_topic": "/camera/left_mono8",
+            "camera_info_topic": "/camera/camera_info",
+            "camera_frame_id": "default_cam",
+            "tag_family": tag_family,
+            "tag_size": tag_size,
+        }.items(),
+    )
+
+    return [mipi_node, mono_node, camera_tf_node, apriltag_launch]
+
+
+def generate_launch_description():
+    default_calibration_file = os.path.join(
+        get_package_share_directory("robot_bringup"),
+        "config", "camera", "sc230ai_left.yaml",
+    )
+
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            "calibration_file",
+            default_value=default_calibration_file,
+            description="SC230AI calibration YAML used by the X5 GDC",
+        ),
+        DeclareLaunchArgument(
+            "mipi_channel",
+            default_value="1",
+            description="Working SC230AI MIPI channel",
+        ),
+        DeclareLaunchArgument(
+            "framerate",
+            default_value="5.0",
+            description="Camera and AprilTag input rate",
+        ),
+        DeclareLaunchArgument(
+            "tag_family",
+            default_value="16h5",
+            description="AprilTag family",
+        ),
+        DeclareLaunchArgument(
+            "tag_size",
+            default_value="0.18",
+            description="AprilTag edge length in metres",
+        ),
+        OpaqueFunction(function=launch_setup),
+    ])

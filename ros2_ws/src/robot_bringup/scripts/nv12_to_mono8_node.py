@@ -68,6 +68,11 @@ class Nv12ToMono8Node(Node):
         )
 
     def camera_info_callback(self, msg: CameraInfo):
+        # X5 GDC output is already rectified. Some mipi_cam versions leave the
+        # model name empty even though they publish zero distortion, which can
+        # be rejected by consumers using image_geometry.
+        if not msg.distortion_model and all(value == 0.0 for value in msg.d):
+            msg.distortion_model = "plumb_bob"
         self.last_camera_info_ = msg
 
     def image_callback(self, msg: Image):
