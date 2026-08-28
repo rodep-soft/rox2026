@@ -18,6 +18,11 @@
 #define MIDDLE_CHAIN_START            20U
 #define CHASSIS_FRONT_CENTER          15U
 #define CHASSIS_REAR_CENTER           34U
+#define IMU_DATA_TIMEOUT_MS          200U
+#define IMU_WARNING_BLINK_MS         250U
+#define IMU_WARNING_COLOR_R          255U
+#define IMU_WARNING_COLOR_G           80U
+#define IMU_WARNING_COLOR_B            0U
 
 #define EMERGENCY_SWEEP_MS           600U
 #define EMERGENCY_WAVE_COUNT           2U
@@ -53,6 +58,7 @@ static uint8_t firing_launcher_background[PA6_LED_NUM][3];
 static uint8_t firing_chassis_background[PA7_LED_NUM][3];
 static uint32_t firing_start_ms;
 volatile uint8_t debug_led_game2_search_active;
+extern uint32_t last_bno_com_time;
 
 static uint16_t LED_CircularDistance(uint16_t a, uint16_t b) {
 	const uint16_t distance = (a > b) ? (a - b) : (b - a);
@@ -95,6 +101,19 @@ static void LED_SetLauncherAll(uint8_t red, uint8_t green, uint8_t blue) {
 	}
 }
 
+static void LED_ApplyImuDisconnectedWarning(uint32_t now_ms) {
+	if ((uint32_t)(now_ms - last_bno_com_time) < IMU_DATA_TIMEOUT_MS) {
+		return;
+	}
+	const bool warning_on =
+			((now_ms / IMU_WARNING_BLINK_MS) & 1U) != 0U;
+	const uint8_t red = warning_on ? IMU_WARNING_COLOR_R : 0U;
+	const uint8_t green = warning_on ? IMU_WARNING_COLOR_G : 0U;
+	const uint8_t blue = warning_on ? IMU_WARNING_COLOR_B : 0U;
+	LED_SetLauncherAll(red, green, blue);
+	LED_SetChassisAll(red, green, blue);
+}
+
 static void LED_SetLauncherLevel(uint16_t level,
 		uint8_t red, uint8_t green, uint8_t blue) {
 	if (level >= LAUNCHER_LEVEL_COUNT) {
@@ -111,6 +130,24 @@ static void LED_SetLauncherLevel(uint16_t level,
 			setPixelPA6(LAUNCHER_MAIN_LED_COUNT +
 					LAUNCHER_SIDE_LED_COUNT + i, red, green, blue);
 		}
+	}
+}
+
+static void LED_OverlayBeltOffset(uint8_t mode) {
+	if (mode == LED_MODE_BELT_OFFSET_ZERO) {
+		return;
+	}
+	const bool positive = mode > LED_MODE_BELT_OFFSET_ZERO;
+	const uint8_t steps = positive ?
+			(uint8_t)(mode - LED_MODE_BELT_OFFSET_ZERO) :
+			(uint8_t)(LED_MODE_BELT_OFFSET_ZERO - mode);
+	const uint8_t red = positive ? 0U : 255U;
+	const uint8_t green = positive ? 255U : 80U;
+	const uint8_t blue = 0U;
+	for (uint16_t level = 0U; level < steps; level++) {
+		setPixelPA6(level, red, green, blue);
+		setPixelPA6(LAUNCHER_MAIN_LED_COUNT - 1U - level,
+				red, green, blue);
 	}
 }
 
@@ -579,6 +616,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			(mode == LED_MODE_GAME2_SEARCHING) ? 1U : 0U;
 	if (debug_led_game2_search_active != 0U) {
 		LED_RenderGame2Searching(now_ms, status);
+		LED_ApplyImuDisconnectedWarning(now_ms);
 		show();
 		return;
 	}
@@ -697,6 +735,17 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 		LED_RenderLauncherWave(now_ms, 450U, true, 0U, 255U, 90U);
 		break;
 	}
+	case LED_MODE_BELT_OFFSET_MINUS_3:
+	case LED_MODE_BELT_OFFSET_MINUS_2:
+	case LED_MODE_BELT_OFFSET_MINUS_1:
+	case LED_MODE_BELT_OFFSET_ZERO:
+	case LED_MODE_BELT_OFFSET_PLUS_1:
+	case LED_MODE_BELT_OFFSET_PLUS_2:
+	case LED_MODE_BELT_OFFSET_PLUS_3:
+		/* Keep the active Emerald belt wave and add the offset indication. */
+		LED_RenderBeltLauncher(status, now_ms);
+		LED_OverlayBeltOffset(mode);
+		break;
 	}
 
 	/* Auxiliary states never override safety or firing/loading displays. */
@@ -749,5 +798,6 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			LED_RenderBeltLauncher(status, now_ms);
 		}
 	}
+	LED_ApplyImuDisconnectedWarning(now_ms);
 	show();
 }
