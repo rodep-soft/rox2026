@@ -250,6 +250,7 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
     const auto start_time = this->now();
     last_imu_time_ = start_time;
     last_loop_time_ = start_time;
+    tracker_.reset_fallen_states();
     transition_to(robot_msgs::msg::Game2State::SEARCHING, "Start command received (true)");
   } else {
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {

@@ -28,6 +28,7 @@ struct PanelTagInfo
   int col{0};     // 0: Left, 1: Center, 2: Right
   bool detected{false};
   bool is_standing{true};
+  bool is_permanently_fallen{false}; // 永続撃破ラッチ (一度倒れたら二度とSTANDに戻さない)
   double aspect_ratio{1.0};
   double tilt_deg{0.0};
   double x{0.0};
@@ -65,7 +66,7 @@ public:
     int min_detection_frames{2};
     double aim_yaw_offset_rad{0.0};
     double min_standing_aspect_ratio{0.80};
-    double max_standing_tilt_deg{20.0};
+    double max_standing_tilt_deg{15.0};    // [deg] 倒れ判定最大傾き角 (15度以上傾いたら即座に倒れ)
     double max_standing_height_drop{0.07}; // [m] 倒れ判定の高さ落下量 (7cm以上落下で倒れ)
     double shot_target_cooldown_sec{2.0};
     double midpoint_blend_ratio{0.65}; // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
@@ -222,6 +223,12 @@ public:
       }
 
       // ── 🛡️ 起立(STAND) / 倒れ(FALLEN) 判定 ──
+      if (panel.is_permanently_fallen) {
+        panel.is_standing = false;
+        panel.detected = false;
+        continue;
+      }
+
       bool standing = true;
       if (panel.aspect_ratio < config_.min_standing_aspect_ratio) {
         standing = false;
@@ -232,6 +239,11 @@ public:
       if (panel.has_initial_z && (panel.initial_standing_z - panel.z) > config_.max_standing_height_drop) {
         standing = false; // 初期高さから設定値(7cm)以上落下した場合は倒れと判定
       }
+
+      if (!standing) {
+        panel.is_permanently_fallen = true; // 永続撃破ラッチ
+      }
+
       panel.is_standing = standing;
       panel.detected = standing;
     }
@@ -530,6 +542,16 @@ public:
     target_heading_err_ = 0.0;
     candidate_pattern_key_ = -1;
     consecutive_detection_count_ = 0;
+  }
+
+  void reset_fallen_states()
+  {
+    for (auto & [id, panel] : panel_grid_) {
+      panel.is_permanently_fallen = false;
+      panel.is_standing = true;
+      panel.has_initial_z = false;
+      panel.initial_standing_z = 0.0;
+    }
   }
 
   static uint8_t get_target_belt_mode(int row)
