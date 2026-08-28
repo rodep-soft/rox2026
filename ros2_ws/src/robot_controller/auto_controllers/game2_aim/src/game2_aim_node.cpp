@@ -236,14 +236,7 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
 void Game2AimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
-  const auto current_time = now();
-  tracker_.update_detections(*msg, *tf_buffer_, yaw_, current_time);
-
-  if (test_panel_state_display_) {
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 500,
-      "%s", tracker_.get_grid_visual_summary(current_time).c_str());
-  }
+  tracker_.update_detections(*msg, *tf_buffer_, yaw_, now());
 }
 
 void Game2AimNode::camera_info_callback(
@@ -369,6 +362,13 @@ void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
 void Game2AimNode::control_loop()
 {
   const auto current_time = now();
+
+  if (test_panel_state_display_) {
+    RCLCPP_INFO_THROTTLE(
+      get_logger(), *get_clock(), 500,
+      "%s", tracker_.get_grid_visual_summary(current_time).c_str());
+  }
+
   double dt = (current_time - last_loop_time_).seconds();
   if (dt <= 0.001 || dt > 0.2) {
     dt = 0.05;
