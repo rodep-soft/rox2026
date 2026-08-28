@@ -110,6 +110,7 @@ add_controller(
   robot_msgs
   apriltag_msgs
   tf2
+  tf2_geometry_msgs
   tf2_ros)
 add_controller(
   game1_auto_node
