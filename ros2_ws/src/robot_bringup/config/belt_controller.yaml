@@ -7,7 +7,7 @@
     # レベルごとの回転数(上下で別々の回転数に設定可能)
     underbelt_level_1_rpm: 1000  # 1200  2350  4000
     underbelt_level_2_rpm: 1700  # 2000  2650  4800
-    underbelt_level_3_rpm: 5000  #       3000  4900
+    underbelt_level_3_rpm: 4900  #       3000  4900
     underbelt_level_4_rpm: 4800  #       2550  2250
 
     upperbelt_level_1_rpm: 1400  # 1200  2350  1000
