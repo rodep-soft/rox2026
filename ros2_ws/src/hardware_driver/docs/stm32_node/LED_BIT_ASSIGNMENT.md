@@ -42,7 +42,14 @@ ros_value = data[0] | (data[1] << 8)
 | 13 | `0x0d` | `ARM_RECEIVE` | ドリブルアームのRECEIVE姿勢 |
 | 14 | `0x0e` | `ARM_HOME` | ドリブルアームのHOME姿勢 |
 | 15 | `0x0f` | `BELT_SPINUP` | ベルト発射サイクルの回転立上げ中 |
-| 16～255 | `0x10`～`0xff` | Reserved | 将来拡張用。送信しないこと |
+| 16 | 0x10 | BELT_OFFSET_MINUS_3 | ベルトRPMオフセット -3 step |
+| 17 | 0x11 | BELT_OFFSET_MINUS_2 | ベルトRPMオフセット -2 step |
+| 18 | 0x12 | BELT_OFFSET_MINUS_1 | ベルトRPMオフセット -1 step |
+| 19 | 0x13 | BELT_OFFSET_ZERO | ベルトRPMオフセット 0 step |
+| 20 | 0x14 | BELT_OFFSET_PLUS_1 | ベルトRPMオフセット +1 step |
+| 21 | 0x15 | BELT_OFFSET_PLUS_2 | ベルトRPMオフセット +2 step |
+| 22 | 0x16 | BELT_OFFSET_PLUS_3 | ベルトRPMオフセット +3 step |
+| 23～255 | 0x17～0xff | Reserved | 将来拡張用。送信しないこと |
 
 未定義値を受信した場合、STM32は安全な既定表示として扱うこと。
 
@@ -73,11 +80,24 @@ ros_value = data[0] | (data[1] << 8)
 | `/dribble/command_position` | `FEED` | `0x0c` | `ARM_FEED` |
 | `/dribble/command_position` | `RECEIVE` | `0x0d` | `ARM_RECEIVE` |
 | `/dribble/command_position` | `HOME` | `0x0e` | `ARM_HOME` |
+| /belt/command_mode | rpm_offset_step が 0 以外 | 0x10～0x16 | 累積オフセット -3～+3 step |
 
-`firing_display_ms`の既定値は500 ms、コマンドの配信周期
-`publish_period_ms`の既定値は100 msである。`/spring/fire_request`を`true`のまま
-保持しても表示時間は延長されず、いったん`false`を受信した後の次の立上りで
-再トリガーされる。
+firing_display_msの既定値は500 ms、コマンドの配信周期publish_period_msの既定値は100 msである。
+spring/fire_requestをtrueのまま保持しても表示時間は延長されず、いったんfalseを受信した後の
+次の立上りで再トリガーされる。
+
+ベルトRPMオフセット表示時間 belt_offset_display_ms の既定値は1000 msである。
+オフセット変更メッセージを受信すると、led_controller_node もベルトコントローラと
+同じく増分を -3～+3 step に累積し、その値に対応する主表示モードを表示時間中送信する。
+
+### 2.2 ベルトRPMオフセットの表示方法
+
+オフセット変更後は belt_offset_display_ms の間、符号と絶対値をバー表示する。
+正の値は緑、負の値は赤、0 stepは青で表示する。絶対値1はLED列の1/3、
+絶対値2は2/3、絶対値3は全体を点灯する。表示期間終了後は通常の優先順位へ戻る。
+
+この表示は rpm_offset_step の単発値ではなく、-3～+3にクランプした累積値を示す。
+ベルトコントローラの belt_rpm_offset_per_step が100 RPMなら、+2 stepは+200 RPMに相当する。
 
 ## 3. data[1]: 付加状態
 
@@ -176,6 +196,7 @@ STARTUP判定
   > スロー発射
   > Game2進行状態
   > ベルト発射サイクル進行状態
+  > ベルトRPMオフセット変更表示
   > ドリブルアーム姿勢
   > READY
 ```
@@ -192,8 +213,9 @@ STARTUP判定
 5. スロー発射中なら`SLOW_FIRING`
 6. Game2が進行中なら、その進行状態に対応する表示
 7. ベルト発射サイクル中なら、その進行状態に対応する表示
-8. サイクル外では、指令されたドリブルアーム姿勢に対応する表示
-9. いずれにも該当しなければ`READY`
+8. ベルトRPMオフセットの変更表示期間中なら、累積値 -3～+3 に対応する表示
+9. サイクル外では、指令されたドリブルアーム姿勢に対応する表示
+10. いずれにも該当しなければ`READY`
 
 ## 5. エンコード例
 

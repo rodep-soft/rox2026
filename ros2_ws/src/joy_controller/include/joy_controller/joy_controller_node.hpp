@@ -29,7 +29,7 @@ private:
   parameter_callback(const std::vector<rclcpp::Parameter> & parameters);
   void spring_actuator_ready_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void publish_emergency_stop(bool active);
-  void publish_belt_mode(uint8_t mode);
+  void publish_belt_mode(uint8_t mode, int8_t rpm_offset_step = 0);
   void publish_arm_position(uint8_t position);
   void toggle_manual_arm_position(uint8_t target_position);
   void publish_dribble_enabled(bool enabled);
@@ -71,6 +71,8 @@ private:
   int ps_button_{12};
   int home_button_{13};
   int circle_button_{2};
+  int cross_button_{1};
+  int triangle_button_{3};
   int square_button_{0};
   int dribble_enable_button_{5};
   int game2_start_button_{9};

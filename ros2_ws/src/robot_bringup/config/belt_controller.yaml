@@ -14,6 +14,9 @@
     upperbelt_level_2_rpm: 1900  # 2000  2600  3200
     upperbelt_level_3_rpm: 800   #       3450  1000
     upperbelt_level_4_rpm: 3900  #       4900  3900
+
+    # △/×を1回押したときに、上下ベルトの基準RPMへ加減算する量
+    belt_rpm_offset_per_step: 100
     
     # 緊急停止時のデータ配信周期
     emergency_stop_period_ms: 50

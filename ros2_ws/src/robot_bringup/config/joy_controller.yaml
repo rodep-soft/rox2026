@@ -10,6 +10,8 @@
     left_trigger_axis: 3
     right_trigger_axis: 4
     circle_button: 2
+    cross_button: 1         # ×でbelt RPMオフセットを1段下げる（下限-3段）
+    triangle_button: 3      # △でbelt RPMオフセットを1段上げる（上限+3段）
     square_button: 0        # R2 + □でアームをHOME（ボトム側）へ切替
     spring_arm_open_delay_ms: 150     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間
     spring_arm_restore_delay_ms: 800  # [ms] スプリング発射後、アームをDRIBBLEへ自動復帰させる最大待機時間
