@@ -96,9 +96,9 @@ void LedControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::Shar
     robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
   if (msg->rpm_offset_step != 0) {
     belt_rpm_offset_steps_ = static_cast<int8_t>(std::clamp(
-      static_cast<int>(belt_rpm_offset_steps_) + static_cast<int>(msg->rpm_offset_step),
-      -static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS),
-      static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS)));
+        static_cast<int>(belt_rpm_offset_steps_) + static_cast<int>(msg->rpm_offset_step),
+        -static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS),
+        static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS)));
     belt_offset_display_until_ =
       std::chrono::steady_clock::now() + belt_offset_display_duration_;
   }
