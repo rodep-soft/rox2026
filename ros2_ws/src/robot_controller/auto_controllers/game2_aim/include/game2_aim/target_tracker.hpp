@@ -37,6 +37,7 @@ struct PanelTagInfo
   double pixel_y{0.0};
   double yaw_at_detection{0.0};
   rclcpp::Time last_seen{0, 0, RCL_ROS_TIME};
+  rclcpp::Time shot_cooldown_until{0, 0, RCL_ROS_TIME};
 };
 
 class TargetTracker
@@ -57,12 +58,13 @@ public:
     double camera_cx{960.0};
     double camera_cy{540.0};
     double tag_lost_timeout{1.5};
-    bool enable_double_panel_midpoint_targeting{false};
+    bool enable_double_panel_midpoint_targeting{true};
     bool test_alignment_only{false};
     int min_detection_frames{2};
     double aim_yaw_offset_rad{0.0};
-    double min_standing_aspect_ratio{0.65};
-    double max_standing_tilt_deg{40.0};
+    double min_standing_aspect_ratio{0.80};
+    double max_standing_tilt_deg{30.0};
+    double shot_target_cooldown_sec{2.0};
   };
 
   TargetTracker() = default;
@@ -323,18 +325,25 @@ public:
           }
         }
 
+        auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
+          if (!p) return false;
+          if (!p->detected || !p->is_standing) return false;
+          if (now < p->shot_cooldown_until) return false;
+          return true;
+        };
+
         bool match = false;
         int pattern_key = static_cast<int>(pattern) * 10 + row;
 
-        if (pattern == TargetPattern::MIDPOINT_0_1 && p0 && p1 && p0->detected && p1->detected) {
+        if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
           match = true;
-        } else if (pattern == TargetPattern::MIDPOINT_1_2 && p1 && p2 && p1->detected && p2->detected) {
+        } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) && is_tag_active(p2)) {
           match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_0 && p0 && p0->detected) {
+        } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
           match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_1 && p1 && p1->detected) {
+        } else if (pattern == TargetPattern::SINGLE_COL_1 && is_tag_active(p1)) {
           match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_2 && p2 && p2->detected) {
+        } else if (pattern == TargetPattern::SINGLE_COL_2 && is_tag_active(p2)) {
           match = true;
         }
 
@@ -430,34 +439,24 @@ public:
       const auto it_a = panel_grid_.find(id_a);
       const auto it_b = panel_grid_.find(id_b);
 
-      const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected);
-      const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected);
+      const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected && it_a->second.is_standing);
+      const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected && it_b->second.is_standing);
 
       if (a_detected && b_detected) {
         target_x_ = (it_a->second.x + it_b->second.x) * 0.5;
         target_y_ = (it_a->second.y + it_b->second.y) * 0.5;
         target_z_ = (it_a->second.z + it_b->second.z) * 0.5;
         target_yaw_at_detection_ = (it_a->second.yaw_at_detection + it_b->second.yaw_at_detection) * 0.5;
-        target_tag_offset_x_ = target_x_ - it_a->second.x;
-        target_tag_offset_y_ = target_y_ - it_a->second.y;
         visual_found = true;
-      } else if (a_detected) {
-        target_x_ = it_a->second.x + target_tag_offset_x_;
-        target_y_ = it_a->second.y + target_tag_offset_y_;
-        target_z_ = it_a->second.z;
-        target_yaw_at_detection_ = it_a->second.yaw_at_detection;
-        visual_found = true;
-      } else if (b_detected) {
-        target_x_ = it_b->second.x - target_tag_offset_x_;
-        target_y_ = it_b->second.y - target_tag_offset_y_;
-        target_z_ = it_b->second.z;
-        target_yaw_at_detection_ = it_b->second.yaw_at_detection;
+      } else if (a_detected || b_detected) {
+        // 片方でも見えていれば視覚ロストとは判定せず、前回の target_x_, target_y_ を維持して
+        // IMU姿勢補間で滑らかに追従する（目標角度のジャンプを完全防止）
         visual_found = true;
       }
     } else {
       const int id = current_target_tag_ids_[0];
       const auto it = panel_grid_.find(id);
-      if (it != panel_grid_.end() && it->second.detected) {
+      if (it != panel_grid_.end() && it->second.detected && it->second.is_standing) {
         target_x_ = it->second.x;
         target_y_ = it->second.y;
         target_z_ = it->second.z;
@@ -494,6 +493,17 @@ public:
   uint8_t target_belt_mode() const { return target_belt_mode_; }
   int active_target_id() const { return active_target_id_; }
   int active_row() const { return active_row_; }
+
+  void mark_active_target_shot(const rclcpp::Time & now)
+  {
+    for (int tag_id : current_target_tag_ids_) {
+      auto it = panel_grid_.find(tag_id);
+      if (it != panel_grid_.end()) {
+        it->second.shot_cooldown_until = now + rclcpp::Duration::from_seconds(config_.shot_target_cooldown_sec);
+        it->second.detected = false;
+      }
+    }
+  }
 
   void clear_target()
   {

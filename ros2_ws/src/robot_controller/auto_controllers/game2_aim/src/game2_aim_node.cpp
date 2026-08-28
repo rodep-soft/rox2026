@@ -103,8 +103,10 @@ void Game2AimNode::load_parameters()
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
   align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
-  min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.65);
-  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 40.0);
+  min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.80);
+  max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
+  post_shot_delay_sec_ = declare_parameter<double>("post_shot_delay_sec", 0.8);
+  shot_target_cooldown_sec_ = declare_parameter<double>("shot_target_cooldown_sec", 2.0);
 
   // Tracker Config Setup
   TargetTracker::Config tracker_cfg;
@@ -128,6 +130,7 @@ void Game2AimNode::load_parameters()
   tracker_cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
   tracker_cfg.min_standing_aspect_ratio = min_standing_aspect_ratio_;
   tracker_cfg.max_standing_tilt_deg = max_standing_tilt_deg_;
+  tracker_cfg.shot_target_cooldown_sec = shot_target_cooldown_sec_;
   tracker_.set_config(tracker_cfg);
 
   // AprilTag Panel IDs
@@ -199,6 +202,12 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       max_standing_tilt_deg_ = param.as_double();
       tracker_cfg.max_standing_tilt_deg = max_standing_tilt_deg_;
       tracker_cfg_changed = true;
+    } else if (name == "post_shot_delay_sec") {
+      post_shot_delay_sec_ = param.as_double();
+    } else if (name == "shot_target_cooldown_sec") {
+      shot_target_cooldown_sec_ = param.as_double();
+      tracker_cfg.shot_target_cooldown_sec = shot_target_cooldown_sec_;
+      tracker_cfg_changed = true;
     }
   }
 
@@ -262,6 +271,8 @@ void Game2AimNode::shot_cycle_state_callback(
          prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
     {
       shot_requested_ = false;
+      last_shot_completed_time_ = now();
+      tracker_.mark_active_target_shot(last_shot_completed_time_);
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Transitioning to SEARCHING for next target");
@@ -370,6 +381,17 @@ void Game2AimNode::control_loop()
       current_belt_mode = robot_msgs::msg::BeltMode::STOP;
       cmd.angular.z = search_angular_z_;
       last_cmd_wz_ = search_angular_z_;
+
+      // 射出直後の着弾・打倒待ちディレイ（0.8秒間は探索を待機し、的が倒れるのを待つ）
+      if (last_shot_completed_time_.nanoseconds() > 0 &&
+          (current_time - last_shot_completed_time_).seconds() < post_shot_delay_sec_)
+      {
+        RCLCPP_INFO_THROTTLE(
+          get_logger(), *get_clock(), 500,
+          "⏳ [Game2 SEARCHING] Waiting for target to fall (%.2fs / %.2fs)... Standing still",
+          (current_time - last_shot_completed_time_).seconds(), post_shot_delay_sec_);
+        break;
+      }
 
       if (tracker_.find_and_lock_target(current_time, get_logger())) {
         transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");

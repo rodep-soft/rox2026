@@ -92,13 +92,15 @@ private:
   bool test_alignment_only_{false};
   double shot_fallback_timeout_{5.0}; // [s] 射出ボタン押下後の保険タイムアウト
 
-  // ── 新規パラメータ: 信頼度判定・タイムアウト・照準オフセット・倒れ判定 ──
+  // ── 新規パラメータ: 信頼度判定・タイムアウト・照準オフセット・倒れ判定・射出後ディレイ ──
   int min_detection_frames_{2};
   double visual_valid_timeout_{0.3}; // [s] 照準完了判定に必要な直近視覚有効時間
   double align_lost_timeout_{1.0};   // [s] ALIGNING中の完全ロスト判定時間
   double aim_yaw_offset_deg_{0.0};   // [deg] 照準左右微調整オフセット
-  double min_standing_aspect_ratio_{0.65}; // 倒れ判定最小アスペクト比
-  double max_standing_tilt_deg_{40.0};     // [deg] 倒れ判定最大傾き角
+  double min_standing_aspect_ratio_{0.80}; // 倒れ判定最小アスペクト比
+  double max_standing_tilt_deg_{30.0};     // [deg] 倒れ判定最大傾き角
+  double post_shot_delay_sec_{0.8};        // [s] 射出完了から次探索までの着弾・倒れ待ち時間
+  double shot_target_cooldown_sec_{2.0};   // [s] 直前に撃った的の再照準禁止クールダウン
 
   // ── ターゲット追従・認識エンジン ──
   TargetTracker tracker_;
@@ -111,6 +113,7 @@ private:
   uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
   bool shot_requested_{false};
   rclcpp::Time shot_requested_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_shot_completed_time_{0, 0, RCL_ROS_TIME};
 
   rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   double last_cmd_wz_{0.0};
