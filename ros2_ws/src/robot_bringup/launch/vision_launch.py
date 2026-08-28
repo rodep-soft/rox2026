@@ -134,11 +134,11 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_nodes.append(mono_node)
 
-        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
+        # Camera mount pose in the ROS base convention (X forward, Y left, Z up).
         camera_tf_node = Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            name="base_to_camera_tf",
+            name="base_to_camera_link_tf",
             arguments=[
                 "--x",
                 "0.265",
@@ -155,11 +155,38 @@ def launch_setup(context, *args, **kwargs):
                 "--frame-id",
                 "base_link",
                 "--child-frame-id",
-                "default_cam",
+                "camera_link",
             ],
             output="screen",
         )
         launch_nodes.append(camera_tf_node)
+
+        # REP-103 optical convention: X right, Y down, Z forward.
+        camera_optical_tf_node = Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="camera_link_to_optical_tf",
+            arguments=[
+                "--x",
+                "0.0",
+                "--y",
+                "0.0",
+                "--z",
+                "0.0",
+                "--roll",
+                "-1.57079632679",
+                "--pitch",
+                "0.0",
+                "--yaw",
+                "-1.57079632679",
+                "--frame-id",
+                "camera_link",
+                "--child-frame-id",
+                "default_cam",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(camera_optical_tf_node)
 
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"

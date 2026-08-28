@@ -69,14 +69,26 @@ def launch_setup(context, *args, **kwargs):
         }],
     )
 
-    camera_tf_node = Node(
+    base_to_camera_link_node = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
-        name="base_to_camera_tf",
+        name="base_to_camera_link_tf",
         arguments=[
             "--x", "0.265", "--y", "0.035", "--z", "0.193",
             "--roll", "0.0", "--pitch", "0.0", "--yaw", "0.0",
-            "--frame-id", "base_link", "--child-frame-id", "default_cam",
+            "--frame-id", "base_link", "--child-frame-id", "camera_link",
+        ],
+        output="screen",
+    )
+
+    camera_link_to_optical_node = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="camera_link_to_optical_tf",
+        arguments=[
+            "--x", "0.0", "--y", "0.0", "--z", "0.0",
+            "--roll", "-1.57079632679", "--pitch", "0.0", "--yaw", "-1.57079632679",
+            "--frame-id", "camera_link", "--child-frame-id", "default_cam",
         ],
         output="screen",
     )
@@ -101,7 +113,13 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    launch_nodes = [mipi_node, mono_node, camera_tf_node, apriltag_launch]
+    launch_nodes = [
+        mipi_node,
+        mono_node,
+        base_to_camera_link_node,
+        camera_link_to_optical_node,
+        apriltag_launch,
+    ]
     if enable_foxglove:
         launch_nodes.append(
             IncludeLaunchDescription(
