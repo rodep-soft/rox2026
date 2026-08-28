@@ -1,0 +1,20 @@
+[Unit]
+StartLimitIntervalSec=0
+Description=Redundant game-controller bridge (UDP + RFCOMM -> virtual evdev)
+After=network.target bluetooth.service
+Wants=rdk-rfcomm.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/controller-bridge-run
+Restart=always
+RestartSec=1
+KillMode=control-group
+
+# Runs as root intentionally: /dev/uinput and /dev/rfcomm0 must remain usable
+# without fragile per-device permission rules on an embedded robot.
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

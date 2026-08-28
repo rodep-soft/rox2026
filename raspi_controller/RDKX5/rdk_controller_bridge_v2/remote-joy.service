@@ -1,0 +1,14 @@
+[Unit]
+StartLimitIntervalSec=0
+Description=ROS 2 joy_node for Remote DualSense
+After=controller-bridge.service
+Wants=controller-bridge.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/joy-remote-run
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
