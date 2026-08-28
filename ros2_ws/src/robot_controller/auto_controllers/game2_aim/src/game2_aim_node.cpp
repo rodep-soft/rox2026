@@ -475,8 +475,8 @@ void Game2AimNode::control_loop()
 
         RCLCPP_INFO_THROTTLE(
           get_logger(), *get_clock(), 500,
-          "🎯 [Game2 ALIGNING Tag #%d (Row %d)] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
-          tracker_.active_target_id(), tracker_.active_row(),
+          "🎯 [Game2 ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+          tracker_.target_description().c_str(),
           target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
           cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
       }
@@ -497,8 +497,8 @@ void Game2AimNode::control_loop()
       } else {
         RCLCPP_INFO_THROTTLE(
           get_logger(), *get_clock(), 500,
-          "🚀 [Game2 PREPARING_SHOOT] Tag #%d (Row %d) Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
-          tracker_.active_target_id(), tracker_.active_row(), current_belt_mode);
+          "🚀 [Game2 PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
+          tracker_.target_description().c_str(), current_belt_mode);
       }
       break;
     }

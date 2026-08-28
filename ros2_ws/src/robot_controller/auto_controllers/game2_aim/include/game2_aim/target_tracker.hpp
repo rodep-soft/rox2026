@@ -521,6 +521,21 @@ public:
   uint8_t target_belt_mode() const { return target_belt_mode_; }
   int active_target_id() const { return active_target_id_; }
   int active_row() const { return active_row_; }
+  bool is_midpoint_target() const { return is_midpoint_target_; }
+
+  std::string target_description() const
+  {
+    if (!target_locked_) return "No Target";
+    std::stringstream ss;
+    if (is_midpoint_target_ && current_target_tag_ids_.size() >= 2) {
+      ss << "2枚抜き中点: Tags #" << current_target_tag_ids_[0] << " & #" << current_target_tag_ids_[1]
+         << " (" << get_row_name(active_row_) << ")";
+    } else if (!current_target_tag_ids_.empty()) {
+      ss << "単体真ん中: Tag #" << current_target_tag_ids_[0]
+         << " (" << get_row_name(active_row_) << ")";
+    }
+    return ss.str();
+  }
 
   void mark_active_target_shot(const rclcpp::Time & now)
   {
