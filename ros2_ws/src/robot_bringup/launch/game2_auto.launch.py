@@ -98,8 +98,8 @@ def generate_launch_description():
         DeclareLaunchArgument("roi_width", default_value="1280"),
         DeclareLaunchArgument("roi_height", default_value="720"),
         DeclareLaunchArgument("tag_size", default_value="0.18"),
-        DeclareLaunchArgument("detector_threads", default_value="2"),
-        DeclareLaunchArgument("detector_decimate", default_value="2.0"),
+        DeclareLaunchArgument("detector_threads", default_value="4"),
+        DeclareLaunchArgument("detector_decimate", default_value="1.0"),
         DeclareLaunchArgument(
             "test_alignment_only",
             default_value="false",
