@@ -519,11 +519,6 @@ void PKAimNode::control_loop()
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Target panel locked -> Aligning to selected target");
-        } else {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 1000,
-            "🔍 [PK State: SEARCHING] Target Idx %d (%s) not found in vision. Waiting...",
-            tracker_.selected_index(), tracker_.get_selected_panel().name.c_str());
         }
         break;
       }
@@ -551,11 +546,6 @@ void PKAimNode::control_loop()
               "Target aligned and CONFIRMED -> Spinning Belt");
             current_belt_mode =
               test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
-          } else {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 500,
-              "🎯 [PK State: ALIGNED | %s] Ready! Press Circle button to confirm & spin belt",
-              tracker_.target_description().c_str());
           }
         } else {
           // PD 旋回制御 (IMU ジャイロ制動ダンピング + Slew Rate)
@@ -578,17 +568,6 @@ void PKAimNode::control_loop()
 
           cmd.angular.z = desired_wz;
           last_cmd_wz_ = cmd.angular.z;
-
-          const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
-
-          RCLCPP_INFO_THROTTLE(
-            get_logger(),
-            *get_clock(), 500,
-            "🎯 [PK State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s%s",
-            tracker_.target_description().c_str(),
-            target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
-            cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING",
-            is_target_confirmed_ ? " [CONFIRMED]" : " [UNCONFIRMED]");
         }
         break;
       }
@@ -620,11 +599,6 @@ void PKAimNode::control_loop()
             get_logger(),
             "⚠️ [PK SHOOT ABORTED] 照準角度が許容値を超えてズレたため射出許可を破棄し、再照準（ALIGNING）へ戻りました (誤差: %+.2f deg)",
             tracker_.heading_error() * 180.0 / M_PI);
-        } else {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
-            "🚀 [PK State: PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot (L2+Circle)",
-            tracker_.target_description().c_str(), current_belt_mode);
         }
         break;
       }

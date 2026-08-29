@@ -313,14 +313,13 @@ void Game2AimNode::shot_cycle_state_callback(
   const robot_msgs::msg::ShotCycleState::SharedPtr msg)
 {
   const uint8_t current_state = msg->state;
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-    state_ == robot_msgs::msg::Game2State::ALIGNING)
+  if ((state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+    state_ == robot_msgs::msg::Game2State::ALIGNING) && shot_requested_)
   {
-    // ボール射出完了（FEEDING -> RETURNING）または サイクル完全終了（-> IDLE）で次の探索へ移行
+    // ボール射出完了（FEEDING -> RETURNING）または サイクル終了（-> IDLE）で次の探索へ移行（1射出につき1回のみ発火）
     if ((current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING) ||
-      (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
-      prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
+      (current_state == robot_msgs::msg::ShotCycleState::IDLE))
     {
       shot_requested_ = false;
       last_shot_completed_time_ = now();
@@ -523,17 +522,6 @@ void Game2AimNode::control_loop()
         if (tracker_.find_and_lock_target(current_time, get_logger(), yaw_)) {
           transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");
           log_target_decision("Game2 ターゲットロック", "視覚検出に基づき最適ターゲットを確定 (照準旋回開始)");
-        } else {
-          if (std::abs(search_angular_z_) > 0.001) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 State: SEARCHING] Rotating %+.2f rad/s (Searching for targets...)",
-              search_angular_z_);
-          } else {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 State: SEARCHING] Waiting for target AprilTags...");
-          }
         }
         break;
       }
@@ -584,16 +572,6 @@ void Game2AimNode::control_loop()
 
           cmd.angular.z = desired_wz;
           last_cmd_wz_ = cmd.angular.z;
-
-          const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
-
-          RCLCPP_INFO_THROTTLE(
-            get_logger(),
-            *get_clock(), 500,
-            "🎯 [Game2 State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
-            tracker_.target_description().c_str(),
-            target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
-            cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
         }
         break;
       }
@@ -619,11 +597,6 @@ void Game2AimNode::control_loop()
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Heading error exceeded tolerance in PREPARING_SHOOT");
-        } else {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
-            "🚀 [Game2 State: PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
-            tracker_.target_description().c_str(), current_belt_mode);
         }
         break;
       }

@@ -278,68 +278,62 @@ public:
       TargetPattern::SINGLE_COL_2
     };
 
-    for (const auto pattern : patterns) {
-      if ((pattern == TargetPattern::MIDPOINT_0_1 || pattern == TargetPattern::MIDPOINT_1_2) &&
-        !config_.enable_double_panel_midpoint_targeting)
-      {
-        continue;
-      }
-
-      for (int row = 2; row >= 0; --row) {
-        const PanelTagInfo * p0 = nullptr;
-        const PanelTagInfo * p1 = nullptr;
-        const PanelTagInfo * p2 = nullptr;
-
-        for (const auto & [id, panel] : panel_grid_) {
-          if (panel.row == row) {
-            if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {
-              p1 = &panel;
-            } else if (panel.col == 2) {p2 = &panel;}
-          }
-        }
-
-        auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
-            if (!p) {return false;}
-            if (!p->detected || !p->is_standing) {return false;}
-
-            // 前回狙った的の場合の除外・復活判定
-            bool was_last_shot = false;
-            for (int id : last_shot_target_tag_ids_) {
-              if (p->tag_id == id) {
-                was_last_shot = true;
-                break;
-              }
-            }
-
-            if (was_last_shot) {
-              // 3秒未満であれば今回はスキップ（狙わない）
-              if (last_shot_time_.nanoseconds() > 0 &&
-                (now - last_shot_time_).seconds() < config_.last_shot_retry_sec)
-              {
-                return false;
-              }
-              // 3秒以上経過して依然として立っていれば再び狙う対象として許可！
-            }
-
-            return true;
-          };
-
-        bool match = false;
-        int pattern_key = static_cast<int>(pattern) * 10 + row;
-
-        if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
-          match = true;
-        } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
-          is_tag_active(p2))
+    // 2パス探索:
+    // Pass 0 (厳格): 直前に射出した的（last_shot_target_tag_ids_）を完全除外して他の候補を探す
+    // Pass 1 (フォールバック): 他に候補が1つもない場合（最後の1枚等）、直前の的も含めて決定
+    for (int pass = 0; pass < 2; ++pass) {
+      for (const auto pattern : patterns) {
+        if ((pattern == TargetPattern::MIDPOINT_0_1 || pattern == TargetPattern::MIDPOINT_1_2) &&
+          !config_.enable_double_panel_midpoint_targeting)
         {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_1 && is_tag_active(p1)) {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_2 && is_tag_active(p2)) {
-          match = true;
+          continue;
         }
+
+        for (int row = 2; row >= 0; --row) {
+          const PanelTagInfo * p0 = nullptr;
+          const PanelTagInfo * p1 = nullptr;
+          const PanelTagInfo * p2 = nullptr;
+
+          for (const auto & [id, panel] : panel_grid_) {
+            if (panel.row == row) {
+              if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {
+                p1 = &panel;
+              } else if (panel.col == 2) {p2 = &panel;}
+            }
+          }
+
+          auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
+              if (!p) {return false;}
+              if (!p->detected || !p->is_standing) {return false;}
+
+              if (pass == 0) {
+                // Pass 0: 直前に射出した的は無条件で除外（射出を挟まない連続狙いを完全防止）
+                for (int id : last_shot_target_tag_ids_) {
+                  if (p->tag_id == id) {
+                    return false;
+                  }
+                }
+              }
+
+              return true;
+            };
+
+          bool match = false;
+          int pattern_key = static_cast<int>(pattern) * 10 + row;
+
+          if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
+            match = true;
+          } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
+            is_tag_active(p2))
+          {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_1 && is_tag_active(p1)) {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_2 && is_tag_active(p2)) {
+            match = true;
+          }
 
         if (match) {
           if (candidate_pattern_key_ == pattern_key) {
@@ -463,6 +457,7 @@ public:
         }
       }
     }
+  }
 
     consecutive_detection_count_ = 0;
     candidate_pattern_key_ = -1;
