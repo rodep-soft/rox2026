@@ -135,6 +135,7 @@ private:
   };
   bool shot_cycle_active_{false};
   PreShotState pre_shot_state_{PreShotState::IDLE};
+  uint8_t pre_shot_saved_position_mode_{robot_msgs::msg::ArmPosition::DRIBBLE};
   rclcpp::Time pre_shot_wait_start_time_;
   uint8_t spring_operation_state_{robot_msgs::msg::SpringOperationState::IDLE};
   uint8_t shot_cycle_phase_{robot_msgs::msg::ShotCycleState::FEEDING};

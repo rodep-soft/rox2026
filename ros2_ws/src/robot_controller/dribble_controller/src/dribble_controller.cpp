@@ -157,6 +157,9 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
     return;
   }
 
+  // ショット前の元の姿勢を記憶
+  pre_shot_saved_position_mode_ = position_mode_;
+
   if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
     position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
     is_arm_moving_ = true;
@@ -166,7 +169,8 @@ void DribbleControllerNode::shot_cycle_callback(const std_msgs::msg::Bool::Share
     pre_shot_state_ = PreShotState::MOVING_TO_DRIBBLE;
     RCLCPP_INFO(
       get_logger(),
-      "Belt shot requested from OPEN: returning to DRIBBLE first");
+      "Belt shot requested from mode %u: returning to DRIBBLE first",
+      pre_shot_saved_position_mode_);
     return;
   }
   start_shot_cycle();
@@ -542,7 +546,13 @@ void DribbleControllerNode::control_timer_callback()
         // ばね退避に時間がかかりすぎたときのタイムアウト
         shot_cycle_active_ = false;
         set_spring_clearance(false);
-        position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+        position_mode_ = pre_shot_saved_position_mode_;
+        if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
+          is_arm_moving_ = true;
+          arm_move_start_time_ = now();
+          arm_move_start_pos_rad_ = arm_cmd_pos_rad_;
+          arm_move_start_rpm_ = roller_cmd_rpm_;
+        }
         if (belt_auto_started_) {
           belt_auto_started_ = false;
           robot_msgs::msg::BeltMode belt_msg;
@@ -594,7 +604,21 @@ void DribbleControllerNode::control_timer_callback()
           has_ball_ = false;
           ball_detected_counter_ = 0;
           ball_lost_counter_ = ball_detection_debounce_count_;
-          position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
+          position_mode_ = pre_shot_saved_position_mode_;
+          if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
+            is_arm_moving_ = true;
+            arm_move_start_time_ = now();
+            arm_move_start_pos_rad_ = arm_cmd_pos_rad_;
+            arm_move_start_rpm_ = roller_cmd_rpm_;
+            RCLCPP_INFO(
+              get_logger(),
+              "Shot Cycle Completed: Restoring arm position to PRE-SHOT mode (%u)",
+              position_mode_);
+          } else {
+            RCLCPP_INFO(
+              get_logger(),
+              "Shot Cycle Completed: Returned to DRIBBLE");
+          }
           if (belt_auto_started_) {
             belt_auto_started_ = false;
             robot_msgs::msg::BeltMode belt_msg;
@@ -604,9 +628,6 @@ void DribbleControllerNode::control_timer_callback()
               get_logger(),
               "Shot Cycle Completed: Belt auto-stopped");
           }
-          RCLCPP_INFO(
-            get_logger(),
-            "Shot Cycle Completed: Returned to DRIBBLE");
         }
       }
     }
