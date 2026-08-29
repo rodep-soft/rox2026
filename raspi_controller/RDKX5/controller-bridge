@@ -9,7 +9,7 @@ Fail-safe state machine:
   NORMAL       : at least one transport received a valid record recently
   NEUTRAL      : both transports silent >= neutral_timeout (default 200 ms)
                  -> emit neutral state exactly once
-  DISCONNECTED : both transports silent >= disconnect_timeout (default 1 s)
+  DISCONNECTED : both transports silent >= disconnect_timeout (default 5 s)
                  -> stop uinput, removing the virtual /dev/input/event* device
 
 On any valid record after DISCONNECTED, uinput is recreated immediately and a
@@ -593,7 +593,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-pending", type=int, default=4096)
     p.add_argument("--path-timeout", type=float, default=0.20)
     p.add_argument("--neutral-timeout", type=float, default=0.20)
-    p.add_argument("--disconnect-timeout", type=float, default=1.00)
+    p.add_argument("--disconnect-timeout", type=float, default=5.00)
     p.add_argument("--stats-interval", type=float, default=10.0)
     p.add_argument("--uinput-bin", default="/usr/local/bin/uinput")
     p.add_argument("--device-yaml", default="/etc/controller/dualsense.yaml")

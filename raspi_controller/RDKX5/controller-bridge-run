@@ -15,7 +15,7 @@ exec /usr/local/bin/controller-bridge \
   --gap-timeout "${GAP_TIMEOUT:-0.015}" \
   --path-timeout "${PATH_TIMEOUT:-0.20}" \
   --neutral-timeout "${NEUTRAL_TIMEOUT:-0.20}" \
-  --disconnect-timeout "${DISCONNECT_TIMEOUT:-1.00}" \
+  --disconnect-timeout "${DISCONNECT_TIMEOUT:-5.00}" \
   --stats-interval "${STATS_INTERVAL:-10}" \
   --uinput-bin "${UINPUT_BIN:-/usr/local/bin/uinput}" \
   --device-yaml "${DEVICE_YAML:-/etc/controller/dualsense.yaml}" \
