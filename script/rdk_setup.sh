@@ -289,13 +289,20 @@ else
 fi
 
 #githubのレポジトリのクローン
-# GitHub authentication and repository clone
+# GitHub authentication, SSH key setup and repository clone
 # ====================================================
 REPO_URL="git@github.com:rodep-soft/rox2026.git"
 REPO_DIR="$HOME/rox2026"
 REPO_BRANCH="main-v2"
+
+SSH_DIR="$HOME/.ssh"
+SSH_KEY="$SSH_DIR/id_ed25519"
+SSH_PUB_KEY="${SSH_KEY}.pub"
+SSH_KEY_TITLE="$(hostname)-rdk-rox"
+
 echo
 echo "GitHub setup start."
+
 # GitHub CLIの認証状態を確認
 if gh auth status --hostname github.com >/dev/null 2>&1; then
   echo "GitHub CLI is already authenticated."
@@ -312,34 +319,144 @@ if ! gh auth status --hostname github.com >/dev/null 2>&1; then
   exit 1
 fi
 echo "GitHub authentication successful."
+
 # Git操作でSSHを使うよう設定
 gh config set git_protocol ssh --host github.com
-# GitHubとのSSH接続確認
+
+# ====================================================
+# GitHub SSH key setup
+# ====================================================
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+# デフォルトのEd25519鍵が無ければ新規作成する。
+# セットアップの完全自動化を優先し、作成する鍵にはパスフレーズを設定しない。
+if [ -f "$SSH_KEY" ]; then
+  echo "Existing SSH private key found:"
+  echo "  $SSH_KEY"
+
+  # 公開鍵だけ消えている場合は秘密鍵から復元する。
+  if [ ! -f "$SSH_PUB_KEY" ]; then
+    echo "Public key is missing. Recreating it from the private key..."
+    if ! ssh-keygen -y -f "$SSH_KEY" > "$SSH_PUB_KEY"; then
+      rm -f "$SSH_PUB_KEY"
+      echo "Error: Failed to recreate SSH public key." >&2
+      echo "If the existing private key has a passphrase, unlock it manually and run setup again." >&2
+      exit 1
+    fi
+  fi
+elif [ -e "$SSH_PUB_KEY" ]; then
+  echo "Error: $SSH_PUB_KEY exists, but the private key $SSH_KEY does not." >&2
+  echo "Move/remove the orphaned public key or restore its private key, then run setup again." >&2
+  exit 1
+else
+  echo "Creating a new Ed25519 SSH key for GitHub..."
+  ssh-keygen \
+    -t ed25519 \
+    -C "$(whoami)@$(hostname)-github" \
+    -f "$SSH_KEY" \
+    -N ""
+  echo "SSH key created:"
+  echo "  $SSH_KEY"
+fi
+
+chmod 600 "$SSH_KEY"
+chmod 644 "$SSH_PUB_KEY"
+
+# まず現在のSSH設定でGitHubへ接続できるか確認する。
 SSH_OUTPUT="$(ssh \
+  -o BatchMode=yes \
   -o StrictHostKeyChecking=accept-new \
   -T git@github.com 2>&1 || true)"
 
+USE_MANAGED_SSH_KEY=0
+
 if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
-  echo "GitHub SSH connection successful."
+  echo "GitHub SSH connection is already working."
 else
-  echo "$SSH_OUTPUT" >&2
-  echo "Error: GitHub SSH connection failed." >&2
-  exit 1
+  echo "GitHub SSH connection is not configured yet."
+  echo "Registering the SSH public key with the authenticated GitHub account..."
+
+  # GitHub CLIで公開鍵を登録する。
+  # 権限不足や「すでに登録済み」などで失敗する可能性があるため、
+  # まず登録を試し、その後に実際のSSH認証で成否を判定する。
+  if gh ssh-key add "$SSH_PUB_KEY" --title "$SSH_KEY_TITLE"; then
+    echo "SSH public key registered with GitHub."
+  else
+    echo "gh ssh-key add returned an error. Checking whether the key is already usable..." >&2
+  fi
+
+  SSH_OUTPUT="$(ssh \
+    -i "$SSH_KEY" \
+    -o IdentitiesOnly=yes \
+    -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -T git@github.com 2>&1 || true)"
+
+  if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
+    USE_MANAGED_SSH_KEY=1
+  else
+    # GitHub CLIの既存認証トークンにSSH鍵登録権限が無い場合に備えて、
+    # 必要なOAuth scopeを追加してから再登録する。
+    echo "SSH key is not registered yet. Refreshing GitHub CLI permission..."
+    gh auth refresh \
+      --hostname github.com \
+      --scopes write:public_key
+
+    gh ssh-key add "$SSH_PUB_KEY" --title "$SSH_KEY_TITLE"
+
+    SSH_OUTPUT="$(ssh \
+      -i "$SSH_KEY" \
+      -o IdentitiesOnly=yes \
+      -o BatchMode=yes \
+      -o StrictHostKeyChecking=accept-new \
+      -T git@github.com 2>&1 || true)"
+
+    if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
+      USE_MANAGED_SSH_KEY=1
+    else
+      echo "$SSH_OUTPUT" >&2
+      echo "Error: GitHub SSH connection failed." >&2
+      echo "Public key:" >&2
+      cat "$SSH_PUB_KEY" >&2
+      exit 1
+    fi
+  fi
+
+  echo "GitHub SSH connection successful."
 fi
+
 # リポジトリをクローン
 if [ -d "$REPO_DIR/.git" ]; then
   echo "Repository already exists:"
   echo "  $REPO_DIR"
   echo "Skipping clone."
+  if [ "$USE_MANAGED_SSH_KEY" -eq 1 ]; then
+    git -C "$REPO_DIR" config core.sshCommand \
+      "ssh -i $SSH_KEY -o IdentitiesOnly=yes"
+    echo "Configured this repository to use: $SSH_KEY"
+  fi
 elif [ -e "$REPO_DIR" ]; then
   echo "Error: $REPO_DIR exists but is not a Git repository." >&2
   exit 1
 else
   echo "Cloning repository..."
-  git clone \
-    --branch "$REPO_BRANCH" \
-    "$REPO_URL" \
-    "$REPO_DIR"
+  if [ "$USE_MANAGED_SSH_KEY" -eq 1 ]; then
+    GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes" \
+      git clone \
+        --branch "$REPO_BRANCH" \
+        "$REPO_URL" \
+        "$REPO_DIR"
+
+    # 以降のpull/pushでも同じ鍵を使うよう、このリポジトリだけに設定する。
+    git -C "$REPO_DIR" config core.sshCommand \
+      "ssh -i $SSH_KEY -o IdentitiesOnly=yes"
+  else
+    git clone \
+      --branch "$REPO_BRANCH" \
+      "$REPO_URL" \
+      "$REPO_DIR"
+  fi
   echo "Repository cloned successfully:"
   echo "  $REPO_DIR"
 fi
