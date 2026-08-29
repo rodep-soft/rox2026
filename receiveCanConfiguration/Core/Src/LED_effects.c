@@ -10,6 +10,10 @@
 #define LED_STATUS_GAME2_ENABLED      0x20U
 #define LED_STATUS_ROLLER_FORWARD     0x40U
 #define LED_STATUS_ROLLER_REVERSE     0x80U
+#define GRID_STATE_STANDING             0U
+#define GRID_STATE_TARGET               1U
+#define GRID_STATE_FALLEN               2U
+#define GRID_CELL_COUNT                 9U
 
 #define LAUNCHER_MAIN_LED_COUNT       20U
 #define LAUNCHER_SIDE_LED_COUNT        9U
@@ -568,6 +572,27 @@ static void LED_RenderFiring(uint32_t elapsed_ms, uint32_t wave_ms) {
 	}
 }
 
+static void LED_OverlayGame2Grid(uint32_t grid_states) {
+	for (uint16_t index = 0U; index < GRID_CELL_COUNT; index++) {
+		const uint8_t state = (uint8_t)((grid_states >> (index * 2U)) & 0x03U);
+		uint8_t red = 0U;
+		uint8_t green = 80U;
+		uint8_t blue = 0U;
+		if (state == GRID_STATE_TARGET) {
+			red = 255U;
+			green = 180U;
+		} else if (state == GRID_STATE_FALLEN) {
+			green = 0U;
+		} else if (state != GRID_STATE_STANDING) {
+			red = 255U;
+			green = 0U;
+			blue = 255U;
+		}
+		setPixelPA6(MIDDLE_CHAIN_START + index, red, green, blue);
+		setPixelPA2(index, red, green, blue);
+	}
+}
+
 static void LED_RenderGame2Searching(uint32_t now_ms, uint8_t status) {
 	const uint16_t head = (uint16_t)((now_ms % 1200U) *
 			PA7_LED_NUM / 1200U);
@@ -591,7 +616,7 @@ void LED_Effects_Init(void) {
 	show();
 }
 
-void LED_Effects_Render(uint8_t mode, uint8_t status) {
+void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	const uint32_t now_ms = HAL_GetTick();
 	static uint8_t previous_mode = 0xFFU;
 	static bool loading_wait_started;
@@ -616,6 +641,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			(mode == LED_MODE_GAME2_SEARCHING) ? 1U : 0U;
 	if (debug_led_game2_search_active != 0U) {
 		LED_RenderGame2Searching(now_ms, status);
+		LED_OverlayGame2Grid(grid_states);
 		LED_ApplyImuDisconnectedWarning(now_ms);
 		show();
 		return;
@@ -797,6 +823,10 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			/* Active belt Emerald overrides the upper reversed Gold display. */
 			LED_RenderBeltLauncher(status, now_ms);
 		}
+	}
+	if (((status & LED_STATUS_GAME2_ENABLED) != 0U) &&
+			(mode != LED_MODE_EMERGENCY_STOP) && (mode != LED_MODE_ERROR)) {
+		LED_OverlayGame2Grid(grid_states);
 	}
 	LED_ApplyImuDisconnectedWarning(now_ms);
 	show();
