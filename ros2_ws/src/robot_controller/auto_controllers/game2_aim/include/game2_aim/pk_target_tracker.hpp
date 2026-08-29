@@ -360,6 +360,49 @@ public:
   int active_target_id() const {return active_target_id_;}
   int active_row() const {return active_row_;}
   uint8_t target_belt_mode() const {return target_belt_mode_;}
+  std::vector<int> get_target_indices() const
+  {
+    if (!target_locked_) return {};
+    return {selected_index_};
+  }
+
+  std::vector<int> get_fallen_indices(const rclcpp::Time & now) const
+  {
+    std::vector<int> fallen;
+    for (int idx = 0; idx < 9; ++idx) {
+      int tag_id = index_to_tag_id_[idx];
+      auto it = panel_grid_.find(tag_id);
+      if (it == panel_grid_.end()) {
+        fallen.push_back(idx);
+        continue;
+      }
+      const auto & p = it->second;
+      const double dt = (now - p.last_seen).seconds();
+      const bool is_active = (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+      if (!is_active) {
+        fallen.push_back(idx);
+      }
+    }
+    return fallen;
+  }
+
+  std::vector<int> get_standing_indices(const rclcpp::Time & now) const
+  {
+    std::vector<int> standing;
+    for (int idx = 0; idx < 9; ++idx) {
+      int tag_id = index_to_tag_id_[idx];
+      auto it = panel_grid_.find(tag_id);
+      if (it == panel_grid_.end()) continue;
+      const auto & p = it->second;
+      const double dt = (now - p.last_seen).seconds();
+      const bool is_active = (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+      if (is_active) {
+        standing.push_back(idx);
+      }
+    }
+    return standing;
+  }
+
   double heading_error() const {return target_heading_err_;}
   double target_x() const {return target_x_;}
   double target_y() const {return target_y_;}

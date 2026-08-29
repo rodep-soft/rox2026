@@ -18,6 +18,8 @@
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/int32_multi_array.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
 
@@ -49,6 +51,7 @@ private:
     const geometry_msgs::msg::Twist & cmd_vel,
     uint8_t belt_mode,
     bool completed);
+  void publish_target_status(const rclcpp::Time & now);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -67,6 +70,9 @@ private:
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr target_index_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr target_indices_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr fallen_indices_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 

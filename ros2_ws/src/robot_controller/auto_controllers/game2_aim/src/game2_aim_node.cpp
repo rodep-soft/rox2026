@@ -66,6 +66,10 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/game2/completed", rclcpp::QoS(
       1).reliable().transient_local());
 
+  target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/target_index", cmd_qos);
+  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/target_indices", cmd_qos);
+  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/fallen_indices", cmd_qos);
+
   // Control Loop Timer (20Hz = 50ms)
   timer_ = create_wall_timer(
     std::chrono::milliseconds(50),
@@ -369,6 +373,9 @@ void Game2AimNode::control_loop()
 {
   const auto current_time = now();
 
+  // 🎯 ターゲットIndex & 倒れIndexのパブリッシュ（STANDBY中も常時出力）
+  publish_target_status(current_time);
+
   if (test_panel_state_display_) {
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 500,
@@ -549,6 +556,26 @@ void Game2AimNode::publish_all(
   std_msgs::msg::Bool completed_msg;
   completed_msg.data = completed;
   completed_pub_->publish(completed_msg);
+}
+
+void Game2AimNode::publish_target_status(const rclcpp::Time & now)
+{
+  // 1. 主ターゲットインデックス (0〜8、未ロック時は -1)
+  std_msgs::msg::Int32 idx_msg;
+  idx_msg.data = tracker_.get_primary_target_index();
+  target_index_pub_->publish(idx_msg);
+
+  // 2. 狙っている的インデックス配列 (2枚抜き時は [0, 1] など)
+  std_msgs::msg::Int32MultiArray target_indices_msg;
+  auto target_indices = tracker_.get_target_indices();
+  target_indices_msg.data.assign(target_indices.begin(), target_indices.end());
+  target_indices_pub_->publish(target_indices_msg);
+
+  // 3. 倒れていると判定されている的インデックス配列
+  std_msgs::msg::Int32MultiArray fallen_msg;
+  auto fallen_indices = tracker_.get_fallen_indices(now);
+  fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());
+  fallen_indices_pub_->publish(fallen_msg);
 }
 
 }  // namespace robot_controller

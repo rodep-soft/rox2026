@@ -61,7 +61,9 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/mode", 10);
   state_pub_ = create_publisher<robot_msgs::msg::Game2State>("/pk/state", 10);
   completed_pub_ = create_publisher<std_msgs::msg::Bool>("/pk/completed", 10);
-  target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/pk/target_index", 10);
+  target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/target_index", 10);
+  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/target_indices", 10);
+  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/fallen_indices", 10);
   target_tag_id_pub_ = create_publisher<std_msgs::msg::Int32>("/pk/target_tag_id", 10);
 
   // Timer (50 Hz Control Loop)
@@ -313,10 +315,25 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
 
 void PKAimNode::publish_target_index()
 {
+  const auto current_time = now();
+
+  // 1. 主ターゲットIndex (0〜8)
   std_msgs::msg::Int32 idx_msg;
   idx_msg.data = tracker_.selected_index();
   target_index_pub_->publish(idx_msg);
 
+  // 2. 狙っている的インデックス配列 ([selected_index])
+  std_msgs::msg::Int32MultiArray target_indices_msg;
+  target_indices_msg.data = {tracker_.selected_index()};
+  target_indices_pub_->publish(target_indices_msg);
+
+  // 3. 倒れていると判定されている的インデックス配列
+  std_msgs::msg::Int32MultiArray fallen_msg;
+  auto fallen_indices = tracker_.get_fallen_indices(current_time);
+  fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());
+  fallen_indices_pub_->publish(fallen_msg);
+
+  // 4. Tag ID
   std_msgs::msg::Int32 tag_msg;
   tag_msg.data = tracker_.get_selected_panel().tag_id;
   target_tag_id_pub_->publish(tag_msg);

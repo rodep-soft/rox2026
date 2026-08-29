@@ -644,6 +644,96 @@ public:
     }
   }
 
+  static int tag_to_index(int row, int col)
+  {
+    return (2 - row) * 3 + col;
+  }
+
+  int get_primary_target_index() const
+  {
+    if (!target_locked_ || current_target_tag_ids_.empty()) {
+      return -1;
+    }
+    int first_tag = current_target_tag_ids_.front();
+    auto it = panel_grid_.find(first_tag);
+    if (it != panel_grid_.end()) {
+      return tag_to_index(it->second.row, it->second.col);
+    }
+    return -1;
+  }
+
+  std::vector<int> get_target_indices() const
+  {
+    std::vector<int> indices;
+    if (!target_locked_) {
+      return indices;
+    }
+    for (int tag_id : current_target_tag_ids_) {
+      auto it = panel_grid_.find(tag_id);
+      if (it != panel_grid_.end()) {
+        indices.push_back(tag_to_index(it->second.row, it->second.col));
+      }
+    }
+    std::sort(indices.begin(), indices.end());
+    return indices;
+  }
+
+  std::vector<int> get_fallen_indices(const rclcpp::Time & now) const
+  {
+    std::vector<int> fallen;
+    for (int r = 2; r >= 0; --r) {
+      for (int c = 0; c < 3; ++c) {
+        const PanelTagInfo * pt = nullptr;
+        for (const auto & [id, p_info] : panel_grid_) {
+          if (p_info.row == r && p_info.col == c) {
+            pt = &p_info;
+            break;
+          }
+        }
+        int idx = tag_to_index(r, c);
+        if (!pt) {
+          fallen.push_back(idx);
+          continue;
+        }
+        const double dt = (now - pt->last_seen).seconds();
+        const bool is_active = (pt->detected && pt->is_standing &&
+          (now >= pt->shot_cooldown_until) &&
+          (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
+        if (!is_active) {
+          fallen.push_back(idx);
+        }
+      }
+    }
+    std::sort(fallen.begin(), fallen.end());
+    return fallen;
+  }
+
+  std::vector<int> get_standing_indices(const rclcpp::Time & now) const
+  {
+    std::vector<int> standing;
+    for (int r = 2; r >= 0; --r) {
+      for (int c = 0; c < 3; ++c) {
+        const PanelTagInfo * pt = nullptr;
+        for (const auto & [id, p_info] : panel_grid_) {
+          if (p_info.row == r && p_info.col == c) {
+            pt = &p_info;
+            break;
+          }
+        }
+        if (!pt) continue;
+        const double dt = (now - pt->last_seen).seconds();
+        const bool is_active = (pt->detected && pt->is_standing &&
+          (now >= pt->shot_cooldown_until) &&
+          (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
+        if (is_active) {
+          standing.push_back(tag_to_index(r, c));
+        }
+      }
+    }
+    std::sort(standing.begin(), standing.end());
+    return standing;
+  }
+
   void clear_target()
   {
     target_locked_ = false;
