@@ -19,14 +19,15 @@ CANの送受信トピックは`can_tx_topic`と`can_rx_topic`で設定する。�
 |---|---:|---:|---|
 | RDK→STM32 | `0x101` | 0 | heartbeat |
 | STM32→RDK | `0x100` | 0 | heartbeat応答 |
-| RDK→STM32 | `0x201` | 2 | `/led/cmd`のUInt16 |
+| RDK→STM32 | 0x201 | 5 | /hardware/led_cmdのUInt64 |
 | STM32→RDK | `0x310` | 1 | limit switch 8 bit |
 | STM32→RDK | `0x320` | 8 | quaternion X, Y, Z, W（int16 LE、1/16384） |
 | STM32→RDK | `0x321` | 6 | angular velocity X, Y, Z（int16 LE、1/16 deg/s） |
 | STM32→RDK | `0x322` | 6 | linear acceleration X, Y, Z（int16 LE、1/100 m/s²） |
 
-LED command was extended to DLC 2: data[0] is the display mode and data[1] is
-the status flags. The ROS topic type is `std_msgs/msg/UInt16` (little endian).
+LED command uses DLC 5: data[0] is the display mode, data[1] is the status flags,
+and data[2] through data[4] contain nine 2-bit grid states. The ROS topic type is
+std_msgs/msg/UInt64 (little endian).
 
 standard data frameだけを受け、上記受信ID以外は早期returnする。
 

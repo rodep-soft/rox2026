@@ -3,56 +3,43 @@
 ## 1. 概要
 
 RDKからSTM32へ、CAN ID `0x201`のStandard Data FrameでLED状態を送信する。
-データ長は2 byte（DLC 2）とする。
+データ長は5 byte（DLC 5）とする。
 
 | CANデータ | 内容 |
 |---|---|
-| data[0] | 主表示モード、または補助グリッドコマンド |
-| data[1] | 付加状態、またはグリッドmask下位8 bit |
+| data[0] | 主表示モード |
+| data[1] | 同時表示する付加状態のbit field |
+| data[2]～data[4] | 9マス状態（各2 bit、little endian） |
 
-ROS 2では`/hardware/led_cmd`へ`std_msgs/msg/UInt16`を送信する。
+ROS 2では`/hardware/led_cmd`へ`std_msgs/msg/UInt64`を送信する。
 `stm32_driver`が次のリトルエンディアン形式でCANフレームへ変換する。
 
 ```text
-CAN data[0] = ros_value & 0x00ff
-CAN data[1] = (ros_value >> 8) & 0x00ff
-
-ros_value = data[0] | (data[1] << 8)
+CAN data[0] = ros_value & 0xff
+CAN data[1] = (ros_value >> 8) & 0xff
+CAN data[2] = (ros_value >> 16) & 0xff
+CAN data[3] = (ros_value >> 24) & 0xff
+CAN data[4] = (ros_value >> 32) & 0xff
 ```
 
-## 1.1 Game2ターゲットグリッド補助コマンド
+## 1.1 Game2ターゲットグリッド
 
-Game2の9マス状態は主表示とは別の補助フレームで送信する。led_controller_nodeは
-/target_grid_stateを購読し、TARGETとFALLENをそれぞれ9-bit maskへ変換する。
+9マス状態はdata[2]～data[4]の下位18 bitへ、1マス2 bitで格納する。
 
-| data[0] | 種類 | data[0] bit 0 | data[1] |
-|---:|---|---|---|
-| 0x20 / 0x21 | TARGET mask | grid bit 8 | grid bit 0～7 |
-| 0x22 / 0x23 | FALLEN mask | grid bit 8 | grid bit 0～7 |
+    grid_states |= (state[index] & 0x03) << (index * 2)
+    ros_value = mode | (flags << 8) | (grid_states << 16)
 
-maskからCAN payloadを生成する式は次のとおり。
-
-    data[0] = command_base | ((mask >> 8) & 0x01)
-    data[1] = mask & 0xff
-    command_base = 0x20 (TARGET) または 0x22 (FALLEN)
-
-グリッドbitと標準設定のタグID対応は次のとおり。タグIDはgame2_auto_aim.yamlの
-top_tags、middle_tags、bottom_tagsで変更できるため、bitはタグIDではなく位置を表す。
+状態値は0=STANDING、1=TARGET、2=FALLEN、3=INVALIDとする。
 
 | 配置 | 左 | 中央 | 右 |
 |---|---|---|---|
-| 上段 | bit 0 / Tag 14 | bit 1 / Tag 15 | bit 2 / Tag 16 |
-| 中段 | bit 3 / Tag 17 | bit 4 / Tag 18 | bit 5 / Tag 19 |
-| 下段 | bit 6 / Tag 20 | bit 7 / Tag 21 | bit 8 / Tag 22 |
+| 上段 | index 0 / Tag 14 | index 1 / Tag 15 | index 2 / Tag 16 |
+| 中段 | index 3 / Tag 17 | index 4 / Tag 18 | index 5 / Tag 19 |
+| 下段 | index 6 / Tag 20 | index 7 / Tag 21 | index 8 / Tag 22 |
 
-同じbitがTARGET maskとFALLEN maskへ同時に立ってはならない。どちらにも立って
-いないマスはSTANDINGである。STM32は両maskを保持し、9マスLED表示ではTARGETを
-狙い色、FALLENを倒れ色、STANDINGを待機色で表示する。推奨色はTARGET=黄、
-FALLEN=消灯、STANDING=緑とする。
-
-led_controller_nodeは各publish周期でTARGET、FALLEN、主表示の順に3フレームを送る。
-主表示を最後に送るため、補助コマンド未対応の旧STM32でも最終的に通常表示へ戻る。
-新STM32は0x20～0x23を主表示モードとして扱わず、mask更新だけを行うこと。
+タグIDはgame2_auto_aim.yamlのtop_tags、middle_tags、bottom_tagsで変更できるため、
+indexはタグIDではなく位置を表す。STM32での推奨色はSTANDING=緑、TARGET=黄、
+FALLEN=消灯、INVALID=紫とする。
 
 ## 2. data[0]: 主表示モード
 
@@ -258,7 +245,7 @@ STARTUP判定
 ```text
 data[0] = 0x01
 data[1] = 0b00000011 = 0x03
-UInt16  = 0x0301 = 769
+UInt64  = 0x0301 = 769
 ```
 
 ### READY、ベルトLEVEL 2、ドリブルON、前後反転
@@ -266,7 +253,7 @@ UInt16  = 0x0301 = 769
 ```text
 data[0] = 0x01
 data[1] = 0b00011010 = 0x1a
-UInt16  = 0x1a01 = 6657
+UInt64  = 0x1a01 = 6657
 ```
 
 ### Game2装填中、ドリブルON、Game2有効
@@ -274,7 +261,7 @@ UInt16  = 0x1a01 = 6657
 ```text
 data[0] = 0x04
 data[1] = 0b00101000 = 0x28
-UInt16  = 0x2804 = 10244
+UInt64  = 0x2804 = 10244
 ```
 
 ### 非常停止、ベルト・ドリブル停止
@@ -282,53 +269,47 @@ UInt16  = 0x2804 = 10244
 ```text
 data[0] = 0x02
 data[1] = 0x00
-UInt16  = 0x0002 = 2
+UInt64  = 0x0002 = 2
 ```
 
-### Game2グリッド補助コマンド例
+### Game2位置合わせ、Tag 22狙い、複数タグ倒れ
 
-上段左と上段中央（grid bit 0, 1）を狙っている場合、TARGET maskは0x003となる。
+Tag 22（index 8）をTARGET、index 0、1、3～7をFALLENとした場合。
 
-    data[0] = 0x20
-    data[1] = 0x03
-    UInt16 = 0x0320 = 800
-    CAN payload = 20 03
-
-上段右と下段右（grid bit 2, 8）が倒れている場合、FALLEN maskは0x104となる。
-
-    data[0] = 0x23
-    data[1] = 0x04
-    UInt16 = 0x0423 = 1059
-    CAN payload = 23 04
+    grid_states = 0x1aa8a
+    data[0] = 0x08
+    data[1] = 0x20
+    UInt64 = 0x1aa8a2008 = 7156146184
+    CAN payload = 08 20 8A AA 01
 
 ## 6. 動作別の送信パターン
 
 以下はベルトSTOP、ドリブルOFF、通常方向を基準としたパターンである。
 Game2の各パターンではGame2有効bit（`0x20`）を付加する。
 
-| 動作 | `data[0]` | `data[1]` | `UInt16`（16進数） | `UInt16`（10進数） | CAN payload |
+| 動作 | `data[0]` | `data[1]` | `UInt64`（16進数） | `UInt64`（10進数） | CAN payload |
 |---|---:|---:|---:|---:|---|
-| 起動中 | `0x00` | `0x00` | `0x0000` | 0 | `00 00` |
-| 通常待機 | `0x01` | `0x00` | `0x0001` | 1 | `01 00` |
-| 非常停止 | `0x02` | `0x00` | `0x0002` | 2 | `02 00` |
-| shot cycle装填中 | `0x04` | `0x00` | `0x0004` | 4 | `04 00` |
-| 通常ばね発射 | `0x05` | `0x00` | `0x0005` | 5 | `05 00` |
-| スロー発射 | `0x0b` | `0x00` | `0x000b` | 11 | `0B 00` |
-| ベルト発射・回転立上げ | `0x0f` | `0x00` | `0x000f` | 15 | `0F 00` |
-| shot cycle復帰中 | `0x06` | `0x00` | `0x0006` | 6 | `06 00` |
-| ドリブル姿勢DRIBBLE | `0x0a` | `0x00` | `0x000a` | 10 | `0A 00` |
-| ドリブル姿勢OPEN | `0x03` | `0x00` | `0x0003` | 3 | `03 00` |
-| ドリブル姿勢FEED | `0x0c` | `0x00` | `0x000c` | 12 | `0C 00` |
-| ドリブル姿勢RECEIVE | `0x0d` | `0x00` | `0x000d` | 13 | `0D 00` |
-| ドリブル姿勢HOME | `0x0e` | `0x00` | `0x000e` | 14 | `0E 00` |
-| 前後反転・DRIBBLE姿勢 | `0x0a` | `0x10` | `0x100a` | 4106 | `0A 10` |
-| ドリブルON・ローラ正転・DRIBBLE姿勢 | `0x0a` | `0x48` | `0x480a` | 18442 | `0A 48` |
-| ドリブルON・ローラ逆転・DRIBBLE姿勢 | `0x0a` | `0x88` | `0x880a` | 34826 | `0A 88` |
-| Game2探索中 | `0x07` | `0x20` | `0x2007` | 8199 | `07 20` |
-| Game2位置合わせ中 | `0x08` | `0x20` | `0x2008` | 8200 | `08 20` |
-| Game2発射準備中 | `0x04` | `0x20` | `0x2004` | 8196 | `04 20` |
-| Game2発射中 | `0x05` | `0x20` | `0x2005` | 8197 | `05 20` |
-| Game2結果待ち | `0x06` | `0x20` | `0x2006` | 8198 | `06 20` |
+| 起動中 | `0x00` | `0x00` | `0x0000` | 0 | `00 00 00 00 00` |
+| 通常待機 | `0x01` | `0x00` | `0x0001` | 1 | `01 00 00 00 00` |
+| 非常停止 | `0x02` | `0x00` | `0x0002` | 2 | `02 00 00 00 00` |
+| shot cycle装填中 | `0x04` | `0x00` | `0x0004` | 4 | `04 00 00 00 00` |
+| 通常ばね発射 | `0x05` | `0x00` | `0x0005` | 5 | `05 00 00 00 00` |
+| スロー発射 | `0x0b` | `0x00` | `0x000b` | 11 | `0B 00 00 00 00` |
+| ベルト発射・回転立上げ | `0x0f` | `0x00` | `0x000f` | 15 | `0F 00 00 00 00` |
+| shot cycle復帰中 | `0x06` | `0x00` | `0x0006` | 6 | `06 00 00 00 00` |
+| ドリブル姿勢DRIBBLE | `0x0a` | `0x00` | `0x000a` | 10 | `0A 00 00 00 00` |
+| ドリブル姿勢OPEN | `0x03` | `0x00` | `0x0003` | 3 | `03 00 00 00 00` |
+| ドリブル姿勢FEED | `0x0c` | `0x00` | `0x000c` | 12 | `0C 00 00 00 00` |
+| ドリブル姿勢RECEIVE | `0x0d` | `0x00` | `0x000d` | 13 | `0D 00 00 00 00` |
+| ドリブル姿勢HOME | `0x0e` | `0x00` | `0x000e` | 14 | `0E 00 00 00 00` |
+| 前後反転・DRIBBLE姿勢 | `0x0a` | `0x10` | `0x100a` | 4106 | `0A 10 00 00 00` |
+| ドリブルON・ローラ正転・DRIBBLE姿勢 | `0x0a` | `0x48` | `0x480a` | 18442 | `0A 48 00 00 00` |
+| ドリブルON・ローラ逆転・DRIBBLE姿勢 | `0x0a` | `0x88` | `0x880a` | 34826 | `0A 88 00 00 00` |
+| Game2探索中 | `0x07` | `0x20` | `0x2007` | 8199 | `07 20 00 00 00` |
+| Game2位置合わせ中 | `0x08` | `0x20` | `0x2008` | 8200 | `08 20 00 00 00` |
+| Game2発射準備中 | `0x04` | `0x20` | `0x2004` | 8196 | `04 20 00 00 00` |
+| Game2発射中 | `0x05` | `0x20` | `0x2005` | 8197 | `05 20 00 00 00` |
+| Game2結果待ち | `0x06` | `0x20` | `0x2006` | 8198 | `06 20 00 00 00` |
 
 付加状態を組み合わせる場合は、次の式で`data[1]`を生成する。
 
@@ -340,7 +321,7 @@ data[1] = belt_level
         | (roller_forward ? 0x40 : 0x00)
         | (roller_reverse ? 0x80 : 0x00)
 
-UInt16 = data[0] | (data[1] << 8)
+UInt64 = data[0] | (data[1] << 8) | (grid_states << 16)
 ```
 
 例えばGame2発射中、ベルトLEVEL 4、ドリブルON、前後反転では次の値になる。
@@ -348,8 +329,8 @@ UInt16 = data[0] | (data[1] << 8)
 ```text
 data[0] = 0x05
 data[1] = 0x04 | 0x08 | 0x10 | 0x20 = 0x3c
-UInt16  = 0x3c05 = 15365
-CAN payload = 05 3C
+UInt64  = 0x3c05 = 15365
+CAN payload = 05 3C 00 00 00
 ```
 
 ## 7. ROS 2試験コマンド
@@ -357,13 +338,13 @@ CAN payload = 05 3C
 例えば`READY + LEVEL 2 + ドリブルON + 前後反転`を直接送る場合は次を使用する。
 
 ```bash
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 6657}"
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 6657}"
 ```
 
 CANへ正しく変換されると、`0x201`のデータは次の並びになる。
 
 ```text
-1Aではなく、little endianで 01 1A
+5 byteのlittle endianで 01 1A 00 00 00
 ```
 
 ```bash
@@ -373,50 +354,50 @@ candump can0,201:7FF
 想定表示例：
 
 ```text
-can0  201   [2]  01 1A
+can0  201   [5]  01 1A 00 00 00
 ```
 
 追加動作の代表パターンは次のコマンドで直接送信できる。
 
 ```bash
-# Game2探索中: UInt16 0x2007、CAN payload 07 20
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8199}"
+# Game2探索中: UInt64 0x2007
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 8199}"
 
-# Game2位置合わせ中: UInt16 0x2008、CAN payload 08 20
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8200}"
+# Game2位置合わせ中: UInt64 0x2008
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 8200}"
 
-# Game2発射準備中: UInt16 0x2004、CAN payload 04 20
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8196}"
+# Game2発射準備中: UInt64 0x2004
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 8196}"
 
-# Game2発射中: UInt16 0x2005、CAN payload 05 20
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8197}"
+# Game2発射中: UInt64 0x2005
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 8197}"
 
-# Game2結果待ち: UInt16 0x2006、CAN payload 06 20
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 8198}"
+# Game2結果待ち: UInt64 0x2006
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 8198}"
 
-# shot cycle装填中: UInt16 0x0004、CAN payload 04 00
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 4}"
+# shot cycle装填中: UInt64 0x0004
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 4}"
 
-# shot cycle復帰中: UInt16 0x0006、CAN payload 06 00
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 6}"
+# shot cycle復帰中: UInt64 0x0006
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 6}"
 
-# 通常ばね発射: UInt16 0x0005、CAN payload 05 00
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 5}"
+# 通常ばね発射: UInt64 0x0005
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 5}"
 
-# スロー発射: UInt16 0x000b、CAN payload 0B 00
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 11}"
+# スロー発射: UInt64 0x000b
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 11}"
 
-# ベルト発射・回転立上げ: UInt16 0x000f、CAN payload 0F 00
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 15}"
+# ベルト発射・回転立上げ: UInt64 0x000f
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 15}"
 
-# 前後反転・DRIBBLE姿勢: UInt16 0x100a、CAN payload 0A 10
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 4106}"
+# 前後反転・DRIBBLE姿勢: UInt64 0x100a
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 4106}"
 
-# ドリブルON・ローラ正転・DRIBBLE姿勢: UInt16 0x480a、CAN payload 0A 48
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 18442}"
+# ドリブルON・ローラ正転・DRIBBLE姿勢: UInt64 0x480a
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 18442}"
 
-# ドリブルON・ローラ逆転・DRIBBLE姿勢: UInt16 0x880a、CAN payload 0A 88
-ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt16 "{data: 34826}"
+# ドリブルON・ローラ逆転・DRIBBLE姿勢: UInt64 0x880a
+ros2 topic pub --once /hardware/led_cmd std_msgs/msg/UInt64 "{data: 34826}"
 ```
 
 `led_controller_node`自身の状態遷移を確認する場合は、出力値を直接publishせず、
@@ -433,6 +414,5 @@ ros2 topic echo /hardware/led_cmd
 - `data[1]`の既存bitを別の用途へ再割り当てしない。
 - bit 6～7はローラ回転方向として使用する。古いSTM32はこのbitを無視してよい。
 - 新規主表示モードは値10以降へ追加し、既存値0～9の意味を維持する。
-- data[0]の0x20～0x23は主表示ではなくGame2グリッドmask更新専用とする。
-- 補助グリッド未対応のSTM32は0x20～0x23を無視し、後続の主表示を処理する。
+- data[2]～data[4]の未使用bit 18～23は0にする。
 - CAN ID、DLC、またはbyte配置を変更する場合は、RDKとSTM32を同時に更新する。

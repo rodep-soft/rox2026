@@ -10,7 +10,7 @@
 #include "can_msgs/msg/frame.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
-#include "std_msgs/msg/u_int16.hpp"
+#include "std_msgs/msg/u_int64.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 #include "stm32_driver/stm32_protocol.hpp"
 
@@ -72,7 +72,7 @@ public:
       std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
       can_sub_options);
 
-    led_cmd_sub_ = create_subscription<std_msgs::msg::UInt16>(
+    led_cmd_sub_ = create_subscription<std_msgs::msg::UInt64>(
       led_command_topic, 10,
       std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
     limit_sw_pub_ =
@@ -299,7 +299,7 @@ private:
 
   /// @brief LEDコマンドをSTM32へ送信する
   /// @param msg LEDコマンド
-  void led_callback(const std_msgs::msg::UInt16::SharedPtr msg)
+  void led_callback(const std_msgs::msg::UInt64::SharedPtr msg)
   {
     can_pub_->publish(protocol::make_led_frame(msg->data));
   }
@@ -321,7 +321,7 @@ private:
 
   rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_pub_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_sub_;
-  rclcpp::Subscription<std_msgs::msg::UInt16>::SharedPtr led_cmd_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt64>::SharedPtr led_cmd_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr limit_sw_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   rclcpp::TimerBase::SharedPtr alive_timer_;

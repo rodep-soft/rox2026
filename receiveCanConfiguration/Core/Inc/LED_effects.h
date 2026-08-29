@@ -33,7 +33,7 @@ extern "C" {
 #define LED_MODE_BELT_OFFSET_PLUS_3  22U
 
 void LED_Effects_Init(void);
-void LED_Effects_Render(uint8_t mode, uint8_t status);
+void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states);
 
 #ifdef __cplusplus
 }
