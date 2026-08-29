@@ -734,7 +734,7 @@ public:
             break;
           }
         }
-        if (!pt) continue;
+        if (!pt) {continue;}
         const double dt = (now - pt->last_seen).seconds();
         const bool is_active = (pt->detected && pt->is_standing &&
           (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));

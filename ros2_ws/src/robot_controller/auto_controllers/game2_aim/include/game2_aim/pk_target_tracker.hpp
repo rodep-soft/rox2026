@@ -365,7 +365,7 @@ public:
   std::vector<int> get_target_indices() const
   {
     if (!target_locked_) {
-	    return {};
+      return {};
     }
     return {selected_index_};
   }
@@ -382,7 +382,8 @@ public:
       }
       const auto & p = it->second;
       const double dt = (now - p.last_seen).seconds();
-      const bool is_active = (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+      const bool is_active =
+        (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
       if (!is_active) {
         fallen.push_back(idx);
       }
@@ -396,10 +397,11 @@ public:
     for (int idx = 0; idx < 9; ++idx) {
       int tag_id = index_to_tag_id_[idx];
       auto it = panel_grid_.find(tag_id);
-      if (it == panel_grid_.end()) continue;
+      if (it == panel_grid_.end()) {continue;}
       const auto & p = it->second;
       const double dt = (now - p.last_seen).seconds();
-      const bool is_active = (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+      const bool is_active =
+        (p.detected && p.last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
       if (is_active) {
         standing.push_back(idx);
       }
@@ -426,7 +428,8 @@ public:
         }
 
         const double dt = (now - pt->last_seen).seconds();
-        const bool is_active = (pt->detected && (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
+        const bool is_active =
+          (pt->detected && (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
 
         if (!is_active) {
           msg.states[idx] = robot_msgs::msg::TargetGridState::FALLEN;

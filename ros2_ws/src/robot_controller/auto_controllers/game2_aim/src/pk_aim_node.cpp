@@ -313,7 +313,9 @@ void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
 
 void PKAimNode::pk_set_target_index_callback(const std_msgs::msg::Int32::SharedPtr msg)
 {
-  if (state_ == robot_msgs::msg::Game2State::STANDBY || state_ == robot_msgs::msg::Game2State::SEARCHING) {
+  if (state_ == robot_msgs::msg::Game2State::STANDBY ||
+    state_ == robot_msgs::msg::Game2State::SEARCHING)
+  {
     tracker_.set_selected_index(msg->data);
     const auto & p = tracker_.get_selected_panel();
     RCLCPP_INFO(
@@ -405,7 +407,10 @@ void PKAimNode::control_loop()
   last_loop_time_ = current_time;
 
   // 9マス起立診断表示 (SEARCHING 中に0.5秒おきに出力)
-  if (test_panel_state_display_ && (state_ == robot_msgs::msg::Game2State::SEARCHING || state_ == robot_msgs::msg::Game2State::STANDBY)) {
+  if (test_panel_state_display_ &&
+    (state_ == robot_msgs::msg::Game2State::SEARCHING ||
+    state_ == robot_msgs::msg::Game2State::STANDBY))
+  {
     const auto & grid = tracker_.panel_grid();
     int sel_idx = tracker_.selected_index();
 
@@ -453,7 +458,9 @@ void PKAimNode::control_loop()
         tracker_.update_tracking(yaw_, current_time);
 
         if (!tracker_.is_target_locked()) {
-          transition_to(robot_msgs::msg::Game2State::SEARCHING, "Target lost in ALIGNING -> Return to Selection");
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Target lost in ALIGNING -> Return to Selection");
           break;
         }
 
