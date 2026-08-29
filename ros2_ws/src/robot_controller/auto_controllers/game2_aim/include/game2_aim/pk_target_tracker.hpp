@@ -78,17 +78,18 @@ public:
     panel_grid_.clear();
     index_to_tag_id_.resize(9);
 
-    auto add_panel = [this](int idx, int tag_id, int row, int col, const std::string & name, uint8_t mode) {
-      PKPanelInfo p;
-      p.index = idx;
-      p.tag_id = tag_id;
-      p.row = row;
-      p.col = col;
-      p.name = name;
-      p.belt_mode = mode;
-      panel_grid_[tag_id] = p;
-      index_to_tag_id_[idx] = tag_id;
-    };
+    auto add_panel =
+      [this](int idx, int tag_id, int row, int col, const std::string & name, uint8_t mode) {
+        PKPanelInfo p;
+        p.index = idx;
+        p.tag_id = tag_id;
+        p.row = row;
+        p.col = col;
+        p.name = name;
+        p.belt_mode = mode;
+        panel_grid_[tag_id] = p;
+        index_to_tag_id_[idx] = tag_id;
+      };
 
     // 上段 (Row 2, LEVEL_3)
     add_panel(0, 14, 2, 0, "上段左 [Top-Left]", robot_msgs::msg::BeltMode::LEVEL_3);
@@ -117,29 +118,42 @@ public:
       panel_grid_.clear();
       index_to_tag_id_.resize(9);
 
-      auto add_panel = [this](int idx, int tag_id, int row, int col, const std::string & name, uint8_t mode) {
-        PKPanelInfo p;
-        p.index = idx;
-        p.tag_id = tag_id;
-        p.row = row;
-        p.col = col;
-        p.name = name;
-        p.belt_mode = mode;
-        panel_grid_[tag_id] = p;
-        index_to_tag_id_[idx] = tag_id;
-      };
+      auto add_panel =
+        [this](int idx, int tag_id, int row, int col, const std::string & name, uint8_t mode) {
+          PKPanelInfo p;
+          p.index = idx;
+          p.tag_id = tag_id;
+          p.row = row;
+          p.col = col;
+          p.name = name;
+          p.belt_mode = mode;
+          panel_grid_[tag_id] = p;
+          index_to_tag_id_[idx] = tag_id;
+        };
 
       add_panel(0, static_cast<int>(top_tags[0]), 2, 0, "上段左", robot_msgs::msg::BeltMode::LEVEL_3);
       add_panel(1, static_cast<int>(top_tags[1]), 2, 1, "上段中", robot_msgs::msg::BeltMode::LEVEL_3);
       add_panel(2, static_cast<int>(top_tags[2]), 2, 2, "上段右", robot_msgs::msg::BeltMode::LEVEL_3);
 
-      add_panel(3, static_cast<int>(middle_tags[0]), 1, 0, "中段左", robot_msgs::msg::BeltMode::LEVEL_2);
-      add_panel(4, static_cast<int>(middle_tags[1]), 1, 1, "中段中", robot_msgs::msg::BeltMode::LEVEL_2);
-      add_panel(5, static_cast<int>(middle_tags[2]), 1, 2, "中段右", robot_msgs::msg::BeltMode::LEVEL_2);
+      add_panel(
+        3, static_cast<int>(middle_tags[0]), 1, 0, "中段左",
+        robot_msgs::msg::BeltMode::LEVEL_2);
+      add_panel(
+        4, static_cast<int>(middle_tags[1]), 1, 1, "中段中",
+        robot_msgs::msg::BeltMode::LEVEL_2);
+      add_panel(
+        5, static_cast<int>(middle_tags[2]), 1, 2, "中段右",
+        robot_msgs::msg::BeltMode::LEVEL_2);
 
-      add_panel(6, static_cast<int>(bottom_tags[0]), 0, 0, "下段左", robot_msgs::msg::BeltMode::LEVEL_1);
-      add_panel(7, static_cast<int>(bottom_tags[1]), 0, 1, "下段中", robot_msgs::msg::BeltMode::LEVEL_1);
-      add_panel(8, static_cast<int>(bottom_tags[2]), 0, 2, "下段右", robot_msgs::msg::BeltMode::LEVEL_1);
+      add_panel(
+        6, static_cast<int>(bottom_tags[0]), 0, 0, "下段左",
+        robot_msgs::msg::BeltMode::LEVEL_1);
+      add_panel(
+        7, static_cast<int>(bottom_tags[1]), 0, 1, "下段中",
+        robot_msgs::msg::BeltMode::LEVEL_1);
+      add_panel(
+        8, static_cast<int>(bottom_tags[2]), 0, 2, "下段右",
+        robot_msgs::msg::BeltMode::LEVEL_1);
     }
   }
 

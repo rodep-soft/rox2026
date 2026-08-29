@@ -378,85 +378,88 @@ void PKAimNode::control_loop()
 
   switch (state_) {
     case robot_msgs::msg::Game2State::STANDBY: {
-      cmd.angular.z = 0.0;
-      last_cmd_wz_ = 0.0;
-      current_belt_mode = robot_msgs::msg::BeltMode::STOP;
-      break;
-    }
-
-    case robot_msgs::msg::Game2State::ALIGNING: {
-      tracker_.update_tracking(yaw_, current_time);
-
-      if (!tracker_.is_target_locked()) {
-        transition_to(robot_msgs::msg::Game2State::STANDBY, "Target lost in ALIGNING");
+        cmd.angular.z = 0.0;
+        last_cmd_wz_ = 0.0;
+        current_belt_mode = robot_msgs::msg::BeltMode::STOP;
         break;
       }
 
-      const double heading_err = tracker_.heading_error();
-      const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
-      const bool is_visible = tracker_.is_currently_visible(current_time, visual_valid_timeout_);
+    case robot_msgs::msg::Game2State::ALIGNING: {
+        tracker_.update_tracking(yaw_, current_time);
 
-      if (is_visible && is_aligned) {
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
-        transition_to(
-          robot_msgs::msg::Game2State::PREPARING_SHOOT,
-          "Target aligned with visual confirmation");
-        current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
-      } else {
-        // PD 旋回制御 (IMU ジャイロ制動ダンピング + Slew Rate)
-        double desired_wz = yaw_command_sign_ * kp_yaw_ * heading_err;
-        if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
-          desired_wz -= kd_yaw_ * gyro_z_;
+        if (!tracker_.is_target_locked()) {
+          transition_to(robot_msgs::msg::Game2State::STANDBY, "Target lost in ALIGNING");
+          break;
         }
 
-        if (std::abs(desired_wz) < min_angular_z_) {
-          desired_wz = std::copysign(min_angular_z_, desired_wz);
+        const double heading_err = tracker_.heading_error();
+        const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+        const bool is_visible = tracker_.is_currently_visible(current_time, visual_valid_timeout_);
+
+        if (is_visible && is_aligned) {
+          cmd.angular.z = 0.0;
+          last_cmd_wz_ = 0.0;
+          transition_to(
+            robot_msgs::msg::Game2State::PREPARING_SHOOT,
+            "Target aligned with visual confirmation");
+          current_belt_mode =
+            test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
+        } else {
+          // PD 旋回制御 (IMU ジャイロ制動ダンピング + Slew Rate)
+          double desired_wz = yaw_command_sign_ * kp_yaw_ * heading_err;
+          if (imu_received_ && (current_time - last_imu_time_).seconds() < 0.5) {
+            desired_wz -= kd_yaw_ * gyro_z_;
+          }
+
+          if (std::abs(desired_wz) < min_angular_z_) {
+            desired_wz = std::copysign(min_angular_z_, desired_wz);
+          }
+          desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
+
+          const double max_wz_step = max_angular_accel_ * dt;
+          if (desired_wz > last_cmd_wz_ + max_wz_step) {
+            desired_wz = last_cmd_wz_ + max_wz_step;
+          } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
+            desired_wz = last_cmd_wz_ - max_wz_step;
+          }
+
+          cmd.angular.z = desired_wz;
+          last_cmd_wz_ = cmd.angular.z;
+
+          const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
+
+          RCLCPP_INFO_THROTTLE(
+            get_logger(),
+            *get_clock(), 500,
+            "🎯 [PK ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+            tracker_.target_description().c_str(),
+            target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
+            cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
         }
-        desired_wz = std::clamp(desired_wz, -max_angular_z_, max_angular_z_);
-
-        const double max_wz_step = max_angular_accel_ * dt;
-        if (desired_wz > last_cmd_wz_ + max_wz_step) {
-          desired_wz = last_cmd_wz_ + max_wz_step;
-        } else if (desired_wz < last_cmd_wz_ - max_wz_step) {
-          desired_wz = last_cmd_wz_ - max_wz_step;
-        }
-
-        cmd.angular.z = desired_wz;
-        last_cmd_wz_ = cmd.angular.z;
-
-        const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
-
-        RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 500,
-          "🎯 [PK ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
-          tracker_.target_description().c_str(),
-          target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
-          cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
+        break;
       }
-      break;
-    }
 
     case robot_msgs::msg::Game2State::PREPARING_SHOOT: {
-      cmd.angular.z = 0.0;
-      last_cmd_wz_ = 0.0;
-      current_belt_mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
-      tracker_.update_tracking(yaw_, current_time);
+        cmd.angular.z = 0.0;
+        last_cmd_wz_ = 0.0;
+        current_belt_mode =
+          test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
+        tracker_.update_tracking(yaw_, current_time);
 
-      // 外力等で誤差が大きくズレた場合（約3.4度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
-      const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
-      if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
-        transition_to(
-          robot_msgs::msg::Game2State::ALIGNING,
-          "Heading error exceeded tolerance in PREPARING_SHOOT");
-      } else {
-        RCLCPP_INFO_THROTTLE(
-          get_logger(), *get_clock(), 500,
-          "🚀 [PK PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
-          tracker_.target_description().c_str(), current_belt_mode);
+        // 外力等で誤差が大きくズレた場合（約3.4度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
+          transition_to(
+            robot_msgs::msg::Game2State::ALIGNING,
+            "Heading error exceeded tolerance in PREPARING_SHOOT");
+        } else {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 500,
+            "🚀 [PK PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
+            tracker_.target_description().c_str(), current_belt_mode);
+        }
+        break;
       }
-      break;
-    }
 
     default:
       break;

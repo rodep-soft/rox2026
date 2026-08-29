@@ -81,9 +81,7 @@ def generate_launch_description():
             DeclareLaunchArgument("can_interface", default_value="can0"),
             DeclareLaunchArgument(
                 "pk_config_file",
-                default_value=os.path.join(
-                    bringup_share, "config", "pk_aim.yaml"
-                ),
+                default_value=os.path.join(bringup_share, "config", "pk_aim.yaml"),
             ),
             DeclareLaunchArgument(
                 "calibration_file",
