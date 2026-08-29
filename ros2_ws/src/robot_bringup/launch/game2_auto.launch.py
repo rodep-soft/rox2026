@@ -57,55 +57,57 @@ def generate_launch_description():
         },
     )
 
-    return LaunchDescription([
-        DeclareLaunchArgument(
-            "enable_manual",
-            default_value="true",
-            description="Start CAN hardware, manual controllers, joystick and EKF",
-        ),
-        DeclareLaunchArgument(
-            "enable_vision",
-            default_value="true",
-            description="Start calibrated SC230AI and AprilTag detection",
-        ),
-        DeclareLaunchArgument(
-            "enable_game2_auto",
-            default_value="true",
-            description="Start game2_aim through game2_auto_aim.launch.py",
-        ),
-        DeclareLaunchArgument(
-            "enable_foxglove",
-            default_value="false",
-            description="Start one Foxglove WebSocket bridge",
-        ),
-        DeclareLaunchArgument("foxglove_port", default_value="8765"),
-        DeclareLaunchArgument("can_interface", default_value="can0"),
-        DeclareLaunchArgument(
-            "game2_config_file",
-            default_value=os.path.join(
-                bringup_share, "config", "game2_auto_aim.yaml"
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "enable_manual",
+                default_value="true",
+                description="Start CAN hardware, manual controllers, joystick and EKF",
             ),
-        ),
-        DeclareLaunchArgument(
-            "calibration_file",
-            default_value=os.path.join(
-                bringup_share, "config", "camera", "sc230ai_left.yaml"
+            DeclareLaunchArgument(
+                "enable_vision",
+                default_value="true",
+                description="Start calibrated SC230AI and AprilTag detection",
             ),
-        ),
-        DeclareLaunchArgument("mipi_channel", default_value="1"),
-        DeclareLaunchArgument("framerate", default_value="10.0"),
-        DeclareLaunchArgument("mipi_rotation", default_value="180.0"),
-        DeclareLaunchArgument("roi_width", default_value="800"),
-        DeclareLaunchArgument("roi_height", default_value="480"),
-        DeclareLaunchArgument("tag_size", default_value="0.18"),
-        DeclareLaunchArgument("detector_threads", default_value="4"),
-        DeclareLaunchArgument("detector_decimate", default_value="1.0"),
-        DeclareLaunchArgument(
-            "test_alignment_only",
-            default_value="false",
-            description="Align only; do not operate shooter mechanisms",
-        ),
-        manual_launch,
-        vision_launch,
-        game2_launch,
-    ])
+            DeclareLaunchArgument(
+                "enable_game2_auto",
+                default_value="true",
+                description="Start game2_aim through game2_auto_aim.launch.py",
+            ),
+            DeclareLaunchArgument(
+                "enable_foxglove",
+                default_value="false",
+                description="Start one Foxglove WebSocket bridge",
+            ),
+            DeclareLaunchArgument("foxglove_port", default_value="8765"),
+            DeclareLaunchArgument("can_interface", default_value="can0"),
+            DeclareLaunchArgument(
+                "game2_config_file",
+                default_value=os.path.join(
+                    bringup_share, "config", "game2_auto_aim.yaml"
+                ),
+            ),
+            DeclareLaunchArgument(
+                "calibration_file",
+                default_value=os.path.join(
+                    bringup_share, "config", "camera", "sc230ai_left.yaml"
+                ),
+            ),
+            DeclareLaunchArgument("mipi_channel", default_value="1"),
+            DeclareLaunchArgument("framerate", default_value="10.0"),
+            DeclareLaunchArgument("mipi_rotation", default_value="180.0"),
+            DeclareLaunchArgument("roi_width", default_value="800"),
+            DeclareLaunchArgument("roi_height", default_value="480"),
+            DeclareLaunchArgument("tag_size", default_value="0.18"),
+            DeclareLaunchArgument("detector_threads", default_value="4"),
+            DeclareLaunchArgument("detector_decimate", default_value="1.0"),
+            DeclareLaunchArgument(
+                "test_alignment_only",
+                default_value="false",
+                description="Align only; do not operate shooter mechanisms",
+            ),
+            manual_launch,
+            vision_launch,
+            game2_launch,
+        ]
+    )

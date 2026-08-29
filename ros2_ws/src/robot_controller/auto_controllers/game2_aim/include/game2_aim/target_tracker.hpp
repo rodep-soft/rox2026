@@ -73,8 +73,8 @@ public:
 
   TargetTracker() = default;
 
-  void set_config(const Config & config) { config_ = config; }
-  const Config & config() const { return config_; }
+  void set_config(const Config & config) {config_ = config;}
+  const Config & config() const {return config_;}
 
   void init_panel_grid(
     const std::vector<int64_t> & bottom_tags,
@@ -83,13 +83,16 @@ public:
   {
     panel_grid_.clear();
     for (size_t col = 0; col < bottom_tags.size(); ++col) {
-      panel_grid_[static_cast<int>(bottom_tags[col])] = {static_cast<int>(bottom_tags[col]), 0, static_cast<int>(col)};
+      panel_grid_[static_cast<int>(bottom_tags[col])] =
+      {static_cast<int>(bottom_tags[col]), 0, static_cast<int>(col)};
     }
     for (size_t col = 0; col < middle_tags.size(); ++col) {
-      panel_grid_[static_cast<int>(middle_tags[col])] = {static_cast<int>(middle_tags[col]), 1, static_cast<int>(col)};
+      panel_grid_[static_cast<int>(middle_tags[col])] =
+      {static_cast<int>(middle_tags[col]), 1, static_cast<int>(col)};
     }
     for (size_t col = 0; col < top_tags.size(); ++col) {
-      panel_grid_[static_cast<int>(top_tags[col])] = {static_cast<int>(top_tags[col]), 2, static_cast<int>(col)};
+      panel_grid_[static_cast<int>(top_tags[col])] =
+      {static_cast<int>(top_tags[col]), 2, static_cast<int>(col)};
     }
   }
 
@@ -151,10 +154,14 @@ public:
       // ── 📐 アスペクト比 (縦幅 / 横幅) の算出 ──
       double aspect_ratio = 1.0;
       if (det.corners.size() >= 4) {
-        const double w1 = std::hypot(det.corners[1].x - det.corners[0].x, det.corners[1].y - det.corners[0].y);
-        const double w2 = std::hypot(det.corners[2].x - det.corners[3].x, det.corners[2].y - det.corners[3].y);
-        const double h1 = std::hypot(det.corners[3].x - det.corners[0].x, det.corners[3].y - det.corners[0].y);
-        const double h2 = std::hypot(det.corners[2].x - det.corners[1].x, det.corners[2].y - det.corners[1].y);
+        const double w1 = std::hypot(det.corners[1].x - det.corners[0].x,
+            det.corners[1].y - det.corners[0].y);
+        const double w2 = std::hypot(det.corners[2].x - det.corners[3].x,
+            det.corners[2].y - det.corners[3].y);
+        const double h1 = std::hypot(det.corners[3].x - det.corners[0].x,
+            det.corners[3].y - det.corners[0].y);
+        const double h2 = std::hypot(det.corners[2].x - det.corners[1].x,
+            det.corners[2].y - det.corners[1].y);
         const double w_avg = (w1 + w2) * 0.5;
         const double h_avg = (h1 + h2) * 0.5;
         if (w_avg > 1.0) {
@@ -167,12 +174,16 @@ public:
       double tilt_deg = 0.0;
       if (det.homography.size() == 9 && config_.camera_fx > 1.0 && config_.camera_fy > 1.0) {
         // H = K * [r1 r2 t] => r1 = K^-1 * H[:,0], r2 = K^-1 * H[:,1]
-        const double r1_x = (det.homography[0] - config_.camera_cx * det.homography[6]) / config_.camera_fx;
-        const double r1_y = (det.homography[3] - config_.camera_cy * det.homography[6]) / config_.camera_fy;
+        const double r1_x = (det.homography[0] - config_.camera_cx * det.homography[6]) /
+          config_.camera_fx;
+        const double r1_y = (det.homography[3] - config_.camera_cy * det.homography[6]) /
+          config_.camera_fy;
         const double r1_z = det.homography[6];
 
-        const double r2_x = (det.homography[1] - config_.camera_cx * det.homography[7]) / config_.camera_fx;
-        const double r2_y = (det.homography[4] - config_.camera_cy * det.homography[7]) / config_.camera_fy;
+        const double r2_x = (det.homography[1] - config_.camera_cx * det.homography[7]) /
+          config_.camera_fx;
+        const double r2_y = (det.homography[4] - config_.camera_cy * det.homography[7]) /
+          config_.camera_fy;
         const double r2_z = det.homography[7];
 
         // 法線ベクトル n = r1 x r2
@@ -191,8 +202,10 @@ public:
       }
       panel.tilt_deg = tilt_deg;
 
-      const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance / config_.camera_fx;
-      const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance / config_.camera_fy;
+      const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance /
+        config_.camera_fx;
+      const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance /
+        config_.camera_fy;
       const double z_c = config_.target_distance;
 
       if (has_tf) {
@@ -216,7 +229,8 @@ public:
       }
 
       // 初回直立時の基準高さを記憶
-      if (!panel.has_initial_z && tilt_deg < config_.max_standing_tilt_deg && aspect_ratio >= config_.min_standing_aspect_ratio) {
+      if (!panel.has_initial_z && tilt_deg < config_.max_standing_tilt_deg &&
+        aspect_ratio >= config_.min_standing_aspect_ratio) {
         panel.initial_standing_z = panel.z;
         panel.has_initial_z = true;
       }
@@ -273,7 +287,9 @@ public:
           target_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
           target_tag_offset_x_ = 0.0;
           target_tag_offset_y_ = 0.0;
-          target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
+          target_heading_err_ = std::remainder(std::atan2(target_y_,
+              target_x_) + config_.aim_yaw_offset_rad,
+              2.0 * M_PI);
           last_visually_confirmed_time_ = now;
 
           RCLCPP_INFO(
@@ -321,25 +337,25 @@ public:
 
         for (const auto & [id, panel] : panel_grid_) {
           if (panel.row == row) {
-            if (panel.col == 0) p0 = &panel;
-            else if (panel.col == 1) p1 = &panel;
-            else if (panel.col == 2) p2 = &panel;
+            if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {p1 = &panel;
+            } else if (panel.col == 2) {p2 = &panel;}
           }
         }
 
         auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
-          if (!p) return false;
-          if (!p->detected || !p->is_standing) return false;
-          if (now < p->shot_cooldown_until) return false;
-          return true;
-        };
+            if (!p) {return false;}
+            if (!p->detected || !p->is_standing) {return false;}
+            if (now < p->shot_cooldown_until) {return false;}
+            return true;
+          };
 
         bool match = false;
         int pattern_key = static_cast<int>(pattern) * 10 + row;
 
         if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
           match = true;
-        } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) && is_tag_active(p2)) {
+        } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
+          is_tag_active(p2)) {
           match = true;
         } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
           match = true;
@@ -371,14 +387,18 @@ public:
               target_x_ = p0->x * r + p1->x * (1.0 - r);
               target_y_ = p0->y * r + p1->y * (1.0 - r);
               target_z_ = p0->z * r + p1->z * (1.0 - r);
-              target_yaw_at_detection_ = p0->yaw_at_detection * r + p1->yaw_at_detection * (1.0 - r);
+              target_yaw_at_detection_ = p0->yaw_at_detection * r + p1->yaw_at_detection *
+                (1.0 - r);
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
+              target_heading_err_ = std::remainder(std::atan2(target_y_,
+                  target_x_) + config_.aim_yaw_offset_rad,
+                  2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                get_row_name(row).c_str(), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
+                get_row_name(
+                  row).c_str(), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
                 target_belt_mode_);
             } else if (pattern == TargetPattern::MIDPOINT_1_2) {
               is_midpoint_target_ = true;
@@ -388,18 +408,22 @@ public:
               target_x_ = p2->x * r + p1->x * (1.0 - r);
               target_y_ = p2->y * r + p1->y * (1.0 - r);
               target_z_ = p2->z * r + p1->z * (1.0 - r);
-              target_yaw_at_detection_ = p2->yaw_at_detection * r + p1->yaw_at_detection * (1.0 - r);
+              target_yaw_at_detection_ = p2->yaw_at_detection * r + p1->yaw_at_detection *
+                (1.0 - r);
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
+              target_heading_err_ = std::remainder(std::atan2(target_y_,
+                  target_x_) + config_.aim_yaw_offset_rad,
+                  2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                get_row_name(row).c_str(), p2->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
+                get_row_name(
+                  row).c_str(), p2->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
                 target_belt_mode_);
             } else {
               const PanelTagInfo * p = (pattern == TargetPattern::SINGLE_COL_0) ? p0 :
-                                       ((pattern == TargetPattern::SINGLE_COL_1) ? p1 : p2);
+                ((pattern == TargetPattern::SINGLE_COL_1) ? p1 : p2);
               is_midpoint_target_ = false;
               current_target_tag_ids_ = {p->tag_id};
               active_target_id_ = p->tag_id;
@@ -409,16 +433,18 @@ public:
               target_yaw_at_detection_ = p->yaw_at_detection;
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad, 2.0 * M_PI);
+              target_heading_err_ = std::remainder(std::atan2(target_y_,
+                  target_x_) + config_.aim_yaw_offset_rad,
+                  2.0 * M_PI);
             }
 
             // 全グリッド認識状況のサマリー文字列を構築
             std::stringstream status_ss;
             for (int r = 2; r >= 0; --r) {
-              const char* rname = (r == 2) ? "上" : ((r == 1) ? "中" : "下");
+              const char * rname = (r == 2) ? "上" : ((r == 1) ? "中" : "下");
               status_ss << "[" << rname << ":";
               for (int c = 0; c < 3; ++c) {
-                const PanelTagInfo* pt = nullptr;
+                const PanelTagInfo * pt = nullptr;
                 for (const auto & [id, p_info] : panel_grid_) {
                   if (p_info.row == r && p_info.col == c) {
                     pt = &p_info;
@@ -432,7 +458,8 @@ public:
                 } else if (pt->is_standing) {
                   status_ss << " #" << pt->tag_id << "(立)";
                 } else {
-                  status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) << pt->tilt_deg << "°)";
+                  status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) <<
+                      pt->tilt_deg << "°)";
                 }
               }
               status_ss << "] ";
@@ -475,15 +502,18 @@ public:
       const auto it_a = panel_grid_.find(id_a);
       const auto it_b = panel_grid_.find(id_b);
 
-      const bool a_detected = (it_a != panel_grid_.end() && it_a->second.detected && it_a->second.is_standing);
-      const bool b_detected = (it_b != panel_grid_.end() && it_b->second.detected && it_b->second.is_standing);
+      const bool a_detected =
+        (it_a != panel_grid_.end() && it_a->second.detected && it_a->second.is_standing);
+      const bool b_detected =
+        (it_b != panel_grid_.end() && it_b->second.detected && it_b->second.is_standing);
 
       if (a_detected && b_detected) {
         const double r = config_.midpoint_blend_ratio;
         target_x_ = it_a->second.x * r + it_b->second.x * (1.0 - r);
         target_y_ = it_a->second.y * r + it_b->second.y * (1.0 - r);
         target_z_ = it_a->second.z * r + it_b->second.z * (1.0 - r);
-        target_yaw_at_detection_ = it_a->second.yaw_at_detection * r + it_b->second.yaw_at_detection * (1.0 - r);
+        target_yaw_at_detection_ = it_a->second.yaw_at_detection * r +
+          it_b->second.yaw_at_detection * (1.0 - r);
         visual_found = true;
       } else if (a_detected || b_detected) {
         // 片方でも見えていれば視覚ロストとは判定せず、前回の target_x_, target_y_ を維持して
@@ -509,32 +539,33 @@ public:
     // IMUオドメトリ姿勢補間（デッドレコニング）
     const double raw_heading_err = std::atan2(target_y_, target_x_);
     const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(raw_heading_err - rotated + config_.aim_yaw_offset_rad, 2.0 * M_PI);
+    target_heading_err_ = std::remainder(raw_heading_err - rotated + config_.aim_yaw_offset_rad,
+        2.0 * M_PI);
   }
 
-  bool has_locked_target() const { return target_locked_; }
+  bool has_locked_target() const {return target_locked_;}
 
   bool is_currently_visible(const rclcpp::Time & now, double timeout_sec = 0.3) const
   {
-    if (!target_locked_) return false;
+    if (!target_locked_) {return false;}
     return (now - last_visually_confirmed_time_).seconds() <= timeout_sec;
   }
 
   bool is_lost_timeout(const rclcpp::Time & now, double timeout_sec = 1.0) const
   {
-    if (!target_locked_) return false;
+    if (!target_locked_) {return false;}
     return (now - last_visually_confirmed_time_).seconds() > timeout_sec;
   }
 
-  double heading_error() const { return target_heading_err_; }
-  uint8_t target_belt_mode() const { return target_belt_mode_; }
-  int active_target_id() const { return active_target_id_; }
-  int active_row() const { return active_row_; }
-  bool is_midpoint_target() const { return is_midpoint_target_; }
+  double heading_error() const {return target_heading_err_;}
+  uint8_t target_belt_mode() const {return target_belt_mode_;}
+  int active_target_id() const {return active_target_id_;}
+  int active_row() const {return active_row_;}
+  bool is_midpoint_target() const {return is_midpoint_target_;}
 
   std::string target_description() const
   {
-    if (!target_locked_) return "No Target";
+    if (!target_locked_) {return "No Target";}
     std::stringstream ss;
     if (is_midpoint_target_ && current_target_tag_ids_.size() >= 2) {
       ss << "2枚抜き中点: Tags #" << current_target_tag_ids_[0] << " & #" << current_target_tag_ids_[1]
@@ -551,10 +582,10 @@ public:
     std::stringstream ss;
     ss << "\n═══════════════ 🎯 9マス起立検出モニター ═══════════════\n";
     for (int r = 2; r >= 0; --r) {
-      const char* rname = (r == 2) ? "[上段]" : ((r == 1) ? "[中段]" : "[下段]");
+      const char * rname = (r == 2) ? "[上段]" : ((r == 1) ? "[中段]" : "[下段]");
       ss << " " << rname << " │";
       for (int c = 0; c < 3; ++c) {
-        const PanelTagInfo* pt = nullptr;
+        const PanelTagInfo * pt = nullptr;
         for (const auto & [id, p_info] : panel_grid_) {
           if (p_info.row == r && p_info.col == c) {
             pt = &p_info;
@@ -567,7 +598,8 @@ public:
         }
 
         const double dt = (now - pt->last_seen).seconds();
-        const bool is_recent_rx = (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
+        const bool is_recent_rx =
+          (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout);
 
         char buf[32];
         if (is_recent_rx) {
@@ -589,7 +621,8 @@ public:
     for (int tag_id : current_target_tag_ids_) {
       auto it = panel_grid_.find(tag_id);
       if (it != panel_grid_.end()) {
-        it->second.shot_cooldown_until = now + rclcpp::Duration::from_seconds(config_.shot_target_cooldown_sec);
+        it->second.shot_cooldown_until = now + rclcpp::Duration::from_seconds(
+          config_.shot_target_cooldown_sec);
         it->second.detected = false;
       }
     }
@@ -641,7 +674,7 @@ public:
     bool found_any = false;
     for (const auto & [id, panel] : panel_grid_) {
       if ((now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
-        if (found_any) ss << " | ";
+        if (found_any) {ss << " | ";}
         ss << "#" << id << "(R" << panel.row << "C" << panel.col << ":"
            << (panel.is_standing ? "STAND" : "FALLEN")
            << " Y=" << std::showpos << std::fixed << std::setprecision(2) << panel.y
@@ -650,7 +683,7 @@ public:
         found_any = true;
       }
     }
-    if (!found_any) return "No tags in view";
+    if (!found_any) {return "No tags in view";}
     return ss.str();
   }
 

@@ -36,9 +36,7 @@ class Nv12ToMono8Node(Node):
         input_topic = self.get_parameter("input_topic").value
         output_topic = self.get_parameter("output_topic").value
         camera_info_topic = self.get_parameter("camera_info_topic").value
-        output_camera_info_topic = self.get_parameter(
-            "output_camera_info_topic"
-        ).value
+        output_camera_info_topic = self.get_parameter("output_camera_info_topic").value
         self.use_fallback_camera_info_ = self.get_parameter(
             "use_fallback_camera_info"
         ).value
@@ -130,11 +128,19 @@ class Nv12ToMono8Node(Node):
         mono_msg.encoding = "mono8"
         mono_msg.is_bigendian = msg.is_bigendian
         mono_msg.step = crop_width
-        if crop_width == msg.width and crop_height == msg.height and input_step == msg.width:
+        if (
+            crop_width == msg.width
+            and crop_height == msg.height
+            and input_step == msg.width
+        ):
             mono_msg.data = msg.data[: msg.width * msg.height]
         else:
-            y_plane = np.frombuffer(msg.data, dtype=np.uint8, count=required_y_size).reshape((msg.height, input_step))
-            mono_msg.data = y_plane[crop_y : crop_y + crop_height, crop_x : crop_x + crop_width].tobytes()
+            y_plane = np.frombuffer(
+                msg.data, dtype=np.uint8, count=required_y_size
+            ).reshape((msg.height, input_step))
+            mono_msg.data = y_plane[
+                crop_y : crop_y + crop_height, crop_x : crop_x + crop_width
+            ].tobytes()
 
         if self.last_camera_info_ is not None:
             info_msg = copy.deepcopy(self.last_camera_info_)
@@ -157,9 +163,18 @@ class Nv12ToMono8Node(Node):
             ]
             info_msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
             info_msg.p = [
-                self.camera_fx_, 0.0, self.camera_cx_, 0.0,
-                0.0, self.camera_fy_, self.camera_cy_, 0.0,
-                0.0, 0.0, 1.0, 0.0,
+                self.camera_fx_,
+                0.0,
+                self.camera_cx_,
+                0.0,
+                0.0,
+                self.camera_fy_,
+                self.camera_cy_,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
             ]
             self.get_logger().warn(
                 "Using fallback CameraInfo; calibrate camera for accurate pose",

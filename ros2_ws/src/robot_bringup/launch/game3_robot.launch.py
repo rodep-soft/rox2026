@@ -23,7 +23,6 @@ def generate_launch_description():
     # hardware (CAN, STM32 IMU, VESC and EduLite drivers)
     hardware_launch = include("hardware/hardware.launch.py")
 
-
     # 拡張カルマンフィルタ (EKF) ノード
     ekf_launch = include(
         "ekf.launch.py",

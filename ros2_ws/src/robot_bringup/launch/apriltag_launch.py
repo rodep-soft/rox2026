@@ -13,16 +13,18 @@ def launch_setup(context, *args, **kwargs):
     tag_family = LaunchConfiguration("tag_family").perform(context)
     allowed_tag_ids_text = LaunchConfiguration("allowed_tag_ids").perform(context)
     allowed_tag_ids = [
-        int(value.strip())
-        for value in allowed_tag_ids_text.split(",")
-        if value.strip()
+        int(value.strip()) for value in allowed_tag_ids_text.split(",") if value.strip()
     ]
     max_hamming = int(LaunchConfiguration("max_hamming").perform(context))
     detector_threads = int(LaunchConfiguration("detector_threads").perform(context))
     detector_decimate = float(LaunchConfiguration("detector_decimate").perform(context))
     detector_blur = float(LaunchConfiguration("detector_blur").perform(context))
-    detector_refine = LaunchConfiguration("detector_refine").perform(context).lower() in ("true", "1")
-    detector_sharpening = float(LaunchConfiguration("detector_sharpening").perform(context))
+    detector_refine = LaunchConfiguration("detector_refine").perform(
+        context
+    ).lower() in ("true", "1")
+    detector_sharpening = float(
+        LaunchConfiguration("detector_sharpening").perform(context)
+    )
     tag_size = float(LaunchConfiguration("tag_size").perform(context))
     pkg_name = LaunchConfiguration("pkg_name").perform(context)
     camera_frame_id = LaunchConfiguration("camera_frame_id").perform(context)
@@ -42,7 +44,9 @@ def launch_setup(context, *args, **kwargs):
     }
     if allowed_tag_ids:
         node_params["tag.ids"] = allowed_tag_ids
-        node_params["tag.frames"] = [f"{tag_family}:{tag_id}" for tag_id in allowed_tag_ids]
+        node_params["tag.frames"] = [
+            f"{tag_family}:{tag_id}" for tag_id in allowed_tag_ids
+        ]
     if camera_frame_id:
         node_params["camera_frame"] = camera_frame_id
 
