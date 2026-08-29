@@ -16,11 +16,48 @@ else
   echo "Skipping password change."
 fi
 
-# Wifiの接続
+# Wi-Fiの接続
+# すでにWi-Fi接続済みならそのまま使用する。
+# 未接続の場合のみ、既存のNetworkManager接続プロファイルまたは任意SSIDへ接続する。
 echo
-read -rsp "RoDEP-5Ghz Wi-Fi Password: " WIFI_PASS
-echo
-sudo nmcli device wifi connect "RoDEP-5Ghz" password "$WIFI_PASS"
+WIFI_DEV="$(LC_ALL=C nmcli -t -f DEVICE,TYPE device status | awk -F: '$2 == "wifi" {print $1; exit}')"
+WIFI_CONNECTED_DEV="$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE device status | awk -F: '$2 == "wifi" && $3 == "connected" {print $1; exit}')"
+
+if [ -n "$WIFI_CONNECTED_DEV" ]; then
+  WIFI_CONNECTION="$(nmcli -g GENERAL.CONNECTION device show "$WIFI_CONNECTED_DEV" 2>/dev/null || true)"
+  echo "Wi-Fi is already connected. Skipping Wi-Fi setup."
+  echo "  device:     $WIFI_CONNECTED_DEV"
+  echo "  connection: ${WIFI_CONNECTION:-unknown}"
+elif [ -z "$WIFI_DEV" ]; then
+  echo "Warning: No Wi-Fi device was found. Skipping Wi-Fi setup." >&2
+else
+  echo "Wi-Fi is not connected."
+  echo
+  echo "Saved NetworkManager connections:"
+  nmcli -f NAME,TYPE connection show | sed -n '1p;/wifi/p' || true
+  echo
+  echo "Nearby Wi-Fi networks:"
+  sudo nmcli device wifi rescan ifname "$WIFI_DEV" >/dev/null 2>&1 || true
+  nmcli -f IN-USE,SSID,SIGNAL,SECURITY device wifi list ifname "$WIFI_DEV" || true
+  echo
+
+  read -rp "Wi-Fi connection profile name or SSID (blank to skip): " WIFI_TARGET
+
+  if [ -z "$WIFI_TARGET" ]; then
+    echo "Skipping Wi-Fi connection."
+  elif nmcli -t -f NAME connection show | grep -Fxq "$WIFI_TARGET"; then
+    echo "Using saved NetworkManager connection: $WIFI_TARGET"
+    sudo nmcli connection up id "$WIFI_TARGET" ifname "$WIFI_DEV"
+  else
+    read -rsp "Wi-Fi password (blank for an open network): " WIFI_PASS
+    echo
+    if [ -n "$WIFI_PASS" ]; then
+      sudo nmcli device wifi connect "$WIFI_TARGET" password "$WIFI_PASS" ifname "$WIFI_DEV"
+    else
+      sudo nmcli device wifi connect "$WIFI_TARGET" ifname "$WIFI_DEV"
+    fi
+  fi
+fi
 
 # eth0の設定
 if nmcli connection show eth0-static >/dev/null 2>&1; then
@@ -73,6 +110,7 @@ sudo apt install -y \
   ninja-build \
   pkg-config \
   python3-pip \
+  python3-yaml \
   python3-colcon-common-extensions \
   python3-vcstool \
   python3-argcomplete \
@@ -89,6 +127,118 @@ sudo apt install -y \
 
 sudo apt install --reinstall -y ros-humble-tf2-ros
 
+# ====================================================
+# 起動時間の高速化
+# ====================================================
+# ロボット運用中にAPTの自動処理が起動してブート完了を遅らせないようにする。
+# apt コマンドによる手動の update / upgrade は通常どおり使用できる。
+echo "Optimizing boot services..."
+
+for unit in \
+  apt-show-versions.timer \
+  apt-daily.timer \
+  apt-daily-upgrade.timer; do
+  if systemctl list-unit-files --no-legend "$unit" 2>/dev/null | grep -q "^${unit}"; then
+    sudo systemctl disable --now "$unit" >/dev/null 2>&1 || true
+  fi
+done
+
+for unit in \
+  apt-show-versions.service \
+  apt-daily.service \
+  apt-daily-upgrade.service; do
+  if systemctl list-unit-files --no-legend "$unit" 2>/dev/null | grep -q "^${unit}"; then
+    sudo systemctl mask "$unit" >/dev/null 2>&1 || true
+  fi
+done
+
+# RDK標準の hobot-rc は /app 以下を1ファイルずつ stat/chgrp するため、
+# ファイル数が多い環境では起動に数秒以上かかる。
+# find 自身にgroup判定をさせ、chgrpをまとめて実行する形へ置換する。
+HOBOT_RC="/etc/init.d/hobot-rc"
+HOBOT_RC_BACKUP="/etc/init.d/hobot-rc.before-rox2026-setup"
+
+if [ -f "$HOBOT_RC" ]; then
+  if [ ! -e "$HOBOT_RC_BACKUP" ]; then
+    sudo cp -a "$HOBOT_RC" "$HOBOT_RC_BACKUP"
+    echo "Backed up hobot-rc to: $HOBOT_RC_BACKUP"
+  fi
+
+  sudo python3 - "$HOBOT_RC" <<'PY_HOBOT_RC'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+original = text
+
+# 検証時に追加した計測ログが残っている場合は除去する。
+text = re.sub(
+    r'^\s*echo\s+"\[hobot-rc\].*?"\s*$',
+    '',
+    text,
+    flags=re.MULTILINE,
+)
+
+# change_grp() を高速版へ置換する。すでに高速版なら何もしない。
+if '-group root -o -group sudo' not in text:
+    pattern = re.compile(
+        r'^change_grp\(\)\s*\n\{\s*\n.*?^\}\s*$',
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    replacement = '''change_grp()
+{
+        local DIR="${1}"
+        local group_name="${2}"
+
+        find "$DIR" -depth \\
+                \\( -type f -o -type d \\) \\
+                \\( -group root -o -group sudo \\) \\
+                -exec chgrp "$group_name" {} +
+}'''
+    text, count = pattern.subn(lambda _m: replacement, text, count=1)
+    if count != 1:
+        raise SystemExit('Error: could not locate change_grp() in /etc/init.d/hobot-rc')
+
+# X5上にiar_test_attrが無い場合の不要なエラーを防ぐ。
+old_iar = '[[ -d /etc/lightdm ]] && echo desktop > /sys/devices/virtual/graphics/iar_cdev/iar_test_attr'
+new_iar = '''if [ -d /etc/lightdm ] && [ -e /sys/devices/virtual/graphics/iar_cdev/iar_test_attr ]; then
+                echo desktop > /sys/devices/virtual/graphics/iar_cdev/iar_test_attr
+        fi'''
+if old_iar in text:
+    text = text.replace(old_iar, new_iar, 1)
+
+# /usr/bin/python3.8 が存在しないRDK X5で getcap のエラーを出さない。
+old_py = '''python_path="/usr/bin/python3.8"
+        desired_caps="cap_sys_rawio,cap_sys_nice+eip"
+        if getcap "$python_path" | grep -q "$desired_caps"; then
+                setcap -r "$python_path"
+        fi'''
+new_py = '''python_path="/usr/bin/python3.8"
+        desired_caps="cap_sys_rawio,cap_sys_nice+eip"
+        if [ -x "$python_path" ] && getcap "$python_path" | grep -q "$desired_caps"; then
+                setcap -r "$python_path"
+        fi'''
+if old_py in text:
+    text = text.replace(old_py, new_py, 1)
+
+if text != original:
+    path.write_text(text)
+    print('Optimized /etc/init.d/hobot-rc')
+else:
+    print('/etc/init.d/hobot-rc is already optimized')
+PY_HOBOT_RC
+
+  sudo chmod 755 "$HOBOT_RC"
+else
+  echo "Warning: $HOBOT_RC was not found. Skipping hobot-rc optimization." >&2
+fi
+
+# SysV generator / systemdへ変更を反映する。
+sudo systemctl daemon-reload
+
+echo "Boot optimization finished."
 
 
 #ca~~  :https認証用
@@ -139,13 +289,20 @@ else
 fi
 
 #githubのレポジトリのクローン
-# GitHub authentication and repository clone
+# GitHub authentication, SSH key setup and repository clone
 # ====================================================
 REPO_URL="git@github.com:rodep-soft/rox2026.git"
 REPO_DIR="$HOME/rox2026"
 REPO_BRANCH="main-v2"
+
+SSH_DIR="$HOME/.ssh"
+SSH_KEY="$SSH_DIR/id_ed25519"
+SSH_PUB_KEY="${SSH_KEY}.pub"
+SSH_KEY_TITLE="$(hostname)-rdk-rox"
+
 echo
 echo "GitHub setup start."
+
 # GitHub CLIの認証状態を確認
 if gh auth status --hostname github.com >/dev/null 2>&1; then
   echo "GitHub CLI is already authenticated."
@@ -162,34 +319,144 @@ if ! gh auth status --hostname github.com >/dev/null 2>&1; then
   exit 1
 fi
 echo "GitHub authentication successful."
+
 # Git操作でSSHを使うよう設定
 gh config set git_protocol ssh --host github.com
-# GitHubとのSSH接続確認
+
+# ====================================================
+# GitHub SSH key setup
+# ====================================================
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+# デフォルトのEd25519鍵が無ければ新規作成する。
+# セットアップの完全自動化を優先し、作成する鍵にはパスフレーズを設定しない。
+if [ -f "$SSH_KEY" ]; then
+  echo "Existing SSH private key found:"
+  echo "  $SSH_KEY"
+
+  # 公開鍵だけ消えている場合は秘密鍵から復元する。
+  if [ ! -f "$SSH_PUB_KEY" ]; then
+    echo "Public key is missing. Recreating it from the private key..."
+    if ! ssh-keygen -y -f "$SSH_KEY" > "$SSH_PUB_KEY"; then
+      rm -f "$SSH_PUB_KEY"
+      echo "Error: Failed to recreate SSH public key." >&2
+      echo "If the existing private key has a passphrase, unlock it manually and run setup again." >&2
+      exit 1
+    fi
+  fi
+elif [ -e "$SSH_PUB_KEY" ]; then
+  echo "Error: $SSH_PUB_KEY exists, but the private key $SSH_KEY does not." >&2
+  echo "Move/remove the orphaned public key or restore its private key, then run setup again." >&2
+  exit 1
+else
+  echo "Creating a new Ed25519 SSH key for GitHub..."
+  ssh-keygen \
+    -t ed25519 \
+    -C "$(whoami)@$(hostname)-github" \
+    -f "$SSH_KEY" \
+    -N ""
+  echo "SSH key created:"
+  echo "  $SSH_KEY"
+fi
+
+chmod 600 "$SSH_KEY"
+chmod 644 "$SSH_PUB_KEY"
+
+# まず現在のSSH設定でGitHubへ接続できるか確認する。
 SSH_OUTPUT="$(ssh \
+  -o BatchMode=yes \
   -o StrictHostKeyChecking=accept-new \
   -T git@github.com 2>&1 || true)"
 
+USE_MANAGED_SSH_KEY=0
+
 if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
-  echo "GitHub SSH connection successful."
+  echo "GitHub SSH connection is already working."
 else
-  echo "$SSH_OUTPUT" >&2
-  echo "Error: GitHub SSH connection failed." >&2
-  exit 1
+  echo "GitHub SSH connection is not configured yet."
+  echo "Registering the SSH public key with the authenticated GitHub account..."
+
+  # GitHub CLIで公開鍵を登録する。
+  # 権限不足や「すでに登録済み」などで失敗する可能性があるため、
+  # まず登録を試し、その後に実際のSSH認証で成否を判定する。
+  if gh ssh-key add "$SSH_PUB_KEY" --title "$SSH_KEY_TITLE"; then
+    echo "SSH public key registered with GitHub."
+  else
+    echo "gh ssh-key add returned an error. Checking whether the key is already usable..." >&2
+  fi
+
+  SSH_OUTPUT="$(ssh \
+    -i "$SSH_KEY" \
+    -o IdentitiesOnly=yes \
+    -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -T git@github.com 2>&1 || true)"
+
+  if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
+    USE_MANAGED_SSH_KEY=1
+  else
+    # GitHub CLIの既存認証トークンにSSH鍵登録権限が無い場合に備えて、
+    # 必要なOAuth scopeを追加してから再登録する。
+    echo "SSH key is not registered yet. Refreshing GitHub CLI permission..."
+    gh auth refresh \
+      --hostname github.com \
+      --scopes write:public_key
+
+    gh ssh-key add "$SSH_PUB_KEY" --title "$SSH_KEY_TITLE"
+
+    SSH_OUTPUT="$(ssh \
+      -i "$SSH_KEY" \
+      -o IdentitiesOnly=yes \
+      -o BatchMode=yes \
+      -o StrictHostKeyChecking=accept-new \
+      -T git@github.com 2>&1 || true)"
+
+    if printf '%s\n' "$SSH_OUTPUT" | grep -q "successfully authenticated"; then
+      USE_MANAGED_SSH_KEY=1
+    else
+      echo "$SSH_OUTPUT" >&2
+      echo "Error: GitHub SSH connection failed." >&2
+      echo "Public key:" >&2
+      cat "$SSH_PUB_KEY" >&2
+      exit 1
+    fi
+  fi
+
+  echo "GitHub SSH connection successful."
 fi
+
 # リポジトリをクローン
 if [ -d "$REPO_DIR/.git" ]; then
   echo "Repository already exists:"
   echo "  $REPO_DIR"
   echo "Skipping clone."
+  if [ "$USE_MANAGED_SSH_KEY" -eq 1 ]; then
+    git -C "$REPO_DIR" config core.sshCommand \
+      "ssh -i $SSH_KEY -o IdentitiesOnly=yes"
+    echo "Configured this repository to use: $SSH_KEY"
+  fi
 elif [ -e "$REPO_DIR" ]; then
   echo "Error: $REPO_DIR exists but is not a Git repository." >&2
   exit 1
 else
   echo "Cloning repository..."
-  git clone \
-    --branch "$REPO_BRANCH" \
-    "$REPO_URL" \
-    "$REPO_DIR"
+  if [ "$USE_MANAGED_SSH_KEY" -eq 1 ]; then
+    GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes" \
+      git clone \
+        --branch "$REPO_BRANCH" \
+        "$REPO_URL" \
+        "$REPO_DIR"
+
+    # 以降のpull/pushでも同じ鍵を使うよう、このリポジトリだけに設定する。
+    git -C "$REPO_DIR" config core.sshCommand \
+      "ssh -i $SSH_KEY -o IdentitiesOnly=yes"
+  else
+    git clone \
+      --branch "$REPO_BRANCH" \
+      "$REPO_URL" \
+      "$REPO_DIR"
+  fi
   echo "Repository cloned successfully:"
   echo "  $REPO_DIR"
 fi
@@ -297,31 +564,136 @@ if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
 fi
 rosdep update
 
-#bashrcへROSの環境読み込み，ccacheの定義，CANのエイリアスの登録をする
-BASHRC="$HOME/.bashrc"
-CONFIG_BEGIN="# >>> RDK X5 setup >>>"
-if ! grep -Fq "$CONFIG_BEGIN" "$BASHRC"; then
-  cat >>"$BASHRC" <<'EOF'
-# >>> RDK X5 setup >>>
+# SSH / ローカル端末の両方でROS環境を自動読み込みする
+# .bashrcだけではログインシェルや実行方法によって読まれない場合があるため、
+# 共通環境ファイルを作成して .bashrc と .profile の両方からsourceする。
+echo "Configuring ROS 2 shell environment and ccache..."
 
-if [ -f /opt/ros/humble/setup.bash ]; then
-  source /opt/ros/humble/setup.bash
+ROX_CONFIG_DIR="$HOME/.config/rox2026"
+ROX_ENV_FILE="$ROX_CONFIG_DIR/env.sh"
+mkdir -p "$ROX_CONFIG_DIR"
+
+cat >"$ROX_ENV_FILE" <<'EOF'
+# rox2026 shell environment
+# This file is generated by the RDK setup script.
+
+# 二重sourceを避ける
+if [ -z "${ROX2026_ENV_LOADED:-}" ]; then
+  export ROX2026_ENV_LOADED=1
+
+  if [ -f /opt/ros/humble/setup.bash ]; then
+    source /opt/ros/humble/setup.bash
+  fi
+
+  # workspaceを一度でもbuildしてinstall/setup.bashが生成されれば、
+  # 以降のSSHログイン/新規terminalで自動的にoverlayする。
+  if [ -f "$HOME/rox2026/ros2_ws/install/setup.bash" ]; then
+    source "$HOME/rox2026/ros2_ws/install/setup.bash"
+  fi
+
+  # ccache
+  export CCACHE_DIR="$HOME/.ccache"
+  export CMAKE_C_COMPILER_LAUNCHER=ccache
+  export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+  # Debian/Ubuntuのccache compiler wrappersも優先する。
+  if [ -d /usr/lib/ccache ]; then
+    case ":$PATH:" in
+      *:/usr/lib/ccache:*) ;;
+      *) export PATH="/usr/lib/ccache:$PATH" ;;
+    esac
+  fi
+
+  # interactive shell用alias
+  case "$-" in
+    *i*)
+      alias canshow='ip -details -statistics link show can0'
+      alias canrestart='sudo systemctl restart can0.service'
+      alias canstatus='systemctl status can0.service'
+      ;;
+  esac
 fi
-if [ -f "$HOME/rox2026/ros2_ws/install/setup.bash" ]; then
-  source "$HOME/rox2026/ros2_ws/install/setup.bash"
-fi
-
-# use ccache
-export CCACHE_DIR="$HOME/.ccache"
-
-# CAN
-alias canshow='ip -details -statistics link show can0'
-alias canrestart='sudo systemctl restart can0.service'
-alias canstatus='systemctl status can0.service'
-
-# <<< RDK X5 setup <<<
 EOF
-fi
+chmod 644 "$ROX_ENV_FILE"
+
+# 以前のsetup.shが追加した管理ブロックがあれば、新しいsource形式へ置換する。
+python3 - "$HOME/.bashrc" "$HOME/.profile" "$ROX_ENV_FILE" <<'PY_SHELL_ENV'
+from pathlib import Path
+import re
+import sys
+
+bashrc = Path(sys.argv[1])
+profile = Path(sys.argv[2])
+env_file = sys.argv[3]
+
+begin = '# >>> RDK X5 setup >>>'
+end = '# <<< RDK X5 setup <<<'
+block = f'{begin}\nif [ -f "{env_file}" ]; then\n  source "{env_file}"\nfi\n{end}\n'
+
+for path in (bashrc, profile):
+    text = path.read_text() if path.exists() else ''
+    pattern = re.compile(
+        rf'^\s*{re.escape(begin)}.*?^\s*{re.escape(end)}\s*$',
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if pattern.search(text):
+        text = pattern.sub(block.rstrip(), text, count=1)
+        if not text.endswith('\n'):
+            text += '\n'
+    else:
+        if text and not text.endswith('\n'):
+            text += '\n'
+        text += '\n' + block
+    path.write_text(text)
+PY_SHELL_ENV
+
+# ccacheを実際のcolcon/CMakeビルドに常時適用する。
+# CMakeの環境変数は初回configure時の初期値なので、既存build treeにも効くよう
+# colcon defaultsから毎回CMake launcherを指定する。
+mkdir -p "$HOME/.colcon" "$HOME/.ccache"
+ccache --set-config="cache_dir=$HOME/.ccache"
+ccache --set-config=max_size=10G
+
+COLCON_DEFAULTS="$HOME/.colcon/defaults.yaml"
+python3 - "$COLCON_DEFAULTS" <<'PY_COLCON_DEFAULTS'
+from pathlib import Path
+import sys
+import yaml
+
+path = Path(sys.argv[1])
+data = yaml.safe_load(path.read_text()) if path.exists() else {}
+data = data or {}
+
+if not isinstance(data, dict):
+    raise SystemExit(f'Error: {path} must contain a YAML mapping')
+
+build = data.setdefault('build', {})
+if not isinstance(build, dict):
+    raise SystemExit(f'Error: build section in {path} must be a mapping')
+
+args = build.get('cmake-args', [])
+if args is None:
+    args = []
+elif isinstance(args, str):
+    args = [args]
+elif not isinstance(args, list):
+    raise SystemExit(f'Error: build.cmake-args in {path} must be a list or string')
+
+for arg in (
+    '-DCMAKE_C_COMPILER_LAUNCHER=ccache',
+    '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
+):
+    if arg not in args:
+        args.append(arg)
+
+build['cmake-args'] = args
+path.write_text(yaml.safe_dump(data, sort_keys=False))
+print(f'Configured colcon defaults: {path}')
+PY_COLCON_DEFAULTS
+
+# ヒット率を分かりやすく確認できるよう、setup時点で統計だけリセットする。
+ccache --zero-stats >/dev/null 2>&1 || true
+ccache --show-config | grep -E 'cache_dir|max_size' || true
 
 # rox2026ワークスペースが存在する場合は依存関係を導入
 ROS2_WS="$HOME/rox2026/ros2_ws"
@@ -362,5 +734,12 @@ else
 fi
 
 echo "Setup Finished"
-echo "Run the following command to apply bashrc:"
-echo "source ~/.bashrc"
+echo "ROS 2 environment is configured for both SSH login shells and interactive bash."
+echo "Open a new SSH session/terminal, or run:"
+echo "source ~/.config/rox2026/env.sh"
+echo ""
+echo "ccache is enabled for colcon C/C++ builds. Check cache effectiveness with:"
+echo "ccache -s"
+echo ""
+echo "Reboot once to apply the boot-time optimizations:"
+echo "sudo reboot"
