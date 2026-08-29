@@ -120,7 +120,7 @@ void PKAimNode::load_parameters()
   test_panel_state_display_ = declare_parameter<bool>("test_panel_state_display", true);
   shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 5.0);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.5);
-  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 2.5);
+  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 3.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 2.0);
 
   auto bottom_tags = declare_parameter<std::vector<int64_t>>("bottom_tags", {20, 21, 22});
@@ -595,8 +595,17 @@ void PKAimNode::control_loop()
           test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
         tracker_.update_tracking(yaw_, current_time);
 
-        // 外力等で誤差が大きくズレた場合（約3.4度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
-        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
+        if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
+          is_target_confirmed_ = false;
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Target lost timeout in PREPARING_SHOOT (>3.0s) -> Returned to SEARCHING");
+          break;
+        }
+
+        // 外力等で誤差が大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.040);
         if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
           is_target_confirmed_ = false;
           transition_to(

@@ -130,7 +130,7 @@ void Game2AimNode::load_parameters()
 
   min_detection_frames_ = declare_parameter<int>("min_detection_frames", 2);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
-  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
+  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 3.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
   min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.70);
   max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
@@ -550,11 +550,11 @@ void Game2AimNode::control_loop()
         current_belt_mode = robot_msgs::msg::BeltMode::STOP;
         tracker_.update_tracking(yaw_, current_time);
 
-        // 1. 完全見失いタイムアウト判定（1.0秒以上ロストしたら再探索）
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
         if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
           transition_to(
             robot_msgs::msg::Game2State::SEARCHING,
-            "Target lost timeout in ALIGNING (no vision > 1.0s)");
+            "Target lost timeout in ALIGNING (>3.0s)");
           break;
         }
 
@@ -613,9 +613,16 @@ void Game2AimNode::control_loop()
           test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
         tracker_.update_tracking(yaw_, current_time);
 
-        // 外力等で誤差が許容値を超えて大きくズレた場合（約3.5度以上）のみ ALIGNING へ戻って再照準
-        // （ベルト回転の振動やカメラジッターによる不用意な引き戻しチャタリングを防止）
-        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
+        if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Target lost timeout in PREPARING_SHOOT (>3.0s) -> Returned to SEARCHING");
+          break;
+        }
+
+        // 外力等で誤差が許容値を超えて大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻って再照準
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.040);
         if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,

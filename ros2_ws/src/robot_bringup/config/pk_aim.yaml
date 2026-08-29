@@ -42,7 +42,7 @@
     test_panel_state_display: true # true: 0.5秒ごとにターミナルへ9マス色付き起立/選択モニターを出力
 
     # ── 🛡️ タイムアウト設定 ──
-    tag_lost_timeout: 2.5       # [s] タグが遮られたときの姿勢保持時間
+    tag_lost_timeout: 3.0       # [s] タグが遮られたときの姿勢保持時間
     visual_valid_timeout: 0.5   # [s] 照準完了判定に必要な直近視覚有効時間
-    align_lost_timeout: 2.5     # [s] ALIGNING中の完全ロスト判定時間
+    align_lost_timeout: 3.0     # [s] ALIGNING・PREPARING_SHOOT中の完全ロスト判定時間
     shot_fallback_timeout: 5.0  # [s] 射出ボタン押下後の保険タイムアウト

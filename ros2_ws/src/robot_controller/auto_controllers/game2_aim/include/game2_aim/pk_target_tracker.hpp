@@ -334,29 +334,23 @@ public:
         target_yaw_at_detection_ = panel.yaw_at_detection;
         visual_found = true;
 
-        // 静止・微調整領域（約2.8度以内）に入ったら、カメラ実測で目標角度を穏やかに微補正
-        const double err_to_locked = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
-        if (std::abs(err_to_locked) < 0.05) {
-          const double visual_target_yaw = std::remainder(
-            current_yaw + std::atan2(panel.y, panel.x) + config_.aim_yaw_offset_rad,
-            2.0 * M_PI);
-          const double diff = std::remainder(visual_target_yaw - locked_target_yaw_, 2.0 * M_PI);
-          locked_target_yaw_ = std::remainder(locked_target_yaw_ + 0.15 * diff, 2.0 * M_PI);
-        }
-      }
-    }
-
     if (visual_found) {
       last_visually_confirmed_time_ = now;
     }
 
-    // 旋回中は固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で遅延フリー追従
+    // 旋回中・静止中ともに固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で完全安定追従
     target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
   }
 
   bool is_currently_visible(const rclcpp::Time & now, double valid_timeout = 0.5) const
   {
     return (now - last_visually_confirmed_time_).seconds() <= valid_timeout;
+  }
+
+  bool is_lost_timeout(const rclcpp::Time & now, double timeout_sec = 3.0) const
+  {
+    if (!target_locked_) {return false;}
+    return (now - last_visually_confirmed_time_).seconds() > timeout_sec;
   }
 
   void reset()
