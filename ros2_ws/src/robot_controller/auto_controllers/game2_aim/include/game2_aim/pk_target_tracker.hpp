@@ -364,7 +364,9 @@ public:
   uint8_t target_belt_mode() const {return target_belt_mode_;}
   std::vector<int> get_target_indices() const
   {
-    if (!target_locked_) return {};
+    if (!target_locked_) {
+	    return {};
+    }
     return {selected_index_};
   }
 
