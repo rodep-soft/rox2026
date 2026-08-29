@@ -409,11 +409,16 @@ void JoyControllerNode::loop_callback()
 
   // 5. 自動シュートサイクル要求 (L2 + ○)
   if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
-    const bool game2_ready = !game2_active_ ||
-      game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT;
-    const bool pk_ready = !pk_active_ ||
-      pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT;
-    const bool shot_allowed = game2_ready && pk_ready;
+    // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが PREPARING_SHOOT であれば射出許可
+    bool shot_allowed = false;
+    if (!game2_active_ && !pk_active_) {
+      shot_allowed = true;
+    } else if (game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+      pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT)
+    {
+      shot_allowed = true;
+    }
+
     if (shot_allowed) {
       RCLCPP_INFO(get_logger(), "Shot cycle requested!");
       std_msgs::msg::Bool req;
@@ -422,7 +427,7 @@ void JoyControllerNode::loop_callback()
     } else {
       RCLCPP_WARN(
         get_logger(),
-        "Shot request ignored: Target is not in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
+        "Shot request ignored: Neither Game2 nor PK is in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
         static_cast<unsigned>(game2_state_), static_cast<unsigned>(pk_state_));
     }
   }
