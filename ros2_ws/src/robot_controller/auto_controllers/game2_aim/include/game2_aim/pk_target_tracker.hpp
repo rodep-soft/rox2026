@@ -107,7 +107,7 @@ public:
     add_panel(7, 21, 0, 1, "下段中 [Bot-Center]", robot_msgs::msg::BeltMode::LEVEL_1);
     add_panel(8, 22, 0, 2, "下段右 [Bot-Right]", robot_msgs::msg::BeltMode::LEVEL_1);
 
-    selected_index_ = 0;
+    selected_index_ = 4;
   }
 
   void init_custom_tags(
@@ -464,7 +464,7 @@ private:
   Config config_;
   std::unordered_map<int, PKPanelInfo> panel_grid_;
   std::vector<int> index_to_tag_id_;
-  int selected_index_{0};
+  int selected_index_{4};
 
   bool target_locked_{false};
   int active_target_id_{-1};
