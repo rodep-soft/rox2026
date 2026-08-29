@@ -227,33 +227,29 @@ public:
       panel.detected = true;
       panel.yaw_at_detection = current_yaw;
 
-      // 3D 幾何学位置計算
-      if (det.pose.pose.pose.position.z > 0.05) {
-        if (has_tf) {
-          geometry_msgs::msg::PoseStamped tag_pose_cam;
-          tag_pose_cam.header = msg.header;
-          tag_pose_cam.pose = det.pose.pose.pose;
-          geometry_msgs::msg::PoseStamped tag_pose_base;
-          tf2::doTransform(tag_pose_cam, tag_pose_base, tf_optical_to_base);
-          panel.x = tag_pose_base.pose.position.x;
-          panel.y = tag_pose_base.pose.position.y;
-          panel.z = tag_pose_base.pose.position.z;
-        } else {
-          const double z_cam = det.pose.pose.pose.position.z;
-          const double x_cam = det.pose.pose.pose.position.x;
-          const double y_cam = det.pose.pose.pose.position.y;
-          panel.x = z_cam + config_.camera_offset_x;
-          panel.y = -x_cam + config_.camera_offset_y;
-          panel.z = -y_cam + config_.camera_offset_z;
-        }
+      const double x_c = (det.centre.x - config_.camera_cx) * config_.target_distance /
+        config_.camera_fx;
+      const double y_c = (det.centre.y - config_.camera_cy) * config_.target_distance /
+        config_.camera_fy;
+      const double z_c = config_.target_distance;
+
+      if (has_tf) {
+        geometry_msgs::msg::PoseStamped tag_cam_pose;
+        tag_cam_pose.header = msg.header;
+        tag_cam_pose.pose.position.x = x_c;
+        tag_cam_pose.pose.position.y = y_c;
+        tag_cam_pose.pose.position.z = z_c;
+        tag_cam_pose.pose.orientation.w = 1.0;
+
+        geometry_msgs::msg::PoseStamped tag_base_pose;
+        tf2::doTransform(tag_cam_pose, tag_base_pose, tf_optical_to_base);
+        panel.x = tag_base_pose.pose.position.x;
+        panel.y = tag_base_pose.pose.position.y;
+        panel.z = tag_base_pose.pose.position.z;
       } else {
-        // 2D ピクセル幾何計算
-        const double x_c = (panel.pixel_x - config_.camera_cx) / config_.camera_fx;
-        const double y_c = (panel.pixel_y - config_.camera_cy) / config_.camera_fy;
-        const double Z = config_.target_distance;
-        panel.x = Z + config_.camera_offset_x;
-        panel.y = -(x_c * Z) + config_.camera_offset_y;
-        panel.z = -(y_c * Z) + config_.camera_offset_z;
+        panel.x = z_c + config_.camera_offset_x;
+        panel.y = -x_c + config_.camera_offset_y;
+        panel.z = -y_c + config_.camera_offset_z;
       }
     }
   }

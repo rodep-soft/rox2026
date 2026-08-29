@@ -204,13 +204,23 @@ void PKAimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg
 
 void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg)
 {
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
-    if (msg->state == robot_msgs::msg::ShotCycleState::COMPLETED) {
+  const uint8_t current_state = msg->state;
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+    state_ == robot_msgs::msg::Game2State::ALIGNING)
+  {
+    // ボール射出完了（FEEDING -> RETURNING）または サイクル終了（-> IDLE）でSTANDBYへ移行
+    if ((current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
+      prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING) ||
+      (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
+      prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
+    {
       transition_to(
         robot_msgs::msg::Game2State::STANDBY,
         "Shot completed (ejected). Returned to STANDBY for next target selection");
+      tracker_.reset();
     }
   }
+  prev_shot_cycle_state_ = current_state;
 }
 
 void PKAimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg)
