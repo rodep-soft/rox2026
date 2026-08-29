@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ENV_FILE=/etc/default/controller-forwarder
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "[raspi-rfcomm-run] missing $ENV_FILE" >&2
+  exit 2
+fi
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+
+: "${RDK_BT_MAC:?RDK_BT_MAC is not configured}"
+: "${RFCOMM_CHANNEL:=1}"
+
+if [[ "$RDK_BT_MAC" == "CHANGE_ME" ]]; then
+  echo "[raspi-rfcomm-run] RDK_BT_MAC is still CHANGE_ME" >&2
+  exit 2
+fi
+
+# Release an old/stale tty if one remains. Failure is harmless.
+/usr/bin/rfcomm release 0 >/dev/null 2>&1 || true
+
+# Keep this process in the foreground for systemd.  It exits when the RFCOMM
+# link drops; Restart=always reconnects automatically.
+exec /usr/bin/rfcomm -i hci0 connect 0 "$RDK_BT_MAC" "$RFCOMM_CHANNEL"

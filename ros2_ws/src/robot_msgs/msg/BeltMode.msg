@@ -6,3 +6,4 @@ uint8 LEVEL_3 = 3
 uint8 LEVEL_4 = 4
 
 uint8 mode
+int8 rpm_offset_step

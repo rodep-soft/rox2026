@@ -36,6 +36,8 @@ JoyControllerNode::JoyControllerNode()
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
+  cross_button_ = declare_parameter<int>("cross_button", 1);
+  triangle_button_ = declare_parameter<int>("triangle_button", 3);
   square_button_ = declare_parameter<int>("square_button", 0);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
@@ -210,6 +212,10 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         home_button_ = val;
       } else if (name == "circle_button") {
         circle_button_ = val;
+      } else if (name == "cross_button") {
+        cross_button_ = val;
+      } else if (name == "triangle_button") {
+        triangle_button_ = val;
       } else if (name == "square_button") {
         square_button_ = val;
       } else if (name == "dribble_enable_button") {
@@ -346,6 +352,13 @@ void JoyControllerNode::loop_callback()
       RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
       publish_belt_mode(belt_rpm_mode_);
     }
+  }
+
+  // 2b. △/×で、YAMLのベルトRPMに加えるオフセットを1段ずつ変更する。
+  if (is_button_just_pressed(joy_msg_, triangle_button_)) {
+    publish_belt_mode(belt_rpm_mode_, 1);
+  } else if (is_button_just_pressed(joy_msg_, cross_button_)) {
+    publish_belt_mode(belt_rpm_mode_, -1);
   }
 
   // 3. ドリブル回転ON/OFF (R1)
@@ -580,10 +593,11 @@ void JoyControllerNode::publish_emergency_stop(bool active)
   emergency_stop_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_belt_mode(uint8_t mode)
+void JoyControllerNode::publish_belt_mode(uint8_t mode, int8_t rpm_offset_step)
 {
   robot_msgs::msg::BeltMode msg;
   msg.mode = mode;
+  msg.rpm_offset_step = rpm_offset_step;
   belt_mode_pub_->publish(msg);
 }
 

@@ -1,10 +1,16 @@
 #include "belt_controller/belt_controller.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>
 #include <stdexcept>
 #include <string>
+
+namespace
+{
+constexpr int kMaxRpmOffsetSteps = 3;
+}  // namespace
 
 BeltControllerNode::BeltControllerNode()
 : Node("belt_controller_node")
@@ -60,6 +66,8 @@ void BeltControllerNode::load_parameters()
   upperbelt_rpms_[1] = declare_parameter<int>("upperbelt_level_2_rpm", 3500);
   upperbelt_rpms_[2] = declare_parameter<int>("upperbelt_level_3_rpm", 4000);
   upperbelt_rpms_[3] = declare_parameter<int>("upperbelt_level_4_rpm", 4500);
+  rpm_offset_per_step_ =
+    declare_parameter<int>("belt_rpm_offset_per_step", 100);
 
   emergency_stop_period_ms_ = declare_parameter<int>("emergency_stop_period_ms", 50);
   const auto underbelt_logical_id = declare_parameter<int>("underbelt_logical_id", 11);
@@ -68,7 +76,9 @@ void BeltControllerNode::load_parameters()
     "target_array_topic",
     "/vesc/target_array");
 
-  if (emergency_stop_period_ms_ <= 0 || target_array_topic_.empty()) {
+  if (emergency_stop_period_ms_ <= 0 || rpm_offset_per_step_ <= 0 ||
+    target_array_topic_.empty())
+  {
     throw std::runtime_error("Invalid belt parameters: timing or topic is invalid");
   }
   if (underbelt_logical_id < 0 || underbelt_logical_id > 65535 ||
@@ -91,6 +101,9 @@ void BeltControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::Sha
   use_direct_target_rpm_ = false;
   belt_mode_ = msg->mode <=
     robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
+  rpm_offset_step_count_ = std::clamp(
+    rpm_offset_step_count_ + msg->rpm_offset_step,
+    -kMaxRpmOffsetSteps, kMaxRpmOffsetSteps);
   publish_command();
 }
 
@@ -237,8 +250,9 @@ void BeltControllerNode::publish_command()
     } else {
       const auto level = static_cast<std::size_t>(belt_mode_);
       if (level >= 1 && level <= num_levels) {
-        underbelt_rpm = underbelt_rpms_[level - 1];
-        upperbelt_rpm = upperbelt_rpms_[level - 1];
+        const int rpm_offset = rpm_offset_step_count_ * rpm_offset_per_step_;
+        underbelt_rpm = std::max(0, underbelt_rpms_[level - 1] + rpm_offset);
+        upperbelt_rpm = std::max(0, upperbelt_rpms_[level - 1] + rpm_offset);
       }
     }
   }

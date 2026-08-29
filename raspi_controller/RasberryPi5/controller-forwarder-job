@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+DEVNODE="${1:-}"
+if [[ -z "$DEVNODE" ]]; then
+  echo "[controller-forwarder-job] missing DEVNODE" >&2
+  exit 2
+fi
+
+ENV_FILE=/etc/default/controller-forwarder
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "[controller-forwarder-job] missing $ENV_FILE" >&2
+  exit 2
+fi
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+
+: "${RDK_HOST:?RDK_HOST is not configured}"
+: "${UDP_PORT:=5000}"
+: "${WIFI_INTERFACE:=wlan0}"
+: "${RFCOMM_DEV:=/dev/rfcomm0}"
+: "${RFCOMM_RETRY:=0.20}"
+: "${HEARTBEAT_INTERVAL:=0.05}"
+: "${GRAB_DEVICE:=1}"
+: "${STATS_INTERVAL:=10}"
+: "${BT_QUEUE_SIZE:=16}"
+: "${AXIS_RATE:=100}"
+: "${ABS_MIN_DELTA:=1}"
+: "${BT_MAX_LATENCY:=0.10}"
+
+if [[ "$RDK_HOST" == "CHANGE_ME" ]]; then
+  echo "[controller-forwarder-job] RDK_HOST is still CHANGE_ME" >&2
+  exit 2
+fi
+
+INTERCEPT_BIN="$(command -v intercept || true)"
+if [[ -z "$INTERCEPT_BIN" ]]; then
+  echo "[controller-forwarder-job] intercept not found" >&2
+  exit 127
+fi
+
+if [[ ! -x /usr/local/bin/controller-net-sender ]]; then
+  echo "[controller-forwarder-job] /usr/local/bin/controller-net-sender not found" >&2
+  exit 127
+fi
+
+INTERCEPT_ARGS=("$DEVNODE")
+if [[ "$GRAB_DEVICE" == "1" ]]; then
+  INTERCEPT_ARGS=(-g "$DEVNODE")
+fi
+
+# If the sender process ever fails while the physical event node still exists,
+# retry the pipeline automatically. When the controller is removed, udevmon
+# tears this job down and/or DEVNODE disappears, so heartbeats stop.
+while [[ -e "$DEVNODE" ]]; do
+  echo "[controller-forwarder-job] forwarding $DEVNODE" >&2
+  set +e
+  "$INTERCEPT_BIN" "${INTERCEPT_ARGS[@]}" | \
+    /usr/local/bin/controller-net-sender \
+      --rdk-host "$RDK_HOST" \
+      --udp-port "$UDP_PORT" \
+      --wifi-interface "$WIFI_INTERFACE" \
+      --rfcomm "$RFCOMM_DEV" \
+      --rfcomm-retry "$RFCOMM_RETRY" \
+      --heartbeat-interval "$HEARTBEAT_INTERVAL" \
+      --bt-queue-size "$BT_QUEUE_SIZE" \
+      --axis-rate "$AXIS_RATE" \
+      --abs-min-delta "$ABS_MIN_DELTA" \
+      --bt-max-latency "$BT_MAX_LATENCY" \
+      --stats-interval "$STATS_INTERVAL"
+  rc=$?
+  set -e
+
+  if [[ ! -e "$DEVNODE" ]]; then
+    break
+  fi
+  echo "[controller-forwarder-job] pipeline exited rc=$rc; retrying in 0.25 s" >&2
+  sleep 0.25
+done
+
+exit 0

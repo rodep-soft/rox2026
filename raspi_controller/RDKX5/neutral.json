@@ -1,0 +1,13 @@
+{
+  "description": "Typical Linux evdev neutral values for the DualSense gamepad event device. Verify once with evtest on your Raspberry Pi.",
+  "abs_neutral": {
+    "0": 128,
+    "1": 128,
+    "2": 0,
+    "3": 128,
+    "4": 128,
+    "5": 0,
+    "16": 0,
+    "17": 0
+  }
+}
