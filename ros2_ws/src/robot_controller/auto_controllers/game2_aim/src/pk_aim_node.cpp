@@ -62,7 +62,7 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
 
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
-  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/mode", 10);
+  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", 10);
   state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
     "/pk/state", rclcpp::QoS(1).reliable().transient_local());
   completed_pub_ = create_publisher<std_msgs::msg::Bool>(
