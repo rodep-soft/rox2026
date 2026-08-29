@@ -320,6 +320,8 @@ public:
 
     int target_tag_id = index_to_tag_id_[selected_index_];
     auto it = panel_grid_.find(target_tag_id);
+    bool visual_found = false;
+
     if (it != panel_grid_.end()) {
       const auto & panel = it->second;
       if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
@@ -327,20 +329,19 @@ public:
         target_y_ = panel.y;
         target_z_ = panel.z;
         target_yaw_at_detection_ = panel.yaw_at_detection;
-        target_heading_err_ = std::remainder(
-          std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad,
-          2.0 * M_PI);
-        last_visually_confirmed_time_ = now;
-        return;
+        visual_found = true;
       }
     }
 
-    // 視覚ロスト時は IMU デッドレコニング
-    const double delta_yaw = current_yaw - target_yaw_at_detection_;
-    const double base_heading_at_det = std::atan2(target_y_, target_x_);
-    const double estimated_heading = base_heading_at_det - delta_yaw;
+    if (visual_found) {
+      last_visually_confirmed_time_ = now;
+    }
+
+    // IMUオドメトリ姿勢補間（デッドレコニング）: カメラ遅延をIMUでリアルタイム補償
+    const double raw_heading_err = std::atan2(target_y_, target_x_);
+    const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
     target_heading_err_ = std::remainder(
-      estimated_heading + config_.aim_yaw_offset_rad,
+      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
       2.0 * M_PI);
   }
 
