@@ -244,7 +244,7 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Returned to SEARCHING for next target selection");
-      if (tracker_.lock_selected_target(now(), get_logger())) {
+      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
         transition_to(
           robot_msgs::msg::Game2State::ALIGNING,
           "Aligning to selected target after shot");
@@ -281,7 +281,7 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "PK Selection Mode Activated (OPTIONS toggled ON)");
-      if (tracker_.lock_selected_target(now(), get_logger())) {
+      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
         transition_to(
           robot_msgs::msg::Game2State::ALIGNING,
           "Target panel locked -> Aligning to selected target");
@@ -309,7 +309,7 @@ void PKAimNode::pk_confirm_callback(const std_msgs::msg::Empty::SharedPtr)
   is_target_confirmed_ = true;
 
   if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
-    if (tracker_.lock_selected_target(now(), get_logger())) {
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
         "Target Confirmed: Aligning to selected target");
@@ -335,7 +335,7 @@ void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
     is_target_confirmed_ = false;
     int idx = tracker_.select_next();
     const auto & p = tracker_.get_selected_panel();
-    if (tracker_.lock_selected_target(now(), get_logger())) {
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
         "Target changed -> Aligning to new target");
@@ -351,7 +351,7 @@ void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
     is_target_confirmed_ = false;
     int idx = tracker_.select_prev();
     const auto & p = tracker_.get_selected_panel();
-    if (tracker_.lock_selected_target(now(), get_logger())) {
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
         "Target changed -> Aligning to new target");
@@ -367,7 +367,7 @@ void PKAimNode::pk_set_target_index_callback(const std_msgs::msg::Int32::SharedP
     is_target_confirmed_ = false;
     tracker_.set_selected_index(msg->data);
     const auto & p = tracker_.get_selected_panel();
-    if (tracker_.lock_selected_target(now(), get_logger())) {
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
         "Target set -> Aligning to target");
@@ -515,7 +515,7 @@ void PKAimNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
         last_cmd_wz_ = 0.0;
-        if (tracker_.lock_selected_target(current_time, get_logger())) {
+        if (tracker_.lock_selected_target(current_time, get_logger(), yaw_)) {
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Target panel locked -> Aligning to selected target");

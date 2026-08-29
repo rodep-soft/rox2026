@@ -255,7 +255,8 @@ public:
     }
   }
 
-  bool find_and_lock_target(const rclcpp::Time & now, const rclcpp::Logger & logger)
+  bool find_and_lock_target(
+    const rclcpp::Time & now, const rclcpp::Logger & logger, double current_yaw = 0.0)
   {
     update_panel_states(now);
 
@@ -412,12 +413,11 @@ public:
               target_yaw_at_detection_ = p->yaw_at_detection;
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(
-                std::atan2(
-                  target_y_,
-                  target_x_) + config_.aim_yaw_offset_rad,
-                2.0 * M_PI);
             }
+
+            const double raw_aim_angle = std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad;
+            locked_target_yaw_ = std::remainder(current_yaw + raw_aim_angle, 2.0 * M_PI);
+            target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
 
             // 全グリッド認識状況のサマリー文字列を構築
             std::stringstream status_ss;
@@ -450,10 +450,11 @@ public:
               logger,
               "🔒 [Game2 TARGET LOCK 決定] %s\n"
               "   ▶ 9枚認識状況: %s\n"
-              "   ▶ 狙い角度: %+.2f deg | ベルト: LEVEL_%d",
+              "   ▶ 狙い角度: %+.2f deg (World: %+.2f deg) | ベルト: LEVEL_%d",
               target_description().c_str(),
               status_ss.str().c_str(),
               target_heading_err_ * 180.0 / M_PI,
+              locked_target_yaw_ * 180.0 / M_PI,
               target_belt_mode_);
 
             return true;
@@ -497,8 +498,6 @@ public:
           it_b->second.yaw_at_detection * (1.0 - r);
         visual_found = true;
       } else if (a_detected || b_detected) {
-        // 片方でも見えていれば視覚ロストとは判定せず、前回の target_x_, target_y_ を維持して
-        // IMU姿勢補間で滑らかに追従する（目標角度のジャンプを完全防止）
         visual_found = true;
       }
     } else {
@@ -515,14 +514,20 @@ public:
 
     if (visual_found) {
       last_visually_confirmed_time_ = now;
+
+      // 静止・微調整領域（約2.8度以内）に入ったら、カメラ実測で目標角度を穏やかに微補正
+      const double err_to_locked = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
+      if (std::abs(err_to_locked) < 0.05) {
+        const double visual_target_yaw = std::remainder(
+          current_yaw + std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad,
+          2.0 * M_PI);
+        const double diff = std::remainder(visual_target_yaw - locked_target_yaw_, 2.0 * M_PI);
+        locked_target_yaw_ = std::remainder(locked_target_yaw_ + 0.15 * diff, 2.0 * M_PI);
+      }
     }
 
-    // IMUオドメトリ姿勢補間（デッドレコニング）
-    const double raw_heading_err = std::atan2(target_y_, target_x_);
-    const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(
-      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 旋回中は固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で遅延フリー追従
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
   }
 
   bool has_locked_target() const {return target_locked_;}
@@ -540,6 +545,7 @@ public:
   }
 
   double heading_error() const {return target_heading_err_;}
+  double locked_target_yaw() const {return locked_target_yaw_;}
   uint8_t target_belt_mode() const {return target_belt_mode_;}
   int active_target_id() const {return active_target_id_;}
   int active_row() const {return active_row_;}
@@ -819,6 +825,7 @@ private:
   double target_tag_offset_x_{0.0};
   double target_tag_offset_y_{0.0};
   double target_heading_err_{0.0};
+  double locked_target_yaw_{0.0};
 
   rclcpp::Time last_visually_confirmed_time_{0, 0, RCL_ROS_TIME};
   int candidate_pattern_key_{-1};

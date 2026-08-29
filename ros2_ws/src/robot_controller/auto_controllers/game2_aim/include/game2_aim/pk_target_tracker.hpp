@@ -270,7 +270,8 @@ public:
   }
 
   // ── 照準ターゲットの確定・ロック ──
-  bool lock_selected_target(const rclcpp::Time & now, const rclcpp::Logger & logger)
+  bool lock_selected_target(
+    const rclcpp::Time & now, const rclcpp::Logger & logger, double current_yaw = 0.0)
   {
     int target_tag_id = index_to_tag_id_[selected_index_];
     auto it = panel_grid_.find(target_tag_id);
@@ -297,18 +298,19 @@ public:
       target_x_ = config_.target_distance + config_.camera_offset_x;
       target_y_ = col_offsets[panel.col] + config_.camera_offset_y;
       target_z_ = 0.5;
-      target_yaw_at_detection_ = 0.0;
+      target_yaw_at_detection_ = current_yaw;
     }
 
-    target_heading_err_ = std::remainder(
-      std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 目標の絶対角度 (ワールド座標系) を確定固定
+    const double raw_aim_angle = std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad;
+    locked_target_yaw_ = std::remainder(current_yaw + raw_aim_angle, 2.0 * M_PI);
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
 
     RCLCPP_INFO(
       logger,
-      "🔒 [PK TARGET LOCKED] [Idx %d] %s (Tag #%d | Row %d Col %d) | Target Angle: %+.2f deg | Belt: LEVEL_%d",
+      "🔒 [PK TARGET LOCKED] [Idx %d] %s (Tag #%d | Row %d Col %d) | Target Angle: %+.2f deg (World: %+.2f deg) | Belt: LEVEL_%d",
       selected_index_, panel.name.c_str(), panel.tag_id, panel.row, panel.col,
-      target_heading_err_ * 180.0 / M_PI, target_belt_mode_);
+      target_heading_err_ * 180.0 / M_PI, locked_target_yaw_ * 180.0 / M_PI, target_belt_mode_);
 
     return true;
   }
@@ -331,6 +333,16 @@ public:
         target_z_ = panel.z;
         target_yaw_at_detection_ = panel.yaw_at_detection;
         visual_found = true;
+
+        // 静止・微調整領域（約2.8度以内）に入ったら、カメラ実測で目標角度を穏やかに微補正
+        const double err_to_locked = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
+        if (std::abs(err_to_locked) < 0.05) {
+          const double visual_target_yaw = std::remainder(
+            current_yaw + std::atan2(panel.y, panel.x) + config_.aim_yaw_offset_rad,
+            2.0 * M_PI);
+          const double diff = std::remainder(visual_target_yaw - locked_target_yaw_, 2.0 * M_PI);
+          locked_target_yaw_ = std::remainder(locked_target_yaw_ + 0.15 * diff, 2.0 * M_PI);
+        }
       }
     }
 
@@ -338,12 +350,8 @@ public:
       last_visually_confirmed_time_ = now;
     }
 
-    // IMUオドメトリ姿勢補間（デッドレコニング）: カメラ遅延をIMUでリアルタイム補償
-    const double raw_heading_err = std::atan2(target_y_, target_x_);
-    const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(
-      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 旋回中は固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で遅延フリー追従
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
   }
 
   bool is_currently_visible(const rclcpp::Time & now, double valid_timeout = 0.5) const
@@ -444,6 +452,7 @@ public:
   }
 
   double heading_error() const {return target_heading_err_;}
+  double locked_target_yaw() const {return locked_target_yaw_;}
   double target_x() const {return target_x_;}
   double target_y() const {return target_y_;}
   double target_z() const {return target_z_;}
@@ -475,6 +484,7 @@ private:
   double target_y_{0.0};
   double target_z_{0.5};
   double target_heading_err_{0.0};
+  double locked_target_yaw_{0.0};
   double target_yaw_at_detection_{0.0};
   rclcpp::Time last_visually_confirmed_time_{0, 0, RCL_ROS_TIME};
 };

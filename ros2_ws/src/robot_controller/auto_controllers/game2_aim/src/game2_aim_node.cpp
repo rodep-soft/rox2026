@@ -526,7 +526,7 @@ void Game2AimNode::control_loop()
           break;
         }
 
-        if (tracker_.find_and_lock_target(current_time, get_logger())) {
+        if (tracker_.find_and_lock_target(current_time, get_logger(), yaw_)) {
           transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");
           log_target_decision("Game2 ターゲットロック", "視覚検出に基づき最適ターゲットを確定 (照準旋回開始)");
         } else {
