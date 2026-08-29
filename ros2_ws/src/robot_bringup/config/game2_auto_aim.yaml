@@ -18,13 +18,13 @@
     camera_cy: 540.0        # [px] 光学主点Y
 
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
-    kp_yaw: 1.2             # 比例ゲイン (マイルド化でオーバーシュート防止)
+    kp_yaw: 1.1             # 比例ゲイン (適度な応答性を維持)
     yaw_command_sign: -1.0  # 機体のangular.z符号に合わせる（実機ログで確認済み）
-    kd_yaw: 0.25            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング強化)
-    min_angular_z: 0.03     # [rad/s] 静止摩擦補償最小角速度 (ハンチング防止のため低減)
+    kd_yaw: 0.35            # 微分/制動ゲイン (IMU gyro_zダンピング強化で通り過ぎを阻止)
+    min_angular_z: 0.015    # [rad/s] 静止摩擦補償最小角速度 (通り過ぎ防止のため0.03->0.015に低減)
     max_angular_z: 0.25     # [rad/s] 最大旋回角速度 (約14 deg/s: カメラブレ防止)
-    max_angular_accel: 2.0  # [rad/s^2] 旋回加減速度リミッター (スリップ・ブレ防止)
-    yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.86度: スムーズな即座停止)
+    max_angular_accel: 1.5  # [rad/s^2] 旋回加減速度リミッター (急制動時のスリップ・飛び出し防止)
+    yaw_tolerance: 0.008    # [rad] 角度誤差許容値 (約0.46度: 4m先で横ズレ±3.2cmの超高精度へ攻める)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
     aim_yaw_offset_deg: 2.0 # [deg] 射出方向の左右照準オフセット (+2.0度左向き補正で右寄りを相殺)
 
