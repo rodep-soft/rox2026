@@ -510,8 +510,10 @@ void Game2AimNode::control_loop()
           test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
         tracker_.update_tracking(yaw_, current_time);
 
-        // 外力等で誤差が許容値を超えてズレた場合は ALIGNING へ戻って再照準
-        if (std::abs(tracker_.heading_error()) > yaw_tolerance_ * 2.0) {
+        // 外力等で誤差が許容値を超えて大きくズレた場合（約3.5度以上）のみ ALIGNING へ戻って再照準
+        // （ベルト回転の振動やカメラジッターによる不用意な引き戻しチャタリングを防止）
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Heading error exceeded tolerance in PREPARING_SHOOT");
