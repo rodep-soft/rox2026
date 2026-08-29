@@ -1,6 +1,7 @@
 #ifndef GAME2_AIM__PK_AIM_NODE_HPP_
 #define GAME2_AIM__PK_AIM_NODE_HPP_
 
+#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
@@ -60,6 +61,13 @@ private:
     bool completed);
   void publish_target_status(const rclcpp::Time & now);
   void log_target_decision(const std::string & title, const std::string & reason);
+  double get_yaw_at_time(const rclcpp::Time & stamp) const;
+
+  struct ImuSample
+  {
+    rclcpp::Time stamp;
+    double yaw;
+  };
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -129,6 +137,7 @@ private:
   rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
   bool is_target_confirmed_{false};
+  std::deque<ImuSample> imu_history_;
 
   PKTargetTracker tracker_;
 };

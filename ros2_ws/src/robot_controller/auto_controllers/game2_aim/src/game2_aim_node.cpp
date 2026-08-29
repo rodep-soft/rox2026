@@ -269,10 +269,39 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
   return result;
 }
 
+double Game2AimNode::get_yaw_at_time(const rclcpp::Time & stamp) const
+{
+  if (imu_history_.empty() || stamp.nanoseconds() == 0) {
+    return yaw_;
+  }
+  if (stamp <= imu_history_.front().stamp) {
+    return imu_history_.front().yaw;
+  }
+  if (stamp >= imu_history_.back().stamp) {
+    return imu_history_.back().yaw;
+  }
+
+  for (size_t i = 1; i < imu_history_.size(); ++i) {
+    if (imu_history_[i].stamp >= stamp) {
+      const auto & p0 = imu_history_[i - 1];
+      const auto & p1 = imu_history_[i];
+      const double dt_total = (p1.stamp - p0.stamp).seconds();
+      if (dt_total <= 1e-6) {
+        return p1.yaw;
+      }
+      const double alpha = (stamp - p0.stamp).seconds() / dt_total;
+      const double diff = std::remainder(p1.yaw - p0.yaw, 2.0 * M_PI);
+      return std::remainder(p0.yaw + alpha * diff, 2.0 * M_PI);
+    }
+  }
+  return imu_history_.back().yaw;
+}
+
 void Game2AimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
-  tracker_.update_detections(*msg, *tf_buffer_, yaw_, now());
+  const double yaw_at_capture = get_yaw_at_time(msg->header.stamp);
+  tracker_.update_detections(*msg, *tf_buffer_, yaw_at_capture, now());
 }
 
 void Game2AimNode::camera_info_callback(
@@ -286,6 +315,7 @@ void Game2AimNode::start_callback(const std_msgs::msg::Bool::SharedPtr msg)
   if (msg->data) {
     yaw_offset_ = raw_yaw_;
     yaw_ = 0.0;
+    imu_history_.clear();
     const auto start_time = this->now();
     last_imu_time_ = start_time;
     last_loop_time_ = start_time;
@@ -399,6 +429,11 @@ void Game2AimNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   raw_yaw_ = raw_y;
 
   yaw_ = std::remainder(raw_yaw_ - yaw_offset_, 2.0 * M_PI);
+
+  imu_history_.push_back({msg->header.stamp, yaw_});
+  while (!imu_history_.empty() && (now() - imu_history_.front().stamp).seconds() > 1.5) {
+    imu_history_.pop_front();
+  }
 }
 
 void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
