@@ -15,6 +15,7 @@
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/empty.hpp"
 
 class JoyControllerNode : public rclcpp::Node
 {
@@ -108,10 +109,12 @@ private:
   int spring_arm_restore_delay_ms_{600};
   std::chrono::steady_clock::time_point spring_fire_released_time_{};
   bool game2_active_{false};
+  bool pk_active_{false};
   bool is_drive_reversed_{false};
   bool is_heading_hold_enabled_{true};
   bool joy_received_{false};
   uint8_t game2_state_{robot_msgs::msg::Game2State::STANDBY};
+  uint8_t pk_state_{robot_msgs::msg::Game2State::STANDBY};
   bool joy_timeout_active_{false};
   bool spring_actuator_ready_{false};
   std::chrono::steady_clock::time_point last_joy_received_time_{};
@@ -127,10 +130,14 @@ private:
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr dribble_enabled_pub_;
   rclcpp::Subscription<robot_msgs::msg::Game2State>::SharedPtr game2_state_sub_;
+  rclcpp::Subscription<robot_msgs::msg::Game2State>::SharedPtr pk_state_sub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr shot_cycle_request_pub_;
   rclcpp::Publisher<robot_msgs::msg::ArmPosition>::SharedPtr
     arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pk_start_pub_;
+  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pk_next_pub_;
+  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pk_prev_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
     spring_actuator_ready_sub_;

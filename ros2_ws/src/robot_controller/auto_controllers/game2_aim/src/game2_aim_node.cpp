@@ -538,7 +538,9 @@ void Game2AimNode::publish_all(
   uint8_t belt_mode,
   bool completed)
 {
-  cmd_vel_pub_->publish(cmd_vel);
+  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+    cmd_vel_pub_->publish(cmd_vel);
+  }
 
   robot_msgs::msg::BeltMode mode_msg;
   mode_msg.mode = belt_mode;
