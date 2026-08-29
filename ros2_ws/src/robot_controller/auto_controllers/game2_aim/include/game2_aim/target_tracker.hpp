@@ -852,6 +852,9 @@ public:
     return ss.str();
   }
 
+  const std::unordered_map<int, PanelTagInfo> & panel_grid() const {return panel_grid_;}
+  double target_distance() const {return config_.target_distance;}
+
 private:
   Config config_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;

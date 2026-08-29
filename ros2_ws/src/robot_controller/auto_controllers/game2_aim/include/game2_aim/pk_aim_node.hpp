@@ -59,6 +59,7 @@ private:
     uint8_t belt_mode,
     bool completed);
   void publish_target_status(const rclcpp::Time & now);
+  void log_target_decision(const std::string & title, const std::string & reason);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;

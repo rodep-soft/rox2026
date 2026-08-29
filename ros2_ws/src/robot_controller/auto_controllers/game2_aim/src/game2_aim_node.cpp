@@ -450,6 +450,7 @@ void Game2AimNode::control_loop()
 
         if (tracker_.find_and_lock_target(current_time, get_logger())) {
           transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");
+          log_target_decision("Game2 ターゲットロック", "視覚検出に基づき最適ターゲットを確定 (照準旋回開始)");
         } else {
           const std::string summary = tracker_.get_detection_summary(current_time);
           if (std::abs(search_angular_z_) > 0.001) {
@@ -600,6 +601,53 @@ void Game2AimNode::publish_target_status(const rclcpp::Time & now)
   auto fallen_indices = tracker_.get_fallen_indices(now);
   fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());
   fallen_indices_pub_->publish(fallen_msg);
+}
+
+void Game2AimNode::log_target_decision(const std::string & title, const std::string & reason)
+{
+  const auto current_time = now();
+  const auto & grid = tracker_.panel_grid();
+  const auto & grid_state = tracker_.get_target_grid_state(current_time);
+
+  auto format_cell = [&](int r, int c) -> std::string {
+    int idx = TargetTracker::tag_to_index(r, c);
+    const PanelTagInfo * pt = nullptr;
+    for (const auto & [id, p_info] : grid) {
+      if (p_info.row == r && p_info.col == c) {
+        pt = &p_info;
+        break;
+      }
+    }
+    if (!pt) {return "  #?? 🔴 ( --)  ";}
+    char buf[64];
+    uint8_t state = grid_state.states[idx];
+    if (state == robot_msgs::msg::TargetGridState::TARGET) {
+      snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", pt->tag_id);
+    } else if (state == robot_msgs::msg::TargetGridState::STANDING) {
+      snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", pt->tag_id);
+    } else {
+      snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", pt->tag_id);
+    }
+    return std::string(buf);
+  };
+
+  RCLCPP_INFO(
+    get_logger(),
+    "\n══════════════════════════ 🎯 %s ══════════════════════════\n"
+    " 理由: %s\n"
+    " ターゲット: %s | ベルト: LEVEL_%u | 距離: %.2fm\n\n"
+    " [上段 L3] │ %s│ %s│ %s│\n"
+    " [中段 L2] │ %s│ %s│ %s│\n"
+    " [下段 L1] │ %s│ %s│ %s│\n"
+    "════════════════════════════════════════════════════════════════════════════",
+    title.c_str(),
+    reason.c_str(),
+    tracker_.target_description().c_str(),
+    tracker_.target_belt_mode(),
+    tracker_.target_distance(),
+    format_cell(2, 0).c_str(), format_cell(2, 1).c_str(), format_cell(2, 2).c_str(),
+    format_cell(1, 0).c_str(), format_cell(1, 1).c_str(), format_cell(1, 2).c_str(),
+    format_cell(0, 0).c_str(), format_cell(0, 1).c_str(), format_cell(0, 2).c_str());
 }
 
 }  // namespace robot_controller
