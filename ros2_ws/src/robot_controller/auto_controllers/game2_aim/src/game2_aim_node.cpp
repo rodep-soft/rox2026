@@ -66,9 +66,15 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/game2/completed", rclcpp::QoS(
       1).reliable().transient_local());
 
-  target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/target_index", cmd_qos);
-  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/target_indices", cmd_qos);
-  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/fallen_indices", cmd_qos);
+  target_grid_state_pub_ =
+    create_publisher<robot_msgs::msg::TargetGridState>(
+    "/target_grid_state", rclcpp::QoS(1).reliable().transient_local());
+  target_index_pub_ = create_publisher<std_msgs::msg::Int32>(
+    "/target_index", rclcpp::QoS(1).reliable().transient_local());
+  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>(
+    "/target_indices", rclcpp::QoS(1).reliable().transient_local());
+  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>(
+    "/fallen_indices", rclcpp::QoS(1).reliable().transient_local());
 
   // Control Loop Timer (20Hz = 50ms)
   timer_ = create_wall_timer(
@@ -355,6 +361,15 @@ void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
     "🔄 [Game2 State Transition] %s -> %s (Reason: %s)",
     old_name, new_name, reason.c_str());
 
+  // PREPARING_SHOOT を抜ける時はベルトを即座に停止
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
+    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT)
+  {
+    robot_msgs::msg::BeltMode stop_msg;
+    stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
+    belt_mode_pub_->publish(stop_msg);
+  }
+
   if (new_state == robot_msgs::msg::Game2State::STANDBY ||
     new_state == robot_msgs::msg::Game2State::SEARCHING)
   {
@@ -367,6 +382,8 @@ void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
   robot_msgs::msg::Game2State state_msg;
   state_msg.state = state_;
   state_pub_->publish(state_msg);
+
+  publish_target_status(now());
 }
 
 void Game2AimNode::control_loop()
@@ -545,13 +562,16 @@ void Game2AimNode::publish_all(
   uint8_t belt_mode,
   bool completed)
 {
-  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+  if (state_ == robot_msgs::msg::Game2State::ALIGNING) {
     cmd_vel_pub_->publish(cmd_vel);
   }
 
-  robot_msgs::msg::BeltMode mode_msg;
-  mode_msg.mode = belt_mode;
-  belt_mode_pub_->publish(mode_msg);
+  // PREPARING_SHOOT 状態のときのみベルト回転指示をパブリッシュ
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
+    robot_msgs::msg::BeltMode mode_msg;
+    mode_msg.mode = belt_mode;
+    belt_mode_pub_->publish(mode_msg);
+  }
 
   std_msgs::msg::Bool completed_msg;
   completed_msg.data = completed;
@@ -560,18 +580,22 @@ void Game2AimNode::publish_all(
 
 void Game2AimNode::publish_target_status(const rclcpp::Time & now)
 {
-  // 1. 主ターゲットインデックス (0〜8、未ロック時は -1)
+  // 1. 9マスのグリッド状態配列 (0: 未倒, 1: 狙い, 2: 倒れ)
+  auto grid_msg = tracker_.get_target_grid_state(now);
+  target_grid_state_pub_->publish(grid_msg);
+
+  // 2. 主ターゲットインデックス (0〜8、未ロック時は -1)
   std_msgs::msg::Int32 idx_msg;
   idx_msg.data = tracker_.get_primary_target_index();
   target_index_pub_->publish(idx_msg);
 
-  // 2. 狙っている的インデックス配列 (2枚抜き時は [0, 1] など)
+  // 3. 狙っている的インデックス配列 (2枚抜き時は [0, 1] など)
   std_msgs::msg::Int32MultiArray target_indices_msg;
   auto target_indices = tracker_.get_target_indices();
   target_indices_msg.data.assign(target_indices.begin(), target_indices.end());
   target_indices_pub_->publish(target_indices_msg);
 
-  // 3. 倒れていると判定されている的インデックス配列
+  // 4. 倒れていると判定されている的インデックス配列
   std_msgs::msg::Int32MultiArray fallen_msg;
   auto fallen_indices = tracker_.get_fallen_indices(now);
   fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());

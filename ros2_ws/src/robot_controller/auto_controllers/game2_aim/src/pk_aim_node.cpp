@@ -67,10 +67,16 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
     "/pk/state", rclcpp::QoS(1).reliable().transient_local());
   completed_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/pk/completed", rclcpp::QoS(1).reliable().transient_local());
-  target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/target_index", 10);
-  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/target_indices", 10);
-  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/fallen_indices", 10);
-  target_tag_id_pub_ = create_publisher<std_msgs::msg::Int32>("/pk/target_tag_id", 10);
+  target_grid_state_pub_ = create_publisher<robot_msgs::msg::TargetGridState>(
+    "/target_grid_state", rclcpp::QoS(1).reliable().transient_local());
+  target_index_pub_ = create_publisher<std_msgs::msg::Int32>(
+    "/target_index", rclcpp::QoS(1).reliable().transient_local());
+  target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>(
+    "/target_indices", rclcpp::QoS(1).reliable().transient_local());
+  fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>(
+    "/fallen_indices", rclcpp::QoS(1).reliable().transient_local());
+  target_tag_id_pub_ = create_publisher<std_msgs::msg::Int32>(
+    "/pk/target_tag_id", rclcpp::QoS(1).reliable().transient_local());
 
   // Timer (20 Hz Control Loop = 50ms)
   timer_ = create_wall_timer(
@@ -224,10 +230,11 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
       (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
     {
+      tracker_.reset();
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Returned to SEARCHING for next target selection");
-      tracker_.reset();
+      publish_target_status(now());
     }
   }
   prev_shot_cycle_state_ = current_state;
@@ -249,15 +256,16 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "PK Selection Mode Activated (OPTIONS toggled ON)");
-      publish_target_index();
+      publish_target_status(now());
     }
   } else {
     // OPTIONS トグルOFF または スティック入力による安全解除
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+      tracker_.reset();
       transition_to(
         robot_msgs::msg::Game2State::STANDBY,
         "PK Auto Mode Disengaged (OPTIONS toggled OFF or stick input) -> Returned to STANDBY");
-      tracker_.reset();
+      publish_target_status(now());
     }
   }
 }
@@ -270,6 +278,7 @@ void PKAimNode::pk_confirm_callback(const std_msgs::msg::Empty::SharedPtr)
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
         "PK Target Confirmed (Circle button pressed): Aligning to selected target");
+      publish_target_status(now());
     }
   }
 }
@@ -284,7 +293,7 @@ void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
       get_logger(),
       "➡️ [PK TARGET NEXT] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
       idx, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
-    publish_target_index();
+    publish_target_status(now());
   }
 }
 
@@ -298,20 +307,20 @@ void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
       get_logger(),
       "⬅️ [PK TARGET PREV] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
       idx, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
-    publish_target_index();
+    publish_target_status(now());
   }
 }
 
 void PKAimNode::pk_set_target_index_callback(const std_msgs::msg::Int32::SharedPtr msg)
 {
-  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+  if (state_ == robot_msgs::msg::Game2State::STANDBY || state_ == robot_msgs::msg::Game2State::SEARCHING) {
     tracker_.set_selected_index(msg->data);
     const auto & p = tracker_.get_selected_panel();
     RCLCPP_INFO(
       get_logger(),
       "🎯 [PK TARGET SET] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
       p.index, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
-    publish_target_index();
+    publish_target_status(now());
   }
 }
 
@@ -323,10 +332,21 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
   RCLCPP_INFO(
     get_logger(), "🔄 [PK State Transition] %s -> %s (Reason: %s)",
     (state_ == robot_msgs::msg::Game2State::STANDBY ? "STANDBY" :
-    (state_ == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT")),
+    (state_ == robot_msgs::msg::Game2State::SEARCHING ? "SEARCHING" :
+    (state_ == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT"))),
     (new_state == robot_msgs::msg::Game2State::STANDBY ? "STANDBY" :
-    (new_state == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT")),
+    (new_state == robot_msgs::msg::Game2State::SEARCHING ? "SEARCHING" :
+    (new_state == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT"))),
     reason.c_str());
+
+  // PREPARING_SHOOT を抜ける時はベルトを即座に停止
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
+    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT)
+  {
+    robot_msgs::msg::BeltMode stop_msg;
+    stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
+    belt_mode_pub_->publish(stop_msg);
+  }
 
   state_ = new_state;
   state_entry_time_ = now();
@@ -336,27 +356,29 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
   state_pub_->publish(s_msg);
 }
 
-void PKAimNode::publish_target_index()
+void PKAimNode::publish_target_status(const rclcpp::Time & now)
 {
-  const auto current_time = now();
+  // 1. 9マスのグリッド状態配列 (0: 未倒, 1: 狙い, 2: 倒れ)
+  auto grid_msg = tracker_.get_target_grid_state(now);
+  target_grid_state_pub_->publish(grid_msg);
 
-  // 1. 主ターゲットIndex (0〜8)
+  // 2. 主ターゲットIndex (0〜8)
   std_msgs::msg::Int32 idx_msg;
   idx_msg.data = tracker_.selected_index();
   target_index_pub_->publish(idx_msg);
 
-  // 2. 狙っている的インデックス配列 ([selected_index])
+  // 3. 狙っている的インデックス配列 ([selected_index])
   std_msgs::msg::Int32MultiArray target_indices_msg;
   target_indices_msg.data = {tracker_.selected_index()};
   target_indices_pub_->publish(target_indices_msg);
 
-  // 3. 倒れていると判定されている的インデックス配列
+  // 4. 倒れていると判定されている的インデックス配列
   std_msgs::msg::Int32MultiArray fallen_msg;
-  auto fallen_indices = tracker_.get_fallen_indices(current_time);
+  auto fallen_indices = tracker_.get_fallen_indices(now);
   fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());
   fallen_indices_pub_->publish(fallen_msg);
 
-  // 4. Tag ID
+  // 5. Tag ID
   std_msgs::msg::Int32 tag_msg;
   tag_msg.data = tracker_.get_selected_panel().tag_id;
   target_tag_id_pub_->publish(tag_msg);
@@ -381,9 +403,6 @@ void PKAimNode::control_loop()
     dt = 0.05;
   }
   last_loop_time_ = current_time;
-
-  // 定期的に選択中インデックスをパブリッシュ
-  publish_target_index();
 
   // 9マス起立診断表示 (SEARCHING 中に0.5秒おきに出力)
   if (test_panel_state_display_ && (state_ == robot_msgs::msg::Game2State::SEARCHING || state_ == robot_msgs::msg::Game2State::STANDBY)) {
@@ -427,7 +446,6 @@ void PKAimNode::control_loop()
     case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
         last_cmd_wz_ = 0.0;
-        current_belt_mode = robot_msgs::msg::BeltMode::STOP;
         break;
       }
 
@@ -520,14 +538,16 @@ void PKAimNode::publish_all(
   uint8_t belt_mode,
   bool completed)
 {
-  // STANDBY および SEARCHING (的選択中) 状態のときは手動走行（joy_controller）と衝突しないよう cmd_vel をパブリッシュしない
-  if (state_ != robot_msgs::msg::Game2State::STANDBY && state_ != robot_msgs::msg::Game2State::SEARCHING) {
+  if (state_ == robot_msgs::msg::Game2State::ALIGNING) {
     cmd_vel_pub_->publish(cmd_vel);
   }
 
-  robot_msgs::msg::BeltMode mode_msg;
-  mode_msg.mode = belt_mode;
-  belt_mode_pub_->publish(mode_msg);
+  // PREPARING_SHOOT 状態のときのみベルト回転指示をパブリッシュ
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
+    robot_msgs::msg::BeltMode mode_msg;
+    mode_msg.mode = belt_mode;
+    belt_mode_pub_->publish(mode_msg);
+  }
 
   std_msgs::msg::Bool completed_msg;
   completed_msg.data = completed;

@@ -14,6 +14,7 @@
 #include "robot_msgs/msg/belt_mode.hpp"
 #include "robot_msgs/msg/game2_state.hpp"
 #include "robot_msgs/msg/shot_cycle_state.hpp"
+#include "robot_msgs/msg/target_grid_state.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -57,7 +58,7 @@ private:
     const geometry_msgs::msg::Twist & cmd_vel,
     uint8_t belt_mode,
     bool completed);
-  void publish_target_index();
+  void publish_target_status(const rclcpp::Time & now);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -81,6 +82,7 @@ private:
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
   rclcpp::Publisher<robot_msgs::msg::Game2State>::SharedPtr state_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr completed_pub_;
+  rclcpp::Publisher<robot_msgs::msg::TargetGridState>::SharedPtr target_grid_state_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr target_index_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr target_indices_pub_;
   rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr fallen_indices_pub_;

@@ -13,6 +13,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "robot_msgs/msg/belt_mode.hpp"
+#include "robot_msgs/msg/target_grid_state.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "tf2/exceptions.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
@@ -402,6 +403,39 @@ public:
       }
     }
     return standing;
+  }
+
+  robot_msgs::msg::TargetGridState get_target_grid_state(const rclcpp::Time & now) const
+  {
+    robot_msgs::msg::TargetGridState msg;
+    for (int r = 2; r >= 0; --r) {
+      for (int c = 0; c < 3; ++c) {
+        int idx = (2 - r) * 3 + c;
+        const PKPanelInfo * pt = nullptr;
+        for (const auto & [id, p_info] : panel_grid_) {
+          if (p_info.row == r && p_info.col == c) {
+            pt = &p_info;
+            break;
+          }
+        }
+        if (!pt) {
+          msg.states[idx] = robot_msgs::msg::TargetGridState::FALLEN;
+          continue;
+        }
+
+        const double dt = (now - pt->last_seen).seconds();
+        const bool is_active = (pt->detected && (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
+
+        if (!is_active) {
+          msg.states[idx] = robot_msgs::msg::TargetGridState::FALLEN;
+        } else if (target_locked_ && idx == selected_index_) {
+          msg.states[idx] = robot_msgs::msg::TargetGridState::TARGET;
+        } else {
+          msg.states[idx] = robot_msgs::msg::TargetGridState::STANDING;
+        }
+      }
+    }
+    return msg;
   }
 
   double heading_error() const {return target_heading_err_;}
