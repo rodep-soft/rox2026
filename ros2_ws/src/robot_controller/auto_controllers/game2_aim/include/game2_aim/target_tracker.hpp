@@ -264,6 +264,20 @@ public:
       double min_heading_err_abs = 1e9;
       for (const auto & [id, panel] : panel_grid_) {
         if (panel.detected) {
+          // 直前（last_shot_retry_sec以内）に射出完了したタグはスキップして次の的へ
+          bool was_last_shot = false;
+          for (int last_id : last_shot_target_tag_ids_) {
+            if (id == last_id) {
+              was_last_shot = true;
+              break;
+            }
+          }
+          if (was_last_shot && last_shot_time_.nanoseconds() > 0 &&
+            (now - last_shot_time_).seconds() < config_.last_shot_retry_sec)
+          {
+            continue;
+          }
+
           const double heading_err = std::atan2(panel.y, panel.x);
           if (std::abs(heading_err) < min_heading_err_abs) {
             min_heading_err_abs = std::abs(heading_err);

@@ -54,6 +54,10 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/dribble/shot_cycle_request", cmd_qos,
     std::bind(&Game2AimNode::shot_cycle_req_callback, this, std::placeholders::_1));
 
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
+    "/joy", cmd_qos,
+    std::bind(&Game2AimNode::joy_callback, this, std::placeholders::_1));
+
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", cmd_qos);
@@ -113,6 +117,16 @@ void Game2AimNode::load_parameters()
   test_alignment_only_ = declare_parameter<bool>("test_alignment_only", false);
   test_panel_state_display_ = declare_parameter<bool>("test_panel_state_display", true);
   shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 5.0);
+
+  circle_button_ = declare_parameter<int>("circle_button", 2);
+  left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
+  axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.5);
+
+  RCLCPP_INFO(
+    get_logger(),
+    "⚙️ Mode configuration: test_alignment_only = %s",
+    test_alignment_only_ ? "TRUE (Alignment test only: circle single-press simulated shot, no belt/actuator)" :
+    "FALSE (Full auto shooter mode)");
 
   min_detection_frames_ = declare_parameter<int>("min_detection_frames", 2);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
@@ -199,6 +213,12 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       test_panel_state_display_ = param.as_bool();
     } else if (name == "shot_fallback_timeout") {
       shot_fallback_timeout_ = param.as_double();
+    } else if (name == "circle_button") {
+      circle_button_ = param.as_int();
+    } else if (name == "left_trigger_axis") {
+      left_trigger_axis_ = param.as_int();
+    } else if (name == "axis_on_threshold") {
+      axis_on_threshold_ = param.as_double();
     } else if (name == "min_detection_frames") {
       min_detection_frames_ = param.as_int();
       tracker_cfg.min_detection_frames = min_detection_frames_;
@@ -325,6 +345,45 @@ void Game2AimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr 
   }
 }
 
+void Game2AimNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
+{
+  if (!test_alignment_only_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
+    last_joy_msg_ = *msg;
+    return;
+  }
+
+  // ○ ボタンのエッジ検出 (前回OFF -> 今回ON)
+  bool circle_just_pressed = false;
+  if (static_cast<size_t>(circle_button_) < msg->buttons.size()) {
+    const bool current_circle = (msg->buttons[circle_button_] == 1);
+    const bool last_circle = last_joy_msg_.has_value() &&
+      static_cast<size_t>(circle_button_) < last_joy_msg_->buttons.size() &&
+      (last_joy_msg_->buttons[circle_button_] == 1);
+    circle_just_pressed = current_circle && !last_circle;
+  }
+
+  // L2 トリガーの押下判定 (L2非押下時のみ単押しとして扱う)
+  bool is_l2_active = false;
+  if (static_cast<size_t>(left_trigger_axis_) < msg->axes.size()) {
+    is_l2_active = (msg->axes[left_trigger_axis_] <= -axis_on_threshold_);
+  }
+
+  last_joy_msg_ = *msg;
+
+  // L2非押下での ○ ボタン単押し（テスト用擬似射出トリガー）
+  if (circle_just_pressed && !is_l2_active) {
+    if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+      state_ == robot_msgs::msg::Game2State::ALIGNING)
+    {
+      test_shot_timer_active_ = true;
+      test_shot_start_time_ = now();
+      RCLCPP_INFO(
+        get_logger(),
+        "🎯 [Game2 TEST MODE] Circle button single-pressed! Starting 5.0s simulated shot sequence (No hardware actuation)");
+    }
+  }
+}
+
 void Game2AimNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   imu_received_ = true;
@@ -375,6 +434,7 @@ void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
   {
     tracker_.clear_target();
     shot_requested_ = false;
+    test_shot_timer_active_ = false;
   }
 
   state_ = new_state;
@@ -417,6 +477,24 @@ void Game2AimNode::control_loop()
     state_msg.state = state_;
     state_pub_->publish(state_msg);
     return;
+  }
+
+  // テストモード時の擬似射出タイマー判定（○単押しから5.0秒後に射出完了としSEARCHINGへ）
+  if (test_alignment_only_ && test_shot_timer_active_) {
+    const double elapsed = (current_time - test_shot_start_time_).seconds();
+    if (elapsed >= 5.0) {
+      test_shot_timer_active_ = false;
+      last_shot_completed_time_ = current_time;
+      tracker_.mark_active_target_shot(last_shot_completed_time_);
+      transition_to(
+        robot_msgs::msg::Game2State::SEARCHING,
+        "[TEST MODE] 5.0s simulated shot completed. Transitioning to SEARCHING for next target");
+    } else {
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "⏳ [Game2 TEST MODE] Simulated shot in progress (%.1fs / 5.0s)...",
+        elapsed);
+    }
   }
 
   // 保険タイマー: 射出ボタン押下から一定時間経過しても完了ステートが来ない場合のフォールバック
