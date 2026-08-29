@@ -508,9 +508,9 @@ void PKAimNode::control_loop()
 
   switch (state_) {
     case robot_msgs::msg::Game2State::STANDBY:
-      cmd.angular.z = 0.0;
-      last_cmd_wz_ = 0.0;
-      break;
+        cmd.angular.z = 0.0;
+        last_cmd_wz_ = 0.0;
+        break;
 
     case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
@@ -519,6 +519,11 @@ void PKAimNode::control_loop()
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Target panel locked -> Aligning to selected target");
+        } else {
+          RCLCPP_INFO_THROTTLE(
+            get_logger(), *get_clock(), 1000,
+            "🔍 [PK State: SEARCHING] Target Idx %d (%s) not found in vision. Waiting...",
+            tracker_.selected_index(), tracker_.get_selected_panel().name.c_str());
         }
         break;
       }
@@ -549,7 +554,7 @@ void PKAimNode::control_loop()
           } else {
             RCLCPP_INFO_THROTTLE(
               get_logger(), *get_clock(), 500,
-              "🎯 [PK ALIGNED | %s] Ready! Press Circle button to confirm & spin belt",
+              "🎯 [PK State: ALIGNED | %s] Ready! Press Circle button to confirm & spin belt",
               tracker_.target_description().c_str());
           }
         } else {
@@ -579,7 +584,7 @@ void PKAimNode::control_loop()
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "🎯 [PK ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s%s",
+            "🎯 [PK State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s%s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
             cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING",
@@ -618,7 +623,7 @@ void PKAimNode::control_loop()
         } else {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 500,
-            "🚀 [PK PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot (L2+Circle)",
+            "🚀 [PK State: PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot (L2+Circle)",
             tracker_.target_description().c_str(), current_belt_mode);
         }
         break;
