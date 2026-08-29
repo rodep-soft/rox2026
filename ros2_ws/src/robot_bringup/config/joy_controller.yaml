@@ -9,6 +9,8 @@
     # L2とR2の同時押しでspring発射、L2+○で自動シュートを要求する
     left_trigger_axis: 3
     right_trigger_axis: 4
+    # false: L2 + R2で従来どおりSpring発射
+    trigger_chord_requests_shot_cycle: false
     circle_button: 2
     square_button: 0        # R2 + □でアームをHOME（ボトム側）へ切替
     spring_arm_open_delay_ms: 150     # [ms] 発射入力後、アームをOPENへ動かし始めるまでの待機時間

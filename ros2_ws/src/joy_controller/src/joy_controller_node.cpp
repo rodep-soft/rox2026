@@ -43,6 +43,8 @@ JoyControllerNode::JoyControllerNode()
     declare_parameter<int>("heading_hold_toggle_button", 8);
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
   slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
+  trigger_chord_requests_shot_cycle_ =
+    declare_parameter<bool>("trigger_chord_requests_shot_cycle", false);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
   spring_arm_open_delay_ms_ =
@@ -269,6 +271,10 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       } else if (name == "slow_linear_scale" || name == "slow_linear_ratio") {
         slow_linear_scale_ = val;
       }
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL &&
+      name == "trigger_chord_requests_shot_cycle")
+    {
+      trigger_chord_requests_shot_cycle_ = param.as_bool();
     }
   }
 
@@ -416,9 +422,27 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. L2とR2の同時押しでスプリング発射を要求
+  // 8. L2とR2の同時押しで設定された発射方式を要求
   const auto now_tp = std::chrono::steady_clock::now();
-  const bool spring_fire_input = is_l2_active && is_r2_active;
+  const bool trigger_chord_active = is_l2_active && is_r2_active;
+  const bool was_l2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool trigger_chord_just_pressed =
+    trigger_chord_active && !(was_l2_active && was_r2_active);
+
+  if (trigger_chord_requests_shot_cycle_ && trigger_chord_just_pressed) {
+    std_msgs::msg::Bool request;
+    request.data = true;
+    shot_cycle_request_pub_->publish(request);
+    RCLCPP_INFO(get_logger(), "Shot cycle requested by L2 + R2");
+  }
+
+  const bool spring_fire_input =
+    trigger_chord_active && !trigger_chord_requests_shot_cycle_;
   const bool spring_fire_requested = spring_fire_input && spring_actuator_ready_;
 
   // 初回だけアームOPENの遅延シーケンスを開始する。

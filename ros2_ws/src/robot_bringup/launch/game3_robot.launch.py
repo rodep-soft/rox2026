@@ -75,7 +75,6 @@ def generate_launch_description():
         "controllers/spring_controller.launch.py",
         "controllers/mecanum_controller.launch.py",
         "controllers/led_controller.launch.py",
-        "input/joy_controller.launch.py",
     ]
 
     return LaunchDescription(
@@ -146,6 +145,10 @@ def generate_launch_description():
             game1_shooter_launch,
             game2_shooter_launch,
             ekf_launch,
+            include(
+                "input/joy_controller.launch.py",
+                launch_arguments={"config_file": "game3_joy_controller.yaml"}.items(),
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(launch_dir, "foxglove_bridge.launch.py")
