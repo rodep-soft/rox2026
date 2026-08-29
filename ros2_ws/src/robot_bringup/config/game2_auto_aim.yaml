@@ -18,15 +18,15 @@
     camera_cy: 540.0        # [px] 光学主点Y
 
     # ── 🎯 旋回制御パラメータ (PD + Slew Rate + Damping) ──
-    kp_yaw: 1.8             # 比例ゲイン (視覚誤差)
+    kp_yaw: 1.2             # 比例ゲイン (マイルド化でオーバーシュート防止)
     yaw_command_sign: -1.0  # 機体のangular.z符号に合わせる（実機ログで確認済み）
-    kd_yaw: 0.18            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング)
-    min_angular_z: 0.08     # [rad/s] 静止摩擦補償最小角速度 (オーバーシュート抑制)
-    max_angular_z: 0.40     # [rad/s] 最大旋回角速度 (カメラブレ防止: 約23 deg/s)
-    max_angular_accel: 2.5  # [rad/s^2] 旋回加減速度リミッター (スリップ・ブレ防止)
-    yaw_tolerance: 0.008    # [rad] 角度誤差許容値 (約0.46度に極小化・超高精度ピタ止め)
+    kd_yaw: 0.25            # 微分/制動ゲイン (IMU gyro_z角速度ダンピング強化)
+    min_angular_z: 0.03     # [rad/s] 静止摩擦補償最小角速度 (ハンチング防止のため低減)
+    max_angular_z: 0.25     # [rad/s] 最大旋回角速度 (約14 deg/s: カメラブレ防止)
+    max_angular_accel: 2.0  # [rad/s^2] 旋回加減速度リミッター (スリップ・ブレ防止)
+    yaw_tolerance: 0.015    # [rad] 角度誤差許容値 (約0.86度: スムーズな即座停止)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
-    aim_yaw_offset_deg: 0.0 # [deg] 射出方向の左右照準オフセット (0.0: 真の計算幾何角度で狙う)
+    aim_yaw_offset_deg: 2.0 # [deg] 射出方向の左右照準オフセット (+2.0度左向き補正で右寄りを相殺)
 
     # ── 🧪 テストモード切替 ──
     # true: ドリブル・ベルトを動かさず、車体の角度合わせ（旋回）だけをテスト

@@ -159,7 +159,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "framerate",
-            default_value="5.0",
+            default_value="10.0",
             description="Camera and AprilTag input rate",
         ),
         DeclareLaunchArgument(
@@ -169,12 +169,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "roi_width",
-            default_value="1280",
+            default_value="800",
             description="Centered AprilTag detection width; 0 uses the full image",
         ),
         DeclareLaunchArgument(
             "roi_height",
-            default_value="720",
+            default_value="480",
             description="Centered AprilTag detection height; 0 uses the full image",
         ),
         DeclareLaunchArgument(
