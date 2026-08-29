@@ -154,14 +154,18 @@ public:
       // ── 📐 アスペクト比 (縦幅 / 横幅) の算出 ──
       double aspect_ratio = 1.0;
       if (det.corners.size() >= 4) {
-        const double w1 = std::hypot(det.corners[1].x - det.corners[0].x,
-            det.corners[1].y - det.corners[0].y);
-        const double w2 = std::hypot(det.corners[2].x - det.corners[3].x,
-            det.corners[2].y - det.corners[3].y);
-        const double h1 = std::hypot(det.corners[3].x - det.corners[0].x,
-            det.corners[3].y - det.corners[0].y);
-        const double h2 = std::hypot(det.corners[2].x - det.corners[1].x,
-            det.corners[2].y - det.corners[1].y);
+        const double w1 = std::hypot(
+          det.corners[1].x - det.corners[0].x,
+          det.corners[1].y - det.corners[0].y);
+        const double w2 = std::hypot(
+          det.corners[2].x - det.corners[3].x,
+          det.corners[2].y - det.corners[3].y);
+        const double h1 = std::hypot(
+          det.corners[3].x - det.corners[0].x,
+          det.corners[3].y - det.corners[0].y);
+        const double h2 = std::hypot(
+          det.corners[2].x - det.corners[1].x,
+          det.corners[2].y - det.corners[1].y);
         const double w_avg = (w1 + w2) * 0.5;
         const double h_avg = (h1 + h2) * 0.5;
         if (w_avg > 1.0) {
@@ -230,7 +234,8 @@ public:
 
       // 初回直立時の基準高さを記憶
       if (!panel.has_initial_z && tilt_deg < config_.max_standing_tilt_deg &&
-        aspect_ratio >= config_.min_standing_aspect_ratio) {
+        aspect_ratio >= config_.min_standing_aspect_ratio)
+      {
         panel.initial_standing_z = panel.z;
         panel.has_initial_z = true;
       }
@@ -287,9 +292,11 @@ public:
           target_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
           target_tag_offset_x_ = 0.0;
           target_tag_offset_y_ = 0.0;
-          target_heading_err_ = std::remainder(std::atan2(target_y_,
+          target_heading_err_ = std::remainder(
+            std::atan2(
+              target_y_,
               target_x_) + config_.aim_yaw_offset_rad,
-              2.0 * M_PI);
+            2.0 * M_PI);
           last_visually_confirmed_time_ = now;
 
           RCLCPP_INFO(
@@ -337,7 +344,8 @@ public:
 
         for (const auto & [id, panel] : panel_grid_) {
           if (panel.row == row) {
-            if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {p1 = &panel;
+            if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {
+              p1 = &panel;
             } else if (panel.col == 2) {p2 = &panel;}
           }
         }
@@ -355,7 +363,8 @@ public:
         if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
           match = true;
         } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
-          is_tag_active(p2)) {
+          is_tag_active(p2))
+        {
           match = true;
         } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
           match = true;
@@ -391,9 +400,11 @@ public:
                 (1.0 - r);
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_,
+              target_heading_err_ = std::remainder(
+                std::atan2(
+                  target_y_,
                   target_x_) + config_.aim_yaw_offset_rad,
-                  2.0 * M_PI);
+                2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
@@ -412,9 +423,11 @@ public:
                 (1.0 - r);
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_,
+              target_heading_err_ = std::remainder(
+                std::atan2(
+                  target_y_,
                   target_x_) + config_.aim_yaw_offset_rad,
-                  2.0 * M_PI);
+                2.0 * M_PI);
               RCLCPP_INFO(
                 logger,
                 "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
@@ -433,9 +446,11 @@ public:
               target_yaw_at_detection_ = p->yaw_at_detection;
               target_tag_offset_x_ = 0.0;
               target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(std::atan2(target_y_,
+              target_heading_err_ = std::remainder(
+                std::atan2(
+                  target_y_,
                   target_x_) + config_.aim_yaw_offset_rad,
-                  2.0 * M_PI);
+                2.0 * M_PI);
             }
 
             // 全グリッド認識状況のサマリー文字列を構築
@@ -459,7 +474,7 @@ public:
                   status_ss << " #" << pt->tag_id << "(立)";
                 } else {
                   status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) <<
-                      pt->tilt_deg << "°)";
+                    pt->tilt_deg << "°)";
                 }
               }
               status_ss << "] ";
@@ -539,8 +554,9 @@ public:
     // IMUオドメトリ姿勢補間（デッドレコニング）
     const double raw_heading_err = std::atan2(target_y_, target_x_);
     const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(raw_heading_err - rotated + config_.aim_yaw_offset_rad,
-        2.0 * M_PI);
+    target_heading_err_ = std::remainder(
+      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
+      2.0 * M_PI);
   }
 
   bool has_locked_target() const {return target_locked_;}
