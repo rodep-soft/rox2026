@@ -333,6 +333,8 @@ public:
         target_z_ = panel.z;
         target_yaw_at_detection_ = panel.yaw_at_detection;
         visual_found = true;
+      }
+    }
 
     if (visual_found) {
       last_visually_confirmed_time_ = now;
