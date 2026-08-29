@@ -1,18 +1,18 @@
 /heading_hold_node:
   ros__parameters:
     # IMU ジャイロ補正のPID
-    kp: 5.5
+    kp: 2.5
     ki: 0.0
-    kd: 0.12
+    kd: 0.09
     integral_limit: 0.5
 
     heading_deadband_rad: 0.01
     rotation_input_deadband_rad_s: 0.01
     max_correction_rad_s: 15.0
     # 並進速度に応じてP/D補正を滑らかに強める
-    speed_boost_start_m_s: 2.6
+    speed_boost_start_m_s: 0.8
     speed_boost_full_m_s: 4.0
-    speed_boost_multiplier: 5.0
+    speed_boost_multiplier: 3.0
 
     # 急加減速・方向反転時は速度が低くてもP/D補正を強める
     acceleration_boost_start_m_s2: 4.5
@@ -32,6 +32,8 @@
     robot_length: 0.355
     robot_width: 0.353
     max_wheel_velocity_rad_s: 50.0
+    # この範囲内では補正量が変化しても並進速度を変えない
+    reserved_correction_rad_s: 1.0
 
     rotation_settle_velocity_rad_s: 0.08
     rotation_settle_duration_ms: 200
