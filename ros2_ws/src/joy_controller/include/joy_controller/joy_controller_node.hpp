@@ -79,6 +79,7 @@ private:
   int heading_hold_toggle_button_{8};
   int slow_turn_button_{7};
   int slow_fire_button_{4};
+  bool trigger_chord_requests_shot_cycle_{false};
   double slow_turn_scale_{0.5};
   double slow_linear_scale_{0.5};
   int left_trigger_axis_{3};

@@ -121,6 +121,7 @@ SpringはL2とR2を押している間、毎周期trueを送る。受信側はREA
 | `joy_timeout_ms` | `int` | Joy入力断でSTOPへ移るまでの時間[ms] |
 | `state_publish_period_ms` | int | emergency stop、belt mode、dribbler enabledの再送周期[ms] |
 | `dribble_enable_button` | int | dribble ON/OFFのbutton index |
+| `trigger_chord_requests_shot_cycle` | bool | `false`ならL2+R2でSpring発射、`true`ならShot Cycleを1回要求 |
 | `axis_deadzone` | double | stick中心を0とする範囲。`[0, 1]`、不正時0.05 |
 | `axis_on_threshold` | double | trigger・DPADをONとみなす閾値。`(0, 1]`、不正時0.7 |
 | `linear_x_limit` | double | スティック全倒し時の最大前後速度[m/s] |
@@ -153,6 +154,10 @@ ros2 param load /joy_controller \
 button・axis indexもすべてparameterである。対応表を変更する場合は
 `sensor_msgs/msg/Joy`の実データを確認し、README先頭の配置表と
 `robot_bringup/config/joy_controller.yaml`を同時に更新する。
+
+Game3は`game3_joy_controller.yaml`でL2+R2をShot Cycleへ割り当てる。
+両トリガーを押し続けても連射せず、一度離して再度押すと次の
+Shot Cycleを要求する。`slow_fire_button: -1`によりSpring slow fireも無効にする。
 
 ### belt mode
 

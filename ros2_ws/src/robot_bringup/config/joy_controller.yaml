@@ -9,6 +9,8 @@
     # L2とR2の同時押しでspring発射、L2+○で自動シュートを要求する
     left_trigger_axis: 3
     right_trigger_axis: 4
+    # false: L2 + R2で従来どおりSpring発射
+    trigger_chord_requests_shot_cycle: false
     circle_button: 2
     cross_button: 1         # ×でbelt RPMオフセットを1段下げる（下限-3段）
     triangle_button: 3      # △でbelt RPMオフセットを1段上げる（上限+3段）
@@ -55,11 +57,11 @@
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 9.0
-    linear_y_acceleration_limit: 4.5
+    linear_x_acceleration_limit: 6.5
+    linear_y_acceleration_limit: 4.2
     angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 9.3
-    linear_y_deceleration_limit: 7.5
+    linear_x_deceleration_limit: 7.3
+    linear_y_deceleration_limit: 6.5
     angular_z_deceleration_limit: 15.0

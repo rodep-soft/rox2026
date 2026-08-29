@@ -245,10 +245,13 @@ private:
     const bool rotating_in_target_direction = desired_rpm * measured_rpm > 0.0;
     const bool rpm_control_start_reached = rotating_in_target_direction &&
       std::abs(measured_rpm) >= rpm_control_start_rpm;
+    const bool direct_rpm_control = motor.config.rpm_control_threshold_rpm <= 0.0;
 
-    if (!motor.rpm_control_active && motor.feedback_received && rpm_control_start_reached) {
+    if (!motor.rpm_control_active &&
+      (direct_rpm_control || (motor.feedback_received && rpm_control_start_reached)))
+    {
       motor.rpm_control_active = true;
-      motor.rpm_command = measured_rpm;
+      motor.rpm_command = direct_rpm_control ? 0.0 : measured_rpm;
     }
 
     // モーターが停止している場合は、まずは電流制御で回転させる

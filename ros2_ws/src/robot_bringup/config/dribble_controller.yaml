@@ -8,7 +8,7 @@
     home_position_rad: 0.2        # R2 + DPAD右で切替えるホーム姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.95        # FEED姿勢(発射機構に押し込む姿勢)
-    slow_fire_dribble_position_rad: -1.35
+    slow_fire_dribble_position_rad: -1.41
     
     # [s] 自動シュートサイクルのタイミング
     belt_shot_delay_sec: 1.0         # ベルト停止時、自動起動からFEED開始までの待機時間[s]
@@ -50,10 +50,12 @@
     cmd_vel_acc_lpf_alpha: 0.2                # 加速度のローバスフィルタ係数
     enable_motion_compensation: true          # 運動補正の有効化
 
+    forward_velocity_reduction_rpm_per_mps: 50.0 # 1 m/sの前進速度あたりに減算するrpm
     backward_velocity_boost_rpm_per_mps: 100.0 # 1 rad/s の後退時に速度に応じて変化させるrpm
     backward_acc_rpm_per_mps2: 30.0            # 1 rad/s^2の加速度に応じて変化させるrpm
     turning_boost_rpm_per_rad_s: 30.0           # 旋回速度1 rad/sあたりに加算するrpm
-    max_boost_rpm: 250                         # 変化させる最大回転量
+    max_boost_rpm: 250                         # 加算する最大回転量
+    max_reduction_rpm: 100                     # 前進時に減算する最大回転量
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
     roller_logical_id: 12   # ROS2上の認識ID(ドリブルローラー)

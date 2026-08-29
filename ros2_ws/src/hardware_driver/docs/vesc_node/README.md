@@ -41,5 +41,7 @@ CAN受信購読にはContent Filterを適用し、設定されたVESCのStatus 1
 電流制御を行う。回転方向が指令と一致し、実回転数が
 `rpm_control_threshold_rpm`に達するとRPM制御へ移行する。目標RPMが閾値より低い場合は、
 目標RPMを移行判定値として使用する。時間経過だけではRPM制御へ移行しない。
+`rpm_control_threshold_rpm`が0以下の場合は始動電流制御を使用せず、停止状態から
+直接RPM制御を行う。
 
 現在の割り当てはupper beltがlogical ID 10、under beltが11、dribbleが12である。
