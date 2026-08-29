@@ -29,13 +29,13 @@
 #endif
 
 /* Independent SK6812/WS2812-compatible RGB strips (NEO_GRB, 800 kHz). */
-#define PB4_LED_NUM 45U
+#define PB4_LED_NUM 48U
 #define PB5_LED_NUM 38U
 
 /* Compatibility names retained so the existing animation code is unchanged. */
 #define PA6_LED_NUM PB4_LED_NUM
 #define PA7_LED_NUM PB5_LED_NUM
-#define PA2_LED_NUM 9U /* maps to PB4[44..36], root to front */
+#define PA2_LED_NUM 9U /* maps to the original PB4[44..36], root to front */
 
 /* Existing setPixel()/setPixelPA7() calls now address the PB5 chassis strip. */
 #define LED_NUM PA7_LED_NUM
