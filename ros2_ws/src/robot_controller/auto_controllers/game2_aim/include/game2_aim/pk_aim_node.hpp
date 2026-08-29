@@ -121,6 +121,7 @@ private:
   rclcpp::Time last_imu_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time state_entry_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_shot_req_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
 
   PKTargetTracker tracker_;

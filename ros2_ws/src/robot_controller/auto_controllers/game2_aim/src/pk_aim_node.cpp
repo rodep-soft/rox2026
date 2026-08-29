@@ -59,17 +59,21 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/mode", 10);
-  state_pub_ = create_publisher<robot_msgs::msg::Game2State>("/pk/state", 10);
-  completed_pub_ = create_publisher<std_msgs::msg::Bool>("/pk/completed", 10);
+  state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
+    "/pk/state", rclcpp::QoS(1).reliable().transient_local());
+  completed_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/pk/completed", rclcpp::QoS(1).reliable().transient_local());
   target_index_pub_ = create_publisher<std_msgs::msg::Int32>("/target_index", 10);
   target_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/target_indices", 10);
   fallen_indices_pub_ = create_publisher<std_msgs::msg::Int32MultiArray>("/fallen_indices", 10);
   target_tag_id_pub_ = create_publisher<std_msgs::msg::Int32>("/pk/target_tag_id", 10);
 
-  // Timer (50 Hz Control Loop)
+  // Timer (20 Hz Control Loop = 50ms)
   timer_ = create_wall_timer(
-    std::chrono::milliseconds(20),
+    std::chrono::milliseconds(50),
     std::bind(&PKAimNode::control_loop, this));
+
+  last_loop_time_ = now();
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(&PKAimNode::parameter_callback, this, std::placeholders::_1));
@@ -210,15 +214,15 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
   if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
     state_ == robot_msgs::msg::Game2State::ALIGNING)
   {
-    // ボール射出完了（FEEDING -> RETURNING）または サイクル終了（-> IDLE）でSTANDBYへ移行
+    // ボール射出完了（FEEDING -> RETURNING）または サイクル終了（-> IDLE）でSEARCHING（的選択モード）へ復帰
     if ((current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING) ||
       (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
     {
       transition_to(
-        robot_msgs::msg::Game2State::STANDBY,
-        "Shot completed (ejected). Returned to STANDBY for next target selection");
+        robot_msgs::msg::Game2State::SEARCHING,
+        "Shot completed (ejected). Returned to SEARCHING for next target selection");
       tracker_.reset();
     }
   }
@@ -237,17 +241,25 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data) {
     if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+      // 1. ノード起動後 OPTIONS 1回目押下 -> SEARCHING (的選択モード開始)
+      transition_to(
+        robot_msgs::msg::Game2State::SEARCHING,
+        "PK Selection Mode Activated (OPTIONS pressed)");
+      publish_target_index();
+    } else if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
+      // 2. 的選択後 OPTIONS 2回目押下 (決定) -> ALIGNING (自動旋回開始)
       if (tracker_.lock_selected_target(now(), get_logger())) {
         transition_to(
           robot_msgs::msg::Game2State::ALIGNING,
-          "PK Start command received (Target locked)");
+          "PK Target Confirmed: Aligning to selected target");
       }
     }
   } else {
+    // スティック入力や解除操作
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {
       transition_to(
         robot_msgs::msg::Game2State::STANDBY,
-        "PK Stop command received (Cancelled)");
+        "PK Cancel command received -> Returned to STANDBY");
       tracker_.reset();
     }
   }
@@ -255,7 +267,8 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 
 void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
 {
-  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+  // SEARCHING (的選択モード) の時のみ的を変更可能
+  if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
     int idx = tracker_.select_next();
     const auto & p = tracker_.get_selected_panel();
     RCLCPP_INFO(
@@ -268,7 +281,8 @@ void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
 
 void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
 {
-  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+  // SEARCHING (的選択モード) の時のみ的を変更可能
+  if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
     int idx = tracker_.select_prev();
     const auto & p = tracker_.get_selected_panel();
     RCLCPP_INFO(
@@ -353,13 +367,17 @@ void PKAimNode::control_loop()
   }
 
   const auto current_time = now();
-  const double dt = 0.02;
+  double dt = (current_time - last_loop_time_).seconds();
+  if (dt <= 0.001 || dt > 0.2) {
+    dt = 0.05;
+  }
+  last_loop_time_ = current_time;
 
   // 定期的に選択中インデックスをパブリッシュ
   publish_target_index();
 
-  // 9マス起立診断表示 (STANDBY 中に0.5秒おきに出力)
-  if (test_panel_state_display_ && state_ == robot_msgs::msg::Game2State::STANDBY) {
+  // 9マス起立診断表示 (SEARCHING 中に0.5秒おきに出力)
+  if (test_panel_state_display_ && (state_ == robot_msgs::msg::Game2State::SEARCHING || state_ == robot_msgs::msg::Game2State::STANDBY)) {
     const auto & grid = tracker_.panel_grid();
     int sel_idx = tracker_.selected_index();
 
@@ -381,12 +399,14 @@ void PKAimNode::control_loop()
 
     RCLCPP_INFO_THROTTLE(
       get_logger(), *get_clock(), 500,
-      "\n═══════════════ 🎯 PK 9マス起立・選択モニター ═══════════════\n"
+      "\n═══════════════ 🎯 PK 9マス起立・選択モニター [%s] ═══════════════\n"
       " [上段 L3] │ %s │ %s │ %s │\n"
       " [中段 L2] │ %s │ %s │ %s │\n"
       " [下段 L1] │ %s │ %s │ %s │\n"
       " 選択中: [Idx %d] %s (Tag #%d) | 👉 = 選択中\n"
-      "════════════════════════════════════════════════════════",
+      " 操作: 十字キー左右で的変更 / OPTIONSで確定・照準開始\n"
+      "══════════════════════════════════════════════════════════════════════",
+      (state_ == robot_msgs::msg::Game2State::SEARCHING ? "的選択モード (ACTIVE)" : "STANDBY"),
       format_cell(14, 0).c_str(), format_cell(15, 1).c_str(), format_cell(16, 2).c_str(),
       format_cell(17, 3).c_str(), format_cell(18, 4).c_str(), format_cell(19, 5).c_str(),
       format_cell(20, 6).c_str(), format_cell(21, 7).c_str(), format_cell(22, 8).c_str(),
@@ -394,7 +414,8 @@ void PKAimNode::control_loop()
   }
 
   switch (state_) {
-    case robot_msgs::msg::Game2State::STANDBY: {
+    case robot_msgs::msg::Game2State::STANDBY:
+    case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
         last_cmd_wz_ = 0.0;
         current_belt_mode = robot_msgs::msg::BeltMode::STOP;
@@ -405,7 +426,7 @@ void PKAimNode::control_loop()
         tracker_.update_tracking(yaw_, current_time);
 
         if (!tracker_.is_target_locked()) {
-          transition_to(robot_msgs::msg::Game2State::STANDBY, "Target lost in ALIGNING");
+          transition_to(robot_msgs::msg::Game2State::SEARCHING, "Target lost in ALIGNING -> Return to Selection");
           break;
         }
 
@@ -490,8 +511,8 @@ void PKAimNode::publish_all(
   uint8_t belt_mode,
   bool completed)
 {
-  // STANDBY 状態のときは手動走行（joy_controller）と衝突しないよう cmd_vel をパブリッシュしない
-  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+  // STANDBY および SEARCHING (的選択中) 状態のときは手動走行（joy_controller）と衝突しないよう cmd_vel をパブリッシュしない
+  if (state_ != robot_msgs::msg::Game2State::STANDBY && state_ != robot_msgs::msg::Game2State::SEARCHING) {
     cmd_vel_pub_->publish(cmd_vel);
   }
 

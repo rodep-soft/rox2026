@@ -107,8 +107,8 @@ private:
   double min_standing_aspect_ratio_{0.80}; // 倒れ判定最小アスペクト比
   double max_standing_tilt_deg_{20.0};     // [deg] 倒れ判定最大傾き角
   double max_standing_height_drop_{0.07};  // [m] 倒れ判定最大落下量 (7cm以上落下で倒れ)
-  double post_shot_delay_sec_{0.8};        // [s] 射出完了から次探索までの着弾・倒れ待ち時間
-  double shot_target_cooldown_sec_{2.0};   // [s] 直前に撃った的の再照準禁止クールダウン
+  double post_shot_delay_sec_{0.0};        // [s] 射出完了から次探索までの待機時間 (0秒で即座に次へ)
+  double last_shot_retry_sec_{3.0};        // [s] 前回狙った的のスキップ時間 (3秒経っても起きていれば再許可)
   double midpoint_blend_ratio_{0.65};      // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
 
   // ── ターゲット追従・認識エンジン ──

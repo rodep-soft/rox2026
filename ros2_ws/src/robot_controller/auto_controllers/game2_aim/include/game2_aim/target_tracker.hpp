@@ -67,7 +67,7 @@ public:
     double min_standing_aspect_ratio{0.80};
     double max_standing_tilt_deg{15.0};    // [deg] 倒れ判定最大傾き角 (15度以上傾いたら即座に倒れ)
     double max_standing_height_drop{0.07}; // [m] 倒れ判定の高さ落下量 (7cm以上落下で倒れ)
-    double shot_target_cooldown_sec{2.0};
+    double last_shot_retry_sec{3.0};       // [s] 前回狙った的のスキップ期間 (3秒経っても起きていれば再許可)
     double midpoint_blend_ratio{0.65}; // 端列(Col 0/2)へのシフト比率 (0.5: 真ん中, 0.65: 端寄り)
   };
 
@@ -353,7 +353,26 @@ public:
         auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
             if (!p) {return false;}
             if (!p->detected || !p->is_standing) {return false;}
-            if (now < p->shot_cooldown_until) {return false;}
+
+            // 前回狙った的の場合の除外・復活判定
+            bool was_last_shot = false;
+            for (int id : last_shot_target_tag_ids_) {
+              if (p->tag_id == id) {
+                was_last_shot = true;
+                break;
+              }
+            }
+
+            if (was_last_shot) {
+              // 3秒未満であれば今回はスキップ（狙わない）
+              if (last_shot_time_.nanoseconds() > 0 &&
+                (now - last_shot_time_).seconds() < config_.last_shot_retry_sec)
+              {
+                return false;
+              }
+              // 3秒以上経過して依然として立っていれば再び狙う対象として許可！
+            }
+
             return true;
           };
 
@@ -634,14 +653,9 @@ public:
 
   void mark_active_target_shot(const rclcpp::Time & now)
   {
-    for (int tag_id : current_target_tag_ids_) {
-      auto it = panel_grid_.find(tag_id);
-      if (it != panel_grid_.end()) {
-        it->second.shot_cooldown_until = now + rclcpp::Duration::from_seconds(
-          config_.shot_target_cooldown_sec);
-        it->second.detected = false;
-      }
-    }
+    last_shot_target_tag_ids_ = current_target_tag_ids_;
+    last_shot_time_ = now;
+    clear_target();
   }
 
   static int tag_to_index(int row, int col)
@@ -697,7 +711,6 @@ public:
         }
         const double dt = (now - pt->last_seen).seconds();
         const bool is_active = (pt->detected && pt->is_standing &&
-          (now >= pt->shot_cooldown_until) &&
           (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
         if (!is_active) {
           fallen.push_back(idx);
@@ -723,7 +736,6 @@ public:
         if (!pt) continue;
         const double dt = (now - pt->last_seen).seconds();
         const bool is_active = (pt->detected && pt->is_standing &&
-          (now >= pt->shot_cooldown_until) &&
           (pt->last_seen.nanoseconds() > 0 && dt <= config_.tag_lost_timeout));
         if (is_active) {
           standing.push_back(tag_to_index(r, c));
@@ -815,6 +827,9 @@ private:
   rclcpp::Time last_visually_confirmed_time_{0, 0, RCL_ROS_TIME};
   int candidate_pattern_key_{-1};
   int consecutive_detection_count_{0};
+
+  std::vector<int> last_shot_target_tag_ids_;
+  rclcpp::Time last_shot_time_{0, 0, RCL_ROS_TIME};
 };
 
 }  // namespace robot_controller
