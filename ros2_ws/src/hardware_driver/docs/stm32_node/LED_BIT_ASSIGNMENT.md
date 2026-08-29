@@ -185,8 +185,9 @@ bool drive_reversed = (data[1] & 0x10U) != 0U;
 bool game2_enabled = (data[1] & 0x20U) != 0U;
 ```
 
-`led_controller_node`は`/game2/state`が`STANDBY`または`COMPLETED`以外のときに
-このbitを1にする。
+`led_controller_node`は`/game2/command_start` (`std_msgs/msg/Bool`) の最新値が
+`true`のときにこのbitを1にする。`/game2/state`はGame2の詳細な進行表示を
+`data[0]`で選択するために使用し、自動モードの有効判定には使用しない。
 
 ### 3.5 bit 6～7: ドリブルローラ回転方向
 
