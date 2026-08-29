@@ -44,6 +44,10 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
     "/pk/start", 10,
     std::bind(&PKAimNode::pk_start_callback, this, std::placeholders::_1));
 
+  pk_confirm_sub_ = create_subscription<std_msgs::msg::Empty>(
+    "/pk/confirm", 10,
+    std::bind(&PKAimNode::pk_confirm_callback, this, std::placeholders::_1));
+
   pk_next_sub_ = create_subscription<std_msgs::msg::Empty>(
     "/pk/next", 10,
     std::bind(&PKAimNode::pk_next_callback, this, std::placeholders::_1));
@@ -241,26 +245,31 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data) {
     if (state_ == robot_msgs::msg::Game2State::STANDBY) {
-      // 1. ノード起動後 OPTIONS 1回目押下 -> SEARCHING (的選択モード開始)
+      // OPTIONS 押下: STANDBY -> SEARCHING (的選択モード開始)
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
-        "PK Selection Mode Activated (OPTIONS pressed)");
+        "PK Selection Mode Activated (OPTIONS toggled ON)");
       publish_target_index();
-    } else if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
-      // 2. 的選択後 OPTIONS 2回目押下 (決定) -> ALIGNING (自動旋回開始)
-      if (tracker_.lock_selected_target(now(), get_logger())) {
-        transition_to(
-          robot_msgs::msg::Game2State::ALIGNING,
-          "PK Target Confirmed: Aligning to selected target");
-      }
     }
   } else {
-    // スティック入力や解除操作
+    // OPTIONS トグルOFF または スティック入力による安全解除
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {
       transition_to(
         robot_msgs::msg::Game2State::STANDBY,
-        "PK Cancel command received -> Returned to STANDBY");
+        "PK Auto Mode Disengaged (OPTIONS toggled OFF or stick input) -> Returned to STANDBY");
       tracker_.reset();
+    }
+  }
+}
+
+void PKAimNode::pk_confirm_callback(const std_msgs::msg::Empty::SharedPtr)
+{
+  // SEARCHING (的選択モード) のときに ○ ボタン押下でターゲット決定・自動照準旋回を開始！
+  if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
+    if (tracker_.lock_selected_target(now(), get_logger())) {
+      transition_to(
+        robot_msgs::msg::Game2State::ALIGNING,
+        "PK Target Confirmed (Circle button pressed): Aligning to selected target");
     }
   }
 }
@@ -404,7 +413,7 @@ void PKAimNode::control_loop()
       " [中段 L2] │ %s │ %s │ %s │\n"
       " [下段 L1] │ %s │ %s │ %s │\n"
       " 選択中: [Idx %d] %s (Tag #%d) | 👉 = 選択中\n"
-      " 操作: 十字キー左右で的変更 / OPTIONSで確定・照準開始\n"
+      " 操作: 十字キー左右で的変更 / ○ボタンで決定・照準開始 / L2+○で射出\n"
       "══════════════════════════════════════════════════════════════════════",
       (state_ == robot_msgs::msg::Game2State::SEARCHING ? "的選択モード (ACTIVE)" : "STANDBY"),
       format_cell(14, 0).c_str(), format_cell(15, 1).c_str(), format_cell(16, 2).c_str(),

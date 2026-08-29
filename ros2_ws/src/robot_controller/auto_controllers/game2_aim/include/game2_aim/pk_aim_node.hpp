@@ -45,6 +45,7 @@ private:
 
   // PK 特有コールバック
   void pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void pk_confirm_callback(const std_msgs::msg::Empty::SharedPtr msg);
   void pk_next_callback(const std_msgs::msg::Empty::SharedPtr msg);
   void pk_prev_callback(const std_msgs::msg::Empty::SharedPtr msg);
   void pk_set_target_index_callback(const std_msgs::msg::Int32::SharedPtr msg);
@@ -71,6 +72,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_req_sub_;
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr pk_start_sub_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr pk_confirm_sub_;
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr pk_next_sub_;
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr pk_prev_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr pk_set_target_index_sub_;

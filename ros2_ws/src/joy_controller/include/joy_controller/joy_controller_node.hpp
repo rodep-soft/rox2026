@@ -136,6 +136,7 @@ private:
     arm_position_mode_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr game2_start_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pk_start_pub_;
+  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pk_confirm_pub_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pk_next_pub_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pk_prev_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr heading_control_enable_pub_;

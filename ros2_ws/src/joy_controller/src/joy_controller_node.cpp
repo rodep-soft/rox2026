@@ -143,6 +143,9 @@ JoyControllerNode::JoyControllerNode()
   pk_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/pk/start", request_qos);
 
+  pk_confirm_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/confirm", request_qos);
+
   pk_next_pub_ = create_publisher<std_msgs::msg::Empty>(
     "/pk/next", request_qos);
 
@@ -407,28 +410,37 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 5. 自動シュートサイクル要求 (L2 + ○)
-  if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
-    // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが PREPARING_SHOOT であれば射出許可
-    bool shot_allowed = false;
-    if (!game2_active_ && !pk_active_) {
-      shot_allowed = true;
-    } else if (game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-      pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT)
-    {
-      shot_allowed = true;
-    }
+  // 5. 自動シュートサイクル要求 (L2 + ○) / PKターゲット決定 (○単体)
+  if (is_button_just_pressed(joy_msg_, circle_button_)) {
+    if (is_l2_active) {
+      // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが PREPARING_SHOOT であれば射出許可
+      bool shot_allowed = false;
+      if (!game2_active_ && !pk_active_) {
+        shot_allowed = true;
+      } else if (game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+        pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT)
+      {
+        shot_allowed = true;
+      }
 
-    if (shot_allowed) {
-      RCLCPP_INFO(get_logger(), "Shot cycle requested!");
-      std_msgs::msg::Bool req;
-      req.data = true;
-      shot_cycle_request_pub_->publish(req);
+      if (shot_allowed) {
+        RCLCPP_INFO(get_logger(), "Shot cycle requested! (L2 + Circle)");
+        std_msgs::msg::Bool req;
+        req.data = true;
+        shot_cycle_request_pub_->publish(req);
+      } else {
+        RCLCPP_WARN(
+          get_logger(),
+          "Shot request ignored: Neither Game2 nor PK is in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
+          static_cast<unsigned>(game2_state_), static_cast<unsigned>(pk_state_));
+      }
     } else {
-      RCLCPP_WARN(
-        get_logger(),
-        "Shot request ignored: Neither Game2 nor PK is in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
-        static_cast<unsigned>(game2_state_), static_cast<unsigned>(pk_state_));
+      // L2非押下での ○ ボタン押下 -> PKターゲット決定・照準開始
+      if (pk_active_ || pk_state_ == robot_msgs::msg::Game2State::SEARCHING) {
+        std_msgs::msg::Empty confirm_msg;
+        pk_confirm_pub_->publish(confirm_msg);
+        RCLCPP_INFO(get_logger(), "PK Target CONFIRMED! Aligning started (Circle button)");
+      }
     }
   }
 
