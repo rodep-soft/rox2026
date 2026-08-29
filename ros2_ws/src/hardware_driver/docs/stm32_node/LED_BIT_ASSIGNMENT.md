@@ -41,6 +41,10 @@ CAN data[4] = (ros_value >> 32) & 0xff
 indexはタグIDではなく位置を表す。STM32での推奨色はSTANDING=緑、TARGET=黄、
 FALLEN=消灯、INVALID=紫とする。
 
+Game2有効時も、グリッド表示に割り当てたLED以外は手動モードと同じ通常方向・
+前後反転・ドリブルON/OFF・ベルトレベルの色とアニメーションを維持する。
+Game2固有色は9マスのグリッドLEDにだけ重畳する。
+
 ## 2. data[0]: 主表示モード
 
 `data[0]`はLED全体の基本的な表示方法を指定する。

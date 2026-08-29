@@ -677,16 +677,9 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 		previous_mode = mode;
 	}
 
-	/* An explicit mode 7 is always rendered before any auxiliary state. */
+	/* Game2 modes keep the normal manual animation; only grid LEDs are overlaid. */
 	debug_led_game2_search_active =
 			(mode == LED_MODE_GAME2_SEARCHING) ? 1U : 0U;
-	if (debug_led_game2_search_active != 0U) {
-		LED_RenderGame2Searching(now_ms, status);
-		LED_OverlayGame2Grid(grid_states, now_ms);
-		LED_ApplyImuDisconnectedWarning(now_ms);
-		show();
-		return;
-	}
 
 	switch (mode) {
 	case LED_MODE_STARTUP:
@@ -820,22 +813,15 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 			(mode != LED_MODE_EMERGENCY_STOP) &&
 			(mode != LED_MODE_LOADING) &&
 			(mode != LED_MODE_FIRING) &&
-			(mode != LED_MODE_GAME2_SEARCHING) &&
 			(mode != LED_MODE_ERROR) &&
 			(mode != LED_MODE_SLOW_FIRING) && (mode <= LED_MODE_BELT_SPINUP)) {
 		const bool dribble =
 				(status & LED_STATUS_DRIBBLE_ENABLED) != 0U;
 		const bool reversed =
 				(status & LED_STATUS_DRIVE_REVERSED) != 0U;
-		const bool game2_enabled =
-				(status & LED_STATUS_GAME2_ENABLED) != 0U;
 		const bool roller_reverse =
 				(status & LED_STATUS_ROLLER_REVERSE) != 0U;
-		if (game2_enabled) {
-			/* Game2 SEARCHING always beats reversed Gold and normal Blue. */
-			debug_led_game2_search_active = 1U;
-			LED_RenderGame2Searching(now_ms, status);
-		} else if (reversed) {
+		if (reversed) {
 			if (dribble) {
 				/* Reversed dribbling uses Gold gradients on both chains. */
 				LED_RenderDriveLauncherGradient(now_ms, false, false);
@@ -858,7 +844,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 			}
 		}
 
-		if (!game2_enabled && ((mode == LED_MODE_READY) ||
+		if (((mode == LED_MODE_READY) ||
 				(mode == LED_MODE_ARM_DRIBBLE) ||
 				(mode == LED_MODE_ARM_HOME))) {
 			/* Active belt Emerald overrides the upper reversed Gold display. */
