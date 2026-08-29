@@ -1,0 +1,26 @@
+image_width: 1920
+image_height: 1080
+camera_name: sc230ai_left
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [883.07005,   0.     , 986.41325,
+           0.     , 885.80079, 553.55634,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.262762, 0.045228, 0.000219, -0.000265, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [589.58744,   0.     , 967.58312,   0.     ,
+           0.     , 784.11257, 558.21735,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]

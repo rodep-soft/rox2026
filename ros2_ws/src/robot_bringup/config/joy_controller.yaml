@@ -36,6 +36,8 @@
     ps_button: 12
     # Share/BackボタンでHeading Hold(IMU補正)のON/OFF切替
     heading_hold_toggle_button: 8
+    # OPTIONSボタンでGame 2 自動戦術モードのON/OFF切替 (トグル)
+    game2_start_button: 9
 
     # R2ボタン押下時の低速走行・減速機能 (ボタン番号: 7 (R2))
     # slow_turn_scale: 旋回速度倍率 (0.5で通常の1/2)

@@ -4,7 +4,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    ExecuteProcess,
     IncludeLaunchDescription,
     OpaqueFunction,
 )
@@ -89,16 +88,16 @@ def launch_setup(context, *args, **kwargs):
             output="screen",
             parameters=[
                 {
-                    "video_device_name": "default",
+                    "video_device": "default",
                     "channel": int(mipi_channel),
-                    "channel2": int(mipi_channel2),
-                    "device_mode": "dual",
+                    # "channel2": int(mipi_channel2),
+                    "device_mode": "single",
                     "dual_combine": 1,
-                    "framerate": 10.0,
+                    "framerate": 5.0,
                     "image_width": 1920,
                     "image_height": 1080,
-                    "out_format_name": "nv12",
-                    "io_method_name": "ros",
+                    "out_format": "nv12",
+                    "io_method": "ros",
                     "cal_alpha": 0.0,
                     "gdc_enable": True,
                     "lpwm_enable": False,
@@ -112,13 +111,36 @@ def launch_setup(context, *args, **kwargs):
 
     if enable_apriltag:
         # NV12 (1080p) -> mono8 高速グレースケール変換 ＋ CameraInfo 完全同期配信ノード
-        # 📐 base_link -> default_cam (カメラ位置 TF 接続: 前方 +0.265m, 左 +0.035m, 上 +0.193m)
+        # 4m 先の AprilTag を 1920x1080 フル解像度で捉える
         from launch_ros.actions import Node
 
+        mono_node = Node(
+            package="robot_bringup",
+            executable="nv12_to_mono8_node.py",
+            name="nv12_to_mono8_node",
+            output="screen",
+            parameters=[
+                {
+                    "input_topic": "/image_raw",
+                    "output_topic": "/camera/left_mono8",
+                    "camera_info_topic": "/camera_info",
+                    "output_camera_info_topic": "/camera/camera_info",
+                    "target_fps": 5.0,
+                    "use_fallback_camera_info": True,
+                    "camera_fx": 800.0,
+                    "camera_fy": 800.0,
+                    "camera_cx": 960.0,
+                    "camera_cy": 540.0,
+                }
+            ],
+        )
+        launch_nodes.append(mono_node)
+
+        # Camera mount pose in the ROS base convention (X forward, Y left, Z up).
         camera_tf_node = Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            name="base_to_camera_tf",
+            name="base_to_camera_link_tf",
             arguments=[
                 "--x",
                 "0.265",
@@ -135,11 +157,38 @@ def launch_setup(context, *args, **kwargs):
                 "--frame-id",
                 "base_link",
                 "--child-frame-id",
-                "default_cam",
+                "camera_link",
             ],
             output="screen",
         )
         launch_nodes.append(camera_tf_node)
+
+        # REP-103 optical convention: X right, Y down, Z forward.
+        camera_optical_tf_node = Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="camera_link_to_optical_tf",
+            arguments=[
+                "--x",
+                "0.0",
+                "--y",
+                "0.0",
+                "--z",
+                "0.0",
+                "--roll",
+                "-1.57079632679",
+                "--pitch",
+                "0.0",
+                "--yaw",
+                "-1.57079632679",
+                "--frame-id",
+                "camera_link",
+                "--child-frame-id",
+                "default_cam",
+            ],
+            output="screen",
+        )
+        launch_nodes.append(camera_optical_tf_node)
 
         apriltag_launch_file = os.path.join(
             bringup_share, "launch", "apriltag_launch.py"
@@ -149,8 +198,8 @@ def launch_setup(context, *args, **kwargs):
             launch_arguments=list(
                 {
                     "node_name": "apriltag_csi_node",
-                    "image_topic": "/image_left_raw",
-                    "camera_info_topic": "/image_combine_raw/left/camera_info",
+                    "image_topic": "/camera/left_mono8",
+                    "camera_info_topic": "/camera/camera_info",
                     "camera_frame_id": "default_cam",
                     "tag_family": tag_family,
                     "tag_size": tag_size,

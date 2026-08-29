@@ -24,6 +24,13 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 function(add_controller target directory implementation)
+  add_controller_custom(${target} ${directory} ${implementation} main.cpp ${ARGN})
+  set(controller_nodes
+      ${controller_nodes}
+      PARENT_SCOPE)
+endfunction()
+
+function(add_controller_custom target directory implementation main_src)
   set(library_target ${target}_implementation)
 
   if(BUILD_TESTING)
@@ -33,12 +40,12 @@ function(add_controller target directory implementation)
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include>)
     ament_target_dependencies(${library_target} ${ARGN})
 
-    add_executable(${target} ${directory}/src/main.cpp)
+    add_executable(${target} ${directory}/src/${main_src})
     target_link_libraries(${target} PRIVATE ${library_target})
   else()
     # Compile implementation and main as one translation unit. This avoids
     # parsing the controller's ROS headers twice in normal RDK builds.
-    add_executable(${target} ${directory}/src/${implementation} ${directory}/src/main.cpp)
+    add_executable(${target} ${directory}/src/${implementation} ${directory}/src/${main_src})
     set_target_properties(${target} PROPERTIES UNITY_BUILD ON UNITY_BUILD_BATCH_SIZE 2)
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include)
     ament_target_dependencies(${target} ${ARGN})
@@ -97,6 +104,35 @@ add_controller(
   robot_msgs
   apriltag_msgs
   tf2
+  tf2_ros)
+add_controller(
+  game2_aim
+  auto_controllers/game2_aim
+  game2_aim_node.cpp
+  geometry_msgs
+  rclcpp
+  rcl_interfaces
+  sensor_msgs
+  std_msgs
+  robot_msgs
+  apriltag_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros)
+add_controller_custom(
+  pk_aim
+  auto_controllers/game2_aim
+  pk_aim_node.cpp
+  pk_main.cpp
+  geometry_msgs
+  rclcpp
+  rcl_interfaces
+  sensor_msgs
+  std_msgs
+  robot_msgs
+  apriltag_msgs
+  tf2
+  tf2_geometry_msgs
   tf2_ros)
 add_controller(
   game1_auto_node

@@ -17,6 +17,7 @@ rosidl_generate_interfaces(
   "msg/SpringOperationState.msg"
   "msg/BeltStatus.msg"
   "msg/Game2State.msg"
+  "msg/TargetGridState.msg"
   DEPENDENCIES
   std_msgs)
 

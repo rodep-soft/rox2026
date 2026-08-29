@@ -28,7 +28,7 @@ def generate_launch_description():
             ),
             # belt・dribble回転用VESCだけを起動する。
             include(
-                "hardware.launch.py",
+                "hardware/hardware.launch.py",
                 launch_arguments={
                     "can_interface": LaunchConfiguration("can_interface"),
                     "use_vesc": "true",
@@ -40,6 +40,7 @@ def generate_launch_description():
             ),
             include("input/joy_controller.launch.py"),
             # この構成の対象controller(belt + dribble)
-            include("controllers/belt_dribble.launch.py"),
+            include("controllers/belt_controller.launch.py"),
+            include("controllers/dribble_controller.launch.py"),
         ]
     )

@@ -109,9 +109,20 @@ JoyControllerNode::JoyControllerNode()
       &JoyControllerNode::spring_actuator_ready_callback, this,
       std::placeholders::_1));
 
+  game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
+    "/game2/state", state_qos,
+    [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
+      game2_state_ = msg->state;
+    });
+
+  pk_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
+    "/pk/state", state_qos,
+    [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
+      pk_state_ = msg->state;
+    });
+
   mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
     "/drive/cmd_vel", command_qos);
-
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos);
 
@@ -132,6 +143,18 @@ JoyControllerNode::JoyControllerNode()
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/game2/command_start", request_qos);
+
+  pk_start_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/pk/start", request_qos);
+
+  pk_confirm_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/confirm", request_qos);
+
+  pk_next_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/next", request_qos);
+
+  pk_prev_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/prev", request_qos);
 
   heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
     "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
@@ -341,7 +364,7 @@ void JoyControllerNode::loop_callback()
       toggle_manual_arm_position(robot_msgs::msg::ArmPosition::OPEN);
     }
   } else {
-    // R2非押下時: DPAD 上/下でベルトレベル昇降
+    // R2非押下時: DPAD 上/下でベルトレベル昇降、DPAD 左/右でPKターゲット変更
     if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
       belt_rpm_mode_ =
         increment_mode(belt_rpm_mode_, robot_msgs::msg::BeltMode::LEVEL_4);
@@ -351,6 +374,16 @@ void JoyControllerNode::loop_callback()
       belt_rpm_mode_ = decrement_mode(belt_rpm_mode_);
       RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
       publish_belt_mode(belt_rpm_mode_);
+    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, false)) {
+      // DPAD 右 (-1.0): PK 次のターゲットへ
+      std_msgs::msg::Empty empty_msg;
+      pk_next_pub_->publish(empty_msg);
+      RCLCPP_INFO(get_logger(), "PK target NEXT requested (D-pad Right)");
+    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_, true)) {
+      // DPAD 左 (+1.0): PK 前のターゲットへ
+      std_msgs::msg::Empty empty_msg;
+      pk_prev_pub_->publish(empty_msg);
+      RCLCPP_INFO(get_logger(), "PK target PREV requested (D-pad Left)");
     }
   }
 
@@ -396,27 +429,55 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 5. 自動シュートサイクル要求 (L2 + ○)
-  if (is_l2_active && is_button_just_pressed(joy_msg_, circle_button_)) {
-    RCLCPP_INFO(get_logger(), "Shot cycle requested!");
-    std_msgs::msg::Bool req;
-    req.data = true;
-    shot_cycle_request_pub_->publish(req);
+  // 5. 自動シュートサイクル要求 (L2 + ○) / PKターゲット決定 (○単体)
+  if (is_button_just_pressed(joy_msg_, circle_button_)) {
+    if (is_l2_active) {
+      // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが PREPARING_SHOOT であれば射出許可
+      bool shot_allowed = false;
+      if (!game2_active_ && !pk_active_) {
+        shot_allowed = true;
+      } else if (game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+        pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT)
+      {
+        shot_allowed = true;
+      }
+
+      if (shot_allowed) {
+        RCLCPP_INFO(get_logger(), "Shot cycle requested! (L2 + Circle)");
+        std_msgs::msg::Bool req;
+        req.data = true;
+        shot_cycle_request_pub_->publish(req);
+      } else {
+        RCLCPP_WARN(
+          get_logger(),
+          "Shot request ignored: Neither Game2 nor PK is in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
+          static_cast<unsigned>(game2_state_), static_cast<unsigned>(pk_state_));
+      }
+    } else {
+      // L2非押下での ○ ボタン押下 -> PKターゲット決定・照準開始
+      if (pk_active_ || pk_state_ == robot_msgs::msg::Game2State::SEARCHING) {
+        std_msgs::msg::Empty confirm_msg;
+        pk_confirm_pub_->publish(confirm_msg);
+        RCLCPP_INFO(get_logger(), "PK Target CONFIRMED! Aligning started (Circle button)");
+      }
+    }
   }
 
-  // 6. Game 2 自動戦術モード切替 (OPTIONS)
+  // 6. Game 2 / PK 自動戦術モード切替 (OPTIONS)
   if (is_button_just_pressed(joy_msg_, game2_start_button_)) {
     game2_active_ = !game2_active_;
+    pk_active_ = !pk_active_;
     RCLCPP_INFO(
-      get_logger(), "Game 2 mode toggled: %s",
+      get_logger(), "Auto Game mode toggled: %s (Game2/PK)",
       game2_active_ ? "START" : "STOP");
-    std_msgs::msg::Bool game2_msg;
-    game2_msg.data = game2_active_;
-    game2_start_pub_->publish(game2_msg);
+    std_msgs::msg::Bool auto_msg;
+    auto_msg.data = game2_active_;
+    game2_start_pub_->publish(auto_msg);
+    pk_start_pub_->publish(auto_msg);
   }
 
-  // 7. 手動オーバーライド: Game 2 モード中にスティック操作を検出したら自動解除
-  if (game2_active_) {
+  // 7. 手動オーバーライド: 自動モード中にスティック操作を検出したら自動解除
+  if (game2_active_ || pk_active_) {
     const double raw_vx =
       apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
     const double raw_vy =
@@ -426,12 +487,14 @@ void JoyControllerNode::loop_callback()
 
     if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
       game2_active_ = false;
+      pk_active_ = false;
       RCLCPP_WARN(
         get_logger(),
-        "Manual stick input detected! Game 2 AUTO mode disengaged.");
-      std_msgs::msg::Bool game2_msg;
-      game2_msg.data = false;
-      game2_start_pub_->publish(game2_msg);
+        "Manual stick input detected! AUTO mode disengaged.");
+      std_msgs::msg::Bool auto_msg;
+      auto_msg.data = false;
+      game2_start_pub_->publish(auto_msg);
+      pk_start_pub_->publish(auto_msg);
     }
   }
 
@@ -653,6 +716,13 @@ void JoyControllerNode::publish_stop_commands()
 
   dribble_enabled_ = false;
   publish_dribble_enabled(dribble_enabled_);
+
+  if (game2_active_) {
+    game2_active_ = false;
+    std_msgs::msg::Bool game2_msg;
+    game2_msg.data = false;
+    game2_start_pub_->publish(game2_msg);
+  }
 }
 
 void JoyControllerNode::publish_limited_velocity(
