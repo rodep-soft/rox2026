@@ -1,7 +1,6 @@
 #ifndef GAME2_AIM__GAME2_AIM_NODE_HPP_
 #define GAME2_AIM__GAME2_AIM_NODE_HPP_
 
-#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
@@ -57,13 +56,6 @@ private:
     bool completed);
   void publish_target_status(const rclcpp::Time & now);
   void log_target_decision(const std::string & title, const std::string & reason);
-  double get_yaw_at_time(const rclcpp::Time & stamp) const;
-
-  struct ImuSample
-  {
-    rclcpp::Time stamp;
-    double yaw;
-  };
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -156,7 +148,6 @@ private:
   double yaw_{0.0};
   double gyro_z_{0.0};
   rclcpp::Time last_imu_time_{0, 0, RCL_ROS_TIME};
-  std::deque<ImuSample> imu_history_;
 };
 
 }  // namespace robot_controller

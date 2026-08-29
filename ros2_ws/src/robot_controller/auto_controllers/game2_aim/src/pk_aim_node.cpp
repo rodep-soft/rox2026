@@ -185,39 +185,10 @@ rcl_interfaces::msg::SetParametersResult PKAimNode::parameter_callback(
   return result;
 }
 
-double PKAimNode::get_yaw_at_time(const rclcpp::Time & stamp) const
-{
-  if (imu_history_.empty() || stamp.nanoseconds() == 0) {
-    return yaw_;
-  }
-  if (stamp <= imu_history_.front().stamp) {
-    return imu_history_.front().yaw;
-  }
-  if (stamp >= imu_history_.back().stamp) {
-    return imu_history_.back().yaw;
-  }
-
-  for (size_t i = 1; i < imu_history_.size(); ++i) {
-    if (imu_history_[i].stamp >= stamp) {
-      const auto & p0 = imu_history_[i - 1];
-      const auto & p1 = imu_history_[i];
-      const double dt_total = (p1.stamp - p0.stamp).seconds();
-      if (dt_total <= 1e-6) {
-        return p1.yaw;
-      }
-      const double alpha = (stamp - p0.stamp).seconds() / dt_total;
-      const double diff = std::remainder(p1.yaw - p0.yaw, 2.0 * M_PI);
-      return std::remainder(p0.yaw + alpha * diff, 2.0 * M_PI);
-    }
-  }
-  return imu_history_.back().yaw;
-}
-
 void PKAimNode::tag_detections_callback(
   const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
-  const double yaw_at_capture = get_yaw_at_time(msg->header.stamp);
-  tracker_.update_detections(*msg, *tf_buffer_, yaw_at_capture, now());
+  tracker_.update_detections(*msg, *tf_buffer_, yaw_, now());
 }
 
 void PKAimNode::camera_info_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
@@ -238,11 +209,6 @@ void PKAimNode::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 
   last_imu_time_ = now();
   imu_received_ = true;
-
-  imu_history_.push_back({msg->header.stamp, yaw_});
-  while (!imu_history_.empty() && (now() - imu_history_.front().stamp).seconds() > 1.5) {
-    imu_history_.pop_front();
-  }
 }
 
 void PKAimNode::emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -311,7 +277,6 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
   if (msg->data) {
     if (state_ == robot_msgs::msg::Game2State::STANDBY) {
       // OPTIONS 押下: STANDBY -> SEARCHING -> 即座にターゲットロックして ALIGNING 開始
-      imu_history_.clear();
       is_target_confirmed_ = false;
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
