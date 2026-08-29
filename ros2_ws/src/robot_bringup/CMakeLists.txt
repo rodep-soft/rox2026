@@ -5,11 +5,7 @@ find_package(ament_cmake REQUIRED)
 
 install(DIRECTORY config launch scripts DESTINATION share/${PROJECT_NAME})
 
-install(
-  PROGRAMS
-    scripts/nv12_to_mono8_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(PROGRAMS scripts/nv12_to_mono8_node.py DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

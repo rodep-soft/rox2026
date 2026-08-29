@@ -33,8 +33,10 @@ def generate_launch_description():
         ],
     )
 
-    return LaunchDescription([
-        config_file_arg,
-        test_alignment_only_arg,
-        game2_node,
-    ])
+    return LaunchDescription(
+        [
+            config_file_arg,
+            test_alignment_only_arg,
+            game2_node,
+        ]
+    )
