@@ -16,7 +16,8 @@
 
 namespace stm32_driver
 {
-class Stm32Node : public rclcpp::Node {
+class Stm32Node : public rclcpp::Node
+{
 public:
   explicit Stm32Node(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
   : Node("stm32_driver_node", options),
@@ -28,9 +29,9 @@ public:
     const auto can_rx_topic =
       declare_parameter<std::string>("can_rx_topic", "/socketcan_bridge/rx");
     const auto limit_switches_topic = declare_parameter<std::string>(
-        "limit_switches_topic", "/hardware/limit_switches");
+      "limit_switches_topic", "/hardware/limit_switches");
     const auto led_command_topic = declare_parameter<std::string>(
-        "led_command_topic", "/hardware/led_cmd");
+      "led_command_topic", "/hardware/led_cmd");
     const auto imu_topic =
       declare_parameter<std::string>("imu_topic", "/imu/data");
     const auto imu_frame_id =
@@ -67,21 +68,23 @@ public:
     can_pub_ =
       create_publisher<can_msgs::msg::Frame>(can_tx_topic, can_qos_pub);
     can_sub_ = create_subscription<can_msgs::msg::Frame>(
-        can_rx_topic, can_qos_sub,
-        std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
-        can_sub_options);
+      can_rx_topic, can_qos_sub,
+      std::bind(&Stm32Node::can_callback, this, std::placeholders::_1),
+      can_sub_options);
 
     led_cmd_sub_ = create_subscription<std_msgs::msg::UInt16>(
-        led_command_topic, 10,
-        std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
+      led_command_topic, 10,
+      std::bind(&Stm32Node::led_callback, this, std::placeholders::_1));
     limit_sw_pub_ =
       create_publisher<std_msgs::msg::UInt8>(limit_switches_topic, 10);
-    imu_pub_ = create_publisher<sensor_msgs::msg::Imu>(imu_topic,
-                                                       rclcpp::SensorDataQoS());
+    imu_pub_ = create_publisher<sensor_msgs::msg::Imu>(
+      imu_topic,
+      rclcpp::SensorDataQoS());
 
     alive_timer_ =
-      create_wall_timer(std::chrono::milliseconds(keep_alive_period_ms),
-                          std::bind(&Stm32Node::alive_timer_callback, this));
+      create_wall_timer(
+      std::chrono::milliseconds(keep_alive_period_ms),
+      std::bind(&Stm32Node::alive_timer_callback, this));
 
     RCLCPP_INFO(get_logger(), "stm32_driver_node started");
   }
@@ -182,8 +185,9 @@ private:
     const auto norm = std::sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
 
     if (!std::isfinite(norm) || norm <= 0.0) {
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-                           "received an invalid quaternion");
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 2000,
+        "received an invalid quaternion");
       return false;
     }
 
