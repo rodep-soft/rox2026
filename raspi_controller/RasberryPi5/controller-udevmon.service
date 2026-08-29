@@ -1,0 +1,14 @@
+[Unit]
+Description=DualSense hotplug network forwarder
+After=systemd-udevd.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/controller-udevmon-run
+Restart=always
+RestartSec=1
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target

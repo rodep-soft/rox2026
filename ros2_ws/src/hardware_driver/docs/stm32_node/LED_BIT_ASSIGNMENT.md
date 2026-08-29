@@ -7,8 +7,8 @@ RDKからSTM32へ、CAN ID `0x201`のStandard Data FrameでLED状態を送信す
 
 | CANデータ | 内容 |
 |---|---|
-| `data[0]` | 主表示モード |
-| `data[1]` | 同時表示する付加状態のビットフィールド |
+| data[0] | 主表示モード、または補助グリッドコマンド |
+| data[1] | 付加状態、またはグリッドmask下位8 bit |
 
 ROS 2では`/hardware/led_cmd`へ`std_msgs/msg/UInt16`を送信する。
 `stm32_driver`が次のリトルエンディアン形式でCANフレームへ変換する。
@@ -19,6 +19,40 @@ CAN data[1] = (ros_value >> 8) & 0x00ff
 
 ros_value = data[0] | (data[1] << 8)
 ```
+
+## 1.1 Game2ターゲットグリッド補助コマンド
+
+Game2の9マス状態は主表示とは別の補助フレームで送信する。led_controller_nodeは
+/target_grid_stateを購読し、TARGETとFALLENをそれぞれ9-bit maskへ変換する。
+
+| data[0] | 種類 | data[0] bit 0 | data[1] |
+|---:|---|---|---|
+| 0x20 / 0x21 | TARGET mask | grid bit 8 | grid bit 0～7 |
+| 0x22 / 0x23 | FALLEN mask | grid bit 8 | grid bit 0～7 |
+
+maskからCAN payloadを生成する式は次のとおり。
+
+    data[0] = command_base | ((mask >> 8) & 0x01)
+    data[1] = mask & 0xff
+    command_base = 0x20 (TARGET) または 0x22 (FALLEN)
+
+グリッドbitと標準設定のタグID対応は次のとおり。タグIDはgame2_auto_aim.yamlの
+top_tags、middle_tags、bottom_tagsで変更できるため、bitはタグIDではなく位置を表す。
+
+| 配置 | 左 | 中央 | 右 |
+|---|---|---|---|
+| 上段 | bit 0 / Tag 14 | bit 1 / Tag 15 | bit 2 / Tag 16 |
+| 中段 | bit 3 / Tag 17 | bit 4 / Tag 18 | bit 5 / Tag 19 |
+| 下段 | bit 6 / Tag 20 | bit 7 / Tag 21 | bit 8 / Tag 22 |
+
+同じbitがTARGET maskとFALLEN maskへ同時に立ってはならない。どちらにも立って
+いないマスはSTANDINGである。STM32は両maskを保持し、9マスLED表示ではTARGETを
+狙い色、FALLENを倒れ色、STANDINGを待機色で表示する。推奨色はTARGET=黄、
+FALLEN=消灯、STANDING=緑とする。
+
+led_controller_nodeは各publish周期でTARGET、FALLEN、主表示の順に3フレームを送る。
+主表示を最後に送るため、補助コマンド未対応の旧STM32でも最終的に通常表示へ戻る。
+新STM32は0x20～0x23を主表示モードとして扱わず、mask更新だけを行うこと。
 
 ## 2. data[0]: 主表示モード
 
@@ -42,7 +76,14 @@ ros_value = data[0] | (data[1] << 8)
 | 13 | `0x0d` | `ARM_RECEIVE` | ドリブルアームのRECEIVE姿勢 |
 | 14 | `0x0e` | `ARM_HOME` | ドリブルアームのHOME姿勢 |
 | 15 | `0x0f` | `BELT_SPINUP` | ベルト発射サイクルの回転立上げ中 |
-| 16～255 | `0x10`～`0xff` | Reserved | 将来拡張用。送信しないこと |
+| 16 | 0x10 | BELT_OFFSET_MINUS_3 | ベルトRPMオフセット -3 step |
+| 17 | 0x11 | BELT_OFFSET_MINUS_2 | ベルトRPMオフセット -2 step |
+| 18 | 0x12 | BELT_OFFSET_MINUS_1 | ベルトRPMオフセット -1 step |
+| 19 | 0x13 | BELT_OFFSET_ZERO | ベルトRPMオフセット 0 step |
+| 20 | 0x14 | BELT_OFFSET_PLUS_1 | ベルトRPMオフセット +1 step |
+| 21 | 0x15 | BELT_OFFSET_PLUS_2 | ベルトRPMオフセット +2 step |
+| 22 | 0x16 | BELT_OFFSET_PLUS_3 | ベルトRPMオフセット +3 step |
+| 23～31 | 0x17～0x1f | Reserved | 将来拡張用。主表示として送信しないこと |
 
 未定義値を受信した場合、STM32は安全な既定表示として扱うこと。
 
@@ -73,11 +114,24 @@ ros_value = data[0] | (data[1] << 8)
 | `/dribble/command_position` | `FEED` | `0x0c` | `ARM_FEED` |
 | `/dribble/command_position` | `RECEIVE` | `0x0d` | `ARM_RECEIVE` |
 | `/dribble/command_position` | `HOME` | `0x0e` | `ARM_HOME` |
+| /belt/command_mode | rpm_offset_step が 0 以外 | 0x10～0x16 | 累積オフセット -3～+3 step |
 
-`firing_display_ms`の既定値は500 ms、コマンドの配信周期
-`publish_period_ms`の既定値は100 msである。`/spring/fire_request`を`true`のまま
-保持しても表示時間は延長されず、いったん`false`を受信した後の次の立上りで
-再トリガーされる。
+firing_display_msの既定値は500 ms、コマンドの配信周期publish_period_msの既定値は100 msである。
+spring/fire_requestをtrueのまま保持しても表示時間は延長されず、いったんfalseを受信した後の
+次の立上りで再トリガーされる。
+
+ベルトRPMオフセット表示時間 belt_offset_display_ms の既定値は1000 msである。
+オフセット変更メッセージを受信すると、led_controller_node もベルトコントローラと
+同じく増分を -3～+3 step に累積し、その値に対応する主表示モードを表示時間中送信する。
+
+### 2.2 ベルトRPMオフセットの表示方法
+
+オフセット変更後は belt_offset_display_ms の間、符号と絶対値をバー表示する。
+正の値は緑、負の値は赤、0 stepは青で表示する。絶対値1はLED列の1/3、
+絶対値2は2/3、絶対値3は全体を点灯する。表示期間終了後は通常の優先順位へ戻る。
+
+この表示は rpm_offset_step の単発値ではなく、-3～+3にクランプした累積値を示す。
+ベルトコントローラの belt_rpm_offset_per_step が100 RPMなら、+2 stepは+200 RPMに相当する。
 
 ## 3. data[1]: 付加状態
 
@@ -176,6 +230,7 @@ STARTUP判定
   > スロー発射
   > Game2進行状態
   > ベルト発射サイクル進行状態
+  > ベルトRPMオフセット変更表示
   > ドリブルアーム姿勢
   > READY
 ```
@@ -192,8 +247,9 @@ STARTUP判定
 5. スロー発射中なら`SLOW_FIRING`
 6. Game2が進行中なら、その進行状態に対応する表示
 7. ベルト発射サイクル中なら、その進行状態に対応する表示
-8. サイクル外では、指令されたドリブルアーム姿勢に対応する表示
-9. いずれにも該当しなければ`READY`
+8. ベルトRPMオフセットの変更表示期間中なら、累積値 -3～+3 に対応する表示
+9. サイクル外では、指令されたドリブルアーム姿勢に対応する表示
+10. いずれにも該当しなければ`READY`
 
 ## 5. エンコード例
 
@@ -228,6 +284,22 @@ data[0] = 0x02
 data[1] = 0x00
 UInt16  = 0x0002 = 2
 ```
+
+### Game2グリッド補助コマンド例
+
+上段左と上段中央（grid bit 0, 1）を狙っている場合、TARGET maskは0x003となる。
+
+    data[0] = 0x20
+    data[1] = 0x03
+    UInt16 = 0x0320 = 800
+    CAN payload = 20 03
+
+上段右と下段右（grid bit 2, 8）が倒れている場合、FALLEN maskは0x104となる。
+
+    data[0] = 0x23
+    data[1] = 0x04
+    UInt16 = 0x0423 = 1059
+    CAN payload = 23 04
 
 ## 6. 動作別の送信パターン
 
@@ -361,4 +433,6 @@ ros2 topic echo /hardware/led_cmd
 - `data[1]`の既存bitを別の用途へ再割り当てしない。
 - bit 6～7はローラ回転方向として使用する。古いSTM32はこのbitを無視してよい。
 - 新規主表示モードは値10以降へ追加し、既存値0～9の意味を維持する。
+- data[0]の0x20～0x23は主表示ではなくGame2グリッドmask更新専用とする。
+- 補助グリッド未対応のSTM32は0x20～0x23を無視し、後続の主表示を処理する。
 - CAN ID、DLC、またはbyte配置を変更する場合は、RDKとSTM32を同時に更新する。

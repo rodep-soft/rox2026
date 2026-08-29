@@ -1,0 +1,637 @@
+#!/usr/bin/env python3
+"""Redundant controller receiver for RDK X5.
+
+Receives the same Linux input_event stream over UDP and Bluetooth RFCOMM,
+deduplicates/reorders it by sequence number, and feeds Interception Tools
+`uinput` to expose one virtual controller.
+
+Fail-safe state machine:
+  NORMAL       : at least one transport received a valid record recently
+  NEUTRAL      : both transports silent >= neutral_timeout (default 200 ms)
+                 -> emit neutral state exactly once
+  DISCONNECTED : both transports silent >= disconnect_timeout (default 5 s)
+                 -> stop uinput, removing the virtual /dev/input/event* device
+
+On any valid record after DISCONNECTED, uinput is recreated immediately and a
+neutral state is applied before new input events are accepted.
+
+Transport protocol v2 (fixed-size records):
+  !2sBBII + raw struct input_event
+    magic      2 B  b"RC"
+    version    1 B  2
+    kind       1 B  0=event, 1=heartbeat
+    session_id 4 B  random uint32 chosen by Raspberry Pi at sender start
+    seq         4 B  uint32, increments only for KIND_EVENT
+    payload    native struct input_event (24 B on aarch64)
+
+Heartbeat payload is zero-filled. Send heartbeat about every 50 ms on BOTH
+paths, including while the controller is idle.
+"""
+
+from __future__ import annotations
+
+import argparse
+import errno
+import json
+import os
+import selectors
+import signal
+import socket
+import struct
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+MAGIC = b"RC"
+VERSION = 2
+KIND_EVENT = 0
+KIND_HEARTBEAT = 1
+HEADER = struct.Struct("!2sBBII")  # magic, version, kind, session_id, event_seq
+INPUT_EVENT = struct.Struct("@llHHi")
+INPUT_EVENT_SIZE = INPUT_EVENT.size
+RECORD_SIZE = HEADER.size + INPUT_EVENT_SIZE
+UINT32_MASK = 0xFFFFFFFF
+HALF_RANGE = 0x80000000
+
+EV_SYN = 0x00
+EV_KEY = 0x01
+EV_ABS = 0x03
+SYN_REPORT = 0
+
+STATE_WAITING = "WAITING"
+STATE_NORMAL = "NORMAL"
+STATE_NEUTRAL = "NEUTRAL"
+STATE_DISCONNECTED = "DISCONNECTED"
+
+
+def log(msg: str) -> None:
+    print(f"[controller-bridge] {msg}", file=sys.stderr, flush=True)
+
+
+def seq_distance(seq: int, base: int) -> int:
+    return (seq - base) & UINT32_MASK
+
+
+def seq_is_older(seq: int, base: int) -> bool:
+    return seq_distance(seq, base) >= HALF_RANGE
+
+
+def make_input_event(event_type: int, code: int, value: int) -> bytes:
+    now_ns = time.time_ns()
+    sec = now_ns // 1_000_000_000
+    usec = (now_ns % 1_000_000_000) // 1_000
+    return INPUT_EVENT.pack(sec, usec, event_type, code, value)
+
+
+@dataclass
+class Stats:
+    udp_records: int = 0
+    bt_records: int = 0
+    events_out: int = 0
+    duplicates_or_late: int = 0
+    malformed: int = 0
+    skipped_events: int = 0
+    neutralizations: int = 0
+    device_creates: int = 0
+    device_destroys: int = 0
+    session_changes: int = 0
+
+
+class NeutralState:
+    """Builds fail-safe neutral events without interpreting normal control data.
+
+    Buttons that have ever been observed are released automatically.
+    Absolute-axis neutral values are configured in a small JSON file because
+    joystick stick centers and trigger release values are device-specific.
+    """
+
+    def __init__(self, config_path: str) -> None:
+        self.abs_neutral: Dict[int, int] = {}
+        self.seen_keys: set[int] = set()
+        self.last_abs: Dict[int, int] = {}
+        self.last_keys: Dict[int, int] = {}
+        self._load(config_path)
+
+    def _load(self, config_path: str) -> None:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        abs_cfg = cfg.get("abs_neutral", {})
+        if not isinstance(abs_cfg, dict):
+            raise ValueError("abs_neutral must be a JSON object mapping code to neutral value")
+        self.abs_neutral = {int(k, 0) if isinstance(k, str) else int(k): int(v) for k, v in abs_cfg.items()}
+        log(f"neutral config loaded: {len(self.abs_neutral)} absolute axes")
+
+    def observe(self, payload: bytes) -> None:
+        _sec, _usec, event_type, code, value = INPUT_EVENT.unpack(payload)
+        if event_type == EV_KEY:
+            self.seen_keys.add(code)
+            self.last_keys[code] = value
+        elif event_type == EV_ABS:
+            self.last_abs[code] = value
+
+    def build(self) -> list[bytes]:
+        events: list[bytes] = []
+
+        # Release only keys seen by this bridge. Keys never pressed are already 0.
+        for code in sorted(self.seen_keys):
+            if self.last_keys.get(code, 0) != 0:
+                events.append(make_input_event(EV_KEY, code, 0))
+                self.last_keys[code] = 0
+
+        # Always set configured axes, even if they were not recently moved.
+        # This also makes a freshly recreated uinput device start in a safe state.
+        for code in sorted(self.abs_neutral):
+            neutral = self.abs_neutral[code]
+            events.append(make_input_event(EV_ABS, code, neutral))
+            self.last_abs[code] = neutral
+
+        events.append(make_input_event(EV_SYN, SYN_REPORT, 0))
+        return events
+
+
+class VirtualController:
+    def __init__(self, uinput_bin: str, device_yaml: str, neutral: NeutralState, stats: Stats) -> None:
+        self.uinput_bin = uinput_bin
+        self.device_yaml = device_yaml
+        self.neutral = neutral
+        self.stats = stats
+        self.proc: Optional[subprocess.Popen[bytes]] = None
+
+    @property
+    def alive(self) -> bool:
+        return self.proc is not None and self.proc.poll() is None
+
+    def start(self, apply_neutral: bool = True) -> None:
+        if self.alive:
+            return
+        self.stop()
+        log(f"creating virtual controller using {self.device_yaml}")
+        self.proc = subprocess.Popen(
+            [self.uinput_bin, "-c", self.device_yaml],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=None,  # inherit journal stderr
+            bufsize=0,
+        )
+        self.stats.device_creates += 1
+        if apply_neutral:
+            # uinput creates the virtual device before it starts consuming stdin.
+            # Writing the safe state immediately seeds the device before/while clients open it.
+            if not self.emit_many(self.neutral.build()):
+                raise RuntimeError("uinput exited while applying initial neutral state")
+
+    def emit(self, payload: bytes) -> bool:
+        if not self.alive or self.proc is None or self.proc.stdin is None:
+            return False
+        try:
+            self.proc.stdin.write(payload)
+            self.proc.stdin.flush()
+            self.stats.events_out += 1
+            return True
+        except (BrokenPipeError, OSError) as e:
+            log(f"uinput pipe failed: {e}")
+            self.stop()
+            return False
+
+    def emit_many(self, events: list[bytes]) -> bool:
+        for event in events:
+            if not self.emit(event):
+                return False
+        return True
+
+    def neutralize(self) -> bool:
+        if not self.alive:
+            return False
+        ok = self.emit_many(self.neutral.build())
+        if ok:
+            self.stats.neutralizations += 1
+            log("FAILSAFE: neutral state emitted")
+        return ok
+
+    def stop(self) -> None:
+        proc = self.proc
+        self.proc = None
+        if proc is None:
+            return
+        was_running = proc.poll() is None
+        if proc.stdin is not None:
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+        if was_running:
+            try:
+                proc.wait(timeout=0.35)
+            except subprocess.TimeoutExpired:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=0.35)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=0.35)
+            self.stats.device_destroys += 1
+            log("virtual controller destroyed")
+
+
+class EventMerger:
+    def __init__(self, gap_timeout: float, max_pending: int, emit_cb) -> None:
+        self.gap_timeout = gap_timeout
+        self.max_pending = max_pending
+        self.emit_cb = emit_cb
+        self.pending: Dict[int, Tuple[bytes, float]] = {}
+        self.next_seq: Optional[int] = None
+        self.gap_since: Optional[float] = None
+        self.stats: Optional[Stats] = None
+
+    def attach_stats(self, stats: Stats) -> None:
+        self.stats = stats
+
+    def reset(self) -> None:
+        self.pending.clear()
+        self.next_seq = None
+        self.gap_since = None
+
+    def accept(self, seq: int, payload: bytes, now: float) -> None:
+        assert self.stats is not None
+        if len(payload) != INPUT_EVENT_SIZE:
+            self.stats.malformed += 1
+            return
+        if self.next_seq is None:
+            self.next_seq = seq
+        if seq_is_older(seq, self.next_seq) or seq in self.pending:
+            self.stats.duplicates_or_late += 1
+            return
+        self.pending[seq] = (payload, now)
+        if len(self.pending) > self.max_pending:
+            self._skip_gap("pending overflow")
+        self.flush(now)
+
+    def flush(self, now: float) -> None:
+        assert self.stats is not None
+        if self.next_seq is None:
+            return
+        wrote = False
+        while self.next_seq in self.pending:
+            payload, _rx_time = self.pending.pop(self.next_seq)
+            self.emit_cb(payload)
+            self.next_seq = (self.next_seq + 1) & UINT32_MASK
+            wrote = True
+        if not self.pending:
+            self.gap_since = None
+            return
+        if wrote or self.gap_since is None:
+            self.gap_since = now
+        elif now - self.gap_since >= self.gap_timeout:
+            self._skip_gap("gap timeout")
+            self.flush(now)
+
+    def _skip_gap(self, reason: str) -> None:
+        assert self.stats is not None
+        if self.next_seq is None or not self.pending:
+            return
+        candidates = []
+        for seq in self.pending:
+            d = seq_distance(seq, self.next_seq)
+            if 0 < d < HALF_RANGE:
+                candidates.append((d, seq))
+        if not candidates:
+            self.pending.clear()
+            self.gap_since = None
+            return
+        distance, new_seq = min(candidates)
+        self.stats.skipped_events += distance
+        log(f"{reason}: skipping {distance} missing event(s), seq {self.next_seq} -> {new_seq}")
+        self.next_seq = new_seq
+        self.gap_since = None
+
+
+class ControllerBridge:
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
+        self.selector = selectors.DefaultSelector()
+        self.stats = Stats()
+        self.neutral = NeutralState(args.neutral_config)
+        self.virtual = VirtualController(args.uinput_bin, args.device_yaml, self.neutral, self.stats)
+        self.merger = EventMerger(args.gap_timeout, args.max_pending, self._emit_input_event)
+        self.merger.attach_stats(self.stats)
+
+        self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.udp.bind((args.udp_bind, args.udp_port))
+        self.udp.setblocking(False)
+        self.selector.register(self.udp, selectors.EVENT_READ, "udp")
+
+        self.bt_fd: Optional[int] = None
+        self.bt_buffer = bytearray()
+        self.next_bt_open_try = 0.0
+
+        self.last_rx: Dict[str, Optional[float]] = {"udp": None, "bluetooth": None}
+        self.path_up = {"udp": False, "bluetooth": False}
+        self.last_any_rx: Optional[float] = None
+        self.current_session: Optional[int] = None
+        self.state = STATE_WAITING
+        self.last_stats_log = time.monotonic()
+        self.stop_requested = False
+
+    def run(self) -> int:
+        log(
+            f"start: UDP {self.args.udp_bind}:{self.args.udp_port}, RFCOMM {self.args.rfcomm}, "
+            f"protocol=v{VERSION}, input_event={INPUT_EVENT_SIZE}B, record={RECORD_SIZE}B, "
+            f"neutral={self.args.neutral_timeout:.3f}s, disconnect={self.args.disconnect_timeout:.3f}s"
+        )
+        self._install_signal_handlers()
+        try:
+            while not self.stop_requested:
+                now = time.monotonic()
+                self._maybe_open_bluetooth(now)
+
+                for key, _mask in self.selector.select(timeout=0.01):
+                    if key.data == "udp":
+                        self._read_udp()
+                    elif key.data == "bluetooth":
+                        self._read_bluetooth()
+
+                now = time.monotonic()
+                if self.state == STATE_NORMAL:
+                    self.merger.flush(now)
+                self._update_state(now)
+                self._periodic_stats(now)
+        finally:
+            self.virtual.stop()
+            self._close_bluetooth("shutdown", retry=False)
+            try:
+                self.selector.unregister(self.udp)
+            except Exception:
+                pass
+            self.udp.close()
+        return 0
+
+    def _install_signal_handlers(self) -> None:
+        def _handler(signum, _frame):
+            log(f"signal {signum}: shutting down")
+            self.stop_requested = True
+        signal.signal(signal.SIGTERM, _handler)
+        signal.signal(signal.SIGINT, _handler)
+
+    def _emit_input_event(self, payload: bytes) -> None:
+        # Never replay delayed data while fail-safe is active.
+        if self.state != STATE_NORMAL:
+            return
+        self.neutral.observe(payload)
+        if not self.virtual.alive:
+            self.virtual.start(apply_neutral=True)
+        if not self.virtual.emit(payload):
+            # If uinput crashed while transport is healthy, recreate it immediately.
+            log("uinput unexpectedly unavailable; recreating")
+            self.virtual.start(apply_neutral=True)
+            self.virtual.emit(payload)
+
+    def _set_state(self, new_state: str) -> None:
+        if new_state == self.state:
+            return
+        old = self.state
+        self.state = new_state
+        log(f"state {old} -> {new_state}")
+
+        if new_state == STATE_NORMAL:
+            if not self.virtual.alive:
+                self.virtual.start(apply_neutral=True)
+            # Start from the next fresh event after any fail-safe transition.
+            # The device is explicitly neutral until a new event arrives.
+        elif new_state == STATE_NEUTRAL:
+            self.merger.reset()  # no delayed pre-timeout events may undo fail-safe
+            if self.virtual.alive:
+                self.virtual.neutralize()
+        elif new_state == STATE_DISCONNECTED:
+            self.merger.reset()
+            self.virtual.stop()  # deleting uinput removes /dev/input/eventX
+
+    def _on_valid_record(self, source: str, session_id: int, kind: int, seq: int, payload: bytes) -> None:
+        now = time.monotonic()
+        self.last_rx[source] = now
+        self.last_any_rx = now
+
+        if source == "udp":
+            self.stats.udp_records += 1
+        else:
+            self.stats.bt_records += 1
+
+        if self.current_session is None:
+            self.current_session = session_id
+            self.merger.reset()
+            log(f"sender session: 0x{session_id:08x}")
+        elif self.current_session != session_id:
+            old = self.current_session
+            self.current_session = session_id
+            self.stats.session_changes += 1
+            self.merger.reset()
+            # A sender restart means its held-button/axis state is unknown.
+            # Neutralize before accepting the new session.
+            if self.virtual.alive:
+                self.virtual.neutralize()
+            log(f"sender session changed 0x{old:08x} -> 0x{session_id:08x}; sequence reset")
+
+        # Recovery must happen before the event is accepted so the first fresh
+        # input event can flow into the newly-created device immediately.
+        if self.state != STATE_NORMAL:
+            self._set_state(STATE_NORMAL)
+
+        if kind == KIND_EVENT:
+            self.merger.accept(seq, payload, now)
+
+    def _update_state(self, now: float) -> None:
+        self._update_path_state(now)
+        if self.last_any_rx is None:
+            return
+        age = now - self.last_any_rx
+        if age >= self.args.disconnect_timeout:
+            self._set_state(STATE_DISCONNECTED)
+        elif age >= self.args.neutral_timeout:
+            self._set_state(STATE_NEUTRAL)
+        else:
+            self._set_state(STATE_NORMAL)
+
+    def _update_path_state(self, now: float) -> None:
+        for source in ("udp", "bluetooth"):
+            last = self.last_rx[source]
+            up = last is not None and now - last <= self.args.path_timeout
+            if up != self.path_up[source]:
+                self.path_up[source] = up
+                log(f"path {source}: {'UP' if up else 'DOWN'}")
+
+    def _maybe_open_bluetooth(self, now: float) -> None:
+        if self.bt_fd is not None or now < self.next_bt_open_try:
+            return
+        self.next_bt_open_try = now + self.args.rfcomm_retry
+        try:
+            fd = os.open(self.args.rfcomm, os.O_RDONLY | os.O_NONBLOCK | os.O_NOCTTY)
+        except FileNotFoundError:
+            return
+        except OSError as e:
+            if e.errno not in (errno.ENXIO, errno.ENODEV, errno.EIO, errno.EBUSY, errno.EACCES):
+                log(f"RFCOMM open failed: {e}")
+            return
+        self.bt_fd = fd
+        self.bt_buffer.clear()
+        self.selector.register(fd, selectors.EVENT_READ, "bluetooth")
+        log(f"RFCOMM opened: {self.args.rfcomm}")
+
+    def _close_bluetooth(self, reason: str, retry: bool = True) -> None:
+        if self.bt_fd is None:
+            return
+        fd = self.bt_fd
+        self.bt_fd = None
+        try:
+            self.selector.unregister(fd)
+        except Exception:
+            pass
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        self.bt_buffer.clear()
+        if retry:
+            self.next_bt_open_try = time.monotonic() + self.args.rfcomm_retry
+        log(f"RFCOMM closed: {reason}")
+
+    def _read_udp(self) -> None:
+        while True:
+            try:
+                data, _addr = self.udp.recvfrom(65535)
+            except BlockingIOError:
+                return
+            except OSError as e:
+                log(f"UDP recv error: {e}")
+                return
+            if not data:
+                continue
+            if len(data) % RECORD_SIZE != 0:
+                self.stats.malformed += 1
+                log(f"drop malformed UDP datagram: {len(data)} bytes (record={RECORD_SIZE})")
+                continue
+            for offset in range(0, len(data), RECORD_SIZE):
+                self._handle_record("udp", data[offset: offset + RECORD_SIZE])
+
+    def _read_bluetooth(self) -> None:
+        if self.bt_fd is None:
+            return
+        try:
+            chunk = os.read(self.bt_fd, 4096)
+        except BlockingIOError:
+            return
+        except OSError as e:
+            self._close_bluetooth(str(e))
+            return
+        if not chunk:
+            self._close_bluetooth("EOF/disconnected")
+            return
+        self.bt_buffer.extend(chunk)
+        self._consume_bt_buffer()
+
+    def _consume_bt_buffer(self) -> None:
+        while len(self.bt_buffer) >= HEADER.size:
+            if self.bt_buffer[:2] != MAGIC:
+                idx = self.bt_buffer.find(MAGIC, 1)
+                if idx == -1:
+                    keep = 1 if self.bt_buffer[-1:] == MAGIC[:1] else 0
+                    dropped = len(self.bt_buffer) - keep
+                    if dropped:
+                        del self.bt_buffer[:dropped]
+                        self.stats.malformed += 1
+                    return
+                del self.bt_buffer[:idx]
+                self.stats.malformed += 1
+                continue
+            if len(self.bt_buffer) < RECORD_SIZE:
+                return
+            record = bytes(self.bt_buffer[:RECORD_SIZE])
+            magic, version, kind, _session, _seq = HEADER.unpack_from(record)
+            if magic != MAGIC or version != VERSION or kind not in (KIND_EVENT, KIND_HEARTBEAT):
+                del self.bt_buffer[0]
+                self.stats.malformed += 1
+                continue
+            del self.bt_buffer[:RECORD_SIZE]
+            self._handle_record("bluetooth", record)
+
+    def _handle_record(self, source: str, record: bytes) -> None:
+        if len(record) != RECORD_SIZE:
+            self.stats.malformed += 1
+            return
+        magic, version, kind, session_id, seq = HEADER.unpack_from(record)
+        if magic != MAGIC or version != VERSION or kind not in (KIND_EVENT, KIND_HEARTBEAT):
+            self.stats.malformed += 1
+            return
+        payload = record[HEADER.size:]
+        self._on_valid_record(source, session_id, kind, seq, payload)
+
+    def _periodic_stats(self, now: float) -> None:
+        if now - self.last_stats_log < self.args.stats_interval:
+            return
+        self.last_stats_log = now
+        s = self.stats
+        age = None if self.last_any_rx is None else now - self.last_any_rx
+        age_s = "never" if age is None else f"{age:.3f}s"
+        log(
+            f"stats state={self.state} age={age_s} out={s.events_out} "
+            f"udp={s.udp_records} bt={s.bt_records} dup/late={s.duplicates_or_late} "
+            f"skipped={s.skipped_events} malformed={s.malformed} neutral={s.neutralizations} "
+            f"create={s.device_creates} destroy={s.device_destroys} sessions={s.session_changes} "
+            f"pending={len(self.merger.pending)}"
+        )
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="RDK redundant controller bridge with fail-safe uinput lifecycle")
+    p.add_argument("--udp-bind", default="0.0.0.0")
+    p.add_argument("--udp-port", type=int, default=5000)
+    p.add_argument("--rfcomm", default="/dev/rfcomm0")
+    p.add_argument("--rfcomm-retry", type=float, default=0.25)
+    p.add_argument("--gap-timeout", type=float, default=0.015)
+    p.add_argument("--max-pending", type=int, default=4096)
+    p.add_argument("--path-timeout", type=float, default=0.20)
+    p.add_argument("--neutral-timeout", type=float, default=0.20)
+    p.add_argument("--disconnect-timeout", type=float, default=5.00)
+    p.add_argument("--stats-interval", type=float, default=10.0)
+    p.add_argument("--uinput-bin", default="/usr/local/bin/uinput")
+    p.add_argument("--device-yaml", default="/etc/controller/dualsense.yaml")
+    p.add_argument("--neutral-config", default="/etc/controller/neutral.json")
+    return p.parse_args()
+
+
+def validate(args: argparse.Namespace) -> None:
+    if not 1 <= args.udp_port <= 65535:
+        raise ValueError("UDP port must be 1..65535")
+    if args.neutral_timeout <= 0:
+        raise ValueError("neutral-timeout must be > 0")
+    if args.disconnect_timeout <= args.neutral_timeout:
+        raise ValueError("disconnect-timeout must be greater than neutral-timeout")
+    if args.path_timeout <= 0 or args.gap_timeout <= 0 or args.rfcomm_retry <= 0:
+        raise ValueError("timeouts must be > 0")
+    if not os.path.isfile(args.device_yaml):
+        raise FileNotFoundError(args.device_yaml)
+    if not os.path.isfile(args.neutral_config):
+        raise FileNotFoundError(args.neutral_config)
+    if not (os.path.isfile(args.uinput_bin) and os.access(args.uinput_bin, os.X_OK)):
+        raise FileNotFoundError(f"uinput executable not found: {args.uinput_bin}")
+    if INPUT_EVENT_SIZE != 24:
+        raise RuntimeError(
+            f"native struct input_event is {INPUT_EVENT_SIZE} bytes, expected 24. "
+            "Use the same 64-bit ABI on Raspberry Pi and RDK or change the transport format."
+        )
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        validate(args)
+        return ControllerBridge(args).run()
+    except Exception as e:
+        log(f"FATAL: {type(e).__name__}: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

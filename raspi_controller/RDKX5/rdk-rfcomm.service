@@ -1,0 +1,15 @@
+[Unit]
+Description=RDK RFCOMM controller listener
+After=bluetooth.service hobot-bluetooth.service
+Wants=bluetooth.service hobot-bluetooth.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/rfcomm release 0
+ExecStart=/usr/bin/rfcomm -r -i hci0 watch 0 1
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

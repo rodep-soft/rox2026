@@ -51,6 +51,8 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数デフォルト0.3）
 - `cmd_vel_timeout_sec`（IMU補正後速度指令が途絶えたと判定する時間）
 - `cmd_vel_acc_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
+- `forward_velocity_reduction_rpm_per_mps`（前進速度1 m/sあたりに減算するRPM）
+- `max_reduction_rpm`（前進時に減算する最大RPM）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）
 - `dribble_position_rad``open_position_rad``home_position_rad``feed_position_rad`

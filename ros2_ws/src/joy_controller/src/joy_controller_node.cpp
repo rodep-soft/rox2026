@@ -36,6 +36,8 @@ JoyControllerNode::JoyControllerNode()
   ps_button_ = declare_parameter<int>("ps_button", 12);
   home_button_ = declare_parameter<int>("home_button", 13);
   circle_button_ = declare_parameter<int>("circle_button", 2);
+  cross_button_ = declare_parameter<int>("cross_button", 1);
+  triangle_button_ = declare_parameter<int>("triangle_button", 3);
   square_button_ = declare_parameter<int>("square_button", 0);
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
@@ -43,6 +45,8 @@ JoyControllerNode::JoyControllerNode()
     declare_parameter<int>("heading_hold_toggle_button", 8);
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
   slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
+  trigger_chord_requests_shot_cycle_ =
+    declare_parameter<bool>("trigger_chord_requests_shot_cycle", false);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
   spring_arm_open_delay_ms_ =
@@ -231,6 +235,10 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         home_button_ = val;
       } else if (name == "circle_button") {
         circle_button_ = val;
+      } else if (name == "cross_button") {
+        cross_button_ = val;
+      } else if (name == "triangle_button") {
+        triangle_button_ = val;
       } else if (name == "square_button") {
         square_button_ = val;
       } else if (name == "dribble_enable_button") {
@@ -292,6 +300,10 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
       } else if (name == "slow_linear_scale" || name == "slow_linear_ratio") {
         slow_linear_scale_ = val;
       }
+    } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL &&
+      name == "trigger_chord_requests_shot_cycle")
+    {
+      trigger_chord_requests_shot_cycle_ = param.as_bool();
     }
   }
 
@@ -373,6 +385,13 @@ void JoyControllerNode::loop_callback()
       pk_prev_pub_->publish(empty_msg);
       RCLCPP_INFO(get_logger(), "PK target PREV requested (D-pad Left)");
     }
+  }
+
+  // 2b. △/×で、YAMLのベルトRPMに加えるオフセットを1段ずつ変更する。
+  if (is_button_just_pressed(joy_msg_, triangle_button_)) {
+    publish_belt_mode(belt_rpm_mode_, 1);
+  } else if (is_button_just_pressed(joy_msg_, cross_button_)) {
+    publish_belt_mode(belt_rpm_mode_, -1);
   }
 
   // 3. ドリブル回転ON/OFF (R1)
@@ -479,9 +498,27 @@ void JoyControllerNode::loop_callback()
     }
   }
 
-  // 8. L2とR2の同時押しでスプリング発射を要求
+  // 8. L2とR2の同時押しで設定された発射方式を要求
   const auto now_tp = std::chrono::steady_clock::now();
-  const bool spring_fire_input = is_l2_active && is_r2_active;
+  const bool trigger_chord_active = is_l2_active && is_r2_active;
+  const bool was_l2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool trigger_chord_just_pressed =
+    trigger_chord_active && !(was_l2_active && was_r2_active);
+
+  if (trigger_chord_requests_shot_cycle_ && trigger_chord_just_pressed) {
+    std_msgs::msg::Bool request;
+    request.data = true;
+    shot_cycle_request_pub_->publish(request);
+    RCLCPP_INFO(get_logger(), "Shot cycle requested by L2 + R2");
+  }
+
+  const bool spring_fire_input =
+    trigger_chord_active && !trigger_chord_requests_shot_cycle_;
   const bool spring_fire_requested = spring_fire_input && spring_actuator_ready_;
 
   // 初回だけアームOPENの遅延シーケンスを開始する。
@@ -619,10 +656,11 @@ void JoyControllerNode::publish_emergency_stop(bool active)
   emergency_stop_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_belt_mode(uint8_t mode)
+void JoyControllerNode::publish_belt_mode(uint8_t mode, int8_t rpm_offset_step)
 {
   robot_msgs::msg::BeltMode msg;
   msg.mode = mode;
+  msg.rpm_offset_step = rpm_offset_step;
   belt_mode_pub_->publish(msg);
 }
 

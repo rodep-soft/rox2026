@@ -1,5 +1,7 @@
 #include "led_controller/led_controller.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <stdexcept>
 
@@ -11,6 +13,11 @@ constexpr uint8_t DRIVE_REVERSED_FLAG = 1U << 4U;
 constexpr uint8_t GAME2_ENABLED_FLAG = 1U << 5U;
 constexpr uint8_t ROLLER_FORWARD_FLAG = 1U << 6U;
 constexpr uint8_t ROLLER_REVERSE_FLAG = 1U << 7U;
+constexpr int8_t MAX_BELT_RPM_OFFSET_STEPS = 3;
+constexpr uint8_t TARGET_GRID_COMMAND_BASE = 0x20;
+constexpr uint8_t FALLEN_GRID_COMMAND_BASE = 0x22;
+constexpr uint16_t GRID_LOW_MASK = 0x00FF;
+constexpr uint16_t GRID_HIGH_MASK = 0x0100;
 }  // namespace
 
 LedControllerNode::LedControllerNode()
@@ -18,13 +25,16 @@ LedControllerNode::LedControllerNode()
 {
   const auto publish_period_ms = declare_parameter<int>("publish_period_ms", 100);
   const auto firing_display_ms = declare_parameter<int>("firing_display_ms", 500);
+  const auto belt_offset_display_ms =
+    declare_parameter<int>("belt_offset_display_ms", 1000);
   const auto roller_logical_id = declare_parameter<int>("roller_logical_id", 12);
-  if (publish_period_ms <= 0 || firing_display_ms < 0 ||
+  if (publish_period_ms <= 0 || firing_display_ms < 0 || belt_offset_display_ms < 0 ||
     roller_logical_id < 0 || roller_logical_id > 65535)
   {
     throw std::runtime_error("LED timer parameters are invalid");
   }
   firing_display_duration_ = std::chrono::milliseconds(firing_display_ms);
+  belt_offset_display_duration_ = std::chrono::milliseconds(belt_offset_display_ms);
   roller_logical_id_ = static_cast<uint16_t>(roller_logical_id);
 
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
@@ -69,6 +79,10 @@ LedControllerNode::LedControllerNode()
     "/game2/state", state_qos,
     std::bind(&LedControllerNode::game2_state_callback, this, std::placeholders::_1));
 
+  target_grid_state_sub_ = create_subscription<robot_msgs::msg::TargetGridState>(
+    "/target_grid_state", state_qos,
+    std::bind(&LedControllerNode::target_grid_state_callback, this, std::placeholders::_1));
+
   spring_fire_sub_ = create_subscription<std_msgs::msg::Bool>(
     "/spring/fire_request", command_qos,
     std::bind(&LedControllerNode::spring_fire_callback, this, std::placeholders::_1));
@@ -89,6 +103,14 @@ void LedControllerNode::belt_mode_callback(const robot_msgs::msg::BeltMode::Shar
 {
   belt_mode_ = msg->mode <=
     robot_msgs::msg::BeltMode::LEVEL_4 ? msg->mode : robot_msgs::msg::BeltMode::STOP;
+  if (msg->rpm_offset_step != 0) {
+    belt_rpm_offset_steps_ = static_cast<int8_t>(std::clamp(
+        static_cast<int>(belt_rpm_offset_steps_) + static_cast<int>(msg->rpm_offset_step),
+        -static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS),
+        static_cast<int>(MAX_BELT_RPM_OFFSET_STEPS)));
+    belt_offset_display_until_ =
+      std::chrono::steady_clock::now() + belt_offset_display_duration_;
+  }
 }
 
 void LedControllerNode::dribble_enabled_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -133,6 +155,21 @@ void LedControllerNode::game2_state_callback(const robot_msgs::msg::Game2State::
   game2_state_ = msg->state;
 }
 
+void LedControllerNode::target_grid_state_callback(
+  const robot_msgs::msg::TargetGridState::SharedPtr msg)
+{
+  target_grid_mask_ = 0;
+  fallen_grid_mask_ = 0;
+  for (std::size_t index = 0; index < msg->states.size(); ++index) {
+    const auto bit = static_cast<uint16_t>(1U << index);
+    if (msg->states[index] == robot_msgs::msg::TargetGridState::TARGET) {
+      target_grid_mask_ |= bit;
+    } else if (msg->states[index] == robot_msgs::msg::TargetGridState::FALLEN) {
+      fallen_grid_mask_ |= bit;
+    }
+  }
+}
+
 void LedControllerNode::spring_fire_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   const bool rising_edge = msg->data && !spring_fire_request_active_;
@@ -145,9 +182,21 @@ void LedControllerNode::spring_fire_callback(const std_msgs::msg::Bool::SharedPt
 void LedControllerNode::publish_timer_callback()
 {
   std_msgs::msg::UInt16 command;
+  command.data = make_grid_mask_command(TARGET_GRID_COMMAND_BASE, target_grid_mask_);
+  led_command_pub_->publish(command);
+  command.data = make_grid_mask_command(FALLEN_GRID_COMMAND_BASE, fallen_grid_mask_);
+  led_command_pub_->publish(command);
   command.data = static_cast<uint16_t>(select_display_mode()) |
     (static_cast<uint16_t>(make_status_flags()) << 8U);
   led_command_pub_->publish(command);
+}
+
+uint16_t LedControllerNode::make_grid_mask_command(uint8_t command_base, uint16_t mask) const
+{
+  const auto command = static_cast<uint8_t>(
+    command_base | ((mask & GRID_HIGH_MASK) != 0U ? 0x01U : 0x00U));
+  return static_cast<uint16_t>(command) |
+         static_cast<uint16_t>((mask & GRID_LOW_MASK) << 8U);
 }
 
 LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
@@ -190,6 +239,10 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
       break;
   }
 
+  if (std::chrono::steady_clock::now() < belt_offset_display_until_) {
+    return belt_offset_display_mode();
+  }
+
   switch (arm_position_) {
     case robot_msgs::msg::ArmPosition::OPEN:    return DisplayMode::SHOT_OPENING;
     case robot_msgs::msg::ArmPosition::FEED:    return DisplayMode::ARM_FEED;
@@ -200,6 +253,19 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
   }
 
   return DisplayMode::READY;
+}
+
+LedControllerNode::DisplayMode LedControllerNode::belt_offset_display_mode() const
+{
+  switch (belt_rpm_offset_steps_) {
+    case -3: return DisplayMode::BELT_OFFSET_MINUS_3;
+    case -2: return DisplayMode::BELT_OFFSET_MINUS_2;
+    case -1: return DisplayMode::BELT_OFFSET_MINUS_1;
+    case 0:  return DisplayMode::BELT_OFFSET_ZERO;
+    case 1:  return DisplayMode::BELT_OFFSET_PLUS_1;
+    case 2:  return DisplayMode::BELT_OFFSET_PLUS_2;
+    default: return DisplayMode::BELT_OFFSET_PLUS_3;
+  }
 }
 
 uint8_t LedControllerNode::make_status_flags() const

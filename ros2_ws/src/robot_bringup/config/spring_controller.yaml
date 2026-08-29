@@ -4,8 +4,8 @@
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）
     limit_switch_bit_offset: 0
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 3.6   # 4.0
-    # [rad] ベルト収納開始位置から、アーム動作を許可するまでの収納回転量
+    standby_offset_rad: 3.58   # 4.0
+    # [rad] ベルト収納開位置から、アーム動作を許可するまでの収納回転量
     belt_clearance_ready_travel_rad: 0.2
 
     # [rad] 待機位置・目標位置到達判定の許容誤差
@@ -16,31 +16,31 @@
     # ── ゆっくり射出 ──
     # retract_travel_radは現在の待機位置から収納方向へ動かす量。
     slow_fire_move_spring: true           # false: ばねは保持し、アームとローラのみ動作
-    slow_fire_retract_travel_rad: 2.0      # [rad] スロー発射前に収納方向へ動かす回転量
+    slow_fire_retract_travel_rad: 2.8      # [rad] スロー発射前に収納方向へ動かす回転量
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
-    slow_fire_stroke_rad: 8.0              # [rad] 収納位置からゆっくり押し出す回転量
-    slow_fire_base_velocity_rad_s: 10.0    # スロー発射の基準速度
-    slow_fire_velocity_gain_rad_per_m: 5.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
+    slow_fire_stroke_rad: 8.3              # [rad] 収納位置からゆっくり押し出す回転量
+    slow_fire_base_velocity_rad_s: 20.0    # スロー発射の基準速度
+    slow_fire_velocity_gain_rad_per_m: 9.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0      # スロー発射の最小速度
-    slow_fire_max_velocity_rad_s: 30.0     # スロー発射の最大速度
+    slow_fire_max_velocity_rad_s: 40.0     # スロー発射の最大速度
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # IMU補正後の速度指令を受け取って補正する
     cmd_vel_timeout_sec: 0.2               # cmd_velのタイムアウト
     slow_fire_return_velocity_rad_s: 28.0  # スロー発射後に戻る速度
     slow_fire_settle_timeout_sec: 10.0     # [s] 目標送信完了後に実機の到達を待つ猶予
     
     # [rad/s] 未原点時に目標位置を負方向へずらす速度
-    homing_velocity_rad_s: 4.0
+    homing_velocity_rad_s: 3.5
   
     # [s] リミットスイッチが見つからない場合のタイムアウト
     homing_timeout_sec: 50.0
     motion_timeout_sec: 10.0          # [s] 通常発射・待機位置移動のタイムアウト
     
     # [rad/s] この速度以下を停止とみなす
-    stopped_velocity_threshold_rad_s: 0.05
+    stopped_velocity_threshold_rad_s: 5.0
     
     # 停止判定に必要な連続フィードバック数
-    required_stable_feedback_count: 3
+    required_stable_feedback_count: 2
 
     # [ms] 位置指令更新周期
     command_period_ms: 10

@@ -11,6 +11,7 @@
 #include "robot_msgs/msg/game2_state.hpp"
 #include "robot_msgs/msg/shot_cycle_state.hpp"
 #include "robot_msgs/msg/spring_operation_state.hpp"
+#include "robot_msgs/msg/target_grid_state.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int16.hpp"
 
@@ -38,6 +39,13 @@ private:
     ARM_RECEIVE = 13,
     ARM_HOME = 14,
     BELT_SPINUP = 15,
+    BELT_OFFSET_MINUS_3 = 16,
+    BELT_OFFSET_MINUS_2 = 17,
+    BELT_OFFSET_MINUS_1 = 18,
+    BELT_OFFSET_ZERO = 19,
+    BELT_OFFSET_PLUS_1 = 20,
+    BELT_OFFSET_PLUS_2 = 21,
+    BELT_OFFSET_PLUS_3 = 22,
   };
 
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -50,11 +58,14 @@ private:
     const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg);
   void game2_state_callback(const robot_msgs::msg::Game2State::SharedPtr msg);
+  void target_grid_state_callback(const robot_msgs::msg::TargetGridState::SharedPtr msg);
   void spring_fire_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void publish_timer_callback();
 
   DisplayMode select_display_mode() const;
   uint8_t make_status_flags() const;
+  DisplayMode belt_offset_display_mode() const;
+  uint16_t make_grid_mask_command(uint8_t command_base, uint16_t mask) const;
 
   bool emergency_stop_received_{false};
   bool emergency_stop_active_{true};
@@ -62,14 +73,19 @@ private:
   bool drive_reversed_{false};
   bool spring_fire_request_active_{false};
   uint8_t belt_mode_{0};
+  int8_t belt_rpm_offset_steps_{0};
   uint8_t arm_position_{robot_msgs::msg::ArmPosition::DRIBBLE};
   uint8_t spring_operation_state_{robot_msgs::msg::SpringOperationState::IDLE};
   uint8_t shot_cycle_state_{0};
   uint16_t roller_logical_id_{12};
   float roller_target_rpm_{0.0F};
   uint8_t game2_state_{0};
+  uint16_t target_grid_mask_{0};
+  uint16_t fallen_grid_mask_{0};
   std::chrono::steady_clock::time_point firing_display_until_{};
+  std::chrono::steady_clock::time_point belt_offset_display_until_{};
   std::chrono::milliseconds firing_display_duration_{500};
+  std::chrono::milliseconds belt_offset_display_duration_{1000};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_sub_;
@@ -81,6 +97,7 @@ private:
     spring_operation_state_sub_;
   rclcpp::Subscription<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_sub_;
   rclcpp::Subscription<robot_msgs::msg::Game2State>::SharedPtr game2_state_sub_;
+  rclcpp::Subscription<robot_msgs::msg::TargetGridState>::SharedPtr target_grid_state_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_fire_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr led_command_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;

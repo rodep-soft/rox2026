@@ -45,6 +45,16 @@ ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=t
 Joy deviceの既定値は`/dev/input/js0`である。別deviceを使う場合は通常起動へ
 `device:=/dev/input/js1`のように渡す。
 
+## Game3起動
+
+```bash
+ros2 launch robot_bringup game3_robot.launch.py
+```
+
+Game3は`game3_joy_controller.yaml`を読み込み、L2+R2でShot Cycleを要求する。
+Spring fireとslow fireの要求は送らないが、Spring controllerは位置制御のため
+起動する。R2による走行・旋回減速も維持する。
+
 ## vision_launch.py & apriltag_launch.py (230AI ビジョン・AprilTag 検出)
 
 | 引数 | 既定値 | 説明 |
@@ -178,6 +188,7 @@ ros2 launch robot_bringup test/robot_belt_dribble.launch.py
 | YAML | 対象 | 主な設定 |
 |---|---|---|
 | `joy_controller.yaml` | Joy変換 | button・axis index、timeout、速度上限 |
+| `game3_joy_controller.yaml` | Game3 Joy変換 | L2+R2のShot Cycle、Spring fire無効 |
 | `dribble_controller.yaml` | dribble | ローラーRPM、姿勢角度、shot cycle時間・速度 |
 | `belt_dribble_controller.yaml` | belt・dribble | level RPM、許容差、feedback timeout |
 | `mecanum_controller.yaml` | mecanum | 寸法、補正係数、車輪速度上限 |
