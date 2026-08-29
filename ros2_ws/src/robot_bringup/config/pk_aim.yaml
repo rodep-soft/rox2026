@@ -39,7 +39,7 @@
 
     # ── 🧪 テストモード切替 ──
     test_alignment_only: false     # true: ベルトを動かさず旋回のみテスト
-    test_panel_state_display: true # true: 0.5秒ごとにターミナルへ9マス色付き起立/選択モニターを出力
+    test_panel_state_display: false # true: 0.5秒ごとにターミナルへ9マス色付き起立/選択モニターを出力 (false: 決定時のみ出力)
 
     # ── 🛡️ タイムアウト設定 ──
     tag_lost_timeout: 3.0       # [s] タグが遮られたときの姿勢保持時間

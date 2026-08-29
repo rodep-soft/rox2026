@@ -453,12 +453,6 @@ void Game2AimNode::control_loop()
   // 🎯 ターゲットIndex & 倒れIndexのパブリッシュ（STANDBY中も常時出力）
   publish_target_status(current_time);
 
-  if (test_panel_state_display_) {
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 500,
-      "%s", tracker_.get_grid_visual_summary(current_time).c_str());
-  }
-
   double dt = (current_time - last_loop_time_).seconds();
   if (dt <= 0.001 || dt > 0.2) {
     dt = 0.05;
@@ -521,7 +515,7 @@ void Game2AimNode::control_loop()
         {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 500,
-            "⏳ [Game2 SEARCHING] Waiting for target to fall (%.2fs / %.2fs)... Standing still",
+            "⏳ [Game2 State: SEARCHING] Waiting for target to fall (%.2fs / %.2fs)...",
             (current_time - last_shot_completed_time_).seconds(), post_shot_delay_sec_);
           break;
         }
@@ -530,17 +524,15 @@ void Game2AimNode::control_loop()
           transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");
           log_target_decision("Game2 ターゲットロック", "視覚検出に基づき最適ターゲットを確定 (照準旋回開始)");
         } else {
-          const std::string summary = tracker_.get_detection_summary(current_time);
           if (std::abs(search_angular_z_) > 0.001) {
             RCLCPP_INFO_THROTTLE(
               get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 SEARCHING] Rotating %+.2f rad/s | %s",
-              search_angular_z_, summary.c_str());
+              "🔍 [Game2 State: SEARCHING] Rotating %+.2f rad/s (Searching for targets...)",
+              search_angular_z_);
           } else {
             RCLCPP_INFO_THROTTLE(
               get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 SEARCHING] Waiting for target AprilTags... | %s",
-              summary.c_str());
+              "🔍 [Game2 State: SEARCHING] Waiting for target AprilTags...");
           }
         }
         break;
@@ -598,7 +590,7 @@ void Game2AimNode::control_loop()
           RCLCPP_INFO_THROTTLE(
             get_logger(),
             *get_clock(), 500,
-            "🎯 [Game2 ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+            "🎯 [Game2 State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
             cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
@@ -630,7 +622,7 @@ void Game2AimNode::control_loop()
         } else {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 500,
-            "🚀 [Game2 PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
+            "🚀 [Game2 State: PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
             tracker_.target_description().c_str(), current_belt_mode);
         }
         break;

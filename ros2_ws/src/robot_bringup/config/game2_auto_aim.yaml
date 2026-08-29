@@ -32,7 +32,7 @@
     # true: ドリブル・ベルトを動かさず、車体の角度合わせ（旋回）だけをテスト
     # false: BeltMode連動を含むエイムアシスト (下段: LEVEL_1, 中段: LEVEL_2, 上段: LEVEL_3)
     test_alignment_only: false
-    test_panel_state_display: true # true: 0.5秒ごとにターミナルへ9マス色付き起立/倒れ診断グリッドを出力
+    test_panel_state_display: false # true: 0.5秒ごとにターミナルへ9マス色付き起立/倒れ診断グリッドを出力 (false: 決定時のみ出力)
 
     tag_lost_timeout: 3.0   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ・低FPS耐性)
     search_angular_z: 0.0   # [rad/s] タグ未検出時の探索旋回速度 (0.0で静止待機, 推奨: 0.15)
