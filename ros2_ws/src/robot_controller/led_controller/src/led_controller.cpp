@@ -208,6 +208,17 @@ LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
     return DisplayMode::SLOW_FIRING;
   }
 
+  /* During Game2, keep a requested belt offset visible for its configured
+   * display interval. The STM32 moves this bar away from the fixed grid. */
+  if (game2_enabled_ &&
+    game2_state_ != robot_msgs::msg::Game2State::PREPARING_SHOOT &&
+    game2_state_ != robot_msgs::msg::Game2State::SHOOTING &&
+    game2_state_ != robot_msgs::msg::Game2State::WAITING_RESULT &&
+    std::chrono::steady_clock::now() < belt_offset_display_until_)
+  {
+    return belt_offset_display_mode();
+  }
+
   switch (game2_state_) {
     case robot_msgs::msg::Game2State::SEARCHING:       return DisplayMode::GAME2_SEARCHING;
     case robot_msgs::msg::Game2State::ALIGNING:        return DisplayMode::GAME2_ALIGNING;

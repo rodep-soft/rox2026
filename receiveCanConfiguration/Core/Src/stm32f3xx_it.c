@@ -58,7 +58,6 @@
 extern CAN_HandleTypeDef hcan;
 extern DMA_HandleTypeDef hdma_tim16_ch1_up;
 extern DMA_HandleTypeDef hdma_tim17_ch1_up;
-extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim15;
 /* USER CODE BEGIN EV */
 
@@ -266,7 +265,6 @@ void TIM1_BRK_TIM15_IRQHandler(void)
   /* USER CODE BEGIN TIM1_BRK_TIM15_IRQn 0 */
 
   /* USER CODE END TIM1_BRK_TIM15_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
   HAL_TIM_IRQHandler(&htim15);
   /* USER CODE BEGIN TIM1_BRK_TIM15_IRQn 1 */
 
