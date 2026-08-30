@@ -34,7 +34,7 @@
     test_alignment_only: false
     test_panel_state_display: false # true: 0.5秒ごとにターミナルへ9マス色付き起立/倒れ診断グリッドを出力 (false: 決定時のみ出力)
 
-    tag_lost_timeout: 3.0   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ・低FPS耐性)
+    tag_lost_timeout: 1.0   # [s] AprilTag見失い判定タイムアウト (旋回中のブレ・低FPS耐性)
     search_angular_z: 0.0   # [rad/s] タグ未検出時の探索旋回速度 (0.0で静止待機, 推奨: 0.15)
     enable_double_panel_midpoint_targeting: true # 2枚立っている時は中点を狙う (左-中中点を最優先)
     midpoint_blend_ratio: 0.50      # 端列へのシフト比率 (0.50: 幾何学的真の中点)
