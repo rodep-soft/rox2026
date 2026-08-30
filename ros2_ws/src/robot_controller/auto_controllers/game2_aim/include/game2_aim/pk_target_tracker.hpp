@@ -158,6 +158,16 @@ public:
     }
   }
 
+  // ── パネル状態のタイムアウト更新 ──
+  void update_panel_states(const rclcpp::Time & now)
+  {
+    for (auto & [id, panel] : panel_grid_) {
+      if ((now - panel.last_seen).seconds() > config_.tag_lost_timeout) {
+        panel.detected = false;
+      }
+    }
+  }
+
   // ── インデックス選択操作 ──
   int selected_index() const {return selected_index_;}
 
@@ -166,15 +176,43 @@ public:
     selected_index_ = std::clamp(idx, 0, 8);
   }
 
-  int select_next()
+  int select_next(const rclcpp::Time & now)
   {
-    selected_index_ = (selected_index_ + 1) % 9;
+    update_panel_states(now);
+
+    // 生きている的（起立検出中）を優先して前方に探索（最大9回）
+    for (int step = 1; step <= 9; ++step) {
+      int next_idx = (selected_index_ + step) % 9;
+      int tag_id = index_to_tag_id_[next_idx];
+      const auto & panel = panel_grid_.at(tag_id);
+
+      if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
+        selected_index_ = next_idx;
+        return selected_index_;
+      }
+    }
+
+    // 全ての的が倒れている／未検出の場合はインデックスを変更しない
     return selected_index_;
   }
 
-  int select_prev()
+  int select_prev(const rclcpp::Time & now)
   {
-    selected_index_ = (selected_index_ - 1 + 9) % 9;
+    update_panel_states(now);
+
+    // 生きている的（起立検出中）を優先して後方に探索（最大9回）
+    for (int step = 1; step <= 9; ++step) {
+      int prev_idx = (selected_index_ - step + 90) % 9;
+      int tag_id = index_to_tag_id_[prev_idx];
+      const auto & panel = panel_grid_.at(tag_id);
+
+      if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
+        selected_index_ = prev_idx;
+        return selected_index_;
+      }
+    }
+
+    // 全ての的が倒れている／未検出の場合はインデックスを変更しない
     return selected_index_;
   }
 

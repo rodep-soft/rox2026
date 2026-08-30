@@ -333,7 +333,7 @@ void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
 {
   if (state_ != robot_msgs::msg::Game2State::STANDBY) {
     is_target_confirmed_ = false;
-    int idx = tracker_.select_next();
+    int idx = tracker_.select_next(now());
     const auto & p = tracker_.get_selected_panel();
     if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
@@ -349,7 +349,7 @@ void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
 {
   if (state_ != robot_msgs::msg::Game2State::STANDBY) {
     is_target_confirmed_ = false;
-    int idx = tracker_.select_prev();
+    int idx = tracker_.select_prev(now());
     const auto & p = tracker_.get_selected_panel();
     if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
@@ -394,9 +394,11 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
     (new_state == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT"))),
     reason.c_str());
 
-  // PREPARING_SHOOT を抜ける時はベルトを即座に停止
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
-    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT)
+  // PREPARING_SHOOT を抜ける時、または STANDBY（手動）に移る時はベルトを即座に一度だけ停止
+  if ((state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
+    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT) ||
+    (new_state == robot_msgs::msg::Game2State::STANDBY &&
+    state_ != robot_msgs::msg::Game2State::STANDBY))
   {
     robot_msgs::msg::BeltMode stop_msg;
     stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
@@ -506,10 +508,20 @@ void PKAimNode::control_loop()
   }
   last_loop_time_ = current_time;
 
+  // 9マスの的認識・選択状態トピックを毎周期定期配信 (20Hz)
+  publish_target_status(current_time);
+
+  // STANDBY時は手動操作にトピックを完全に譲るため何も出力せずreturn
+  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+    last_cmd_wz_ = 0.0;
+    robot_msgs::msg::Game2State state_msg;
+    state_msg.state = state_;
+    state_pub_->publish(state_msg);
+    return;
+  }
+
   switch (state_) {
     case robot_msgs::msg::Game2State::STANDBY:
-        cmd.angular.z = 0.0;
-        last_cmd_wz_ = 0.0;
         break;
 
     case robot_msgs::msg::Game2State::SEARCHING: {
@@ -619,10 +631,16 @@ void PKAimNode::publish_all(
     cmd_vel_pub_->publish(cmd_vel);
   }
 
-  // PREPARING_SHOOT 状態のときのみベルト回転指示をパブリッシュ
+  // PKモード: PREPARING_SHOOT中は段に応じた回転、SEARCHING / ALIGNING 中は定期的に STOP を送信
   if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
     robot_msgs::msg::BeltMode mode_msg;
-    mode_msg.mode = belt_mode;
+    mode_msg.mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : belt_mode;
+    belt_mode_pub_->publish(mode_msg);
+  } else if (state_ == robot_msgs::msg::Game2State::SEARCHING ||
+    state_ == robot_msgs::msg::Game2State::ALIGNING)
+  {
+    robot_msgs::msg::BeltMode mode_msg;
+    mode_msg.mode = robot_msgs::msg::BeltMode::STOP;
     belt_mode_pub_->publish(mode_msg);
   }
 
