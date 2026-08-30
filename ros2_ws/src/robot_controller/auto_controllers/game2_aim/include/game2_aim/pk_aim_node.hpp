@@ -129,6 +129,7 @@ private:
   rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   uint8_t prev_shot_cycle_state_{robot_msgs::msg::ShotCycleState::IDLE};
   bool is_target_confirmed_{false};
+  bool shot_requested_{false};
 
   PKTargetTracker tracker_;
 };
