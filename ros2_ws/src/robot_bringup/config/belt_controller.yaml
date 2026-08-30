@@ -5,13 +5,13 @@
     underbelt_logical_id: 11    #ROS2上の認識ID(下側のベルト)
 
     # レベルごとの回転数(上下で別々の回転数に設定可能)
-    underbelt_level_1_rpm: 2400  # 1200  2350  1000
-    underbelt_level_2_rpm: 2800  # 2000  2650  1700
-    underbelt_level_3_rpm: 3000  #       3000  4900
+    underbelt_level_1_rpm: 2000  # 1200  2350  1000
+    underbelt_level_2_rpm: 2450  # 2000  2650  1700
+    underbelt_level_3_rpm: 2950  #       3000  4900
     underbelt_level_4_rpm: 4500  #       2550  4800
 
-    upperbelt_level_1_rpm: 2400  # 1200  2350  1400
-    upperbelt_level_2_rpm: 2850  # 2000  2600  1900
+    upperbelt_level_1_rpm: 2350  # 1200  2350  1400
+    upperbelt_level_2_rpm: 2650  # 2000  2600  1900
     upperbelt_level_3_rpm: 3450  #       3450  1100
     upperbelt_level_4_rpm: 4900  #       4900  3900
     

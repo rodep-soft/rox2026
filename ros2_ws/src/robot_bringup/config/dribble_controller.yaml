@@ -31,8 +31,8 @@
     # [RPM] ドリブルローラー有効時の回転数
     dribble_on_rpm: 450             # DRIBBLE姿勢 (ボール保持中) の回転数
     slow_fire_dribble_rpm: 0        # スロー発射中の回転数（負値で逆回転）
-    shot_cycle_opening_rpm: 900     # ベルト発射準備時のローラ回転数
-    shot_cycle_feeding_rpm: 700       # FEED中のローラ回転数
+    shot_cycle_opening_rpm: 1100     # ベルト発射準備時のローラ回転数
+    shot_cycle_feeding_rpm: 500       # FEED中のローラ回転数
     shot_cycle_returning_rpm: 450   # FEED -> DRIBBLE時の回転数
     shot_cycle_belt_spinup_level: 1 # 自動起動時のベルト回転レベル (1～4)
     
