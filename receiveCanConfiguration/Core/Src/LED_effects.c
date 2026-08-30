@@ -37,10 +37,10 @@
 #define CHASSIS_PEAK_INTENSITY       255U
 #define ARM_OPEN_HEAD_SPEED_Q8_PER_MS 16U
 #define ARM_OPEN_FILL_SPEED_Q8_PER_MS 32U
-#define LOADING_AFTER_EMERALD_HOLD_MS 50U
-#define LOADING_MIN_DISPLAY_MS       2000U
 #define FIRING_WAVE_MS               233U
 #define FIRING_START_DELAY_MS        100U /* Wait after FIRING begins before wave. */
+#define AUTO_FIRING_EFFECT_MS       1000U
+#define AUTO_FIRING_INITIAL_WAVE_MS (4U * FIRING_WAVE_MS)
 #define FIRING_COLOR_R               255U
 #define FIRING_COLOR_G               255U
 #define FIRING_COLOR_B               255U
@@ -138,21 +138,21 @@ static void LED_SetLauncherLevel(uint16_t level,
 	}
 }
 
-static void LED_OverlayBeltOffset(uint8_t mode) {
-	if (mode == LED_MODE_BELT_OFFSET_ZERO) {
-		return;
-	}
+static void LED_OverlayBeltOffset(uint8_t mode, bool automatic) {
+	const bool zero = mode == LED_MODE_BELT_OFFSET_ZERO;
 	const bool positive = mode > LED_MODE_BELT_OFFSET_ZERO;
-	const uint8_t steps = positive ?
+	const uint8_t steps = zero ? 3U : (positive ?
 			(uint8_t)(mode - LED_MODE_BELT_OFFSET_ZERO) :
-			(uint8_t)(LED_MODE_BELT_OFFSET_ZERO - mode);
-	const uint8_t red = positive ? 0U : 255U;
-	const uint8_t green = positive ? 255U : 80U;
-	const uint8_t blue = 0U;
+			(uint8_t)(LED_MODE_BELT_OFFSET_ZERO - mode));
+	const uint8_t red = (zero || positive) ? 0U : 255U;
+	const uint8_t green = zero ? 80U : (positive ? 255U : 80U);
+	const uint8_t blue = zero ? 255U : 0U;
+	const uint16_t left_start = automatic ? 3U : 0U;
+	const uint16_t right_start = automatic ? 16U :
+			(LAUNCHER_MAIN_LED_COUNT - 1U);
 	for (uint16_t level = 0U; level < steps; level++) {
-		setPixelPA6(level, red, green, blue);
-		setPixelPA6(LAUNCHER_MAIN_LED_COUNT - 1U - level,
-				red, green, blue);
+		setPixelPA6((uint16_t)(left_start + level), red, green, blue);
+		setPixelPA6((uint16_t)(right_start - level), red, green, blue);
 	}
 }
 
@@ -574,6 +574,47 @@ static void LED_RenderFiring(uint32_t elapsed_ms, uint32_t wave_ms) {
 	}
 }
 
+static void LED_RenderAutoFiringRanges(uint32_t elapsed_ms,
+		uint32_t wave_ms) {
+	const int32_t travel_q8 =
+			(LAUNCHER_LEVEL_COUNT - 1U) * 256L +
+			2L * FIRING_LAUNCHER_OUTER_RADIUS_Q8;
+	int32_t head_q8 = -FIRING_LAUNCHER_OUTER_RADIUS_Q8;
+	if (elapsed_ms < wave_ms) {
+		head_q8 = (LAUNCHER_LEVEL_COUNT - 1U) * 256L +
+				FIRING_LAUNCHER_OUTER_RADIUS_Q8 -
+				(int32_t)(elapsed_ms * (uint32_t)travel_q8 / wave_ms);
+	}
+
+	for (uint16_t offset = 0U; offset < GRID_CELL_COUNT; offset++) {
+		const uint16_t pixels[2] = {
+			(uint16_t)(20U + offset),
+			(uint16_t)(36U + offset)
+		};
+		for (uint16_t side = 0U; side < 2U; side++) {
+			int32_t distance_q8 =
+					(int32_t)LED_LauncherPhysicalLevel(pixels[side]) *
+					256L - head_q8;
+			if (distance_q8 < 0L) distance_q8 = -distance_q8;
+			LED_BlendFiringLauncher(pixels[side],
+					LED_FiringWaveStrength(distance_q8,
+							FIRING_LAUNCHER_FULL_RADIUS_Q8,
+							FIRING_LAUNCHER_OUTER_RADIUS_Q8));
+		}
+	}
+}
+
+static uint32_t LED_AutoFiringPhaseMs(uint32_t elapsed_ms) {
+	/* Linearly ramp frequency from 1/932 ms to 1/233 ms. Integrating the
+	 * frequency keeps the white wave position continuous while it accelerates. */
+	const uint32_t denominator = 2U * AUTO_FIRING_EFFECT_MS *
+			AUTO_FIRING_INITIAL_WAVE_MS;
+	const uint32_t phase_numerator =
+			2U * AUTO_FIRING_EFFECT_MS * elapsed_ms +
+			3U * elapsed_ms * elapsed_ms;
+	return (phase_numerator % denominator) * FIRING_WAVE_MS / denominator;
+}
+
 /* Physical LED numbers in the wiring drawing are 1-based. Grid state indices
  * are row-major: top-left index 0 through bottom-right index 8. */
 static const uint8_t grid_led_index[GRID_CELL_COUNT] = {
@@ -582,17 +623,80 @@ static const uint8_t grid_led_index[GRID_CELL_COUNT] = {
 	0U, 47U, 19U
 };
 
+/* Non-automatic effects for added LEDs 46..48 continue to mirror physical
+ * LEDs 3, 2 and 1; this mapping must not follow the automatic grid shift. */
+static const uint8_t normal_added_led_source[3] = {2U, 1U, 0U};
+
 static void LED_CopyNormalPatternToAddedGridLeds(void) {
 	uint8_t red;
 	uint8_t green;
 	uint8_t blue;
 	for (uint16_t row = 0U; row < 3U; row++) {
-		getPixelPA6(grid_led_index[row * 3U], &red, &green, &blue);
+		getPixelPA6(normal_added_led_source[row], &red, &green, &blue);
 		setPixelPA6(grid_led_index[row * 3U + 1U], red, green, blue);
 	}
 }
 
-static void LED_OverlayGame2Grid(uint32_t grid_states, uint32_t now_ms) {
+static void LED_TintRangeAutoGradient(uint16_t first, uint16_t count,
+		bool reverse_gradient, uint8_t mode) {
+	for (uint16_t offset = 0U; offset < count; offset++) {
+		uint8_t source_red;
+		uint8_t source_green;
+		uint8_t source_blue;
+		getPixelPA6((uint16_t)(first + offset),
+				&source_red, &source_green, &source_blue);
+
+		uint8_t intensity = source_red;
+		if (mode == LED_MODE_FIRING) {
+			/* The white wave adds red to the green preparation background.
+			 * Red therefore isolates the moving white component cleanly. */
+			intensity = source_red;
+		} else {
+			if (source_green > intensity) intensity = source_green;
+			if (source_blue > intensity) intensity = source_blue;
+			if ((mode == LED_MODE_LOADING) && (intensity < 32U)) {
+				intensity = 32U;
+			}
+		}
+
+		const uint16_t position = reverse_gradient ?
+				(uint16_t)(count - 1U - offset) : offset;
+		const uint16_t x = (count > 1U) ?
+				(uint16_t)(position * 255U / (count - 1U)) : 0U;
+		/* Smoothstep avoids visible color steps between adjacent LEDs. */
+		const uint16_t blend = (uint16_t)((uint32_t)x * x *
+				(765U - 2U * x) / (255U * 255U));
+		uint16_t gradient_red = 85U + 115U * blend / 255U;
+		uint16_t gradient_green = 18U + 22U * blend / 255U;
+		uint16_t gradient_blue = 255U;
+		if (mode == LED_MODE_LOADING) {
+			/* Preparation: deep green to bright Emerald. */
+			gradient_red = 0U;
+			gradient_green = 150U + 105U * blend / 255U;
+			gradient_blue = 80U - 50U * blend / 255U;
+		} else if (mode == LED_MODE_FIRING) {
+			/* Firing keeps the moving intensity gradient neutral white. */
+			gradient_red = 255U;
+			gradient_green = 255U;
+			gradient_blue = 255U;
+		}
+
+		setPixelPA6((uint16_t)(first + offset),
+				(uint8_t)(gradient_red * intensity / 255U),
+				(uint8_t)(gradient_green * intensity / 255U),
+				(uint8_t)(gradient_blue * intensity / 255U));
+	}
+}
+
+static void LED_ApplyAutoRangeGradient(uint8_t mode) {
+	/* Keep the existing wave position, brightness and belt lit count. The two
+	 * physical ranges run in opposite directions for the same logical level. */
+	LED_TintRangeAutoGradient(20U, GRID_CELL_COUNT, false, mode);
+	LED_TintRangeAutoGradient(36U, GRID_CELL_COUNT, true, mode);
+}
+
+static void LED_OverlayGame2Grid(uint32_t grid_states, uint32_t now_ms,
+		uint8_t mode) {
 	const bool target_on =
 			((now_ms / GRID_TARGET_BLINK_MS) & 1U) == 0U;
 	for (uint16_t index = 0U; index < GRID_CELL_COUNT; index++) {
@@ -600,38 +704,21 @@ static void LED_OverlayGame2Grid(uint32_t grid_states, uint32_t now_ms) {
 		uint8_t red = 0U;
 		uint8_t green = 180U;
 		uint8_t blue = 255U;
-		uint8_t accent_red = 110U;
-		uint8_t accent_green = 35U;
-		uint8_t accent_blue = 255U;
 		if (state == GRID_STATE_TARGET) {
 			green = target_on ? 255U : 0U;
 			blue = target_on ? 255U : 0U;
-			accent_red = target_on ? 190U : 0U;
-			accent_green = 0U;
-			accent_blue = target_on ? 255U : 0U;
 		} else if (state == GRID_STATE_FALLEN) {
 			red = 255U;
 			green = 90U;
 			blue = 0U;
-			accent_red = 230U;
-			accent_green = 25U;
-			accent_blue = 110U;
 		} else if (state != GRID_STATE_STANDING) {
 			red = 255U;
 			green = 0U;
 			blue = 255U;
-			accent_red = 255U;
-			accent_green = 0U;
-			accent_blue = 255U;
 		}
 		setPixelPA6(grid_led_index[index], red, green, blue);
-		/* LED 21..29 and 37..45 follow the same cell state and blink,
-		 * using a purple-shifted palette. */
-		setPixelPA6((uint16_t)(20U + index),
-				accent_red, accent_green, accent_blue);
-		setPixelPA6((uint16_t)(36U + index),
-				accent_red, accent_green, accent_blue);
 	}
+	LED_ApplyAutoRangeGradient(mode);
 }
 
 static void LED_RenderGame2Searching(uint32_t now_ms, uint8_t status) {
@@ -660,9 +747,6 @@ void LED_Effects_Init(void) {
 void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	const uint32_t now_ms = HAL_GetTick();
 	static uint8_t previous_mode = 0xFFU;
-	static bool loading_wait_started;
-	static uint32_t loading_wait_start_ms;
-	static uint32_t loading_mode_start_ms;
 	const uint8_t mode_before_change = previous_mode;
 	const bool mode_changed = mode != previous_mode;
 
@@ -670,23 +754,12 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 		if ((mode == LED_MODE_FIRING) || (mode == LED_MODE_SLOW_FIRING)) {
 			LED_CaptureFiringBackground(now_ms);
 		}
-		if (mode == LED_MODE_LOADING) {
-			loading_wait_started = false;
-			loading_mode_start_ms = now_ms;
-		}
 		previous_mode = mode;
 	}
 
-	/* An explicit mode 7 is always rendered before any auxiliary state. */
+	/* Game2 modes keep the normal manual animation; only grid LEDs are overlaid. */
 	debug_led_game2_search_active =
 			(mode == LED_MODE_GAME2_SEARCHING) ? 1U : 0U;
-	if (debug_led_game2_search_active != 0U) {
-		LED_RenderGame2Searching(now_ms, status);
-		LED_OverlayGame2Grid(grid_states, now_ms);
-		LED_ApplyImuDisconnectedWarning(now_ms);
-		show();
-		return;
-	}
 
 	switch (mode) {
 	case LED_MODE_STARTUP:
@@ -711,28 +784,27 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	{
 		LED_RenderChassisWaves(now_ms, 1000U, 2U, true,
 				0U, 255U, 90U, 0U);
-		const bool emerald_complete = LED_RenderArmOpenLauncher(now_ms,
+		(void)LED_RenderArmOpenLauncher(now_ms,
 				mode_changed && (mode_before_change != LED_MODE_ARM_OPEN), 9U);
-		if (emerald_complete && !loading_wait_started) {
-			loading_wait_started = true;
-			loading_wait_start_ms = now_ms;
-		}
-		if (loading_wait_started &&
-				(uint32_t)(now_ms - loading_wait_start_ms) >=
-				LOADING_AFTER_EMERALD_HOLD_MS &&
-				(uint32_t)(now_ms - loading_mode_start_ms) >=
-				LOADING_MIN_DISPLAY_MS) {
-			LED_SetChassisAll(255U, 255U, 255U);
-			LED_SetLauncherAll(255U, 255U, 255U);
-		}
 		break;
 	}
 	case LED_MODE_FIRING:
 	{
 		const uint32_t firing_elapsed_ms = now_ms - firing_start_ms;
 		if (firing_elapsed_ms >= FIRING_START_DELAY_MS) {
-			LED_RenderFiring(firing_elapsed_ms - FIRING_START_DELAY_MS,
-					FIRING_WAVE_MS);
+			const uint32_t wave_elapsed_ms =
+					firing_elapsed_ms - FIRING_START_DELAY_MS;
+			if ((status & LED_STATUS_GAME2_ENABLED) != 0U) {
+				const uint32_t phase_ms =
+						(wave_elapsed_ms < AUTO_FIRING_EFFECT_MS) ?
+						LED_AutoFiringPhaseMs(wave_elapsed_ms) :
+						FIRING_WAVE_MS;
+				/* Automatic white wave is limited to PB4 LEDs 21..29 and
+				 * 37..45; all other PB4/PB5 pixels keep their background. */
+				LED_RenderAutoFiringRanges(phase_ms, FIRING_WAVE_MS);
+			} else {
+				LED_RenderFiring(wave_elapsed_ms, FIRING_WAVE_MS);
+			}
 		}
 		break;
 	}
@@ -811,7 +883,8 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	case LED_MODE_BELT_OFFSET_PLUS_3:
 		/* Keep the active Emerald belt wave and add the offset indication. */
 		LED_RenderBeltLauncher(status, now_ms);
-		LED_OverlayBeltOffset(mode);
+		LED_OverlayBeltOffset(mode,
+				(status & LED_STATUS_GAME2_ENABLED) != 0U);
 		break;
 	}
 
@@ -820,22 +893,15 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 			(mode != LED_MODE_EMERGENCY_STOP) &&
 			(mode != LED_MODE_LOADING) &&
 			(mode != LED_MODE_FIRING) &&
-			(mode != LED_MODE_GAME2_SEARCHING) &&
 			(mode != LED_MODE_ERROR) &&
 			(mode != LED_MODE_SLOW_FIRING) && (mode <= LED_MODE_BELT_SPINUP)) {
 		const bool dribble =
 				(status & LED_STATUS_DRIBBLE_ENABLED) != 0U;
 		const bool reversed =
 				(status & LED_STATUS_DRIVE_REVERSED) != 0U;
-		const bool game2_enabled =
-				(status & LED_STATUS_GAME2_ENABLED) != 0U;
 		const bool roller_reverse =
 				(status & LED_STATUS_ROLLER_REVERSE) != 0U;
-		if (game2_enabled) {
-			/* Game2 SEARCHING always beats reversed Gold and normal Blue. */
-			debug_led_game2_search_active = 1U;
-			LED_RenderGame2Searching(now_ms, status);
-		} else if (reversed) {
+		if (reversed) {
 			if (dribble) {
 				/* Reversed dribbling uses Gold gradients on both chains. */
 				LED_RenderDriveLauncherGradient(now_ms, false, false);
@@ -858,7 +924,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 			}
 		}
 
-		if (!game2_enabled && ((mode == LED_MODE_READY) ||
+		if (((mode == LED_MODE_READY) ||
 				(mode == LED_MODE_ARM_DRIBBLE) ||
 				(mode == LED_MODE_ARM_HOME))) {
 			/* Active belt Emerald overrides the upper reversed Gold display. */
@@ -868,7 +934,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	if (((status & LED_STATUS_GAME2_ENABLED) != 0U) &&
 			(mode != LED_MODE_STARTUP) &&
 			(mode != LED_MODE_EMERGENCY_STOP) && (mode != LED_MODE_ERROR)) {
-		LED_OverlayGame2Grid(grid_states, now_ms);
+		LED_OverlayGame2Grid(grid_states, now_ms, mode);
 	} else if (((status & LED_STATUS_GAME2_ENABLED) == 0U) &&
 			(mode != LED_MODE_STARTUP) &&
 			(mode != LED_MODE_EMERGENCY_STOP) && (mode != LED_MODE_ERROR)) {
