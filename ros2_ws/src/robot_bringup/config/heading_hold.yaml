@@ -1,14 +1,14 @@
 /heading_hold_node:
   ros__parameters:
     # IMU ジャイロ補正のPID
-    kp: 2.7
+    kp: 4.8
     ki: 0.0
-    kd: 0.32
+    kd: 0.3
     integral_limit: 0.5
 
     heading_deadband_rad: 0.01
     rotation_input_deadband_rad_s: 0.01
-    max_correction_rad_s: 2.0
+    max_correction_rad_s: 7.0
     # 並進速度に応じてP/D補正を滑らかに強める
     speed_boost_start_m_s: 0.8
     speed_boost_full_m_s: 4.0
@@ -23,9 +23,9 @@
     # 符号付き指令加速度から、角度がずれる前にyaw補正を加える
     acceleration_feedforward_x_positive_gain: 0.0
     acceleration_feedforward_x_negative_gain: 0.0
-    acceleration_feedforward_y_positive_gain: 0.97
-    acceleration_feedforward_y_negative_gain: 0.92
-    max_acceleration_feedforward_rad_s: 0.1
+    acceleration_feedforward_y_positive_gain: 0.0
+    acceleration_feedforward_y_negative_gain: 0.0
+    max_acceleration_feedforward_rad_s: 0.8
 
     # メカナム車輪上限内で旋回補正を先に確保し、残りを並進に割り当てる
     wheel_radius: 0.075
