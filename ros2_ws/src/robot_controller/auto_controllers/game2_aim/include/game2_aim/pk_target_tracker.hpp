@@ -107,7 +107,7 @@ public:
     add_panel(7, 21, 0, 1, "下段中 [Bot-Center]", robot_msgs::msg::BeltMode::LEVEL_1);
     add_panel(8, 22, 0, 2, "下段右 [Bot-Right]", robot_msgs::msg::BeltMode::LEVEL_1);
 
-    selected_index_ = 0;
+    selected_index_ = 4;
   }
 
   void init_custom_tags(
@@ -158,6 +158,16 @@ public:
     }
   }
 
+  // ── パネル状態のタイムアウト更新 ──
+  void update_panel_states(const rclcpp::Time & now)
+  {
+    for (auto & [id, panel] : panel_grid_) {
+      if ((now - panel.last_seen).seconds() > config_.tag_lost_timeout) {
+        panel.detected = false;
+      }
+    }
+  }
+
   // ── インデックス選択操作 ──
   int selected_index() const {return selected_index_;}
 
@@ -166,15 +176,43 @@ public:
     selected_index_ = std::clamp(idx, 0, 8);
   }
 
-  int select_next()
+  int select_next(const rclcpp::Time & now)
   {
-    selected_index_ = (selected_index_ + 1) % 9;
+    update_panel_states(now);
+
+    // 生きている的（起立検出中）を優先して前方に探索（最大9回）
+    for (int step = 1; step <= 9; ++step) {
+      int next_idx = (selected_index_ + step) % 9;
+      int tag_id = index_to_tag_id_[next_idx];
+      const auto & panel = panel_grid_.at(tag_id);
+
+      if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
+        selected_index_ = next_idx;
+        return selected_index_;
+      }
+    }
+
+    // 全ての的が倒れている／未検出の場合はインデックスを変更しない
     return selected_index_;
   }
 
-  int select_prev()
+  int select_prev(const rclcpp::Time & now)
   {
-    selected_index_ = (selected_index_ - 1 + 9) % 9;
+    update_panel_states(now);
+
+    // 生きている的（起立検出中）を優先して後方に探索（最大9回）
+    for (int step = 1; step <= 9; ++step) {
+      int prev_idx = (selected_index_ - step + 90) % 9;
+      int tag_id = index_to_tag_id_[prev_idx];
+      const auto & panel = panel_grid_.at(tag_id);
+
+      if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
+        selected_index_ = prev_idx;
+        return selected_index_;
+      }
+    }
+
+    // 全ての的が倒れている／未検出の場合はインデックスを変更しない
     return selected_index_;
   }
 
@@ -270,7 +308,8 @@ public:
   }
 
   // ── 照準ターゲットの確定・ロック ──
-  bool lock_selected_target(const rclcpp::Time & now, const rclcpp::Logger & logger)
+  bool lock_selected_target(
+    const rclcpp::Time & now, const rclcpp::Logger & logger, double current_yaw = 0.0)
   {
     int target_tag_id = index_to_tag_id_[selected_index_];
     auto it = panel_grid_.find(target_tag_id);
@@ -297,18 +336,19 @@ public:
       target_x_ = config_.target_distance + config_.camera_offset_x;
       target_y_ = col_offsets[panel.col] + config_.camera_offset_y;
       target_z_ = 0.5;
-      target_yaw_at_detection_ = 0.0;
+      target_yaw_at_detection_ = current_yaw;
     }
 
-    target_heading_err_ = std::remainder(
-      std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 目標の絶対角度 (ワールド座標系) を確定固定
+    const double raw_aim_angle = std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad;
+    locked_target_yaw_ = std::remainder(current_yaw + raw_aim_angle, 2.0 * M_PI);
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
 
     RCLCPP_INFO(
       logger,
-      "🔒 [PK TARGET LOCKED] [Idx %d] %s (Tag #%d | Row %d Col %d) | Target Angle: %+.2f deg | Belt: LEVEL_%d",
+      "🔒 [PK TARGET LOCKED] [Idx %d] %s (Tag #%d | Row %d Col %d) | Target Angle: %+.2f deg (World: %+.2f deg) | Belt: LEVEL_%d",
       selected_index_, panel.name.c_str(), panel.tag_id, panel.row, panel.col,
-      target_heading_err_ * 180.0 / M_PI, target_belt_mode_);
+      target_heading_err_ * 180.0 / M_PI, locked_target_yaw_ * 180.0 / M_PI, target_belt_mode_);
 
     return true;
   }
@@ -338,17 +378,19 @@ public:
       last_visually_confirmed_time_ = now;
     }
 
-    // IMUオドメトリ姿勢補間（デッドレコニング）: カメラ遅延をIMUでリアルタイム補償
-    const double raw_heading_err = std::atan2(target_y_, target_x_);
-    const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(
-      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 旋回中・静止中ともに固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で完全安定追従
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
   }
 
   bool is_currently_visible(const rclcpp::Time & now, double valid_timeout = 0.5) const
   {
     return (now - last_visually_confirmed_time_).seconds() <= valid_timeout;
+  }
+
+  bool is_lost_timeout(const rclcpp::Time & now, double timeout_sec = 3.0) const
+  {
+    if (!target_locked_) {return false;}
+    return (now - last_visually_confirmed_time_).seconds() > timeout_sec;
   }
 
   void reset()
@@ -444,6 +486,7 @@ public:
   }
 
   double heading_error() const {return target_heading_err_;}
+  double locked_target_yaw() const {return locked_target_yaw_;}
   double target_x() const {return target_x_;}
   double target_y() const {return target_y_;}
   double target_z() const {return target_z_;}
@@ -464,7 +507,7 @@ private:
   Config config_;
   std::unordered_map<int, PKPanelInfo> panel_grid_;
   std::vector<int> index_to_tag_id_;
-  int selected_index_{0};
+  int selected_index_{4};
 
   bool target_locked_{false};
   int active_target_id_{-1};
@@ -475,6 +518,7 @@ private:
   double target_y_{0.0};
   double target_z_{0.5};
   double target_heading_err_{0.0};
+  double locked_target_yaw_{0.0};
   double target_yaw_at_detection_{0.0};
   rclcpp::Time last_visually_confirmed_time_{0, 0, RCL_ROS_TIME};
 };

@@ -18,6 +18,7 @@
 #include "robot_msgs/msg/target_grid_state.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/int32_multi_array.hpp"
@@ -44,6 +45,7 @@ private:
   void emergency_stop_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg);
   void shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg);
+  void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg);
 
   void transition_to(uint8_t new_state, const std::string & reason);
   void control_loop();
@@ -53,6 +55,7 @@ private:
     uint8_t belt_mode,
     bool completed);
   void publish_target_status(const rclcpp::Time & now);
+  void log_target_decision(const std::string & title, const std::string & reason);
 
   // TF Listener
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -66,6 +69,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr emergency_stop_sub_;
   rclcpp::Subscription<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr shot_cycle_req_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<robot_msgs::msg::BeltMode>::SharedPtr belt_mode_pub_;
@@ -125,6 +129,14 @@ private:
   bool shot_requested_{false};
   rclcpp::Time shot_requested_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_shot_completed_time_{0, 0, RCL_ROS_TIME};
+
+  // ── Test Mode Shot Simulation State ──
+  int circle_button_{2};
+  int left_trigger_axis_{3};
+  double axis_on_threshold_{0.5};
+  std::optional<sensor_msgs::msg::Joy> last_joy_msg_{};
+  bool test_shot_timer_active_{false};
+  rclcpp::Time test_shot_start_time_{0, 0, RCL_ROS_TIME};
 
   rclcpp::Time last_loop_time_{0, 0, RCL_ROS_TIME};
   double last_cmd_wz_{0.0};

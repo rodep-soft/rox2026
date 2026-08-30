@@ -33,11 +33,12 @@ can_msgs::msg::Frame make_alive_frame()
   return make_data_frame(HEARTBEAT_TO_STM, 0);
 }
 
-can_msgs::msg::Frame make_led_frame(uint16_t command)
+can_msgs::msg::Frame make_led_frame(uint64_t command)
 {
-  auto frame = make_data_frame(LED_CMD, 2);
-  frame.data[0] = static_cast<uint8_t>(command & 0xFFU);
-  frame.data[1] = static_cast<uint8_t>((command >> 8U) & 0xFFU);
+  auto frame = make_data_frame(LED_CMD, 5);
+  for (std::size_t index = 0; index < frame.dlc; ++index) {
+    frame.data[index] = static_cast<uint8_t>((command >> (index * 8U)) & 0xFFU);
+  }
   return frame;
 }
 

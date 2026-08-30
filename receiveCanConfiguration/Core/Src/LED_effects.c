@@ -10,6 +10,11 @@
 #define LED_STATUS_GAME2_ENABLED      0x20U
 #define LED_STATUS_ROLLER_FORWARD     0x40U
 #define LED_STATUS_ROLLER_REVERSE     0x80U
+#define GRID_STATE_STANDING             0U
+#define GRID_STATE_TARGET               1U
+#define GRID_STATE_FALLEN               2U
+#define GRID_CELL_COUNT                 9U
+#define GRID_TARGET_BLINK_MS           300U
 
 #define LAUNCHER_MAIN_LED_COUNT       20U
 #define LAUNCHER_SIDE_LED_COUNT        9U
@@ -499,6 +504,7 @@ static uint16_t LED_LauncherPhysicalLevel(uint16_t pixel) {
 	if (pixel < 20U) return (uint16_t)(19U - pixel);
 	if (pixel < 29U) return (uint16_t)(pixel - 20U);
 	if (pixel < 36U) return 9U;
+	if (pixel >= 45U) return (uint16_t)(47U - pixel);
 	return (uint16_t)(44U - pixel);
 }
 
@@ -568,6 +574,66 @@ static void LED_RenderFiring(uint32_t elapsed_ms, uint32_t wave_ms) {
 	}
 }
 
+/* Physical LED numbers in the wiring drawing are 1-based. Grid state indices
+ * are row-major: top-left index 0 through bottom-right index 8. */
+static const uint8_t grid_led_index[GRID_CELL_COUNT] = {
+	2U, 45U, 17U,
+	1U, 46U, 18U,
+	0U, 47U, 19U
+};
+
+static void LED_CopyNormalPatternToAddedGridLeds(void) {
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	for (uint16_t row = 0U; row < 3U; row++) {
+		getPixelPA6(grid_led_index[row * 3U], &red, &green, &blue);
+		setPixelPA6(grid_led_index[row * 3U + 1U], red, green, blue);
+	}
+}
+
+static void LED_OverlayGame2Grid(uint32_t grid_states, uint32_t now_ms) {
+	const bool target_on =
+			((now_ms / GRID_TARGET_BLINK_MS) & 1U) == 0U;
+	for (uint16_t index = 0U; index < GRID_CELL_COUNT; index++) {
+		const uint8_t state = (uint8_t)((grid_states >> (index * 2U)) & 0x03U);
+		uint8_t red = 0U;
+		uint8_t green = 180U;
+		uint8_t blue = 255U;
+		uint8_t accent_red = 110U;
+		uint8_t accent_green = 35U;
+		uint8_t accent_blue = 255U;
+		if (state == GRID_STATE_TARGET) {
+			green = target_on ? 255U : 0U;
+			blue = target_on ? 255U : 0U;
+			accent_red = target_on ? 190U : 0U;
+			accent_green = 0U;
+			accent_blue = target_on ? 255U : 0U;
+		} else if (state == GRID_STATE_FALLEN) {
+			red = 255U;
+			green = 90U;
+			blue = 0U;
+			accent_red = 230U;
+			accent_green = 25U;
+			accent_blue = 110U;
+		} else if (state != GRID_STATE_STANDING) {
+			red = 255U;
+			green = 0U;
+			blue = 255U;
+			accent_red = 255U;
+			accent_green = 0U;
+			accent_blue = 255U;
+		}
+		setPixelPA6(grid_led_index[index], red, green, blue);
+		/* LED 21..29 and 37..45 follow the same cell state and blink,
+		 * using a purple-shifted palette. */
+		setPixelPA6((uint16_t)(20U + index),
+				accent_red, accent_green, accent_blue);
+		setPixelPA6((uint16_t)(36U + index),
+				accent_red, accent_green, accent_blue);
+	}
+}
+
 static void LED_RenderGame2Searching(uint32_t now_ms, uint8_t status) {
 	const uint16_t head = (uint16_t)((now_ms % 1200U) *
 			PA7_LED_NUM / 1200U);
@@ -591,7 +657,7 @@ void LED_Effects_Init(void) {
 	show();
 }
 
-void LED_Effects_Render(uint8_t mode, uint8_t status) {
+void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 	const uint32_t now_ms = HAL_GetTick();
 	static uint8_t previous_mode = 0xFFU;
 	static bool loading_wait_started;
@@ -616,6 +682,7 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			(mode == LED_MODE_GAME2_SEARCHING) ? 1U : 0U;
 	if (debug_led_game2_search_active != 0U) {
 		LED_RenderGame2Searching(now_ms, status);
+		LED_OverlayGame2Grid(grid_states, now_ms);
 		LED_ApplyImuDisconnectedWarning(now_ms);
 		show();
 		return;
@@ -797,6 +864,15 @@ void LED_Effects_Render(uint8_t mode, uint8_t status) {
 			/* Active belt Emerald overrides the upper reversed Gold display. */
 			LED_RenderBeltLauncher(status, now_ms);
 		}
+	}
+	if (((status & LED_STATUS_GAME2_ENABLED) != 0U) &&
+			(mode != LED_MODE_STARTUP) &&
+			(mode != LED_MODE_EMERGENCY_STOP) && (mode != LED_MODE_ERROR)) {
+		LED_OverlayGame2Grid(grid_states, now_ms);
+	} else if (((status & LED_STATUS_GAME2_ENABLED) == 0U) &&
+			(mode != LED_MODE_STARTUP) &&
+			(mode != LED_MODE_EMERGENCY_STOP) && (mode != LED_MODE_ERROR)) {
+		LED_CopyNormalPatternToAddedGridLeds();
 	}
 	LED_ApplyImuDisconnectedWarning(now_ms);
 	show();

@@ -62,7 +62,7 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
 
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, 10);
-  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/mode", 10);
+  belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", 10);
   state_pub_ = create_publisher<robot_msgs::msg::Game2State>(
     "/pk/state", rclcpp::QoS(1).reliable().transient_local());
   completed_pub_ = create_publisher<std_msgs::msg::Bool>(
@@ -90,7 +90,8 @@ PKAimNode::PKAimNode(const rclcpp::NodeOptions & options)
 
   RCLCPP_INFO(
     get_logger(),
-    "🚀 PKAimNode initialized. Initial Target: [Idx 0] %s (Tag #%d | Row %d Col %d)",
+    "🚀 PKAimNode initialized. Initial Target: [Idx %d] %s (Tag #%d | Row %d Col %d)",
+    tracker_.selected_index(),
     tracker_.get_selected_panel().name.c_str(),
     tracker_.get_selected_panel().tag_id,
     tracker_.get_selected_panel().row,
@@ -119,7 +120,7 @@ void PKAimNode::load_parameters()
   test_panel_state_display_ = declare_parameter<bool>("test_panel_state_display", true);
   shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 5.0);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.5);
-  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 2.5);
+  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 3.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 2.0);
 
   auto bottom_tags = declare_parameter<std::vector<int64_t>>("bottom_tags", {20, 21, 22});
@@ -230,11 +231,26 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
       (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
     {
+      // 1. ベルトを即座に停止
+      robot_msgs::msg::BeltMode stop_msg;
+      stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
+      belt_mode_pub_->publish(stop_msg);
+
+      // 2. 決定フラグ解除 & ターゲットリセット
+      is_target_confirmed_ = false;
       tracker_.reset();
+
+      // 3. 次の的選択・照準状態（SEARCHING -> 即座に ALIGNING）へ復帰
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Returned to SEARCHING for next target selection");
+      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
+        transition_to(
+          robot_msgs::msg::Game2State::ALIGNING,
+          "Aligning to selected target after shot");
+      }
       publish_target_status(now());
+      log_target_decision("PK 射出完了 -> 次の的選択・照準待機", "ボール射出が完了したためベルト停止・SEARCHING維持");
     }
   }
   prev_shot_cycle_state_ = current_state;
@@ -242,9 +258,17 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
 
 void PKAimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-  if (msg->data && state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
+  if (!msg->data) {
+    return;
+  }
+  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT && is_target_confirmed_) {
     last_shot_req_time_ = now();
     RCLCPP_INFO(get_logger(), "🎯 [PK] Shot cycle requested (L2+Circle). Insurance timer started.");
+  } else {
+    RCLCPP_WARN(
+      get_logger(),
+      "⚠️ [PK] Shot request BLOCKED: Not in PREPARING_SHOOT or unconfirmed (state=%u, confirmed=%s)",
+      state_, is_target_confirmed_ ? "true" : "false");
   }
 }
 
@@ -252,77 +276,106 @@ void PKAimNode::pk_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
   if (msg->data) {
     if (state_ == robot_msgs::msg::Game2State::STANDBY) {
-      // OPTIONS 押下: STANDBY -> SEARCHING (的選択モード開始)
+      // OPTIONS 押下: STANDBY -> SEARCHING -> 即座にターゲットロックして ALIGNING 開始
+      is_target_confirmed_ = false;
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "PK Selection Mode Activated (OPTIONS toggled ON)");
+      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
+        transition_to(
+          robot_msgs::msg::Game2State::ALIGNING,
+          "Target panel locked -> Aligning to selected target");
+      }
       publish_target_status(now());
+      log_target_decision("PK 自動モード開始 (OPTIONS ON)", "自動モード開始 -> 初期ターゲットへ照準開始 (○ボタンで決定・ベルト回転)");
     }
   } else {
     // OPTIONS トグルOFF または スティック入力による安全解除
     if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+      is_target_confirmed_ = false;
       tracker_.reset();
       transition_to(
         robot_msgs::msg::Game2State::STANDBY,
         "PK Auto Mode Disengaged (OPTIONS toggled OFF or stick input) -> Returned to STANDBY");
       publish_target_status(now());
+      RCLCPP_INFO(get_logger(), "🛑 [PK] Auto Mode Disengaged -> Returned to STANDBY");
     }
   }
 }
 
 void PKAimNode::pk_confirm_callback(const std_msgs::msg::Empty::SharedPtr)
 {
-  // SEARCHING (的選択モード) のときに ○ ボタン押下でターゲット決定・自動照準旋回を開始！
+  // ○ ボタン押下 -> ターゲット決定！
+  is_target_confirmed_ = true;
+
   if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
-    if (tracker_.lock_selected_target(now(), get_logger())) {
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
       transition_to(
         robot_msgs::msg::Game2State::ALIGNING,
-        "PK Target Confirmed (Circle button pressed): Aligning to selected target");
+        "Target Confirmed: Aligning to selected target");
       publish_target_status(now());
     }
+  } else if (state_ == robot_msgs::msg::Game2State::ALIGNING) {
+    const double heading_err = tracker_.heading_error();
+    const bool is_aligned = (std::abs(heading_err) < yaw_tolerance_);
+    const bool is_visible = tracker_.is_currently_visible(now(), visual_valid_timeout_);
+    if (is_visible && is_aligned) {
+      transition_to(
+        robot_msgs::msg::Game2State::PREPARING_SHOOT,
+        "Target confirmed and already aligned -> Spinning belt");
+    }
   }
+
+  log_target_decision("PK ターゲット確定 (○ボタン決定)", "○ボタンでターゲット決定 (照準完了で射出可能)");
 }
 
 void PKAimNode::pk_next_callback(const std_msgs::msg::Empty::SharedPtr)
 {
-  // SEARCHING (的選択モード) の時のみ的を変更可能
-  if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
-    int idx = tracker_.select_next();
+  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+    is_target_confirmed_ = false;
+    int idx = tracker_.select_next(now());
     const auto & p = tracker_.get_selected_panel();
-    RCLCPP_INFO(
-      get_logger(),
-      "➡️ [PK TARGET NEXT] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
-      idx, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
+      transition_to(
+        robot_msgs::msg::Game2State::ALIGNING,
+        "Target changed -> Aligning to new target");
+    }
     publish_target_status(now());
+    log_target_decision("PK ターゲット変更 (十字キー右 ➡️)", "ユーザー操作により目標を変更 -> 新目標へ照準開始");
   }
 }
 
 void PKAimNode::pk_prev_callback(const std_msgs::msg::Empty::SharedPtr)
 {
-  // SEARCHING (的選択モード) の時のみ的を変更可能
-  if (state_ == robot_msgs::msg::Game2State::SEARCHING) {
-    int idx = tracker_.select_prev();
+  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+    is_target_confirmed_ = false;
+    int idx = tracker_.select_prev(now());
     const auto & p = tracker_.get_selected_panel();
-    RCLCPP_INFO(
-      get_logger(),
-      "⬅️ [PK TARGET PREV] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
-      idx, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
+      transition_to(
+        robot_msgs::msg::Game2State::ALIGNING,
+        "Target changed -> Aligning to new target");
+    }
     publish_target_status(now());
+    log_target_decision("PK ターゲット変更 (十字キー左 ⬅️)", "ユーザー操作により目標を変更 -> 新目標へ照準開始");
   }
 }
 
 void PKAimNode::pk_set_target_index_callback(const std_msgs::msg::Int32::SharedPtr msg)
 {
-  if (state_ == robot_msgs::msg::Game2State::STANDBY ||
-    state_ == robot_msgs::msg::Game2State::SEARCHING)
-  {
+  if (state_ != robot_msgs::msg::Game2State::STANDBY) {
+    is_target_confirmed_ = false;
     tracker_.set_selected_index(msg->data);
     const auto & p = tracker_.get_selected_panel();
-    RCLCPP_INFO(
-      get_logger(),
-      "🎯 [PK TARGET SET] [Idx %d] %s (Tag #%d | Row %d Col %d | Belt: LEVEL_%d)",
-      p.index, p.name.c_str(), p.tag_id, p.row, p.col, p.belt_mode);
+    if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
+      transition_to(
+        robot_msgs::msg::Game2State::ALIGNING,
+        "Target set -> Aligning to target");
+    }
     publish_target_status(now());
+    log_target_decision("PK ターゲット指定", "トピック指定により目標を変更 -> 新目標へ照準開始");
+  } else {
+    tracker_.set_selected_index(msg->data);
   }
 }
 
@@ -341,9 +394,11 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
     (new_state == robot_msgs::msg::Game2State::ALIGNING ? "ALIGNING" : "PREPARING_SHOOT"))),
     reason.c_str());
 
-  // PREPARING_SHOOT を抜ける時はベルトを即座に停止
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
-    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT)
+  // PREPARING_SHOOT を抜ける時、または STANDBY（手動）に移る時はベルトを即座に一度だけ停止
+  if ((state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT &&
+    new_state != robot_msgs::msg::Game2State::PREPARING_SHOOT) ||
+    (new_state == robot_msgs::msg::Game2State::STANDBY &&
+    state_ != robot_msgs::msg::Game2State::STANDBY))
   {
     robot_msgs::msg::BeltMode stop_msg;
     stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
@@ -386,6 +441,54 @@ void PKAimNode::publish_target_status(const rclcpp::Time & now)
   target_tag_id_pub_->publish(tag_msg);
 }
 
+void PKAimNode::log_target_decision(const std::string & title, const std::string & reason)
+{
+  const auto current_time = now();
+  const auto & grid = tracker_.panel_grid();
+  const int sel_idx = tracker_.selected_index();
+  const auto & sel_panel = tracker_.get_selected_panel();
+
+  auto format_cell = [&](int tag_id, int idx) -> std::string {
+      auto it = grid.find(tag_id);
+      if (it == grid.end()) {return "  #?? 🔴 ( --)  ";}
+      const auto & p = it->second;
+      bool visible = p.detected && (current_time - p.last_seen).seconds() <= 1.5;
+      char buf[64];
+      if (idx == sel_idx) {
+        if (visible) {
+          snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", tag_id);
+        } else {
+          snprintf(buf, sizeof(buf), "👉[#%d]🔴 (--)   ", tag_id);
+        }
+      } else {
+        if (visible) {
+          snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", tag_id);
+        } else {
+          snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", tag_id);
+        }
+      }
+      return std::string(buf);
+    };
+
+  RCLCPP_INFO(
+    get_logger(),
+    "\n═══════════════════════════ 🎯 %s ═══════════════════════════\n"
+    " 理由: %s\n"
+    " ターゲット: [Idx %d] %s (Tag #%d | Row %d Col %d) | ベルト: LEVEL_%d | 状態: %s\n\n"
+    " [上段 L3] │ %s│ %s│ %s│\n"
+    " [中段 L2] │ %s│ %s│ %s│\n"
+    " [下段 L1] │ %s│ %s│ %s│\n"
+    "════════════════════════════════════════════════════════════════════════════",
+    title.c_str(),
+    reason.c_str(),
+    sel_idx,
+    sel_panel.name.c_str(), sel_panel.tag_id, sel_panel.row, sel_panel.col, sel_panel.belt_mode,
+    (is_target_confirmed_ ? "CONFIRMED (決定済み)" : "SELECTING (未決定・照準中)"),
+    format_cell(14, 0).c_str(), format_cell(15, 1).c_str(), format_cell(16, 2).c_str(),
+    format_cell(17, 3).c_str(), format_cell(18, 4).c_str(), format_cell(19, 5).c_str(),
+    format_cell(20, 6).c_str(), format_cell(21, 7).c_str(), format_cell(22, 8).c_str());
+}
+
 void PKAimNode::control_loop()
 {
   geometry_msgs::msg::Twist cmd;
@@ -406,51 +509,30 @@ void PKAimNode::control_loop()
   }
   last_loop_time_ = current_time;
 
-  // 9マス起立診断表示 (SEARCHING 中に0.5秒おきに出力)
-  if (test_panel_state_display_ &&
-    (state_ == robot_msgs::msg::Game2State::SEARCHING ||
-    state_ == robot_msgs::msg::Game2State::STANDBY))
-  {
-    const auto & grid = tracker_.panel_grid();
-    int sel_idx = tracker_.selected_index();
+  // 9マスの的認識・選択状態トピックを毎周期定期配信 (20Hz)
+  publish_target_status(current_time);
 
-    auto format_cell = [&](int tag_id, int idx) -> std::string {
-        auto it = grid.find(tag_id);
-        if (it == grid.end()) {return "#?? 🔴 ( --)";}
-        const auto & p = it->second;
-        bool visible = p.detected && (current_time - p.last_seen).seconds() <= 1.5;
-        std::string prefix = (idx == sel_idx) ? "👉[#" : "  #";
-        std::string suffix = (idx == sel_idx) ? "]" : " ";
-        char buf[64];
-        if (visible) {
-          snprintf(buf, sizeof(buf), "%s%d%s🟢 (OK)", prefix.c_str(), tag_id, suffix.c_str());
-        } else {
-          snprintf(buf, sizeof(buf), "%s%d%s🔴 (--) ", prefix.c_str(), tag_id, suffix.c_str());
-        }
-        return std::string(buf);
-      };
-
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 500,
-      "\n═══════════════ 🎯 PK 9マス起立・選択モニター [%s] ═══════════════\n"
-      " [上段 L3] │ %s │ %s │ %s │\n"
-      " [中段 L2] │ %s │ %s │ %s │\n"
-      " [下段 L1] │ %s │ %s │ %s │\n"
-      " 選択中: [Idx %d] %s (Tag #%d) | 👉 = 選択中\n"
-      " 操作: 十字キー左右で的変更 / ○ボタンで決定・照準開始 / L2+○で射出\n"
-      "══════════════════════════════════════════════════════════════════════",
-      (state_ == robot_msgs::msg::Game2State::SEARCHING ? "的選択モード (ACTIVE)" : "STANDBY"),
-      format_cell(14, 0).c_str(), format_cell(15, 1).c_str(), format_cell(16, 2).c_str(),
-      format_cell(17, 3).c_str(), format_cell(18, 4).c_str(), format_cell(19, 5).c_str(),
-      format_cell(20, 6).c_str(), format_cell(21, 7).c_str(), format_cell(22, 8).c_str(),
-      sel_idx, tracker_.get_selected_panel().name.c_str(), tracker_.get_selected_panel().tag_id);
+  // STANDBY時は手動操作にトピックを完全に譲るため何も出力せずreturn
+  if (state_ == robot_msgs::msg::Game2State::STANDBY) {
+    last_cmd_wz_ = 0.0;
+    robot_msgs::msg::Game2State state_msg;
+    state_msg.state = state_;
+    state_pub_->publish(state_msg);
+    return;
   }
 
   switch (state_) {
     case robot_msgs::msg::Game2State::STANDBY:
+      break;
+
     case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
         last_cmd_wz_ = 0.0;
+        if (tracker_.lock_selected_target(current_time, get_logger(), yaw_)) {
+          transition_to(
+            robot_msgs::msg::Game2State::ALIGNING,
+            "Target panel locked -> Aligning to selected target");
+        }
         break;
       }
 
@@ -471,11 +553,13 @@ void PKAimNode::control_loop()
         if (is_visible && is_aligned) {
           cmd.angular.z = 0.0;
           last_cmd_wz_ = 0.0;
-          transition_to(
-            robot_msgs::msg::Game2State::PREPARING_SHOOT,
-            "Target aligned with visual confirmation");
-          current_belt_mode =
-            test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
+          if (is_target_confirmed_) {
+            transition_to(
+              robot_msgs::msg::Game2State::PREPARING_SHOOT,
+              "Target aligned and CONFIRMED -> Spinning Belt");
+            current_belt_mode =
+              test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
+          }
         } else {
           // PD 旋回制御 (IMU ジャイロ制動ダンピング + Slew Rate)
           double desired_wz = yaw_command_sign_ * kp_yaw_ * heading_err;
@@ -499,14 +583,14 @@ void PKAimNode::control_loop()
           last_cmd_wz_ = cmd.angular.z;
 
           const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
-
           RCLCPP_INFO_THROTTLE(
             get_logger(),
-            *get_clock(), 500,
-            "🎯 [PK ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+            *get_clock(), 2000,
+            "🎯 [PK State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s%s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
-            cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
+            cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING",
+            is_target_confirmed_ ? " [CONFIRMED]" : " [UNCONFIRMED]");
         }
         break;
       }
@@ -518,17 +602,26 @@ void PKAimNode::control_loop()
           test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
         tracker_.update_tracking(yaw_, current_time);
 
-        // 外力等で誤差が大きくズレた場合（約3.4度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
-        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
+        if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
+          is_target_confirmed_ = false;
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Target lost timeout in PREPARING_SHOOT (>3.0s) -> Returned to SEARCHING");
+          break;
+        }
+
+        // 外力等で誤差が大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.040);
         if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
+          is_target_confirmed_ = false;
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
-            "Heading error exceeded tolerance in PREPARING_SHOOT");
-        } else {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
-            "🚀 [PK PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
-            tracker_.target_description().c_str(), current_belt_mode);
+            "Heading error exceeded tolerance in PREPARING_SHOOT -> Abort shoot authorization");
+          RCLCPP_WARN(
+            get_logger(),
+            "⚠️ [PK SHOOT ABORTED] 照準角度が許容値を超えてズレたため射出許可を破棄し、再照準（ALIGNING）へ戻りました (誤差: %+.2f deg)",
+            tracker_.heading_error() * 180.0 / M_PI);
         }
         break;
       }
@@ -549,10 +642,16 @@ void PKAimNode::publish_all(
     cmd_vel_pub_->publish(cmd_vel);
   }
 
-  // PREPARING_SHOOT 状態のときのみベルト回転指示をパブリッシュ
+  // PKモード: PREPARING_SHOOT中は段に応じた回転、SEARCHING / ALIGNING 中は定期的に STOP を送信
   if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
     robot_msgs::msg::BeltMode mode_msg;
-    mode_msg.mode = belt_mode;
+    mode_msg.mode = test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : belt_mode;
+    belt_mode_pub_->publish(mode_msg);
+  } else if (state_ == robot_msgs::msg::Game2State::SEARCHING ||
+    state_ == robot_msgs::msg::Game2State::ALIGNING)
+  {
+    robot_msgs::msg::BeltMode mode_msg;
+    mode_msg.mode = robot_msgs::msg::BeltMode::STOP;
     belt_mode_pub_->publish(mode_msg);
   }
 

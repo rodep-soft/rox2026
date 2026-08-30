@@ -181,15 +181,16 @@ void getPixelPA7(uint16_t i, uint8_t *r, uint8_t *g, uint8_t *b) {
     if (i >= PB5_LED_NUM || !r || !g || !b) return;
     *r = pb5Buffer[i].r; *g = pb5Buffer[i].g; *b = pb5Buffer[i].b;
 }
-/* Former PA2 left-middle pixels now continue on PB4 at physical 44..36. */
+/* Former PA2 left-middle pixels remain at original PB4 physical 44..36.
+ * PB4[45..47] are the three newly added center-column grid LEDs. */
 void setPixelPA2(uint16_t i, uint8_t r, uint8_t g, uint8_t b) {
     if (i >= PA2_LED_NUM) return;
     setBuffer(pb4Buffer, PB4_LED_NUM,
-              (uint16_t)(PB4_LED_NUM - 1U - i), r, g, b);
+              (uint16_t)(44U - i), r, g, b);
 }
 void getPixelPA2(uint16_t i, uint8_t *r, uint8_t *g, uint8_t *b) {
     if (i >= PA2_LED_NUM || !r || !g || !b) return;
-    const uint16_t physical = (uint16_t)(PB4_LED_NUM - 1U - i);
+    const uint16_t physical = (uint16_t)(44U - i);
     *r = pb4Buffer[physical].r;
     *g = pb4Buffer[physical].g;
     *b = pb4Buffer[physical].b;

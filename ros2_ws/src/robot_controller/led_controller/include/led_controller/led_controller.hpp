@@ -13,7 +13,7 @@
 #include "robot_msgs/msg/spring_operation_state.hpp"
 #include "robot_msgs/msg/target_grid_state.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/u_int16.hpp"
+#include "std_msgs/msg/u_int64.hpp"
 
 class LedControllerNode : public rclcpp::Node
 {
@@ -57,6 +57,7 @@ private:
   void spring_operation_state_callback(
     const robot_msgs::msg::SpringOperationState::SharedPtr msg);
   void shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState::SharedPtr msg);
+  void game2_command_start_callback(const std_msgs::msg::Bool::SharedPtr msg);
   void game2_state_callback(const robot_msgs::msg::Game2State::SharedPtr msg);
   void target_grid_state_callback(const robot_msgs::msg::TargetGridState::SharedPtr msg);
   void spring_fire_callback(const std_msgs::msg::Bool::SharedPtr msg);
@@ -65,7 +66,6 @@ private:
   DisplayMode select_display_mode() const;
   uint8_t make_status_flags() const;
   DisplayMode belt_offset_display_mode() const;
-  uint16_t make_grid_mask_command(uint8_t command_base, uint16_t mask) const;
 
   bool emergency_stop_received_{false};
   bool emergency_stop_active_{true};
@@ -79,9 +79,9 @@ private:
   uint8_t shot_cycle_state_{0};
   uint16_t roller_logical_id_{12};
   float roller_target_rpm_{0.0F};
+  bool game2_enabled_{false};
   uint8_t game2_state_{0};
-  uint16_t target_grid_mask_{0};
-  uint16_t fallen_grid_mask_{0};
+  uint32_t target_grid_states_{0};
   std::chrono::steady_clock::time_point firing_display_until_{};
   std::chrono::steady_clock::time_point belt_offset_display_until_{};
   std::chrono::milliseconds firing_display_duration_{500};
@@ -96,10 +96,11 @@ private:
   rclcpp::Subscription<robot_msgs::msg::SpringOperationState>::SharedPtr
     spring_operation_state_sub_;
   rclcpp::Subscription<robot_msgs::msg::ShotCycleState>::SharedPtr shot_cycle_state_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr game2_command_start_sub_;
   rclcpp::Subscription<robot_msgs::msg::Game2State>::SharedPtr game2_state_sub_;
   rclcpp::Subscription<robot_msgs::msg::TargetGridState>::SharedPtr target_grid_state_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr spring_fire_sub_;
-  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr led_command_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr led_command_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
 };
 

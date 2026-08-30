@@ -54,6 +54,10 @@ Game2AimNode::Game2AimNode(const rclcpp::NodeOptions & options)
     "/dribble/shot_cycle_request", cmd_qos,
     std::bind(&Game2AimNode::shot_cycle_req_callback, this, std::placeholders::_1));
 
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
+    "/joy", cmd_qos,
+    std::bind(&Game2AimNode::joy_callback, this, std::placeholders::_1));
+
   // Publishers
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic_, cmd_qos);
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>("/belt/command_mode", cmd_qos);
@@ -114,9 +118,19 @@ void Game2AimNode::load_parameters()
   test_panel_state_display_ = declare_parameter<bool>("test_panel_state_display", true);
   shot_fallback_timeout_ = declare_parameter<double>("shot_fallback_timeout", 5.0);
 
+  circle_button_ = declare_parameter<int>("circle_button", 2);
+  left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
+  axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.5);
+
+  RCLCPP_INFO(
+    get_logger(),
+    "⚙️ Mode configuration: test_alignment_only = %s",
+    test_alignment_only_ ? "TRUE (Alignment test only: circle single-press simulated shot, no belt/actuator)" :
+    "FALSE (Full auto shooter mode)");
+
   min_detection_frames_ = declare_parameter<int>("min_detection_frames", 2);
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.3);
-  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 1.0);
+  align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 3.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 0.0);
   min_standing_aspect_ratio_ = declare_parameter<double>("min_standing_aspect_ratio", 0.70);
   max_standing_tilt_deg_ = declare_parameter<double>("max_standing_tilt_deg", 30.0);
@@ -199,6 +213,12 @@ rcl_interfaces::msg::SetParametersResult Game2AimNode::parameter_callback(
       test_panel_state_display_ = param.as_bool();
     } else if (name == "shot_fallback_timeout") {
       shot_fallback_timeout_ = param.as_double();
+    } else if (name == "circle_button") {
+      circle_button_ = param.as_int();
+    } else if (name == "left_trigger_axis") {
+      left_trigger_axis_ = param.as_int();
+    } else if (name == "axis_on_threshold") {
+      axis_on_threshold_ = param.as_double();
     } else if (name == "min_detection_frames") {
       min_detection_frames_ = param.as_int();
       tracker_cfg.min_detection_frames = min_detection_frames_;
@@ -293,14 +313,13 @@ void Game2AimNode::shot_cycle_state_callback(
   const robot_msgs::msg::ShotCycleState::SharedPtr msg)
 {
   const uint8_t current_state = msg->state;
-  if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-    state_ == robot_msgs::msg::Game2State::ALIGNING)
+  if ((state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+    state_ == robot_msgs::msg::Game2State::ALIGNING) && shot_requested_)
   {
-    // ボール射出完了（FEEDING -> RETURNING）または サイクル完全終了（-> IDLE）で次の探索へ移行
+    // ボール射出完了（FEEDING -> RETURNING）または サイクル終了（-> IDLE）で次の探索へ移行（1射出につき1回のみ発火）
     if ((current_state == robot_msgs::msg::ShotCycleState::RETURNING &&
       prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::FEEDING) ||
-      (current_state == robot_msgs::msg::ShotCycleState::IDLE &&
-      prev_shot_cycle_state_ == robot_msgs::msg::ShotCycleState::RETURNING))
+      (current_state == robot_msgs::msg::ShotCycleState::IDLE))
     {
       shot_requested_ = false;
       last_shot_completed_time_ = now();
@@ -322,6 +341,45 @@ void Game2AimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr 
       get_logger(),
       "🎯 [Game2] Shot cycle requested (L2+Circle). Insurance timer started (%.1fs timeout)",
       shot_fallback_timeout_);
+  }
+}
+
+void Game2AimNode::joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg)
+{
+  if (!test_alignment_only_ || state_ == robot_msgs::msg::Game2State::STANDBY) {
+    last_joy_msg_ = *msg;
+    return;
+  }
+
+  // ○ ボタンのエッジ検出 (前回OFF -> 今回ON)
+  bool circle_just_pressed = false;
+  if (static_cast<size_t>(circle_button_) < msg->buttons.size()) {
+    const bool current_circle = (msg->buttons[circle_button_] == 1);
+    const bool last_circle = last_joy_msg_.has_value() &&
+      static_cast<size_t>(circle_button_) < last_joy_msg_->buttons.size() &&
+      (last_joy_msg_->buttons[circle_button_] == 1);
+    circle_just_pressed = current_circle && !last_circle;
+  }
+
+  // L2 トリガーの押下判定 (L2非押下時のみ単押しとして扱う)
+  bool is_l2_active = false;
+  if (static_cast<size_t>(left_trigger_axis_) < msg->axes.size()) {
+    is_l2_active = (msg->axes[left_trigger_axis_] <= -axis_on_threshold_);
+  }
+
+  last_joy_msg_ = *msg;
+
+  // L2非押下での ○ ボタン単押し（テスト用擬似射出トリガー）
+  if (circle_just_pressed && !is_l2_active) {
+    if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
+      state_ == robot_msgs::msg::Game2State::ALIGNING)
+    {
+      test_shot_timer_active_ = true;
+      test_shot_start_time_ = now();
+      RCLCPP_INFO(
+        get_logger(),
+        "🎯 [Game2 TEST MODE] Circle button single-pressed! Starting 5.0s simulated shot sequence (No hardware actuation)");
+    }
   }
 }
 
@@ -375,6 +433,7 @@ void Game2AimNode::transition_to(uint8_t new_state, const std::string & reason)
   {
     tracker_.clear_target();
     shot_requested_ = false;
+    test_shot_timer_active_ = false;
   }
 
   state_ = new_state;
@@ -392,12 +451,6 @@ void Game2AimNode::control_loop()
 
   // 🎯 ターゲットIndex & 倒れIndexのパブリッシュ（STANDBY中も常時出力）
   publish_target_status(current_time);
-
-  if (test_panel_state_display_) {
-    RCLCPP_INFO_THROTTLE(
-      get_logger(), *get_clock(), 500,
-      "%s", tracker_.get_grid_visual_summary(current_time).c_str());
-  }
 
   double dt = (current_time - last_loop_time_).seconds();
   if (dt <= 0.001 || dt > 0.2) {
@@ -417,6 +470,24 @@ void Game2AimNode::control_loop()
     state_msg.state = state_;
     state_pub_->publish(state_msg);
     return;
+  }
+
+  // テストモード時の擬似射出タイマー判定（○単押しから5.0秒後に射出完了としSEARCHINGへ）
+  if (test_alignment_only_ && test_shot_timer_active_) {
+    const double elapsed = (current_time - test_shot_start_time_).seconds();
+    if (elapsed >= 5.0) {
+      test_shot_timer_active_ = false;
+      last_shot_completed_time_ = current_time;
+      tracker_.mark_active_target_shot(last_shot_completed_time_);
+      transition_to(
+        robot_msgs::msg::Game2State::SEARCHING,
+        "[TEST MODE] 5.0s simulated shot completed. Transitioning to SEARCHING for next target");
+    } else {
+      RCLCPP_INFO_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "⏳ [Game2 TEST MODE] Simulated shot in progress (%.1fs / 5.0s)...",
+        elapsed);
+    }
   }
 
   // 保険タイマー: 射出ボタン押下から一定時間経過しても完了ステートが来ない場合のフォールバック
@@ -443,26 +514,14 @@ void Game2AimNode::control_loop()
         {
           RCLCPP_INFO_THROTTLE(
             get_logger(), *get_clock(), 500,
-            "⏳ [Game2 SEARCHING] Waiting for target to fall (%.2fs / %.2fs)... Standing still",
+            "⏳ [Game2 State: SEARCHING] Waiting for target to fall (%.2fs / %.2fs)...",
             (current_time - last_shot_completed_time_).seconds(), post_shot_delay_sec_);
           break;
         }
 
-        if (tracker_.find_and_lock_target(current_time, get_logger())) {
+        if (tracker_.find_and_lock_target(current_time, get_logger(), yaw_)) {
           transition_to(robot_msgs::msg::Game2State::ALIGNING, "Target panel confirmed by vision");
-        } else {
-          const std::string summary = tracker_.get_detection_summary(current_time);
-          if (std::abs(search_angular_z_) > 0.001) {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 SEARCHING] Rotating %+.2f rad/s | %s",
-              search_angular_z_, summary.c_str());
-          } else {
-            RCLCPP_INFO_THROTTLE(
-              get_logger(), *get_clock(), 1000,
-              "🔍 [Game2 SEARCHING] Waiting for target AprilTags... | %s",
-              summary.c_str());
-          }
+          log_target_decision("Game2 ターゲットロック", "視覚検出に基づき最適ターゲットを確定 (照準旋回開始)");
         }
         break;
       }
@@ -471,11 +530,11 @@ void Game2AimNode::control_loop()
         current_belt_mode = robot_msgs::msg::BeltMode::STOP;
         tracker_.update_tracking(yaw_, current_time);
 
-        // 1. 完全見失いタイムアウト判定（1.0秒以上ロストしたら再探索）
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
         if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
           transition_to(
             robot_msgs::msg::Game2State::SEARCHING,
-            "Target lost timeout in ALIGNING (no vision > 1.0s)");
+            "Target lost timeout in ALIGNING (>3.0s)");
           break;
         }
 
@@ -515,11 +574,10 @@ void Game2AimNode::control_loop()
           last_cmd_wz_ = cmd.angular.z;
 
           const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
-
           RCLCPP_INFO_THROTTLE(
             get_logger(),
-            *get_clock(), 500,
-            "🎯 [Game2 ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
+            *get_clock(), 2000,
+            "🎯 [Game2 State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
             cmd.angular.z, is_visible ? "👁️ VISIBLE" : "📡 IMU DEAD-RECKONING");
@@ -534,18 +592,20 @@ void Game2AimNode::control_loop()
           test_alignment_only_ ? robot_msgs::msg::BeltMode::STOP : tracker_.target_belt_mode();
         tracker_.update_tracking(yaw_, current_time);
 
-        // 外力等で誤差が許容値を超えて大きくズレた場合（約3.5度以上）のみ ALIGNING へ戻って再照準
-        // （ベルト回転の振動やカメラジッターによる不用意な引き戻しチャタリングを防止）
-        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.060);
+        // 1. 完全見失いタイムアウト判定（3.0秒以上ロストしたら再探索）
+        if (tracker_.is_lost_timeout(current_time, align_lost_timeout_)) {
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Target lost timeout in PREPARING_SHOOT (>3.0s) -> Returned to SEARCHING");
+          break;
+        }
+
+        // 外力等で誤差が許容値を超えて大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻って再照準
+        const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.040);
         if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Heading error exceeded tolerance in PREPARING_SHOOT");
-        } else {
-          RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 500,
-            "🚀 [Game2 PREPARING_SHOOT | %s] Aligned! Spinning Belt (Mode: %u) | Ready for Shot",
-            tracker_.target_description().c_str(), current_belt_mode);
         }
         break;
       }
@@ -600,6 +660,53 @@ void Game2AimNode::publish_target_status(const rclcpp::Time & now)
   auto fallen_indices = tracker_.get_fallen_indices(now);
   fallen_msg.data.assign(fallen_indices.begin(), fallen_indices.end());
   fallen_indices_pub_->publish(fallen_msg);
+}
+
+void Game2AimNode::log_target_decision(const std::string & title, const std::string & reason)
+{
+  const auto current_time = now();
+  const auto & grid = tracker_.panel_grid();
+  const auto & grid_state = tracker_.get_target_grid_state(current_time);
+
+  auto format_cell = [&](int r, int c) -> std::string {
+      int idx = TargetTracker::tag_to_index(r, c);
+      const PanelTagInfo * pt = nullptr;
+      for (const auto & [id, p_info] : grid) {
+        if (p_info.row == r && p_info.col == c) {
+          pt = &p_info;
+          break;
+        }
+      }
+      if (!pt) {return "  #?? 🔴 ( --)  ";}
+      char buf[64];
+      uint8_t state = grid_state.states[idx];
+      if (state == robot_msgs::msg::TargetGridState::TARGET) {
+        snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", pt->tag_id);
+      } else if (state == robot_msgs::msg::TargetGridState::STANDING) {
+        snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", pt->tag_id);
+      } else {
+        snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", pt->tag_id);
+      }
+      return std::string(buf);
+    };
+
+  RCLCPP_INFO(
+    get_logger(),
+    "\n══════════════════════════ 🎯 %s ══════════════════════════\n"
+    " 理由: %s\n"
+    " ターゲット: %s | ベルト: LEVEL_%u | 距離: %.2fm\n\n"
+    " [上段 L3] │ %s│ %s│ %s│\n"
+    " [中段 L2] │ %s│ %s│ %s│\n"
+    " [下段 L1] │ %s│ %s│ %s│\n"
+    "════════════════════════════════════════════════════════════════════════════",
+    title.c_str(),
+    reason.c_str(),
+    tracker_.target_description().c_str(),
+    tracker_.target_belt_mode(),
+    tracker_.target_distance(),
+    format_cell(2, 0).c_str(), format_cell(2, 1).c_str(), format_cell(2, 2).c_str(),
+    format_cell(1, 0).c_str(), format_cell(1, 1).c_str(), format_cell(1, 2).c_str(),
+    format_cell(0, 0).c_str(), format_cell(0, 1).c_str(), format_cell(0, 2).c_str());
 }
 
 }  // namespace robot_controller

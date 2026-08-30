@@ -255,63 +255,10 @@ public:
     }
   }
 
-  bool find_and_lock_target(const rclcpp::Time & now, const rclcpp::Logger & logger)
+  bool find_and_lock_target(
+    const rclcpp::Time & now, const rclcpp::Logger & logger, double current_yaw = 0.0)
   {
     update_panel_states(now);
-
-    if (config_.test_alignment_only) {
-      int best_id = -1;
-      double min_heading_err_abs = 1e9;
-      for (const auto & [id, panel] : panel_grid_) {
-        if (panel.detected) {
-          const double heading_err = std::atan2(panel.y, panel.x);
-          if (std::abs(heading_err) < min_heading_err_abs) {
-            min_heading_err_abs = std::abs(heading_err);
-            best_id = id;
-          }
-        }
-      }
-
-      if (best_id != -1) {
-        if (candidate_pattern_key_ == best_id) {
-          consecutive_detection_count_++;
-        } else {
-          candidate_pattern_key_ = best_id;
-          consecutive_detection_count_ = 1;
-        }
-
-        if (consecutive_detection_count_ >= config_.min_detection_frames) {
-          target_locked_ = true;
-          is_midpoint_target_ = false;
-          current_target_tag_ids_ = {best_id};
-          active_target_id_ = best_id;
-          active_row_ = panel_grid_[best_id].row;
-          target_belt_mode_ = get_target_belt_mode(active_row_);
-          target_x_ = panel_grid_[best_id].x;
-          target_y_ = panel_grid_[best_id].y;
-          target_z_ = panel_grid_[best_id].z;
-          target_yaw_at_detection_ = panel_grid_[best_id].yaw_at_detection;
-          target_tag_offset_x_ = 0.0;
-          target_tag_offset_y_ = 0.0;
-          target_heading_err_ = std::remainder(
-            std::atan2(
-              target_y_,
-              target_x_) + config_.aim_yaw_offset_rad,
-            2.0 * M_PI);
-          last_visually_confirmed_time_ = now;
-
-          RCLCPP_INFO(
-            logger,
-            "🎯 [Game2 TEST Target Confirmed] Tag #%d (Row %d) | Err: %+.2f deg",
-            best_id, active_row_, target_heading_err_ * 180.0 / M_PI);
-          return true;
-        }
-      } else {
-        consecutive_detection_count_ = 0;
-        candidate_pattern_key_ = -1;
-      }
-      return false;
-    }
 
     // ── 🎯 Column優先ターゲットパターン定義 (5段階) ──
     enum class TargetPattern
@@ -331,188 +278,184 @@ public:
       TargetPattern::SINGLE_COL_2
     };
 
-    for (const auto pattern : patterns) {
-      if ((pattern == TargetPattern::MIDPOINT_0_1 || pattern == TargetPattern::MIDPOINT_1_2) &&
-        !config_.enable_double_panel_midpoint_targeting)
-      {
-        continue;
-      }
-
-      for (int row = 2; row >= 0; --row) {
-        const PanelTagInfo * p0 = nullptr;
-        const PanelTagInfo * p1 = nullptr;
-        const PanelTagInfo * p2 = nullptr;
-
-        for (const auto & [id, panel] : panel_grid_) {
-          if (panel.row == row) {
-            if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {
-              p1 = &panel;
-            } else if (panel.col == 2) {p2 = &panel;}
-          }
-        }
-
-        auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
-            if (!p) {return false;}
-            if (!p->detected || !p->is_standing) {return false;}
-
-            // 前回狙った的の場合の除外・復活判定
-            bool was_last_shot = false;
-            for (int id : last_shot_target_tag_ids_) {
-              if (p->tag_id == id) {
-                was_last_shot = true;
-                break;
-              }
-            }
-
-            if (was_last_shot) {
-              // 3秒未満であれば今回はスキップ（狙わない）
-              if (last_shot_time_.nanoseconds() > 0 &&
-                (now - last_shot_time_).seconds() < config_.last_shot_retry_sec)
-              {
-                return false;
-              }
-              // 3秒以上経過して依然として立っていれば再び狙う対象として許可！
-            }
-
-            return true;
-          };
-
-        bool match = false;
-        int pattern_key = static_cast<int>(pattern) * 10 + row;
-
-        if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
-          match = true;
-        } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
-          is_tag_active(p2))
+    // 2パス探索:
+    // Pass 0 (厳格): 直前に射出した的（last_shot_target_tag_ids_）を完全除外して他の候補を探す
+    // Pass 1 (フォールバック): 他に候補が1つもない場合（最後の1枚等）、直前の的も含めて決定
+    for (int pass = 0; pass < 2; ++pass) {
+      for (const auto pattern : patterns) {
+        if ((pattern == TargetPattern::MIDPOINT_0_1 || pattern == TargetPattern::MIDPOINT_1_2) &&
+          !config_.enable_double_panel_midpoint_targeting)
         {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_1 && is_tag_active(p1)) {
-          match = true;
-        } else if (pattern == TargetPattern::SINGLE_COL_2 && is_tag_active(p2)) {
-          match = true;
+          continue;
         }
 
-        if (match) {
-          if (candidate_pattern_key_ == pattern_key) {
-            consecutive_detection_count_++;
-          } else {
-            candidate_pattern_key_ = pattern_key;
-            consecutive_detection_count_ = 1;
+        for (int row = 2; row >= 0; --row) {
+          const PanelTagInfo * p0 = nullptr;
+          const PanelTagInfo * p1 = nullptr;
+          const PanelTagInfo * p2 = nullptr;
+
+          for (const auto & [id, panel] : panel_grid_) {
+            if (panel.row == row) {
+              if (panel.col == 0) {p0 = &panel;} else if (panel.col == 1) {
+                p1 = &panel;
+              } else if (panel.col == 2) {p2 = &panel;}
+            }
           }
 
-          if (consecutive_detection_count_ >= config_.min_detection_frames) {
-            target_locked_ = true;
-            active_row_ = row;
-            target_belt_mode_ = get_target_belt_mode(row);
-            last_visually_confirmed_time_ = now;
+          auto is_tag_active = [&](const PanelTagInfo * p) -> bool {
+              if (!p) {return false;}
+              if (!p->detected || !p->is_standing) {return false;}
 
-            if (pattern == TargetPattern::MIDPOINT_0_1) {
-              is_midpoint_target_ = true;
-              current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
-              active_target_id_ = p0->tag_id;
-              const double r = config_.midpoint_blend_ratio;
-              target_x_ = p0->x * r + p1->x * (1.0 - r);
-              target_y_ = p0->y * r + p1->y * (1.0 - r);
-              target_z_ = p0->z * r + p1->z * (1.0 - r);
-              target_yaw_at_detection_ = p0->yaw_at_detection * r + p1->yaw_at_detection *
-                (1.0 - r);
-              target_tag_offset_x_ = 0.0;
-              target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(
-                std::atan2(
-                  target_y_,
-                  target_x_) + config_.aim_yaw_offset_rad,
-                2.0 * M_PI);
-              RCLCPP_INFO(
-                logger,
-                "🔒 [Target Confirmed: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                get_row_name(
-                  row).c_str(), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
-                target_belt_mode_);
-            } else if (pattern == TargetPattern::MIDPOINT_1_2) {
-              is_midpoint_target_ = true;
-              current_target_tag_ids_ = {p2->tag_id, p1->tag_id};
-              active_target_id_ = p2->tag_id;
-              const double r = config_.midpoint_blend_ratio;
-              target_x_ = p2->x * r + p1->x * (1.0 - r);
-              target_y_ = p2->y * r + p1->y * (1.0 - r);
-              target_z_ = p2->z * r + p1->z * (1.0 - r);
-              target_yaw_at_detection_ = p2->yaw_at_detection * r + p1->yaw_at_detection *
-                (1.0 - r);
-              target_tag_offset_x_ = 0.0;
-              target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(
-                std::atan2(
-                  target_y_,
-                  target_x_) + config_.aim_yaw_offset_rad,
-                2.0 * M_PI);
-              RCLCPP_INFO(
-                logger,
-                "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
-                get_row_name(
-                  row).c_str(), p2->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
-                target_belt_mode_);
-            } else {
-              const PanelTagInfo * p = (pattern == TargetPattern::SINGLE_COL_0) ? p0 :
-                ((pattern == TargetPattern::SINGLE_COL_1) ? p1 : p2);
-              is_midpoint_target_ = false;
-              current_target_tag_ids_ = {p->tag_id};
-              active_target_id_ = p->tag_id;
-              target_x_ = p->x;
-              target_y_ = p->y;
-              target_z_ = p->z;
-              target_yaw_at_detection_ = p->yaw_at_detection;
-              target_tag_offset_x_ = 0.0;
-              target_tag_offset_y_ = 0.0;
-              target_heading_err_ = std::remainder(
-                std::atan2(
-                  target_y_,
-                  target_x_) + config_.aim_yaw_offset_rad,
-                2.0 * M_PI);
-            }
-
-            // 全グリッド認識状況のサマリー文字列を構築
-            std::stringstream status_ss;
-            for (int r = 2; r >= 0; --r) {
-              const char * rname = (r == 2) ? "上" : ((r == 1) ? "中" : "下");
-              status_ss << "[" << rname << ":";
-              for (int c = 0; c < 3; ++c) {
-                const PanelTagInfo * pt = nullptr;
-                for (const auto & [id, p_info] : panel_grid_) {
-                  if (p_info.row == r && p_info.col == c) {
-                    pt = &p_info;
-                    break;
+              if (pass == 0) {
+                // Pass 0: 直前に射出した的は無条件で除外（射出を挟まない連続狙いを完全防止）
+                for (int id : last_shot_target_tag_ids_) {
+                  if (p->tag_id == id) {
+                    return false;
                   }
                 }
-                if (!pt) {
-                  status_ss << " ?";
-                } else if (!pt->detected) {
-                  status_ss << " #" << pt->tag_id << "(未)";
-                } else if (pt->is_standing) {
-                  status_ss << " #" << pt->tag_id << "(立)";
-                } else {
-                  status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) <<
-                    pt->tilt_deg << "°)";
-                }
               }
-              status_ss << "] ";
+
+              return true;
+            };
+
+          bool match = false;
+          int pattern_key = static_cast<int>(pattern) * 10 + row;
+
+          if (pattern == TargetPattern::MIDPOINT_0_1 && is_tag_active(p0) && is_tag_active(p1)) {
+            match = true;
+          } else if (pattern == TargetPattern::MIDPOINT_1_2 && is_tag_active(p1) &&
+            is_tag_active(p2))
+          {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_0 && is_tag_active(p0)) {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_1 && is_tag_active(p1)) {
+            match = true;
+          } else if (pattern == TargetPattern::SINGLE_COL_2 && is_tag_active(p2)) {
+            match = true;
+          }
+
+          if (match) {
+            if (candidate_pattern_key_ == pattern_key) {
+              consecutive_detection_count_++;
+            } else {
+              candidate_pattern_key_ = pattern_key;
+              consecutive_detection_count_ = 1;
             }
 
-            RCLCPP_INFO(
-              logger,
-              "🔒 [Game2 TARGET LOCK 決定] %s\n"
-              "   ▶ 9枚認識状況: %s\n"
-              "   ▶ 狙い角度: %+.2f deg | ベルト: LEVEL_%d",
-              target_description().c_str(),
-              status_ss.str().c_str(),
-              target_heading_err_ * 180.0 / M_PI,
-              target_belt_mode_);
+            if (consecutive_detection_count_ >= config_.min_detection_frames) {
+              target_locked_ = true;
+              active_row_ = row;
+              target_belt_mode_ = get_target_belt_mode(row);
+              last_visually_confirmed_time_ = now;
 
-            return true;
+              if (pattern == TargetPattern::MIDPOINT_0_1) {
+                is_midpoint_target_ = true;
+                current_target_tag_ids_ = {p0->tag_id, p1->tag_id};
+                active_target_id_ = p0->tag_id;
+                const double r = config_.midpoint_blend_ratio;
+                target_x_ = p0->x * r + p1->x * (1.0 - r);
+                target_y_ = p0->y * r + p1->y * (1.0 - r);
+                target_z_ = p0->z * r + p1->z * (1.0 - r);
+                target_yaw_at_detection_ = p0->yaw_at_detection * r + p1->yaw_at_detection *
+                  (1.0 - r);
+                target_tag_offset_x_ = 0.0;
+                target_tag_offset_y_ = 0.0;
+                target_heading_err_ = std::remainder(
+                  std::atan2(
+                    target_y_,
+                    target_x_) + config_.aim_yaw_offset_rad,
+                  2.0 * M_PI);
+                RCLCPP_INFO(
+                  logger,
+                  "🔒 [Target Confirmed: Col 0-1 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+                  get_row_name(
+                    row).c_str(), p0->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
+                  target_belt_mode_);
+              } else if (pattern == TargetPattern::MIDPOINT_1_2) {
+                is_midpoint_target_ = true;
+                current_target_tag_ids_ = {p2->tag_id, p1->tag_id};
+                active_target_id_ = p2->tag_id;
+                const double r = config_.midpoint_blend_ratio;
+                target_x_ = p2->x * r + p1->x * (1.0 - r);
+                target_y_ = p2->y * r + p1->y * (1.0 - r);
+                target_z_ = p2->z * r + p1->z * (1.0 - r);
+                target_yaw_at_detection_ = p2->yaw_at_detection * r + p1->yaw_at_detection *
+                  (1.0 - r);
+                target_tag_offset_x_ = 0.0;
+                target_tag_offset_y_ = 0.0;
+                target_heading_err_ = std::remainder(
+                  std::atan2(
+                    target_y_,
+                    target_x_) + config_.aim_yaw_offset_rad,
+                  2.0 * M_PI);
+                RCLCPP_INFO(
+                  logger,
+                  "🔒 [Target Confirmed: Col 1-2 Midpoint | %s] Tags #%d & #%d (Err: %+.2f deg | BeltMode: LEVEL_%d)",
+                  get_row_name(
+                    row).c_str(), p2->tag_id, p1->tag_id, target_heading_err_ * 180.0 / M_PI,
+                  target_belt_mode_);
+              } else {
+                const PanelTagInfo * p = (pattern == TargetPattern::SINGLE_COL_0) ? p0 :
+                  ((pattern == TargetPattern::SINGLE_COL_1) ? p1 : p2);
+                is_midpoint_target_ = false;
+                current_target_tag_ids_ = {p->tag_id};
+                active_target_id_ = p->tag_id;
+                target_x_ = p->x;
+                target_y_ = p->y;
+                target_z_ = p->z;
+                target_yaw_at_detection_ = p->yaw_at_detection;
+                target_tag_offset_x_ = 0.0;
+                target_tag_offset_y_ = 0.0;
+              }
+
+              const double raw_aim_angle =
+                std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad;
+              locked_target_yaw_ = std::remainder(current_yaw + raw_aim_angle, 2.0 * M_PI);
+              target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
+
+              // 全グリッド認識状況のサマリー文字列を構築
+              std::stringstream status_ss;
+              for (int r = 2; r >= 0; --r) {
+                const char * rname = (r == 2) ? "上" : ((r == 1) ? "中" : "下");
+                status_ss << "[" << rname << ":";
+                for (int c = 0; c < 3; ++c) {
+                  const PanelTagInfo * pt = nullptr;
+                  for (const auto & [id, p_info] : panel_grid_) {
+                    if (p_info.row == r && p_info.col == c) {
+                      pt = &p_info;
+                      break;
+                    }
+                  }
+                  if (!pt) {
+                    status_ss << " ?";
+                  } else if (!pt->detected) {
+                    status_ss << " #" << pt->tag_id << "(未)";
+                  } else if (pt->is_standing) {
+                    status_ss << " #" << pt->tag_id << "(立)";
+                  } else {
+                    status_ss << " #" << pt->tag_id << "(倒" << std::fixed << std::setprecision(0) <<
+                      pt->tilt_deg << "°)";
+                  }
+                }
+                status_ss << "] ";
+              }
+
+              RCLCPP_INFO(
+                logger,
+                "🔒 [Game2 TARGET LOCK 決定] %s\n"
+                "   ▶ 9枚認識状況: %s\n"
+                "   ▶ 狙い角度: %+.2f deg (World: %+.2f deg) | ベルト: LEVEL_%d",
+                target_description().c_str(),
+                status_ss.str().c_str(),
+                target_heading_err_ * 180.0 / M_PI,
+                locked_target_yaw_ * 180.0 / M_PI,
+                target_belt_mode_);
+
+              return true;
+            }
+            return false;
           }
-          return false;
         }
       }
     }
@@ -551,8 +494,6 @@ public:
           it_b->second.yaw_at_detection * (1.0 - r);
         visual_found = true;
       } else if (a_detected || b_detected) {
-        // 片方でも見えていれば視覚ロストとは判定せず、前回の target_x_, target_y_ を維持して
-        // IMU姿勢補間で滑らかに追従する（目標角度のジャンプを完全防止）
         visual_found = true;
       }
     } else {
@@ -571,29 +512,26 @@ public:
       last_visually_confirmed_time_ = now;
     }
 
-    // IMUオドメトリ姿勢補間（デッドレコニング）
-    const double raw_heading_err = std::atan2(target_y_, target_x_);
-    const double rotated = std::remainder(current_yaw - target_yaw_at_detection_, 2.0 * M_PI);
-    target_heading_err_ = std::remainder(
-      raw_heading_err - rotated + config_.aim_yaw_offset_rad,
-      2.0 * M_PI);
+    // 旋回中・静止中ともに固定された絶対目標角度 locked_target_yaw_ と現在のIMU角度の引き算で完全安定追従
+    target_heading_err_ = std::remainder(locked_target_yaw_ - current_yaw, 2.0 * M_PI);
   }
 
   bool has_locked_target() const {return target_locked_;}
 
-  bool is_currently_visible(const rclcpp::Time & now, double timeout_sec = 0.3) const
+  bool is_currently_visible(const rclcpp::Time & now, double timeout_sec = 0.5) const
   {
     if (!target_locked_) {return false;}
     return (now - last_visually_confirmed_time_).seconds() <= timeout_sec;
   }
 
-  bool is_lost_timeout(const rclcpp::Time & now, double timeout_sec = 1.0) const
+  bool is_lost_timeout(const rclcpp::Time & now, double timeout_sec = 3.0) const
   {
     if (!target_locked_) {return false;}
     return (now - last_visually_confirmed_time_).seconds() > timeout_sec;
   }
 
   double heading_error() const {return target_heading_err_;}
+  double locked_target_yaw() const {return locked_target_yaw_;}
   uint8_t target_belt_mode() const {return target_belt_mode_;}
   int active_target_id() const {return active_target_id_;}
   int active_row() const {return active_row_;}
@@ -852,6 +790,9 @@ public:
     return ss.str();
   }
 
+  const std::unordered_map<int, PanelTagInfo> & panel_grid() const {return panel_grid_;}
+  double target_distance() const {return config_.target_distance;}
+
 private:
   Config config_;
   std::unordered_map<int, PanelTagInfo> panel_grid_;
@@ -870,6 +811,7 @@ private:
   double target_tag_offset_x_{0.0};
   double target_tag_offset_y_{0.0};
   double target_heading_err_{0.0};
+  double locked_target_yaw_{0.0};
 
   rclcpp::Time last_visually_confirmed_time_{0, 0, RCL_ROS_TIME};
   int candidate_pattern_key_{-1};

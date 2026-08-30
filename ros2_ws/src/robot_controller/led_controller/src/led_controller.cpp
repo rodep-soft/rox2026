@@ -14,10 +14,6 @@ constexpr uint8_t GAME2_ENABLED_FLAG = 1U << 5U;
 constexpr uint8_t ROLLER_FORWARD_FLAG = 1U << 6U;
 constexpr uint8_t ROLLER_REVERSE_FLAG = 1U << 7U;
 constexpr int8_t MAX_BELT_RPM_OFFSET_STEPS = 3;
-constexpr uint8_t TARGET_GRID_COMMAND_BASE = 0x20;
-constexpr uint8_t FALLEN_GRID_COMMAND_BASE = 0x22;
-constexpr uint16_t GRID_LOW_MASK = 0x00FF;
-constexpr uint16_t GRID_HIGH_MASK = 0x0100;
 }  // namespace
 
 LedControllerNode::LedControllerNode()
@@ -75,6 +71,10 @@ LedControllerNode::LedControllerNode()
     "/dribble/shot_cycle_state", state_qos,
     std::bind(&LedControllerNode::shot_cycle_state_callback, this, std::placeholders::_1));
 
+  game2_command_start_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/game2/command_start", command_qos,
+    std::bind(&LedControllerNode::game2_command_start_callback, this, std::placeholders::_1));
+
   game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
     "/game2/state", state_qos,
     std::bind(&LedControllerNode::game2_state_callback, this, std::placeholders::_1));
@@ -87,7 +87,7 @@ LedControllerNode::LedControllerNode()
     "/spring/fire_request", command_qos,
     std::bind(&LedControllerNode::spring_fire_callback, this, std::placeholders::_1));
 
-  led_command_pub_ = create_publisher<std_msgs::msg::UInt16>("/hardware/led_cmd", command_qos);
+  led_command_pub_ = create_publisher<std_msgs::msg::UInt64>("/hardware/led_cmd", command_qos);
   publish_timer_ = create_wall_timer(
     std::chrono::milliseconds(publish_period_ms),
     std::bind(&LedControllerNode::publish_timer_callback, this));
@@ -150,6 +150,11 @@ void LedControllerNode::shot_cycle_state_callback(
   shot_cycle_state_ = msg->state;
 }
 
+void LedControllerNode::game2_command_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  game2_enabled_ = msg->data;
+}
+
 void LedControllerNode::game2_state_callback(const robot_msgs::msg::Game2State::SharedPtr msg)
 {
   game2_state_ = msg->state;
@@ -158,15 +163,10 @@ void LedControllerNode::game2_state_callback(const robot_msgs::msg::Game2State::
 void LedControllerNode::target_grid_state_callback(
   const robot_msgs::msg::TargetGridState::SharedPtr msg)
 {
-  target_grid_mask_ = 0;
-  fallen_grid_mask_ = 0;
+  target_grid_states_ = 0;
   for (std::size_t index = 0; index < msg->states.size(); ++index) {
-    const auto bit = static_cast<uint16_t>(1U << index);
-    if (msg->states[index] == robot_msgs::msg::TargetGridState::TARGET) {
-      target_grid_mask_ |= bit;
-    } else if (msg->states[index] == robot_msgs::msg::TargetGridState::FALLEN) {
-      fallen_grid_mask_ |= bit;
-    }
+    const auto state = static_cast<uint32_t>(msg->states[index] & 0x03U);
+    target_grid_states_ |= state << (index * 2U);
   }
 }
 
@@ -181,22 +181,11 @@ void LedControllerNode::spring_fire_callback(const std_msgs::msg::Bool::SharedPt
 
 void LedControllerNode::publish_timer_callback()
 {
-  std_msgs::msg::UInt16 command;
-  command.data = make_grid_mask_command(TARGET_GRID_COMMAND_BASE, target_grid_mask_);
+  std_msgs::msg::UInt64 command;
+  command.data = static_cast<uint64_t>(select_display_mode()) |
+    (static_cast<uint64_t>(make_status_flags()) << 8U) |
+    (static_cast<uint64_t>(target_grid_states_) << 16U);
   led_command_pub_->publish(command);
-  command.data = make_grid_mask_command(FALLEN_GRID_COMMAND_BASE, fallen_grid_mask_);
-  led_command_pub_->publish(command);
-  command.data = static_cast<uint16_t>(select_display_mode()) |
-    (static_cast<uint16_t>(make_status_flags()) << 8U);
-  led_command_pub_->publish(command);
-}
-
-uint16_t LedControllerNode::make_grid_mask_command(uint8_t command_base, uint16_t mask) const
-{
-  const auto command = static_cast<uint8_t>(
-    command_base | ((mask & GRID_HIGH_MASK) != 0U ? 0x01U : 0x00U));
-  return static_cast<uint16_t>(command) |
-         static_cast<uint16_t>((mask & GRID_LOW_MASK) << 8U);
 }
 
 LedControllerNode::DisplayMode LedControllerNode::select_display_mode() const
@@ -277,9 +266,7 @@ uint8_t LedControllerNode::make_status_flags() const
   if (drive_reversed_) {
     flags |= DRIVE_REVERSED_FLAG;
   }
-  if (game2_state_ != robot_msgs::msg::Game2State::STANDBY &&
-    game2_state_ != robot_msgs::msg::Game2State::COMPLETED)
-  {
+  if (game2_enabled_) {
     flags |= GAME2_ENABLED_FLAG;
   }
   if (roller_target_rpm_ > 0.0F) {

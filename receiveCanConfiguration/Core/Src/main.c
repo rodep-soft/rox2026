@@ -28,6 +28,7 @@
 volatile uint8_t emergency_stop_flag = 0; // 遠隔非常停止フラグ (1で停止)
 volatile int received_LED_cmd;
 volatile int received_LED_status;
+volatile uint32_t received_LED_grid_states = 0U;
 
 // --- CAN通信用の変数 ---
 CAN_RxHeaderTypeDef RxHeader;
@@ -549,10 +550,12 @@ int main(void)
 					(int32_t)(timeout_now - last_can_rx_time);
 			if (debug_can_rx_elapsed_ms > (int32_t)CAN_TIMEOUT_MS) {
 				is_timeout = 1U;
-				LED_Effects_Render(LED_MODE_ERROR, (uint8_t)received_LED_status);
+				LED_Effects_Render(LED_MODE_ERROR, (uint8_t)received_LED_status,
+						(uint32_t)received_LED_grid_states);
 			} else {
 				// --- 6. LEDの点灯更新 ---
-				LED_Effects_Render((uint8_t)received_LED_cmd, (uint8_t)received_LED_status);
+				LED_Effects_Render((uint8_t)received_LED_cmd, (uint8_t)received_LED_status,
+						(uint32_t)received_LED_grid_states);
 			}
 #endif
     /* USER CODE END WHILE */
@@ -629,10 +632,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 			//空送信による通信状態管理
 			last_can_rx_time = HAL_GetTick();
 			is_timeout = 0;
-		} else if ((RxHeader.StdId == 0x201U) && (RxHeader.DLC == 2U)) {
+		} else if ((RxHeader.StdId == 0x201U) && (RxHeader.DLC == 5U)) {
 			//LEDの光り方指定
 			received_LED_cmd = (int) RxData[0];
 			received_LED_status = RxData[1];
+			received_LED_grid_states = (uint32_t)RxData[2] |
+					((uint32_t)RxData[3] << 8U) |
+					((uint32_t)RxData[4] << 16U);
 			//emergency_stop_flag = (bool)(RxData[0] && 0b00000001);
 		}
 	}
