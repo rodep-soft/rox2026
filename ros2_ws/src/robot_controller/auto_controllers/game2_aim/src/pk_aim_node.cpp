@@ -240,15 +240,10 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
       is_target_confirmed_ = false;
       tracker_.reset();
 
-      // 3. 次の的選択・照準状態（SEARCHING -> 即座に ALIGNING）へ復帰
+      // 3. 次の的選択待機（SEARCHING）を維持
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Returned to SEARCHING for next target selection");
-      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
-        transition_to(
-          robot_msgs::msg::Game2State::ALIGNING,
-          "Aligning to selected target after shot");
-      }
       publish_target_status(now());
       log_target_decision("PK 射出完了 -> 次の的選択・照準待機", "ボール射出が完了したためベルト停止・SEARCHING維持");
     }
