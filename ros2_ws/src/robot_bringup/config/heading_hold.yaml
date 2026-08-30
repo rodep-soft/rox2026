@@ -20,6 +20,13 @@
     acceleration_boost_multiplier: 1.0
     acceleration_filter_time_constant_sec: 0.05
 
+    # 定常横移動で生じる方向依存yaw外乱を、角度がずれる前に補償する
+    velocity_feedforward_x_positive_gain: 0.0
+    velocity_feedforward_x_negative_gain: 0.12
+    velocity_feedforward_y_positive_gain: 0.0
+    velocity_feedforward_y_negative_gain: 0.0
+    max_velocity_feedforward_rad_s: 0.35
+
     # 符号付き指令加速度から、角度がずれる前にyaw補正を加える
     acceleration_feedforward_x_positive_gain: 0.0
     acceleration_feedforward_x_negative_gain: 0.0
