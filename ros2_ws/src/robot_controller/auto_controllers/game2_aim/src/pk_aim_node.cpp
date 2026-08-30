@@ -238,17 +238,13 @@ void PKAimNode::shot_cycle_state_callback(const robot_msgs::msg::ShotCycleState:
 
       // 2. 決定フラグ解除 & ターゲットリセット
       is_target_confirmed_ = false;
+      shot_requested_ = false;
       tracker_.reset();
 
-      // 3. 次の的選択・照準状態（SEARCHING -> 即座に ALIGNING）へ復帰
+      // 3. 次の的選択待機（SEARCHING）を維持
       transition_to(
         robot_msgs::msg::Game2State::SEARCHING,
         "Shot completed (ejected). Returned to SEARCHING for next target selection");
-      if (tracker_.lock_selected_target(now(), get_logger(), yaw_)) {
-        transition_to(
-          robot_msgs::msg::Game2State::ALIGNING,
-          "Aligning to selected target after shot");
-      }
       publish_target_status(now());
       log_target_decision("PK 射出完了 -> 次の的選択・照準待機", "ボール射出が完了したためベルト停止・SEARCHING維持");
     }
@@ -263,7 +259,11 @@ void PKAimNode::shot_cycle_req_callback(const std_msgs::msg::Bool::SharedPtr msg
   }
   if (state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT && is_target_confirmed_) {
     last_shot_req_time_ = now();
-    RCLCPP_INFO(get_logger(), "🎯 [PK] Shot cycle requested (L2+Circle). Insurance timer started.");
+    shot_requested_ = true;
+    RCLCPP_INFO(
+      get_logger(),
+      "🎯 [PK] Shot cycle requested (L2+Circle). Insurance fallback timer started (%.1fs).",
+      shot_fallback_timeout_);
   } else {
     RCLCPP_WARN(
       get_logger(),
@@ -400,6 +400,7 @@ void PKAimNode::transition_to(uint8_t new_state, const std::string & reason)
     (new_state == robot_msgs::msg::Game2State::STANDBY &&
     state_ != robot_msgs::msg::Game2State::STANDBY))
   {
+    shot_requested_ = false;
     robot_msgs::msg::BeltMode stop_msg;
     stop_msg.mode = robot_msgs::msg::BeltMode::STOP;
     belt_mode_pub_->publish(stop_msg);
@@ -611,10 +612,28 @@ void PKAimNode::control_loop()
           break;
         }
 
-        // 外力等で誤差が大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
+        // 2. 射出完了保険タイマー (ShotCycleState を取りこぼしても一定時間でベルト停止＆SEARCHING復帰)
+        if (shot_requested_ &&
+          (current_time - last_shot_req_time_).seconds() > shot_fallback_timeout_)
+        {
+          shot_requested_ = false;
+          is_target_confirmed_ = false;
+          tracker_.reset();
+          transition_to(
+            robot_msgs::msg::Game2State::SEARCHING,
+            "Shot fallback timeout in PREPARING_SHOOT -> Force belt stop and return to SEARCHING");
+          RCLCPP_WARN(
+            get_logger(),
+            "⚠️ [PK FALLBACK] 射出要求後 %.1f 秒経過しても完了応答を受信しなかったため、安全のためベルトを停止し SEARCHING に復帰しました",
+            shot_fallback_timeout_);
+          break;
+        }
+
+        // 3. 外力等で誤差が大きくズレた場合（約2.3度以上）のみ ALIGNING へ戻る（ヒステリシスでチャタリング防止）
         const double prep_abort_tolerance = std::max(yaw_tolerance_ * 3.0, 0.040);
         if (std::abs(tracker_.heading_error()) > prep_abort_tolerance) {
           is_target_confirmed_ = false;
+          shot_requested_ = false;
           transition_to(
             robot_msgs::msg::Game2State::ALIGNING,
             "Heading error exceeded tolerance in PREPARING_SHOOT -> Abort shoot authorization");

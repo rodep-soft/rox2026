@@ -1,9 +1,10 @@
-# ==============================================================================
-# 🎯 PK Auto-Aim Controller Configuration (PK 1点狙い照準モード)
-# ==============================================================================
-/**:
+/pk_aim_node:
   ros__parameters:
     # ── 🏷️ AprilTag & ターゲット設定 ──
+    base_frame: "base_link"
+    cmd_vel_topic: "/drive/cmd_vel"
+    detections_topic: "/detections"
+    camera_info_topic: "/camera/camera_info"
     tag_prefix: "tag16h5:"
     target_distance: 4.0   # [m] 的までの想定距離 (PK標準射出距離)
 
@@ -15,7 +16,7 @@
     middle_tags: [17, 18, 19]
     bottom_tags: [20, 21, 22]
 
-    # ── 📷 カメラパラメータ (ピンホールカメラモデル) ──
+    # ── 📷 カメラ物理・光学パラメータ ──
     camera_offset_x: 0.265  # [m] ロボット中心からカメラの前後オフセット
     camera_offset_y: 0.035  # [m] ロボット中心からカメラの左右オフセット
     camera_offset_z: 0.193  # [m] ロボット中心からカメラの高さ

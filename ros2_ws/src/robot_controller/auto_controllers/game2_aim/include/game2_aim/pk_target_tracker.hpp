@@ -314,30 +314,26 @@ public:
     int target_tag_id = index_to_tag_id_[selected_index_];
     auto it = panel_grid_.find(target_tag_id);
     if (it == panel_grid_.end()) {
+      target_locked_ = false;
       return false;
     }
 
     const auto & panel = it->second;
+    if (!panel.detected || (now - panel.last_seen).seconds() > config_.tag_lost_timeout) {
+      target_locked_ = false;
+      return false;
+    }
+
     active_target_id_ = panel.tag_id;
     active_row_ = panel.row;
     target_belt_mode_ = panel.belt_mode;
     target_locked_ = true;
 
-    if (panel.detected && (now - panel.last_seen).seconds() <= config_.tag_lost_timeout) {
-      target_x_ = panel.x;
-      target_y_ = panel.y;
-      target_z_ = panel.z;
-      target_yaw_at_detection_ = panel.yaw_at_detection;
-      last_visually_confirmed_time_ = now;
-    } else {
-      // 未検出時は幾何学的グリッド配置から推定
-      // Col 0: +0.35m, Col 1: 0.0m, Col 2: -0.35m
-      const double col_offsets[3] = {0.35, 0.0, -0.35};
-      target_x_ = config_.target_distance + config_.camera_offset_x;
-      target_y_ = col_offsets[panel.col] + config_.camera_offset_y;
-      target_z_ = 0.5;
-      target_yaw_at_detection_ = current_yaw;
-    }
+    target_x_ = panel.x;
+    target_y_ = panel.y;
+    target_z_ = panel.z;
+    target_yaw_at_detection_ = panel.yaw_at_detection;
+    last_visually_confirmed_time_ = now;
 
     // 目標の絶対角度 (ワールド座標系) を確定固定
     const double raw_aim_angle = std::atan2(target_y_, target_x_) + config_.aim_yaw_offset_rad;
