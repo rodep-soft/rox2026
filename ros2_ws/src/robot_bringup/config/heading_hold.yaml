@@ -3,7 +3,7 @@
     # IMU ジャイロ補正のPID
     kp: 2.5
     ki: 0.0
-    kd: 0.6
+    kd: 0.5
     integral_limit: 0.5
 
     heading_deadband_rad: 0.01
