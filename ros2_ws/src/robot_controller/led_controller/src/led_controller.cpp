@@ -71,6 +71,10 @@ LedControllerNode::LedControllerNode()
     "/dribble/shot_cycle_state", state_qos,
     std::bind(&LedControllerNode::shot_cycle_state_callback, this, std::placeholders::_1));
 
+  game2_command_start_sub_ = create_subscription<std_msgs::msg::Bool>(
+    "/game2/command_start", command_qos,
+    std::bind(&LedControllerNode::game2_command_start_callback, this, std::placeholders::_1));
+
   game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
     "/game2/state", state_qos,
     std::bind(&LedControllerNode::game2_state_callback, this, std::placeholders::_1));
@@ -144,6 +148,11 @@ void LedControllerNode::shot_cycle_state_callback(
   const robot_msgs::msg::ShotCycleState::SharedPtr msg)
 {
   shot_cycle_state_ = msg->state;
+}
+
+void LedControllerNode::game2_command_start_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+  game2_enabled_ = msg->data;
 }
 
 void LedControllerNode::game2_state_callback(const robot_msgs::msg::Game2State::SharedPtr msg)
@@ -257,9 +266,7 @@ uint8_t LedControllerNode::make_status_flags() const
   if (drive_reversed_) {
     flags |= DRIVE_REVERSED_FLAG;
   }
-  if (game2_state_ != robot_msgs::msg::Game2State::STANDBY &&
-    game2_state_ != robot_msgs::msg::Game2State::COMPLETED)
-  {
+  if (game2_enabled_) {
     flags |= GAME2_ENABLED_FLAG;
   }
   if (roller_target_rpm_ > 0.0F) {
