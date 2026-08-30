@@ -390,8 +390,9 @@ private:
     double pitch_rad = 0.0;
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
-    // Use the hardware-proven gyro sign so the D term damps rotation.
-    current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
+    // Keep the gyro rate in the same heading frame as the inverted yaw.
+    // BNO055 IMUPLUS reports both values with the same sensor-axis sign.
+    current_angular_velocity_z_rad_s_ = -message.angular_velocity.z;
 
     // The IMU callback can update last_imu_time_ before the control timer observes
     // the timeout. Rebase here as well so a restarted IMU cannot apply its new
