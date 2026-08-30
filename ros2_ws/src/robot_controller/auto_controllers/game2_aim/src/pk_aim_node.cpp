@@ -449,26 +449,26 @@ void PKAimNode::log_target_decision(const std::string & title, const std::string
   const auto & sel_panel = tracker_.get_selected_panel();
 
   auto format_cell = [&](int tag_id, int idx) -> std::string {
-    auto it = grid.find(tag_id);
-    if (it == grid.end()) {return "  #?? 🔴 ( --)  ";}
-    const auto & p = it->second;
-    bool visible = p.detected && (current_time - p.last_seen).seconds() <= 1.5;
-    char buf[64];
-    if (idx == sel_idx) {
-      if (visible) {
-        snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", tag_id);
+      auto it = grid.find(tag_id);
+      if (it == grid.end()) {return "  #?? 🔴 ( --)  ";}
+      const auto & p = it->second;
+      bool visible = p.detected && (current_time - p.last_seen).seconds() <= 1.5;
+      char buf[64];
+      if (idx == sel_idx) {
+        if (visible) {
+          snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", tag_id);
+        } else {
+          snprintf(buf, sizeof(buf), "👉[#%d]🔴 (--)   ", tag_id);
+        }
       } else {
-        snprintf(buf, sizeof(buf), "👉[#%d]🔴 (--)   ", tag_id);
+        if (visible) {
+          snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", tag_id);
+        } else {
+          snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", tag_id);
+        }
       }
-    } else {
-      if (visible) {
-        snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", tag_id);
-      } else {
-        snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", tag_id);
-      }
-    }
-    return std::string(buf);
-  };
+      return std::string(buf);
+    };
 
   RCLCPP_INFO(
     get_logger(),
@@ -481,7 +481,8 @@ void PKAimNode::log_target_decision(const std::string & title, const std::string
     "════════════════════════════════════════════════════════════════════════════",
     title.c_str(),
     reason.c_str(),
-    sel_idx, sel_panel.name.c_str(), sel_panel.tag_id, sel_panel.row, sel_panel.col, sel_panel.belt_mode,
+    sel_idx,
+    sel_panel.name.c_str(), sel_panel.tag_id, sel_panel.row, sel_panel.col, sel_panel.belt_mode,
     (is_target_confirmed_ ? "CONFIRMED (決定済み)" : "SELECTING (未決定・照準中)"),
     format_cell(14, 0).c_str(), format_cell(15, 1).c_str(), format_cell(16, 2).c_str(),
     format_cell(17, 3).c_str(), format_cell(18, 4).c_str(), format_cell(19, 5).c_str(),
@@ -522,7 +523,7 @@ void PKAimNode::control_loop()
 
   switch (state_) {
     case robot_msgs::msg::Game2State::STANDBY:
-        break;
+      break;
 
     case robot_msgs::msg::Game2State::SEARCHING: {
         cmd.angular.z = 0.0;
@@ -583,7 +584,8 @@ void PKAimNode::control_loop()
 
           const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
           RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 2000,
+            get_logger(),
+            *get_clock(), 2000,
             "🎯 [PK State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s%s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,

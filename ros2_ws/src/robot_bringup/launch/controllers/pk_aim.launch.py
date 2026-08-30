@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_bringup = get_package_share_directory("robot_bringup")
-    default_config = os.path.join(pkg_bringup, "config", "pk_aim.yaml")
+    default_config = os.path.join(pkg_bringup, "config", "pk_auto_aim.yaml")
 
     config_file_arg = DeclareLaunchArgument(
         "config_file",

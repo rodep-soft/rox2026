@@ -575,7 +575,8 @@ void Game2AimNode::control_loop()
 
           const double target_yaw = std::remainder(yaw_ + heading_err, 2.0 * M_PI);
           RCLCPP_INFO_THROTTLE(
-            get_logger(), *get_clock(), 2000,
+            get_logger(),
+            *get_clock(), 2000,
             "🎯 [Game2 State: ALIGNING | %s] Target: %+.2f deg | Current: %+.2f deg | Err: %+.2f deg | Cmd wz: %+.3f rad/s | %s",
             tracker_.target_description().c_str(),
             target_yaw * 180.0 / M_PI, yaw_ * 180.0 / M_PI, heading_err * 180.0 / M_PI,
@@ -668,26 +669,26 @@ void Game2AimNode::log_target_decision(const std::string & title, const std::str
   const auto & grid_state = tracker_.get_target_grid_state(current_time);
 
   auto format_cell = [&](int r, int c) -> std::string {
-    int idx = TargetTracker::tag_to_index(r, c);
-    const PanelTagInfo * pt = nullptr;
-    for (const auto & [id, p_info] : grid) {
-      if (p_info.row == r && p_info.col == c) {
-        pt = &p_info;
-        break;
+      int idx = TargetTracker::tag_to_index(r, c);
+      const PanelTagInfo * pt = nullptr;
+      for (const auto & [id, p_info] : grid) {
+        if (p_info.row == r && p_info.col == c) {
+          pt = &p_info;
+          break;
+        }
       }
-    }
-    if (!pt) {return "  #?? 🔴 ( --)  ";}
-    char buf[64];
-    uint8_t state = grid_state.states[idx];
-    if (state == robot_msgs::msg::TargetGridState::TARGET) {
-      snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", pt->tag_id);
-    } else if (state == robot_msgs::msg::TargetGridState::STANDING) {
-      snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", pt->tag_id);
-    } else {
-      snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", pt->tag_id);
-    }
-    return std::string(buf);
-  };
+      if (!pt) {return "  #?? 🔴 ( --)  ";}
+      char buf[64];
+      uint8_t state = grid_state.states[idx];
+      if (state == robot_msgs::msg::TargetGridState::TARGET) {
+        snprintf(buf, sizeof(buf), "👉[#%d]🎯 (LOCK) ", pt->tag_id);
+      } else if (state == robot_msgs::msg::TargetGridState::STANDING) {
+        snprintf(buf, sizeof(buf), "  #%d 🟢 (OK)   ", pt->tag_id);
+      } else {
+        snprintf(buf, sizeof(buf), "  #%d 🔴 (--)   ", pt->tag_id);
+      }
+      return std::string(buf);
+    };
 
   RCLCPP_INFO(
     get_logger(),

@@ -1,9 +1,13 @@
-/game2_aim_node:
+# ==============================================================================
+# 🎯 Game2 Auto-Aim Controller Configuration
+# ==============================================================================
+/**:
   ros__parameters:
     base_frame: "base_link"
     cmd_vel_topic: "/drive/cmd_vel"
     detections_topic: "/detections"
     camera_info_topic: "/camera/camera_info"
+    tag_prefix: "tag16h5:"
     target_distance: 4.0
 
     # ── 📐 カメラ物理・光学パラメータ ──
