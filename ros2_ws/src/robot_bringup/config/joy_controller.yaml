@@ -53,17 +53,17 @@
 
     # スティック全倒し時の最大速度
     # linear: [m/s]、angular: [rad/s]
-    linear_x_limit: 3.7
-    linear_y_limit: 3.7
+    linear_x_limit: 3.5
+    linear_y_limit: 3.5
     angular_z_limit: 2.0
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 6.5
-    linear_y_acceleration_limit: 4.2
+    linear_x_acceleration_limit: 3.0
+    linear_y_acceleration_limit: 1.1
     angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 7.3
+    linear_x_deceleration_limit: 7.0
     linear_y_deceleration_limit: 6.5
     angular_z_deceleration_limit: 15.0

@@ -95,6 +95,16 @@ private:
       declare_parameter("acceleration_boost_multiplier", 1.8);
     acceleration_filter_time_constant_sec_ =
       declare_parameter("acceleration_filter_time_constant_sec", 0.08);
+    velocity_feedforward_x_positive_gain_ =
+      declare_parameter("velocity_feedforward_x_positive_gain", 0.0);
+    velocity_feedforward_x_negative_gain_ =
+      declare_parameter("velocity_feedforward_x_negative_gain", 0.0);
+    velocity_feedforward_y_positive_gain_ =
+      declare_parameter("velocity_feedforward_y_positive_gain", 0.0);
+    velocity_feedforward_y_negative_gain_ =
+      declare_parameter("velocity_feedforward_y_negative_gain", 0.0);
+    max_velocity_feedforward_rad_s_ =
+      declare_parameter("max_velocity_feedforward_rad_s", 0.5);
     acceleration_feedforward_x_positive_gain_ =
       declare_parameter("acceleration_feedforward_x_positive_gain", 0.0);
     acceleration_feedforward_x_negative_gain_ =
@@ -149,6 +159,14 @@ private:
               "acceleration_boost_full_m_s2 must exceed acceleration_boost_start_m_s2 and "
               "acceleration_boost_multiplier must be at least 1.0");
     }
+    if (!std::isfinite(velocity_feedforward_x_positive_gain_) ||
+      !std::isfinite(velocity_feedforward_x_negative_gain_) ||
+      !std::isfinite(velocity_feedforward_y_positive_gain_) ||
+      !std::isfinite(velocity_feedforward_y_negative_gain_))
+    {
+      throw std::invalid_argument("velocity feedforward gains must be finite");
+    }
+    validate_positive("max_velocity_feedforward_rad_s", max_velocity_feedforward_rad_s_);
     if (!std::isfinite(acceleration_feedforward_x_positive_gain_) ||
       !std::isfinite(acceleration_feedforward_x_negative_gain_) ||
       !std::isfinite(acceleration_feedforward_y_positive_gain_) ||
@@ -212,6 +230,11 @@ private:
     double next_acceleration_boost_full = acceleration_boost_full_m_s2_;
     double next_acceleration_boost_multiplier = acceleration_boost_multiplier_;
     double next_acceleration_filter_time_constant = acceleration_filter_time_constant_sec_;
+    double next_velocity_feedforward_x_positive_gain = velocity_feedforward_x_positive_gain_;
+    double next_velocity_feedforward_x_negative_gain = velocity_feedforward_x_negative_gain_;
+    double next_velocity_feedforward_y_positive_gain = velocity_feedforward_y_positive_gain_;
+    double next_velocity_feedforward_y_negative_gain = velocity_feedforward_y_negative_gain_;
+    double next_max_velocity_feedforward = max_velocity_feedforward_rad_s_;
     double next_acceleration_feedforward_x_positive_gain =
       acceleration_feedforward_x_positive_gain_;
     double next_acceleration_feedforward_x_negative_gain =
@@ -254,6 +277,16 @@ private:
         next_acceleration_boost_multiplier = parameter.as_double();
       } else if (name == "acceleration_filter_time_constant_sec") {
         next_acceleration_filter_time_constant = parameter.as_double();
+      } else if (name == "velocity_feedforward_x_positive_gain") {
+        next_velocity_feedforward_x_positive_gain = parameter.as_double();
+      } else if (name == "velocity_feedforward_x_negative_gain") {
+        next_velocity_feedforward_x_negative_gain = parameter.as_double();
+      } else if (name == "velocity_feedforward_y_positive_gain") {
+        next_velocity_feedforward_y_positive_gain = parameter.as_double();
+      } else if (name == "velocity_feedforward_y_negative_gain") {
+        next_velocity_feedforward_y_negative_gain = parameter.as_double();
+      } else if (name == "max_velocity_feedforward_rad_s") {
+        next_max_velocity_feedforward = parameter.as_double();
       } else if (name == "acceleration_feedforward_x_positive_gain") {
         next_acceleration_feedforward_x_positive_gain = parameter.as_double();
       } else if (name == "acceleration_feedforward_x_negative_gain") {
@@ -284,6 +317,11 @@ private:
       !std::isfinite(next_acceleration_boost_multiplier) ||
       !std::isfinite(next_acceleration_filter_time_constant) ||
       next_heading_deadband < 0.0 || next_rotation_deadband < 0.0 ||
+      !std::isfinite(next_velocity_feedforward_x_positive_gain) ||
+      !std::isfinite(next_velocity_feedforward_x_negative_gain) ||
+      !std::isfinite(next_velocity_feedforward_y_positive_gain) ||
+      !std::isfinite(next_velocity_feedforward_y_negative_gain) ||
+      !std::isfinite(next_max_velocity_feedforward) ||
       !std::isfinite(next_acceleration_feedforward_x_positive_gain) ||
       !std::isfinite(next_acceleration_feedforward_x_negative_gain) ||
       !std::isfinite(next_acceleration_feedforward_y_positive_gain) ||
@@ -296,6 +334,7 @@ private:
       next_acceleration_boost_full <= next_acceleration_boost_start ||
       next_acceleration_boost_multiplier < 1.0 ||
       next_acceleration_filter_time_constant <= 0.0 ||
+      next_max_velocity_feedforward <= 0.0 ||
       next_max_acceleration_feedforward <= 0.0)
     {
       result.reason = "PID gains and limits must be finite and non-negative";
@@ -318,6 +357,11 @@ private:
     acceleration_boost_full_m_s2_ = next_acceleration_boost_full;
     acceleration_boost_multiplier_ = next_acceleration_boost_multiplier;
     acceleration_filter_time_constant_sec_ = next_acceleration_filter_time_constant;
+    velocity_feedforward_x_positive_gain_ = next_velocity_feedforward_x_positive_gain;
+    velocity_feedforward_x_negative_gain_ = next_velocity_feedforward_x_negative_gain;
+    velocity_feedforward_y_positive_gain_ = next_velocity_feedforward_y_positive_gain;
+    velocity_feedforward_y_negative_gain_ = next_velocity_feedforward_y_negative_gain;
+    max_velocity_feedforward_rad_s_ = next_max_velocity_feedforward;
     acceleration_feedforward_x_positive_gain_ =
       next_acceleration_feedforward_x_positive_gain;
     acceleration_feedforward_x_negative_gain_ =
@@ -390,8 +434,9 @@ private:
     double pitch_rad = 0.0;
     tf2::Matrix3x3(quaternion).getRPY(roll_rad, pitch_rad, current_yaw_rad_);
     current_yaw_rad_ = -current_yaw_rad_;
-    // Use the hardware-proven gyro sign so the D term damps rotation.
-    current_angular_velocity_z_rad_s_ = message.angular_velocity.z;
+    // Keep the gyro rate in the same heading frame as the inverted yaw.
+    // BNO055 IMUPLUS reports both values with the same sensor-axis sign.
+    current_angular_velocity_z_rad_s_ = -message.angular_velocity.z;
 
     // The IMU callback can update last_imu_time_ before the control timer observes
     // the timeout. Rebase here as well so a restarted IMU cannot apply its new
@@ -578,6 +623,18 @@ private:
 
     const double linear_speed_m_s = std::hypot(
       latest_command_.linear.x, latest_command_.linear.y);
+    double damping_angular_velocity_rad_s = current_angular_velocity_z_rad_s_;
+    constexpr double stationary_linear_speed_threshold_m_s = 0.05;
+    if (linear_speed_m_s < stationary_linear_speed_threshold_m_s) {
+      // Suppress IMUPLUS gyro noise while stopped without creating a step at
+      // the dead-zone boundary. Rotation above the existing settle threshold
+      // still receives proportional rate damping.
+      damping_angular_velocity_rad_s = std::copysign(
+        std::max(
+          0.0,
+          std::abs(current_angular_velocity_z_rad_s_) - rotation_settle_velocity_rad_s_),
+        current_angular_velocity_z_rad_s_);
+    }
     const double speed_boost_ratio = std::clamp(
       (linear_speed_m_s - speed_boost_start_m_s_) /
       (speed_boost_full_m_s_ - speed_boost_start_m_s_),
@@ -598,6 +655,16 @@ private:
       1.0 + acceleration_boost_ratio * (acceleration_boost_multiplier_ - 1.0);
     const double heading_gain = std::max(speed_gain, acceleration_gain);
 
+    // Compensate direction-dependent drivetrain yaw before heading error builds.
+    const double velocity_feedforward_x_gain = latest_command_.linear.x >= 0.0 ?
+      velocity_feedforward_x_positive_gain_ : velocity_feedforward_x_negative_gain_;
+    const double velocity_feedforward_y_gain = latest_command_.linear.y >= 0.0 ?
+      velocity_feedforward_y_positive_gain_ : velocity_feedforward_y_negative_gain_;
+    const double velocity_feedforward_rad_s = std::clamp(
+      velocity_feedforward_x_gain * latest_command_.linear.x +
+      velocity_feedforward_y_gain * latest_command_.linear.y,
+      -max_velocity_feedforward_rad_s_, max_velocity_feedforward_rad_s_);
+
     // Select an independent feedforward gain for each acceleration direction.
     const double acceleration_feedforward_x_gain =
       latest_linear_acceleration_x_m_s2_ >= 0.0 ?
@@ -612,13 +679,15 @@ private:
 
     const double feedback_correction_rad_s =
       heading_gain *
-      (kp_ * heading_error_rad - kd_ * current_angular_velocity_z_rad_s_) +
+      (kp_ * heading_error_rad - kd_ * damping_angular_velocity_rad_s) +
       ki_ * integral_error_rad_s_;
 
     auto corrected_command = latest_command_;
 
     const double correction_rad_s = std::clamp(
-      acceleration_feedforward_rad_s + feedback_correction_rad_s,
+      velocity_feedforward_rad_s +
+      acceleration_feedforward_rad_s +
+      feedback_correction_rad_s,
       -max_correction_rad_s_, max_correction_rad_s_);
     corrected_command.angular.z = correction_rad_s;
     prioritize_heading_correction(corrected_command);
@@ -677,6 +746,11 @@ private:
   double acceleration_boost_full_m_s2_{4.5};
   double acceleration_boost_multiplier_{1.8};
   double acceleration_filter_time_constant_sec_{0.08};
+  double velocity_feedforward_x_positive_gain_{0.0};
+  double velocity_feedforward_x_negative_gain_{0.0};
+  double velocity_feedforward_y_positive_gain_{0.0};
+  double velocity_feedforward_y_negative_gain_{0.0};
+  double max_velocity_feedforward_rad_s_{0.5};
   double latest_linear_acceleration_m_s2_{0.0};
   double filtered_linear_acceleration_m_s2_{0.0};
   double acceleration_feedforward_x_positive_gain_{0.0};
