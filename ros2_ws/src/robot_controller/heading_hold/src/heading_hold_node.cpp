@@ -579,6 +579,18 @@ private:
 
     const double linear_speed_m_s = std::hypot(
       latest_command_.linear.x, latest_command_.linear.y);
+    double damping_angular_velocity_rad_s = current_angular_velocity_z_rad_s_;
+    constexpr double stationary_linear_speed_threshold_m_s = 0.05;
+    if (linear_speed_m_s < stationary_linear_speed_threshold_m_s) {
+      // Suppress IMUPLUS gyro noise while stopped without creating a step at
+      // the dead-zone boundary. Rotation above the existing settle threshold
+      // still receives proportional rate damping.
+      damping_angular_velocity_rad_s = std::copysign(
+        std::max(
+          0.0,
+          std::abs(current_angular_velocity_z_rad_s_) - rotation_settle_velocity_rad_s_),
+        current_angular_velocity_z_rad_s_);
+    }
     const double speed_boost_ratio = std::clamp(
       (linear_speed_m_s - speed_boost_start_m_s_) /
       (speed_boost_full_m_s_ - speed_boost_start_m_s_),
@@ -613,7 +625,7 @@ private:
 
     const double feedback_correction_rad_s =
       heading_gain *
-      (kp_ * heading_error_rad - kd_ * current_angular_velocity_z_rad_s_) +
+      (kp_ * heading_error_rad - kd_ * damping_angular_velocity_rad_s) +
       ki_ * integral_error_rad_s_;
 
     auto corrected_command = latest_command_;
