@@ -138,6 +138,11 @@ void DribbleControllerNode::position_mode_callback(
     arm_move_start_pos_rad_ = arm_cmd_pos_rad_;
     arm_move_start_rpm_ = roller_cmd_rpm_;
     position_mode_ = target_mode;
+    if (target_mode == robot_msgs::msg::ArmPosition::OPEN) {
+      // Stop immediately instead of sending very low RPM commands until the next control tick.
+      roller_cmd_rpm_ = 0;
+      update_and_publish_roller_command();
+    }
   }
 }
 
@@ -398,6 +403,12 @@ void DribbleControllerNode::update_and_publish_roller_command()
 {
   const int target_rpm = roller_target_rpm();
   if (emergency_stop_active_) {
+    roller_cmd_rpm_ = 0;
+  } else if (!shot_cycle_active_ &&
+    position_mode_ == robot_msgs::msg::ArmPosition::OPEN && target_rpm == 0)
+  {
+    // OPEN is the ball-release posture. Do not carry the previous dribble or
+    // motion-compensated RPM through the arm trajectory.
     roller_cmd_rpm_ = 0;
   } else if (is_arm_moving_ && !shot_cycle_active_ && dribble_enabled_ &&
     spring_operation_state_ != robot_msgs::msg::SpringOperationState::SLOW_FIRE)

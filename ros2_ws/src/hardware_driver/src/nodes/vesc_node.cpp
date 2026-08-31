@@ -304,6 +304,13 @@ private:
   {
     if (auto * motor = find_by_logical_id(message->logical_id)) {
       set_target(*motor, message->target);
+      if (motor->target_rpm == 0.0) {
+        // A stop request must not wait for the periodic command timer while
+        // the previous speed-control command remains active in the VESC.
+        motor->rpm_command = 0.0;
+        can_publisher_->publish(
+          protocol::make_set_current_frame(motor->config.controller_id, 0.0));
+      }
     }
   }
 
