@@ -8,7 +8,7 @@
     home_position_rad: 0.2        # R2 + DPAD右で切替えるホーム姿勢
     bottom_position_rad: 0.0      # 物理的な真下姿勢 (ここを通過してから減速開始)
     feed_position_rad: 0.95        # FEED姿勢(発射機構に押し込む姿勢)
-    slow_fire_dribble_position_rad: -1.341
+    slow_fire_dribble_position_rad: -1.30
     
     # [s] 自動シュートサイクルのタイミング
     belt_shot_delay_sec: 1.0         # ベルト停止時、自動起動からFEED開始までの待機時間[s]
@@ -17,23 +17,23 @@
     feed_duration_sec: 0.1           # FEED 押し込みを保持する時間
     
     # [rad/s] 区間ごとの最大角速度
-    opening_max_rad_s: 4.0
+    opening_max_rad_s: 3.0
     feeding_max_rad_s: 6.0
     returning_max_rad_s: 4.0
     dribbling_max_rad_s: 50.0
 
     # [rad/s^2] 区間ごとの最大角加速度
-    opening_max_rad_s2: 10.0
+    opening_max_rad_s2: 6.0
     feeding_max_rad_s2: 5.0
     returning_max_rad_s2: 30.0
     dribbling_max_rad_s2: 10.0
     
     # [RPM] ドリブルローラー有効時の回転数
-    dribble_on_rpm: 450             # DRIBBLE姿勢 (ボール保持中) の回転数
-    slow_fire_dribble_rpm: 0        # スロー発射中の回転数（負値で逆回転）
+    dribble_on_rpm: 370             # DRIBBLE姿勢 (ボール保持中) の回転数
+    slow_fire_dribble_rpm: 10        # スロー発射中の回転数（負値で逆回転）
     shot_cycle_opening_rpm: 1100     # ベルト発射準備時のローラ回転数
-    shot_cycle_feeding_rpm: 500       # FEED中のローラ回転数
-    shot_cycle_returning_rpm: 450   # FEED -> DRIBBLE時の回転数
+    shot_cycle_feeding_rpm: 700       # FEED中のローラ回転数
+    shot_cycle_returning_rpm: 370   # FEED -> DRIBBLE時の回転数
     shot_cycle_belt_spinup_level: 1 # 自動起動時のベルト回転レベル (1～4)
     
     # [A] 電流値によるボール検知しきい値
@@ -53,9 +53,9 @@
     forward_velocity_reduction_rpm_per_mps: 50.0 # 1 m/sの前進速度あたりに減算するrpm
     backward_velocity_boost_rpm_per_mps: 100.0 # 1 rad/s の後退時に速度に応じて変化させるrpm
     backward_acc_rpm_per_mps2: 30.0            # 1 rad/s^2の加速度に応じて変化させるrpm
-    turning_boost_rpm_per_rad_s: 30.0           # 旋回速度1 rad/sあたりに加算するrpm
-    max_boost_rpm: 250                         # 加算する最大回転量
-    max_reduction_rpm: 100                     # 前進時に減算する最大回転量
+    turning_boost_rpm_per_rad_s: 50.0           # 旋回速度1 rad/sあたりに加算するrpm
+    max_boost_rpm: 300                         # 加算する最大回転量
+    max_reduction_rpm: 80                     # 前進時に減算する最大回転量
 
     position_logical_id: 5  # ROS2上の認識ID(ドリブルアーム)
     roller_logical_id: 12   # ROS2上の認識ID(ドリブルローラー)

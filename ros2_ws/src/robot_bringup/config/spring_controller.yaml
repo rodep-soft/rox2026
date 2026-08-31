@@ -4,7 +4,7 @@
     # STM32から受けたリミットスイッチbyte内で使用するbit位置（0〜7）
     limit_switch_bit_offset: 0
     # [rad] 0点合わせ後に待機位置へ移動するためのオフセット角度（逆回転・正方向）
-    standby_offset_rad: 3.58   # 4.0
+    standby_offset_rad: 3.3   # 4.0
     # [rad] ベルト収納開位置から、アーム動作を許可するまでの収納回転量
     belt_clearance_ready_travel_rad: 0.2
 
@@ -20,14 +20,14 @@
     slow_fire_delay_sec: 0.0               # [s] 要求受付後、ばね動作を開始するまでの待ち時間
     slow_fire_arm_only_duration_sec: 2.5   # [s] アームのみモードを有効にする総時間
     slow_fire_stroke_rad: 9.0              # [rad] 収納位置からゆっくり押し出す回転量
-    slow_fire_base_velocity_rad_s: 10.0    # スロー発射の基準速度
+    slow_fire_base_velocity_rad_s: 9.0    # スロー発射の基準速度
     slow_fire_velocity_gain_rad_per_m: 9.0 # 前進速度1 m/sあたりの押し出し速度減算量[rad/s]
     slow_fire_min_velocity_rad_s: 5.0      # スロー発射の最小速度
-    slow_fire_max_velocity_rad_s: 40.0     # スロー発射の最大速度
+    slow_fire_max_velocity_rad_s: 25.0     # スロー発射の最大速度
     cmd_vel_topic: "/mecanum/cmd_vel_heading" # IMU補正後の速度指令を受け取って補正する
     cmd_vel_timeout_sec: 0.2               # cmd_velのタイムアウト
     slow_fire_return_velocity_rad_s: 28.0  # スロー発射後に戻る速度
-    slow_fire_settle_timeout_sec: 10.0     # [s] 目標送信完了後に実機の到達を待つ猶予
+    slow_fire_settle_timeout_sec: 5.0     # [s] 目標送信完了後に実機の到達を待つ猶予
     
     # [rad/s] 未原点時に目標位置を負方向へずらす速度
     homing_velocity_rad_s: 3.5
