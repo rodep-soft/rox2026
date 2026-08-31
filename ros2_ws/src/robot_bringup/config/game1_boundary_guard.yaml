@@ -1,0 +1,18 @@
+game1_boundary_guard:
+  ros__parameters:
+    tag_id: 10
+    tag_frame_prefix: "tag16h5:"
+    base_frame: "base_link"
+    detections_topic: "/detections"
+    odometry_topic: "/odometry/filtered"
+    input_cmd_vel_topic: "/game1/cmd_vel_raw"
+    output_cmd_vel_topic: "/drive/cmd_vel"
+    distance_limit_m: 1.0
+    slowdown_distance_m: 0.35
+    vertical_half_width_m: 1.0
+    max_view_angle_deg: 45.0
+    enabled_at_startup: true
+    # R3 (right-stick click). L3=10 is also unused but easier to press while driving.
+    toggle_button: 11
+    # At 15 fps this spans several missed frames while odometry propagates the anchor.
+    detection_timeout_s: 0.5

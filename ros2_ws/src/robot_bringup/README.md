@@ -96,24 +96,6 @@ ros2 launch robot_bringup vision_launch.py enable_yolo:=true
 
 # ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
 ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
-## game2_shooter.launch.py (Game 2 パネル自動戦術射出ノード)
-
-| 引数 | 既定値 | 説明 |
-|---|---|---|
-| `base_frame` | `base_link` | ロボット基準フレーム ID |
-| `target_distance` | `1.5` | Game2 パネルまでの射程距離 (メートル) |
-| `rpm_bottom` | `3000.0` | 下段パネル用射出ベルト RPM |
-| `rpm_middle` | `4500.0` | 中段パネル用射出ベルト RPM |
-| `rpm_top` | `6000.0` | 上段パネル用射出ベルト RPM |
-
-起動例:
-```bash
-# Game 2 パネル戦術自動射出ノード単体起動
-ros2 launch robot_bringup game2_shooter.launch.py
-
-# ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ Game 2 自動戦術ノードを一括起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_game2:=true
-```
 ## game2.launch.py (Game 2 試合本番用一括起動 Launch)
 
 Game 2 試合に必要なモジュールのみを最軽量でピンポイント起動します（正面 CSI カメラ ＋ AprilTag 検出 ＋ Game 2 戦術ノード ＋ 全コントローラー）。
