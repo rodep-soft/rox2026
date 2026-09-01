@@ -1,18 +1,57 @@
 game1_boundary_guard:
   ros__parameters:
+    # ── AprilTag / 座標系 ──────────────────────────────────────────────
+    # 侵入境界の基準にするAprilTag ID。Game1ではフィールド中央側のID 10を使用する。
     tag_id: 10
+
+    # apriltag_rosが生成するTF名の接頭辞。
+    # 実際の参照先は "tag16h5:10" になる。
     tag_frame_prefix: "tag16h5:"
+
+    # 速度指令とタグ相対位置を計算するロボット基準フレーム。
     base_frame: "base_link"
+
+    # AprilTag検出配列。ID 10が含まれるフレームだけを境界更新に使用する。
     detections_topic: "/detections"
+
+    # タグを検出できないカメラフレーム間の移動量・旋回量を補間するオドメトリ。
     odometry_topic: "/odometry/filtered"
+
+    # ── 速度指令経路 ──────────────────────────────────────────────────
+    # joy_controllerの未制限速度を受け取る入力先。
+    # game1_auto.launch.pyでjoyの出力をこのトピックへ接続している。
     input_cmd_vel_topic: "/game1/cmd_vel_raw"
+
+    # 境界処理後の速度出力。heading_hold_nodeへ渡る通常の走行指令トピック。
     output_cmd_vel_topic: "/drive/cmd_vel"
-    distance_limit_m: 1.0
-    slowdown_distance_m: 0.35
+
+    # ── 侵入防止範囲 [m / deg] ────────────────────────────────────────
+    # タグ印刷面からロボット側へ測った法線方向距離の上限。
+    # 2.25 m以上では、タグからさらに離れる速度成分を0にする。
+    distance_limit_m: 2.25
+
+    # 上限の何m手前から減速を始めるか。
+    # 現設定では0.65 m (= 2.25 - 1.6)から線形に急減速し、2.25 mで停止する。
+    # フィールド上のpanelとパスエリア間は2750 mmだが、この値は減速帯の幅である。
+    slowdown_distance_m: 1.7
+
+    # タグ中心から境界面に沿った縦方向の有効半幅。 パスエリアの範囲は1700mmで近いほうは中心から235+90mm
+    # -1.0 m～+1.0 mの範囲だけ侵入防止し、その外側では速度を変更しない。
     vertical_half_width_m: 1.0
+
+    # タグ正面法線に対するロボット位置の角度条件。
+    # 45度未満でタグを見ているときだけ境界アンカーを更新・使用する。
     max_view_angle_deg: 45.0
+
+    # ── 有効化操作 ────────────────────────────────────────────────────
+    # ノード起動時の初期状態。falseなら起動直後から完全パススルーになる。
     enabled_at_startup: true
-    # R3 (right-stick click). L3=10 is also unused but easier to press while driving.
+
+    # 侵入防止ON/OFFトグル。11はR3（右スティック押込み）。
+    # L3=10も未使用だが、並進操作中の誤押下を避けるためR3を採用している。
     toggle_button: 11
-    # At 15 fps this spans several missed frames while odometry propagates the anchor.
-    detection_timeout_s: 0.5
+
+    # 最終検出から境界を保持する時間 [s]。
+    # 15 fpsでは約7フレーム分に相当し、その間はオドメトリでタグ位置を補間する。
+    # この時間を超えてID 10が見えなければ、安全装置は速度を変更しない。
+    detection_timeout_s: 1.0

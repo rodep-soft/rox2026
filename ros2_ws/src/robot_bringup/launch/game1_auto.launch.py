@@ -46,31 +46,83 @@ def generate_launch_description():
     config_file = LaunchConfiguration("game1_config_file")
     return LaunchDescription(
         [
-            DeclareLaunchArgument("enable_manual", default_value="true"),
-            DeclareLaunchArgument("enable_vision", default_value="true"),
-            DeclareLaunchArgument("enable_foxglove", default_value="false"),
-            DeclareLaunchArgument("foxglove_port", default_value="8765"),
-            DeclareLaunchArgument("can_interface", default_value="can0"),
+            DeclareLaunchArgument(
+                "enable_manual",
+                default_value="true",
+                description="Start hardware, mechanism controllers, EKF and joystick",
+            ),
+            DeclareLaunchArgument(
+                "enable_vision",
+                default_value="true",
+                description="Start calibrated SC230AI and AprilTag detection",
+            ),
+            DeclareLaunchArgument(
+                "enable_foxglove",
+                default_value="false",
+                description="Start one Foxglove WebSocket bridge",
+            ),
+            DeclareLaunchArgument(
+                "foxglove_port",
+                default_value="8765",
+                description="Foxglove WebSocket port",
+            ),
+            DeclareLaunchArgument(
+                "can_interface",
+                default_value="can0",
+                description="SocketCAN interface used by the robot hardware",
+            ),
             DeclareLaunchArgument(
                 "game1_config_file",
                 default_value=os.path.join(
                     bringup_share, "config", "game1_boundary_guard.yaml"
                 ),
+                description="Boundary guard parameter YAML",
             ),
             DeclareLaunchArgument(
                 "calibration_file",
                 default_value=os.path.join(
                     bringup_share, "config", "camera", "sc230ai_left.yaml"
                 ),
+                description="SC230AI camera calibration YAML",
             ),
-            DeclareLaunchArgument("mipi_channel", default_value="1"),
-            DeclareLaunchArgument("framerate", default_value="15.0"),
-            DeclareLaunchArgument("mipi_rotation", default_value="180.0"),
-            DeclareLaunchArgument("roi_width", default_value="800"),
-            DeclareLaunchArgument("roi_height", default_value="480"),
-            DeclareLaunchArgument("tag_size", default_value="0.18"),
-            DeclareLaunchArgument("detector_threads", default_value="4"),
-            DeclareLaunchArgument("detector_decimate", default_value="1.0"),
+            DeclareLaunchArgument(
+                "mipi_channel", default_value="1", description="SC230AI MIPI channel"
+            ),
+            DeclareLaunchArgument(
+                "framerate",
+                default_value="15.0",
+                description="Camera input rate in frames per second",
+            ),
+            DeclareLaunchArgument(
+                "mipi_rotation",
+                default_value="180.0",
+                description="Camera image rotation in degrees",
+            ),
+            DeclareLaunchArgument(
+                "roi_width",
+                default_value="800",
+                description="Centered AprilTag detection ROI width; 0 uses full width",
+            ),
+            DeclareLaunchArgument(
+                "roi_height",
+                default_value="480",
+                description="Centered AprilTag detection ROI height; 0 uses full height",
+            ),
+            DeclareLaunchArgument(
+                "tag_size",
+                default_value="0.18",
+                description="AprilTag edge length in metres",
+            ),
+            DeclareLaunchArgument(
+                "detector_threads",
+                default_value="4",
+                description="AprilTag detector worker threads",
+            ),
+            DeclareLaunchArgument(
+                "detector_decimate",
+                default_value="1.0",
+                description="AprilTag input decimation; 1.0 preserves full resolution",
+            ),
             manual,
             vision,
             Node(
