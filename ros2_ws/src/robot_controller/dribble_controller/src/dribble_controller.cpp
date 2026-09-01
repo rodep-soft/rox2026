@@ -625,7 +625,8 @@ void DribbleControllerNode::control_timer_callback()
 
         if (is_feeding) {
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
-          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING");
+          roller_stopped_during_feed_ = false;
+          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING; restarting roller");
         } else {
           shot_cycle_active_ = false;
           roller_stopped_during_feed_ = false;

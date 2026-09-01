@@ -32,7 +32,7 @@
 2. 同時に、ばねを現在の累積待機位置から standby_offset_rad 分だけ収納する。
 3. ベルトを自動起動した場合は belt_shot_delay_sec の経過と、ばねの収納・停止完了の両方を待つ。
 4. DRIBBLEからFEEDへ移動して押し込み射出し、`feed_roller_stop_ratio` の地点でドリブルローラを停止する。
-5. DRIBBLEへ戻り、ばねを累積待機位置へ戻して、自動起動したbeltを停止する。
+5. RETURNINGへ移行するとドリブルローラを再回転させ、DRIBBLEへ戻った後にばねを累積待機位置へ戻して、自動起動したbeltを停止する。
 
 ### beltが既に回っている場合
 
