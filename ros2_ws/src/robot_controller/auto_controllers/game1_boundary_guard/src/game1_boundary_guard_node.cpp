@@ -426,9 +426,13 @@ void Game1BoundaryGuardNode::publish_debug(
   direction_end.x -= outward_normal_odom_x_ * 0.8;
   direction_end.y -= outward_normal_odom_y_ * 0.8;
   normal_marker.points = {direction_start, direction_end};
-  normal_marker.scale.x = 0.04;
-  normal_marker.scale.y = 0.08;
-  normal_marker.scale.z = 0.10;
+  direction_end.x = direction_start.x - outward_normal_odom_x_ * 1.5;
+  direction_end.y = direction_start.y - outward_normal_odom_y_ * 1.5;
+  normal_marker.points = {direction_start, direction_end};
+  normal_marker.scale.x = 0.08;
+  normal_marker.scale.y = 0.16;
+  normal_marker.scale.z = 0.20;
+  normal_marker.color.r = 1.0F;
   normal_marker.color.b = 1.0F;
   normal_marker.color.a = 1.0F;
   marker_array.markers.push_back(normal_marker);
@@ -466,6 +470,53 @@ void Game1BoundaryGuardNode::publish_debug(
          << outward_scale;
   text_marker.text = status.str();
   marker_array.markers.push_back(text_marker);
+
+  const auto add_filled_zone = [&](int id, double near_normal,
+                                   double far_normal, float red, float green,
+                                   const std::string &name) {
+    auto zone =
+        make_marker(id, visualization_msgs::msg::Marker::TRIANGLE_LIST, name);
+    const double angle_tangent = std::tan(max_view_angle_rad_);
+    const double near_half_width =
+        std::min(vertical_half_width_m_, near_normal * angle_tangent);
+    const double far_half_width =
+        std::min(vertical_half_width_m_, far_normal * angle_tangent);
+    const auto near_left = point_at(near_normal, -near_half_width);
+    const auto near_right = point_at(near_normal, near_half_width);
+    const auto far_left = point_at(far_normal, -far_half_width);
+    const auto far_right = point_at(far_normal, far_half_width);
+    zone.points = {near_left, far_left,  far_right,
+                   near_left, far_right, near_right};
+    zone.color.r = red;
+    zone.color.g = green;
+    zone.color.b = 0.0F;
+    zone.color.a = 0.28F;
+    marker_array.markers.push_back(zone);
+  };
+
+  // These polygons match all spatial conditions used by the limiter:
+  // tag-facing angle, vertical half-width, minimum distance and slowdown band.
+  add_filled_zone(6, 0.0, distance_limit_m_, 1.0F, 0.0F, "STOP ZONE");
+  add_filled_zone(7, distance_limit_m_, slowdown_start, 1.0F, 0.8F,
+                  "SLOWDOWN ZONE");
+
+  const auto add_zone_label = [&](int id, double normal,
+                                  const std::string &label, float red,
+                                  float green) {
+    auto marker = make_marker(
+        id, visualization_msgs::msg::Marker::TEXT_VIEW_FACING, label);
+    marker.pose.position = point_at(normal, 0.0);
+    marker.pose.position.z = 0.18;
+    marker.scale.z = 0.24;
+    marker.color.r = red;
+    marker.color.g = green;
+    marker.color.a = 1.0F;
+    marker.text = label;
+    marker_array.markers.push_back(marker);
+  };
+  add_zone_label(8, distance_limit_m_ * 0.55, "STOP (+X = 0)", 1.0F, 0.1F);
+  add_zone_label(9, (distance_limit_m_ + slowdown_start) * 0.5, "SLOWDOWN",
+                 1.0F, 0.85F);
 
   markers_pub_->publish(marker_array);
 }
