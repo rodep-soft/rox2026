@@ -60,6 +60,7 @@ public:
     double camera_cy{540.0};
     double tag_lost_timeout{1.5};
     double aim_yaw_offset_rad{0.0};
+    double outer_col_offset_m{0.10}; // [m] 外側列(Col 0/2)の単体狙い外側シフト量 (0.10m = ボール半径分外側へシフト)
   };
 
   PKTargetTracker()
@@ -332,6 +333,14 @@ public:
     target_x_ = panel.x;
     target_y_ = panel.y;
     target_z_ = panel.z;
+
+    // 🎯 外側列（Col 0 / Col 2）なら外側にシフト
+    if (panel.col == 0) {
+      target_y_ += config_.outer_col_offset_m;  // 左列 (Col 0) -> 左へ +0.10m
+    } else if (panel.col == 2) {
+      target_y_ -= config_.outer_col_offset_m;  // 右列 (Col 2) -> 右へ -0.10m
+    }
+
     target_yaw_at_detection_ = panel.yaw_at_detection;
     last_visually_confirmed_time_ = now;
 
@@ -365,6 +374,13 @@ public:
         target_x_ = panel.x;
         target_y_ = panel.y;
         target_z_ = panel.z;
+
+        if (panel.col == 0) {
+          target_y_ += config_.outer_col_offset_m;
+        } else if (panel.col == 2) {
+          target_y_ -= config_.outer_col_offset_m;
+        }
+
         target_yaw_at_detection_ = panel.yaw_at_detection;
         visual_found = true;
       }

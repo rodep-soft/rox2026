@@ -37,6 +37,7 @@
     yaw_tolerance: 0.008    # [rad] 角度誤差許容値 (約0.46度: 4m先で横ズレ±3.2cmの超高精度)
     dist_tolerance: 0.05    # [m] 距離誤差許容値
     aim_yaw_offset_deg: 2.0 # [deg] 射出方向の左右照準オフセット (+2.0度左向き補正で右寄りを相殺)
+    outer_col_offset_m: 0.10 # [m] 外側列(Col 0/2)の単体狙い外側シフト量 (ボール半径0.10m分外側へシフト)
 
     # ── 🧪 テストモード切替 ──
     test_alignment_only: false     # true: ベルトを動かさず旋回のみテスト

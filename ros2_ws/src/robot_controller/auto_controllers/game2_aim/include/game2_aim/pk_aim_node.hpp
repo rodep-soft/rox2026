@@ -115,6 +115,7 @@ private:
   double visual_valid_timeout_{0.5};
   double align_lost_timeout_{2.5};
   double aim_yaw_offset_deg_{2.0};
+  double outer_col_offset_m_{0.10}; // [m] 外側列(Col 0/2)の単体狙い外側シフト量
 
   // Internal State
   uint8_t state_{robot_msgs::msg::Game2State::STANDBY};

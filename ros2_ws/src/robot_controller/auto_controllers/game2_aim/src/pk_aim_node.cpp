@@ -122,6 +122,7 @@ void PKAimNode::load_parameters()
   visual_valid_timeout_ = declare_parameter<double>("visual_valid_timeout", 0.5);
   align_lost_timeout_ = declare_parameter<double>("align_lost_timeout", 3.0);
   aim_yaw_offset_deg_ = declare_parameter<double>("aim_yaw_offset_deg", 2.0);
+  outer_col_offset_m_ = declare_parameter<double>("outer_col_offset_m", 0.10);
 
   auto bottom_tags = declare_parameter<std::vector<int64_t>>("bottom_tags", {20, 21, 22});
   auto middle_tags = declare_parameter<std::vector<int64_t>>("middle_tags", {17, 18, 19});
@@ -142,6 +143,7 @@ void PKAimNode::load_parameters()
   tracker_cfg.camera_cy = declare_parameter<double>("camera_cy", 540.0);
   tracker_cfg.tag_lost_timeout = declare_parameter<double>("tag_lost_timeout", 2.5);
   tracker_cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
+  tracker_cfg.outer_col_offset_m = outer_col_offset_m_;
 
   tracker_.set_config(tracker_cfg);
   tracker_.init_custom_tags(bottom_tags, middle_tags, top_tags);
@@ -173,6 +175,10 @@ rcl_interfaces::msg::SetParametersResult PKAimNode::parameter_callback(
     } else if (p.get_name() == "aim_yaw_offset_deg") {
       aim_yaw_offset_deg_ = p.as_double();
       cfg.aim_yaw_offset_rad = aim_yaw_offset_deg_ * M_PI / 180.0;
+    } else if (p.get_name() == "outer_col_offset_m") {
+      outer_col_offset_m_ = p.as_double();
+      cfg.outer_col_offset_m = outer_col_offset_m_;
+      RCLCPP_INFO(get_logger(), "Param updated: outer_col_offset_m = %.3f m", outer_col_offset_m_);
     } else if (p.get_name() == "target_distance") {
       target_distance_ = p.as_double();
       cfg.target_distance = target_distance_;
