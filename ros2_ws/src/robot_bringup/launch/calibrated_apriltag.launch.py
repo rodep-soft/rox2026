@@ -197,7 +197,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "framerate",
-                default_value="10.0",
+                default_value="15.0",
                 description="Camera and AprilTag input rate",
             ),
             DeclareLaunchArgument(

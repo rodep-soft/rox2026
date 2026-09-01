@@ -22,6 +22,7 @@ find_package(apriltag_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 function(add_controller target directory implementation)
   add_controller_custom(${target} ${directory} ${implementation} main.cpp ${ARGN})
@@ -132,7 +133,8 @@ add_controller(
   sensor_msgs
   std_msgs
   tf2
-  tf2_ros)
+  tf2_ros
+  visualization_msgs)
 add_controller(
   led_controller_node
   led_controller

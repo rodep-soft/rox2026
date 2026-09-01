@@ -26,6 +26,9 @@ Game1BoundaryGuardNode::Game1BoundaryGuardNode(
   detection_timeout_s_ = declare_parameter<double>("detection_timeout_s", 0.5);
   vertical_half_width_m_ =
       declare_parameter<double>("vertical_half_width_m", 1.0);
+  const double debug_publish_rate_hz =
+      declare_parameter<double>("debug_publish_rate_hz", 10.0);
+  debug_publish_period_s_ = 1.0 / debug_publish_rate_hz;
   toggle_button_ = declare_parameter<int>("toggle_button", 11);
   enabled_ = declare_parameter<bool>("enabled_at_startup", true);
 
@@ -40,7 +43,8 @@ Game1BoundaryGuardNode::Game1BoundaryGuardNode(
 
   if (distance_limit_m_ <= 0.0 || slowdown_distance_m_ <= 0.0 ||
       vertical_half_width_m_ <= 0.0 || max_view_angle_rad_ <= 0.0 ||
-      detection_timeout_s_ <= 0.0 || toggle_button_ < 0) {
+      detection_timeout_s_ <= 0.0 || debug_publish_rate_hz <= 0.0 ||
+      toggle_button_ < 0) {
     throw std::invalid_argument(
         "Boundary guard distance, angle, and timeout must be positive");
   }
@@ -74,8 +78,21 @@ Game1BoundaryGuardNode::Game1BoundaryGuardNode(
   enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
       "/game1/boundary_guard/enabled",
       rclcpp::QoS(1).reliable().transient_local());
+  detection_fresh_pub_ = create_publisher<std_msgs::msg::Bool>(
+      "/game1/boundary_guard/detection_fresh",
+      rclcpp::QoS(1).reliable().transient_local());
+  measurement_pub_ = create_publisher<geometry_msgs::msg::Vector3Stamped>(
+      "/game1/boundary_guard/measurement", rclcpp::QoS(10));
+  velocity_debug_pub_ = create_publisher<geometry_msgs::msg::Vector3Stamped>(
+      "/game1/boundary_guard/velocity_debug", rclcpp::QoS(10));
+  limits_pub_ = create_publisher<geometry_msgs::msg::Vector3Stamped>(
+      "/game1/boundary_guard/limits",
+      rclcpp::QoS(1).reliable().transient_local());
+  markers_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+      "/game1/boundary_guard/markers", rclcpp::QoS(10));
   publish_active(false);
   publish_enabled();
+  publish_debug(false, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 
   RCLCPP_INFO(get_logger(),
               "Game1 boundary guard: tag=%d, horizontal limit=%.2f m, view "
@@ -88,6 +105,9 @@ Game1BoundaryGuardNode::Game1BoundaryGuardNode(
 void Game1BoundaryGuardNode::odometry_callback(
     const nav_msgs::msg::Odometry::SharedPtr message) {
   odometry_received_ = true;
+  if (!message->header.frame_id.empty()) {
+    odom_frame_ = message->header.frame_id;
+  }
   odom_x_ = message->pose.pose.position.x;
   odom_y_ = message->pose.pose.position.y;
 
@@ -180,12 +200,12 @@ void Game1BoundaryGuardNode::command_callback(
     const geometry_msgs::msg::Twist::SharedPtr message) {
   geometry_msgs::msg::Twist limited = *message;
   bool active = false;
-
-  if (!enabled_) {
-    publish_active(false);
-    command_pub_->publish(limited);
-    return;
-  }
+  double normal_distance = 0.0;
+  double tangent_distance = 0.0;
+  double view_angle_deg = 0.0;
+  double outward_speed_input = 0.0;
+  double outward_speed_output = 0.0;
+  double outward_scale = 1.0;
 
   const bool detection_is_fresh =
       tag_anchor_valid_ && odometry_received_ &&
@@ -193,12 +213,13 @@ void Game1BoundaryGuardNode::command_callback(
   if (detection_is_fresh) {
     const double robot_from_tag_x = odom_x_ - tag_odom_x_;
     const double robot_from_tag_y = odom_y_ - tag_odom_y_;
-    const double normal_distance = robot_from_tag_x * outward_normal_odom_x_ +
-                                   robot_from_tag_y * outward_normal_odom_y_;
-    const double tangent_distance = robot_from_tag_x * -outward_normal_odom_y_ +
-                                    robot_from_tag_y * outward_normal_odom_x_;
+    normal_distance = robot_from_tag_x * outward_normal_odom_x_ +
+                      robot_from_tag_y * outward_normal_odom_y_;
+    tangent_distance = robot_from_tag_x * -outward_normal_odom_y_ +
+                       robot_from_tag_y * outward_normal_odom_x_;
     const double view_angle =
         std::abs(std::atan2(tangent_distance, normal_distance));
+    view_angle_deg = view_angle * 180.0 / M_PI;
     const double c = std::cos(odom_yaw_);
     const double s = std::sin(odom_yaw_);
     const double normal_body_x =
@@ -206,17 +227,19 @@ void Game1BoundaryGuardNode::command_callback(
     const double normal_body_y =
         -s * outward_normal_odom_x_ + c * outward_normal_odom_y_;
 
-    if (normal_distance > 0.0 &&
+    outward_speed_input =
+        limited.linear.x * normal_body_x + limited.linear.y * normal_body_y;
+    outward_speed_output = outward_speed_input;
+
+    if (enabled_ && normal_distance > 0.0 &&
         std::abs(tangent_distance) <= vertical_half_width_m_ &&
         view_angle < max_view_angle_rad_) {
       // Only the component moving away from the tag plane is reduced. Motion
       // parallel to the boundary and motion back toward the tag pass unchanged.
-      const double outward_speed =
-          limited.linear.x * normal_body_x + limited.linear.y * normal_body_y;
+      const double outward_speed = outward_speed_input;
       const double remaining =
           std::max(0.0, distance_limit_m_ - normal_distance);
-      const double outward_scale =
-          std::clamp(remaining / slowdown_distance_m_, 0.0, 1.0);
+      outward_scale = std::clamp(remaining / slowdown_distance_m_, 0.0, 1.0);
       const double requested_outward_speed = std::max(0.0, outward_speed);
       const double allowed_outward_speed =
           requested_outward_speed * outward_scale;
@@ -225,11 +248,15 @@ void Game1BoundaryGuardNode::command_callback(
         const double correction = allowed_outward_speed - outward_speed;
         limited.linear.x += correction * normal_body_x;
         limited.linear.y += correction * normal_body_y;
+        outward_speed_output = allowed_outward_speed;
         active = true;
       }
     }
   }
 
+  publish_debug(detection_is_fresh, normal_distance, tangent_distance,
+                view_angle_deg, outward_speed_input, outward_speed_output,
+                outward_scale);
   publish_active(active);
   command_pub_->publish(limited);
 }
@@ -255,6 +282,127 @@ void Game1BoundaryGuardNode::publish_enabled() {
   std_msgs::msg::Bool message;
   message.data = enabled_;
   enabled_pub_->publish(message);
+}
+
+void Game1BoundaryGuardNode::publish_debug(
+    bool detection_fresh, double normal_distance, double tangent_distance,
+    double view_angle_deg, double outward_speed_input,
+    double outward_speed_output, double outward_scale) {
+  const auto stamp = now();
+  if (last_debug_publish_time_.nanoseconds() != 0 &&
+      (stamp - last_debug_publish_time_).seconds() < debug_publish_period_s_) {
+    return;
+  }
+  last_debug_publish_time_ = stamp;
+
+  std_msgs::msg::Bool fresh_message;
+  fresh_message.data = detection_fresh;
+  detection_fresh_pub_->publish(fresh_message);
+
+  geometry_msgs::msg::Vector3Stamped measurement;
+  measurement.header.stamp = stamp;
+  measurement.header.frame_id = odom_frame_;
+  measurement.vector.x = normal_distance;
+  measurement.vector.y = tangent_distance;
+  measurement.vector.z = view_angle_deg;
+  measurement_pub_->publish(measurement);
+
+  geometry_msgs::msg::Vector3Stamped velocity;
+  velocity.header = measurement.header;
+  velocity.vector.x = outward_speed_input;
+  velocity.vector.y = outward_speed_output;
+  velocity.vector.z = outward_scale;
+  velocity_debug_pub_->publish(velocity);
+
+  geometry_msgs::msg::Vector3Stamped limits;
+  limits.header = measurement.header;
+  limits.vector.x = distance_limit_m_;
+  limits.vector.y = vertical_half_width_m_;
+  limits.vector.z = distance_limit_m_ - slowdown_distance_m_;
+  limits_pub_->publish(limits);
+
+  if (!tag_anchor_valid_ || !odometry_received_) {
+    return;
+  }
+
+  visualization_msgs::msg::MarkerArray marker_array;
+  auto make_marker = [&](int id, int type, const std::string &name) {
+    visualization_msgs::msg::Marker marker;
+    marker.header = measurement.header;
+    marker.ns = "game1_boundary_guard";
+    marker.id = id;
+    marker.type = type;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.pose.orientation.w = 1.0;
+    marker.text = name;
+    return marker;
+  };
+  auto point_at = [&](double normal, double tangent) {
+    geometry_msgs::msg::Point point;
+    point.x = tag_odom_x_ + normal * outward_normal_odom_x_ -
+              tangent * outward_normal_odom_y_;
+    point.y = tag_odom_y_ + normal * outward_normal_odom_y_ +
+              tangent * outward_normal_odom_x_;
+    point.z = 0.05;
+    return point;
+  };
+
+  auto tag_marker =
+      make_marker(0, visualization_msgs::msg::Marker::SPHERE, "ID 10");
+  tag_marker.pose.position = point_at(0.0, 0.0);
+  tag_marker.scale.x = 0.20;
+  tag_marker.scale.y = 0.20;
+  tag_marker.scale.z = 0.20;
+  tag_marker.color.r = 0.1F;
+  tag_marker.color.g = detection_fresh ? 1.0F : 0.3F;
+  tag_marker.color.b = 1.0F;
+  tag_marker.color.a = 1.0F;
+  marker_array.markers.push_back(tag_marker);
+
+  auto limit_marker = make_marker(
+      1, visualization_msgs::msg::Marker::LINE_STRIP, "1.0 m limit");
+  limit_marker.points = {point_at(distance_limit_m_, -vertical_half_width_m_),
+                         point_at(distance_limit_m_, vertical_half_width_m_)};
+  limit_marker.scale.x = 0.06;
+  limit_marker.color.r = 1.0F;
+  limit_marker.color.a = 1.0F;
+  marker_array.markers.push_back(limit_marker);
+
+  auto slowdown_marker = make_marker(
+      2, visualization_msgs::msg::Marker::LINE_STRIP, "slowdown start");
+  const double slowdown_start = distance_limit_m_ - slowdown_distance_m_;
+  slowdown_marker.points = {point_at(slowdown_start, -vertical_half_width_m_),
+                            point_at(slowdown_start, vertical_half_width_m_)};
+  slowdown_marker.scale.x = 0.035;
+  slowdown_marker.color.r = 1.0F;
+  slowdown_marker.color.g = 0.8F;
+  slowdown_marker.color.a = 1.0F;
+  marker_array.markers.push_back(slowdown_marker);
+
+  auto normal_marker =
+      make_marker(3, visualization_msgs::msg::Marker::ARROW, "tag normal");
+  normal_marker.points = {point_at(0.0, 0.0), point_at(distance_limit_m_, 0.0)};
+  normal_marker.scale.x = 0.04;
+  normal_marker.scale.y = 0.08;
+  normal_marker.scale.z = 0.10;
+  normal_marker.color.b = 1.0F;
+  normal_marker.color.a = 1.0F;
+  marker_array.markers.push_back(normal_marker);
+
+  auto robot_marker =
+      make_marker(4, visualization_msgs::msg::Marker::CYLINDER, "robot");
+  robot_marker.pose.position.x = odom_x_;
+  robot_marker.pose.position.y = odom_y_;
+  robot_marker.pose.position.z = 0.08;
+  robot_marker.scale.x = 0.30;
+  robot_marker.scale.y = 0.30;
+  robot_marker.scale.z = 0.16;
+  robot_marker.color.g = enabled_ ? 1.0F : 0.3F;
+  robot_marker.color.r = enabled_ ? 0.0F : 0.7F;
+  robot_marker.color.a = 0.9F;
+  marker_array.markers.push_back(robot_marker);
+
+  markers_pub_->publish(marker_array);
 }
 
 void Game1BoundaryGuardNode::publish_active(bool active) {

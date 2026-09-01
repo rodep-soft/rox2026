@@ -133,6 +133,40 @@ ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev
 ```
 配信トピック: `/webcam/image_raw`, `/webcam/camera_info`
 
+## Game1侵入防止のFoxglove確認
+
+Foxglove Bridgeを有効にしてGame1構成を起動します。
+
+```bash
+ros2 launch robot_bringup game1_auto.launch.py enable_foxglove:=true
+```
+
+Foxgloveの3DパネルではFixed frameを`odom`にし、
+`/game1/boundary_guard/markers`を追加してください。
+水色の点がID 10、黄色線が減速開始位置、赤線が侵入上限、
+青矢印がタグ面からロボット側へ向く侵入方向、円柱がロボット位置です。
+
+Plotパネルには次のフィールドを追加します。
+
+- `/game1/boundary_guard/measurement.vector.x`: タグ面からの法線距離 `[m]`
+- `/game1/boundary_guard/measurement.vector.y`: タグ中心からの縦ずれ `[m]`
+- `/game1/boundary_guard/measurement.vector.z`: タグ正面からの視角 `[deg]`
+- `/game1/boundary_guard/velocity_debug.vector.x`: 制限前の外向き速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.y`: 制限後の外向き速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.z`: 適用速度倍率 `0.0～1.0`
+- `/game1/boundary_guard/limits.vector.x`: 侵入上限 `[m]`
+- `/game1/boundary_guard/limits.vector.y`: 有効縦半幅 `[m]`
+- `/game1/boundary_guard/limits.vector.z`: 減速開始距離 `[m]`
+
+StateパネルまたはRaw Messagesでは次も確認できます。
+
+- `/game1/boundary_guard/detection_fresh`: ID 10の検出またはオドメトリ補間が有効
+- `/game1/boundary_guard/enabled`: R3で切り替える侵入防止機能の状態
+- `/game1/boundary_guard/active`: 現在、外向き速度を実際に制限中
+
+`detection_fresh=false`の間は速度制限されません。まず車輪を浮かせるか
+非常停止状態でタグ位置・赤線・黄色線が意図した方向に出ることを確認してください。
+
 ## hardware.launch.py
 
 | 引数 | 既定値 | `true`で起動するもの |

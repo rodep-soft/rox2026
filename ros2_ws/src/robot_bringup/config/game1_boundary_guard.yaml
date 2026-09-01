@@ -31,13 +31,13 @@ game1_boundary_guard:
     distance_limit_m: 2.25
 
     # 上限の何m手前から減速を始めるか。
-    # 現設定では0.65 m (= 2.25 - 1.6)から線形に急減速し、2.25 mで停止する。
+    # 現設定では0.55 m (= 2.25 - 1.7)から線形に急減速し、2.25 mで停止する。
     # フィールド上のpanelとパスエリア間は2750 mmだが、この値は減速帯の幅である。
     slowdown_distance_m: 1.7
 
     # タグ中心から境界面に沿った縦方向の有効半幅。 パスエリアの範囲は1700mmで近いほうは中心から235+90mm
     # -1.0 m～+1.0 mの範囲だけ侵入防止し、その外側では速度を変更しない。
-    vertical_half_width_m: 1.0
+    vertical_half_width_m: 1.2
 
     # タグ正面法線に対するロボット位置の角度条件。
     # 45度未満でタグを見ているときだけ境界アンカーを更新・使用する。
@@ -55,3 +55,17 @@ game1_boundary_guard:
     # 15 fpsでは約7フレーム分に相当し、その間はオドメトリでタグ位置を補間する。
     # この時間を超えてID 10が見えなければ、安全装置は速度を変更しない。
     detection_timeout_s: 1.0
+
+    # ── Foxglove確認用データ ──────────────────────────────────────────
+    # 制御周期には影響させず、可視化データだけをこの周期で間引いて配信する。
+    # 10 Hzなら距離・減速状態を十分追跡でき、ネットワーク負荷も抑えられる。
+    debug_publish_rate_hz: 10.0
+
+    # 主な確認先:
+    # /game1/boundary_guard/markers         : 3Dパネル用のタグ・境界線・ロボット
+    # /game1/boundary_guard/measurement     : x=法線距離[m], y=縦ずれ[m], z=視角[deg]
+    # /game1/boundary_guard/limits          : x=上限[m], y=縦半幅[m], z=減速開始距離[m]
+    # /game1/boundary_guard/velocity_debug  : x=制限前, y=制限後[m/s], z=速度倍率
+    # /game1/boundary_guard/detection_fresh : ID 10の検出・補間が有効か
+    # /game1/boundary_guard/enabled         : R3で切替える機能ON/OFF
+    # /game1/boundary_guard/active          : 現在実際に減速しているか
