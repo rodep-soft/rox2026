@@ -143,18 +143,19 @@ ros2 launch robot_bringup game1_auto.launch.py enable_foxglove:=true
 
 Foxgloveの3DパネルではFixed frameを`odom`にし、
 `/game1/boundary_guard/markers`を追加してください。
-水色の点がID 10、黄色線が減速開始位置、赤線が侵入上限、
-青矢印がタグ面からロボット側へ向く侵入方向、円柱がロボット位置です。
+水色の点がID 10、黄色線が減速開始位置、赤線が最小許容距離、
+青矢印が機体からタグへ向かう制限方向（通常はcmd_vel +X）、
+円柱がロボット位置です。機体上のテキストでも距離・縦ずれ・角度・倍率を確認できます。
 
 Plotパネルには次のフィールドを追加します。
 
 - `/game1/boundary_guard/measurement.vector.x`: タグ面からの法線距離 `[m]`
 - `/game1/boundary_guard/measurement.vector.y`: タグ中心からの縦ずれ `[m]`
 - `/game1/boundary_guard/measurement.vector.z`: タグ正面からの視角 `[deg]`
-- `/game1/boundary_guard/velocity_debug.vector.x`: 制限前の外向き速度 `[m/s]`
-- `/game1/boundary_guard/velocity_debug.vector.y`: 制限後の外向き速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.x`: 制限前のタグ方向速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.y`: 制限後のタグ方向速度 `[m/s]`
 - `/game1/boundary_guard/velocity_debug.vector.z`: 適用速度倍率 `0.0～1.0`
-- `/game1/boundary_guard/limits.vector.x`: 侵入上限 `[m]`
+- `/game1/boundary_guard/limits.vector.x`: タグから確保する最小距離 `[m]`
 - `/game1/boundary_guard/limits.vector.y`: 有効縦半幅 `[m]`
 - `/game1/boundary_guard/limits.vector.z`: 減速開始距離 `[m]`
 

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -260,25 +262,27 @@ void Game1BoundaryGuardNode::command_callback(
     const double normal_body_y =
         -s * outward_normal_odom_x_ + c * outward_normal_odom_y_;
 
+    // The safe-side normal points from the tag toward the robot. Therefore the
+    // restricted direction (toward the tag) is the negative normal direction.
     outward_speed_input =
-        limited.linear.x * normal_body_x + limited.linear.y * normal_body_y;
+        -(limited.linear.x * normal_body_x + limited.linear.y * normal_body_y);
     outward_speed_output = outward_speed_input;
 
     if (enabled_ && normal_distance > 0.0 &&
         std::abs(tangent_distance) <= vertical_half_width_m_ &&
         view_angle < max_view_angle_rad_) {
-      // Only the component moving away from the tag plane is reduced. Motion
-      // parallel to the boundary and motion back toward the tag pass unchanged.
+      // Only the component approaching the tag/boundary is reduced. Motion
+      // parallel to the boundary and motion away from the tag pass unchanged.
       const double outward_speed = outward_speed_input;
       const double remaining =
-          std::max(0.0, distance_limit_m_ - normal_distance);
+          std::max(0.0, normal_distance - distance_limit_m_);
       outward_scale = std::clamp(remaining / slowdown_distance_m_, 0.0, 1.0);
       const double requested_outward_speed = std::max(0.0, outward_speed);
       const double allowed_outward_speed =
           requested_outward_speed * outward_scale;
 
       if (outward_speed > allowed_outward_speed) {
-        const double correction = allowed_outward_speed - outward_speed;
+        const double correction = outward_speed - allowed_outward_speed;
         limited.linear.x += correction * normal_body_x;
         limited.linear.y += correction * normal_body_y;
         outward_speed_output = allowed_outward_speed;
@@ -351,7 +355,7 @@ void Game1BoundaryGuardNode::publish_debug(
   limits.header = measurement.header;
   limits.vector.x = distance_limit_m_;
   limits.vector.y = vertical_half_width_m_;
-  limits.vector.z = distance_limit_m_ - slowdown_distance_m_;
+  limits.vector.z = distance_limit_m_ + slowdown_distance_m_;
   limits_pub_->publish(limits);
 
   if (!tag_anchor_valid_ || !odometry_received_) {
@@ -393,7 +397,7 @@ void Game1BoundaryGuardNode::publish_debug(
   marker_array.markers.push_back(tag_marker);
 
   auto limit_marker = make_marker(
-      1, visualization_msgs::msg::Marker::LINE_STRIP, "1.0 m limit");
+      1, visualization_msgs::msg::Marker::LINE_STRIP, "minimum distance");
   limit_marker.points = {point_at(distance_limit_m_, -vertical_half_width_m_),
                          point_at(distance_limit_m_, vertical_half_width_m_)};
   limit_marker.scale.x = 0.06;
@@ -403,7 +407,7 @@ void Game1BoundaryGuardNode::publish_debug(
 
   auto slowdown_marker = make_marker(
       2, visualization_msgs::msg::Marker::LINE_STRIP, "slowdown start");
-  const double slowdown_start = distance_limit_m_ - slowdown_distance_m_;
+  const double slowdown_start = distance_limit_m_ + slowdown_distance_m_;
   slowdown_marker.points = {point_at(slowdown_start, -vertical_half_width_m_),
                             point_at(slowdown_start, vertical_half_width_m_)};
   slowdown_marker.scale.x = 0.035;
@@ -412,9 +416,16 @@ void Game1BoundaryGuardNode::publish_debug(
   slowdown_marker.color.a = 1.0F;
   marker_array.markers.push_back(slowdown_marker);
 
-  auto normal_marker =
-      make_marker(3, visualization_msgs::msg::Marker::ARROW, "tag normal");
-  normal_marker.points = {point_at(0.0, 0.0), point_at(distance_limit_m_, 0.0)};
+  auto normal_marker = make_marker(3, visualization_msgs::msg::Marker::ARROW,
+                                   "restricted +X direction");
+  geometry_msgs::msg::Point direction_start;
+  direction_start.x = odom_x_;
+  direction_start.y = odom_y_;
+  direction_start.z = 0.25;
+  geometry_msgs::msg::Point direction_end = direction_start;
+  direction_end.x -= outward_normal_odom_x_ * 0.8;
+  direction_end.y -= outward_normal_odom_y_ * 0.8;
+  normal_marker.points = {direction_start, direction_end};
   normal_marker.scale.x = 0.04;
   normal_marker.scale.y = 0.08;
   normal_marker.scale.z = 0.10;
@@ -434,6 +445,27 @@ void Game1BoundaryGuardNode::publish_debug(
   robot_marker.color.r = enabled_ ? 0.0F : 0.7F;
   robot_marker.color.a = 0.9F;
   marker_array.markers.push_back(robot_marker);
+
+  auto text_marker = make_marker(
+      5, visualization_msgs::msg::Marker::TEXT_VIEW_FACING, "status");
+  text_marker.pose.position.x = odom_x_;
+  text_marker.pose.position.y = odom_y_;
+  text_marker.pose.position.z = 0.65;
+  text_marker.scale.z = 0.22;
+  text_marker.color.r = 1.0F;
+  text_marker.color.g = detection_fresh ? 1.0F : 0.3F;
+  text_marker.color.b = 1.0F;
+  text_marker.color.a = 1.0F;
+  std::ostringstream status;
+  status << "ID10 " << (detection_fresh ? "FRESH" : "STALE") << " | guard "
+         << (enabled_ ? "ON" : "OFF") << "\n"
+         << std::fixed << std::setprecision(2) << "distance " << normal_distance
+         << " / " << distance_limit_m_ << " m | vertical " << tangent_distance
+         << " m\n"
+         << "angle " << view_angle_deg << " deg | speed scale "
+         << outward_scale;
+  text_marker.text = status.str();
+  marker_array.markers.push_back(text_marker);
 
   markers_pub_->publish(marker_array);
 }
