@@ -1,0 +1,9 @@
+# Dribble.action
+# Goal: ドリブル機構制御要求 (true: ドリブル回転開始, false: ドリブル停止)
+bool start
+---
+# Result: 実行結果
+bool success
+string message
+---
+# Feedback

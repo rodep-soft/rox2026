@@ -26,24 +26,32 @@ ament_target_dependencies(
   sensor_msgs
   std_msgs)
 
-install(TARGETS joy_controller_node DESTINATION lib/${PROJECT_NAME})
+add_executable(cmd_vel_selector_node src/cmd_vel_selector_node.cpp src/main_selector.cpp)
+target_include_directories(
+  cmd_vel_selector_node
+  PRIVATE include)
+ament_target_dependencies(
+  cmd_vel_selector_node rclcpp geometry_msgs std_msgs)
+
+install(TARGETS joy_controller_node cmd_vel_selector_node DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 
-  ament_add_gtest(test_slew_rate_limiter test/test_slew_rate_limiter.cpp)
-  target_include_directories(test_slew_rate_limiter PRIVATE include)
+  ament_add_gtest(test_cmd_vel_selector
+    test/test_cmd_vel_selector.cpp
+    src/cmd_vel_selector_node.cpp
+  )
+  target_include_directories(test_cmd_vel_selector PRIVATE include)
+  ament_target_dependencies(test_cmd_vel_selector
+    rclcpp geometry_msgs std_msgs
+  )
 endif()
 
 ament_package()

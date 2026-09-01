@@ -1,0 +1,94 @@
+# auto_game1
+
+`auto_game1` は、Nav2（Navigation2）と連動して自律走行と状態遷移（試合シナリオ制御）を行う ROS 2 パッケージです。
+
+---
+
+## 1. 概要
+
+本パッケージ（`auto_game1_node`）は、試合中の状況に応じた状態遷移（ステートマシン）を管理し、Nav2 に移動目標（Goal Pose / Waypoint）を発行して自律走行を行います。
+また、3つの長方形領域を障害物ポリゴン（`PolygonStamped`）として周期的（20Hz）に publish し、Nav2 の `PolygonLayer` 経由で動的な障害物・進入禁止領域として認識・回避させます。
+
+---
+
+## 2. 状態遷移マシン (State Machine)
+
+| ステート名 | 概要・動作 | 次のステートへの遷移条件 |
+| :--- | :--- | :--- |
+| `AUTO_STOP` | 自動停止状態（全出力停止、Nav2キャンセル）。 | Joy入力 (`auto_stop_toggle_button`) で `DRIBBLE_ON` へ移行 |
+| `DRIBBLE_ON` | **ドリブルON状態 (Standby)**。安全な待機状態（走行停止）。`dribble_on_button` (○ボタン) でドリブル回転を開始し、人間がボールをセット。 | `start_autodrive_button` (×ボタン) $\rightarrow$ `GO_TO_KICK_START` |
+| `GO_TO_KICK_START` | **Nav2 Action** (`NavigateThroughPoses`) でキック開始点・終了点へ向かう（開始点手前での減速防止のため`kick_end`も同時に指定）。 | キック開始点との距離 $\le$ `kick_start_reach_threshold` [m] |
+| `PREPARE_KICK` | キック開始点到達後、独自Twist制御で定速直進。目標キックライン到達 ($x \approx$ `kick_target_x`) で **Kick Action** を送信。 | Kick Action の完了 (`Succeeded`) |
+| `GO_TO_GATE_FAR_SIDE` | **Nav2 Action** (`NavigateThroughPoses`) で残りの通過点（`kick_end`等）およびゲート向こう側へ向かう。 | Nav2 到着完了 (`Succeeded`) |
+| `FOLLOW_BALL` | ボール追従（拡張用プレースホルダー）。 | 即時移行 |
+| `CARRY_BALL_TO_PASS_AREA` | **Nav2 Action** (`NavigateThroughPoses`) でパスエリアへ移動後、**Pass Action** (`Pass`) を送信＆`/dribble/enabled = false` でドリブル停止。 | Pass Action の完了 (`Succeeded`) |
+| `RETURN_TO_START` | **Nav2 Action** (`NavigateThroughPoses`) でスタート位置に戻る。 | Nav2 到着完了 (`Succeeded`) $\rightarrow$ `DRIBBLE_ON` |
+
+※ジョイスティック (`/joy`) から `return_to_start_button` (Optionsボタン) が押された場合は、いつでも強制的に `RETURN_TO_START` に遷移します。
+※ジョイスティックから `side_toggle_button` (△ / Yボタン) が押された場合は、コートサイド (`SIDE_A` (通常・右) ⇔ `SIDE_B` (左右反転・左)) を切り替えます。`SIDE_B` モードでは、全ウェイポイント座標および障害物ポリゴンの $X$ 座標と Yaw 角が自動的に反転されます。
+
+---
+
+## 3. 長方形障害物ポリゴンの設定と書き換え方法
+
+ナビゲーションで回避させたい 3つの長方形障害物領域（4頂点 $p_1, p_2, p_3, p_4$）は、[`include/auto_game1/auto_game1_node.hpp`](include/auto_game1/auto_game1_node.hpp) 内の定数配列 `RECTANGLE_OBSTACLES[3]` として定義されています。
+
+### 座標の修正方法
+障害物の座標を変更したい場合は、[`include/auto_game1/auto_game1_node.hpp`](include/auto_game1/auto_game1_node.hpp) 内の該当数値を直接書き換えて再ビルドしてください。
+
+```cpp
+// include/auto_game1/auto_game1_node.hpp より抜粋
+
+// ナビゲーション回避用の障害物となる3つの長方形の定数座標定義
+const RectObstacle RECTANGLE_OBSTACLES[3] = {
+  // 長方形 1 (4頂点: p1, p2, p3, p4)
+  { {0.5f, 0.5f}, {1.5f, 0.5f}, {1.5f, 1.5f}, {0.5f, 1.5f} },
+  // 長方形 2
+  { {2.0f, 1.0f}, {3.0f, 1.0f}, {3.0f, 2.0f}, {2.0f, 2.0f} },
+  // 長方形 3
+  { {1.0f, -1.5f}, {2.0f, -1.5f}, {2.0f, -0.5f}, {1.0f, -0.5f} }
+};
+```
+
+---
+
+## 4. 通信仕様
+
+### Subscription (受信トピック)
+* `/joy` (`sensor_msgs/msg/Joy`): ジョイスティック操作入力（自動停止切替・ドリブルON・発進許可・スタート復帰ボタンの判定）
+
+### Publisher (送信トピック)
+* `/mecanum/cmd_vel` (`geometry_msgs/msg/Twist`): 走行速度指令（`robot_controller` または `hardware_driver` 宛）
+* `/dribble/enabled` (`std_msgs/msg/Bool`): ドリブルモータ ON (`true`) / OFF (`false`) 指令
+* `/obstacle_polygon_1` (`geometry_msgs/msg/PolygonStamped`): 長方形障害物 1
+* `/obstacle_polygon_2` (`geometry_msgs/msg/PolygonStamped`): 長方形障害物 2
+* `/obstacle_polygon_3` (`geometry_msgs/msg/PolygonStamped`): 長方形障害物 3
+
+### Action Client (アクション送信)
+* `navigate_through_poses` (`nav2_msgs/action/NavigateThroughPoses`): 全移動（単一目的地および複数通過点）に共通利用する Nav2 ナビゲーションアクション
+* `kick` (`auto_game1/action/Kick`): キック機構制御
+* `pass` (`auto_game1/action/Pass`): パスエリアでのボールリリース制御
+
+---
+
+## 5. 設定ファイルおよび起動手順
+
+Launch スクリプトおよび各パラメータファイルは **`robot_bringup`** パッケージ内に集約されています。
+
+* **パラメータファイル**:
+  * `robot_bringup/config/auto_game1.yaml` (`auto_game1_node` のパラメータ)
+  * `robot_bringup/config/auto_game1_nav2.yaml` (Nav2 コストマップ・PolygonLayer のパラメータ)
+* **Launch スクリプト**:
+  * `robot_bringup/launch/auto_game1.launch.py`
+
+### ビルド
+```bash
+cd ~/rox/rox2026/ros2_ws
+colcon build --packages-select robot_bringup auto_game1
+source install/setup.bash
+```
+
+### 起動コマンド
+```bash
+ros2 launch robot_bringup auto_game1.launch.py
+```

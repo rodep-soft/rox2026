@@ -178,7 +178,7 @@ Shot Cycleを要求する。`slow_fire_button: -1`によりSpring slow fireも�
 | 2 | FEED |
 | 4 | HOME |
 
-## 主なtopic
+## 主なtopic (`joy_controller_node`)
 
 | 種別 | topic | 型 |
 |---|---|---|
@@ -186,9 +186,21 @@ Shot Cycleを要求する。`slow_fire_button: -1`によりSpring slow fireも�
 | publish | `/belt/mode` | `std_msgs/msg/UInt8` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
-| publish | `/dribble/command_position` | `std_msgs/msg/UInt8` |
-| publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
+| publish | `/dribble/position_mode` | `std_msgs/msg/UInt8` |
+| publish | `/joy_controller/cmd_vel` | `geometry_msgs/msg/Twist` |
 | publish | `/emergency_stop` | `std_msgs/msg/Bool` |
-| publish | `/game2/start` | `std_msgs/msg/Bool` |
-| publish | `/heading_control/enable` | `std_msgs/msg/Bool` |
-| publish | `/drive/reversed` | `std_msgs/msg/Bool` |
+| subscribe | `/shot_cycle/running` | `std_msgs/msg/Bool` |
+| subscribe | `/shot_cycle/complete` | `std_msgs/msg/Bool` |
+
+---
+
+## 速度切替ノード (`cmd_vel_selector_node`)
+
+手動走行 (`/joy_controller/cmd_vel`) と自動制御 (`/auto_game1/cmd_vel`) の2つの速度指令を `/operation_mode` に応じて切替選択し、最終的な足回り出力 (`/mecanum/cmd_vel`) へ転送する非同期マルチプレクサノード。
+
+| 種別 | topic | 型 | 役割 |
+|---|---|---|---|
+| subscribe | `/joy_controller/cmd_vel` | `geometry_msgs/msg/Twist` | 手動操作速度指令 |
+| subscribe | `/auto_game1/cmd_vel` | `geometry_msgs/msg/Twist` | 自動自律走行速度指令 |
+| subscribe | `/operation_mode` | `std_msgs/msg/UInt8` | 操作モード (1: DRIVE/手動, 2: SHOT_CYCLE/自動) |
+| publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` | 最終出力速度指令 (`hardware_driver` 宛) |

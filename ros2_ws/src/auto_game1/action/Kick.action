@@ -1,0 +1,9 @@
+# Kick.action
+# Goal
+bool start
+---
+# Result
+bool success
+string message
+---
+# Feedback
