@@ -5,8 +5,9 @@ game1_boundary_guard:
     tag_id: 10
 
     # apriltag_rosが生成するTF名の接頭辞。
-    # 実際の参照先は "tag16h5:10" になる。
-    tag_frame_prefix: "tag16h5:"
+    # calibrated_apriltag.launch.pyが登録する実際の参照先は "16h5:10"。
+    # 境界ガード側は互換性のため "tag16h5:10" も自動探索する。
+    tag_frame_prefix: "16h5:"
 
     # 速度指令とタグ相対位置を計算するロボット基準フレーム。
     base_frame: "base_link"

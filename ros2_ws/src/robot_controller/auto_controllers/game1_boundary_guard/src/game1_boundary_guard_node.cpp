@@ -4,7 +4,9 @@
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+#include <vector>
 
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Vector3.h"
@@ -18,7 +20,7 @@ Game1BoundaryGuardNode::Game1BoundaryGuardNode(
   tag_id_ = declare_parameter<int>("tag_id", 10);
   base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
   tag_frame_prefix_ =
-      declare_parameter<std::string>("tag_frame_prefix", "tag16h5:");
+      declare_parameter<std::string>("tag_frame_prefix", "16h5:");
   distance_limit_m_ = declare_parameter<double>("distance_limit_m", 1.0);
   slowdown_distance_m_ = declare_parameter<double>("slowdown_distance_m", 0.35);
   max_view_angle_rad_ =
@@ -131,14 +133,45 @@ void Game1BoundaryGuardNode::detections_callback(
     return;
   }
 
-  std::string tag_frame = tag_frame_prefix_ + std::to_string(tag_id_);
+  std::vector<std::string> tag_frames = {tag_frame_prefix_ +
+                                         std::to_string(tag_id_)};
   if (!detection->family.empty()) {
-    tag_frame = detection->family + ":" + std::to_string(tag_id_);
+    const std::string family_frame =
+        detection->family + ":" + std::to_string(tag_id_);
+    tag_frames.push_back(family_frame);
+    if (detection->family.rfind("tag", 0) == 0) {
+      tag_frames.push_back(detection->family.substr(3) + ":" +
+                           std::to_string(tag_id_));
+    } else {
+      tag_frames.push_back("tag" + detection->family + ":" +
+                           std::to_string(tag_id_));
+    }
+  }
+  tag_frames.push_back("16h5:" + std::to_string(tag_id_));
+  tag_frames.push_back("tag16h5:" + std::to_string(tag_id_));
+
+  geometry_msgs::msg::TransformStamped transform;
+  bool transform_found = false;
+  for (const auto &tag_frame : tag_frames) {
+    try {
+      transform = tf_buffer_->lookupTransform(base_frame_, tag_frame,
+                                              tf2::TimePointZero);
+      transform_found = true;
+      break;
+    } catch (const tf2::TransformException &) {
+      // Try the next family naming convention.
+    }
+  }
+  if (!transform_found) {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                         "Tag %d detected, but no TF exists (tried %s, %s, %s)",
+                         tag_id_, tag_frames.front().c_str(),
+                         tag_frames[tag_frames.size() - 2].c_str(),
+                         tag_frames.back().c_str());
+    return;
   }
 
   try {
-    const auto transform =
-        tf_buffer_->lookupTransform(base_frame_, tag_frame, tf2::TimePointZero);
     const double tag_base_x = transform.transform.translation.x;
     const double tag_base_y = transform.transform.translation.y;
     const double planar_distance = std::hypot(tag_base_x, tag_base_y);
@@ -189,9 +222,9 @@ void Game1BoundaryGuardNode::detections_callback(
     outward_normal_odom_y_ = s * normal_base_x + c * normal_base_y;
     tag_anchor_valid_ = true;
     last_detection_time_ = now();
-  } catch (const tf2::TransformException &error) {
+  } catch (const std::exception &error) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-                         "Tag %d was detected but TF is unavailable: %s",
+                         "Tag %d TF was found but could not be processed: %s",
                          tag_id_, error.what());
   }
 }

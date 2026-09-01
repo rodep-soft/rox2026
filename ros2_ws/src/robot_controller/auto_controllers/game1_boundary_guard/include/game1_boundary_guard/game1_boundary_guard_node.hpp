@@ -57,7 +57,7 @@ private:
 
   int tag_id_{10};
   std::string base_frame_{"base_link"};
-  std::string tag_frame_prefix_{"tag16h5:"};
+  std::string tag_frame_prefix_{"16h5:"};
   double distance_limit_m_{1.0};
   double slowdown_distance_m_{0.35};
   double max_view_angle_rad_{0.78539816339};
