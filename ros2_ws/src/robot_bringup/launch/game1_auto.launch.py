@@ -90,7 +90,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "framerate",
-                default_value="15.0",
+                default_value="10.0",
                 description="Camera input rate in frames per second",
             ),
             DeclareLaunchArgument(
@@ -105,8 +105,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "roi_height",
-                default_value="480",
-                description="Centered AprilTag detection ROI height; 0 uses full height",
+                default_value="1080",
+                description="AprilTag detection ROI height; 1080 uses the full image height",
             ),
             DeclareLaunchArgument(
                 "tag_size",
