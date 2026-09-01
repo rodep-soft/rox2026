@@ -27,6 +27,7 @@ def launch_setup(context, *args, **kwargs):
     detector_blur = LaunchConfiguration("detector_blur").perform(context)
     detector_refine = LaunchConfiguration("detector_refine").perform(context)
     detector_sharpening = LaunchConfiguration("detector_sharpening").perform(context)
+    allowed_tag_ids = LaunchConfiguration("allowed_tag_ids").perform(context)
     enable_foxglove = LaunchConfiguration("enable_foxglove").perform(
         context
     ).lower() in ("true", "1")
@@ -146,7 +147,7 @@ def launch_setup(context, *args, **kwargs):
             "tag_size": tag_size,
             "max_hamming": "0",
             "detector_threads": detector_threads,
-            "allowed_tag_ids": "14,15,16,17,18,19,20,21,22",
+            "allowed_tag_ids": allowed_tag_ids,
             "detector_decimate": detector_decimate,
             "detector_blur": detector_blur,
             "detector_refine": detector_refine,
@@ -196,7 +197,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "framerate",
-                default_value="10.0",
+                default_value="15.0",
                 description="Camera and AprilTag input rate",
             ),
             DeclareLaunchArgument(
@@ -223,6 +224,11 @@ def generate_launch_description():
                 "tag_size",
                 default_value="0.18",
                 description="AprilTag edge length in metres",
+            ),
+            DeclareLaunchArgument(
+                "allowed_tag_ids",
+                default_value="14,15,16,17,18,19,20,21,22",
+                description="Comma-separated AprilTag ID allowlist",
             ),
             DeclareLaunchArgument(
                 "detector_threads",

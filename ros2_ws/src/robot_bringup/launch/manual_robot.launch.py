@@ -42,6 +42,11 @@ def generate_launch_description():
                 description="Enable Foxglove WebSocket Bridge",
             ),
             DeclareLaunchArgument(
+                "joy_cmd_vel_topic",
+                default_value="/drive/cmd_vel",
+                description="Joystick velocity output topic",
+            ),
+            DeclareLaunchArgument(
                 "foxglove_port",
                 default_value="8765",
                 description="Foxglove WebSocket port",
@@ -50,7 +55,14 @@ def generate_launch_description():
                 "hardware/hardware.launch.py",
                 list({"can_interface": LaunchConfiguration("can_interface")}.items()),
             ),
-            include("input/joy_controller.launch.py"),
+            include(
+                "input/joy_controller.launch.py",
+                list(
+                    {
+                        "cmd_vel_topic": LaunchConfiguration("joy_cmd_vel_topic"),
+                    }.items()
+                ),
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(launch_dir, "foxglove_bridge.launch.py")

@@ -96,24 +96,6 @@ ros2 launch robot_bringup vision_launch.py enable_yolo:=true
 
 # ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
 ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
-## game2_shooter.launch.py (Game 2 パネル自動戦術射出ノード)
-
-| 引数 | 既定値 | 説明 |
-|---|---|---|
-| `base_frame` | `base_link` | ロボット基準フレーム ID |
-| `target_distance` | `1.5` | Game2 パネルまでの射程距離 (メートル) |
-| `rpm_bottom` | `3000.0` | 下段パネル用射出ベルト RPM |
-| `rpm_middle` | `4500.0` | 中段パネル用射出ベルト RPM |
-| `rpm_top` | `6000.0` | 上段パネル用射出ベルト RPM |
-
-起動例:
-```bash
-# Game 2 パネル戦術自動射出ノード単体起動
-ros2 launch robot_bringup game2_shooter.launch.py
-
-# ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ Game 2 自動戦術ノードを一括起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_game2:=true
-```
 ## game2.launch.py (Game 2 試合本番用一括起動 Launch)
 
 Game 2 試合に必要なモジュールのみを最軽量でピンポイント起動します（正面 CSI カメラ ＋ AprilTag 検出 ＋ Game 2 戦術ノード ＋ 全コントローラー）。
@@ -150,6 +132,41 @@ ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apri
 ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
 ```
 配信トピック: `/webcam/image_raw`, `/webcam/camera_info`
+
+## Game1侵入防止のFoxglove確認
+
+Foxglove Bridgeを有効にしてGame1構成を起動します。
+
+```bash
+ros2 launch robot_bringup game1_auto.launch.py enable_foxglove:=true
+```
+
+Foxgloveの3DパネルではFixed frameを`odom`にし、
+`/game1/boundary_guard/markers`を追加してください。
+水色の点がID 10、黄色線が減速開始位置、赤線が最小許容距離、
+青矢印が機体からタグへ向かう制限方向（通常はcmd_vel +X）、
+円柱がロボット位置です。機体上のテキストでも距離・縦ずれ・角度・倍率を確認できます。
+
+Plotパネルには次のフィールドを追加します。
+
+- `/game1/boundary_guard/measurement.vector.x`: タグ面からの法線距離 `[m]`
+- `/game1/boundary_guard/measurement.vector.y`: タグ中心からの縦ずれ `[m]`
+- `/game1/boundary_guard/measurement.vector.z`: タグ正面からの視角 `[deg]`
+- `/game1/boundary_guard/velocity_debug.vector.x`: 制限前のタグ方向速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.y`: 制限後のタグ方向速度 `[m/s]`
+- `/game1/boundary_guard/velocity_debug.vector.z`: 適用速度倍率 `0.0～1.0`
+- `/game1/boundary_guard/limits.vector.x`: タグから確保する最小距離 `[m]`
+- `/game1/boundary_guard/limits.vector.y`: 有効縦半幅 `[m]`
+- `/game1/boundary_guard/limits.vector.z`: 減速開始距離 `[m]`
+
+StateパネルまたはRaw Messagesでは次も確認できます。
+
+- `/game1/boundary_guard/detection_fresh`: ID 10の検出またはオドメトリ補間が有効
+- `/game1/boundary_guard/enabled`: R3で切り替える侵入防止機能の状態
+- `/game1/boundary_guard/active`: 現在、外向き速度を実際に制限中
+
+`detection_fresh=false`の間は速度制限されません。まず車輪を浮かせるか
+非常停止状態でタグ位置・赤線・黄色線が意図した方向に出ることを確認してください。
 
 ## hardware.launch.py
 
