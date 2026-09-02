@@ -85,7 +85,9 @@ LNI::CallbackReturn SocketCanReceiverNode::on_configure(const lc::State & state)
 
   RCLCPP_DEBUG(this->get_logger(), "Receiver successfully configured.");
 
-  auto can_rx_qos = rclcpp::SensorDataQoS();
+  // The default SensorDataQoS depth of 5 is only a few milliseconds of this
+  // robot CAN traffic. Retain a short bounded burst for local subscribers.
+  auto can_rx_qos = rclcpp::SensorDataQoS().keep_last(50);
 
   if (!enable_fd_) {
     frames_pub_ = this->create_publisher<can_msgs::msg::Frame>("from_can_bus", can_rx_qos);

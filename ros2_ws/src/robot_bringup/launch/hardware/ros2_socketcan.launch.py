@@ -53,6 +53,49 @@ def create_socketcan_nodes(interface_name):
         ],
         remappings=[("from_can_bus", "/socketcan_bridge/rx")],
     )
+    stm32_receiver = Node(
+        package="ros2_socketcan",
+        executable="socket_can_receiver_node_exe",
+        name="socket_can_receiver_stm32",
+        output="screen",
+        parameters=[
+            {
+                "interface": interface_name,
+                "enable_can_fd": False,
+                "interval_sec": 0.005,
+                # Match only standard STM32 frames in the kernel. Including
+                # CAN_EFF_FLAG in the mask excludes extended frames.
+                "filters": (
+                    "100:800007FF,310:800007FF,320:800007FF,"
+                    "321:800007FF,322:800007FF"
+                ),
+                "use_bus_time": False,
+                "auto_configure": True,
+                "auto_activate": True,
+            }
+        ],
+        remappings=[("from_can_bus", "/socketcan_bridge/stm32/rx")],
+    )
+    edulite_receiver = Node(
+        package="ros2_socketcan",
+        executable="socket_can_receiver_node_exe",
+        name="socket_can_receiver_edulite",
+        output="screen",
+        parameters=[
+            {
+                "interface": interface_name,
+                "enable_can_fd": False,
+                "interval_sec": 0.005,
+                # Match EduLite extended feedback, parameter-read response,
+                # and fault frame types in the kernel.
+                "filters": ("02000000:9F000000,11000000:9F000000," "15000000:9F000000"),
+                "use_bus_time": False,
+                "auto_configure": True,
+                "auto_activate": True,
+            }
+        ],
+        remappings=[("from_can_bus", "/socketcan_bridge/edulite/rx")],
+    )
     sender = Node(
         package="ros2_socketcan",
         executable="socket_can_sender_node_exe",
@@ -71,7 +114,7 @@ def create_socketcan_nodes(interface_name):
         ],
         remappings=[("to_can_bus", "/socketcan_bridge/tx")],
     )
-    return [receiver, sender]
+    return [receiver, stm32_receiver, edulite_receiver, sender]
 
 
 def generate_launch_description():

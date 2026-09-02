@@ -53,7 +53,9 @@ public:
 
     const auto can_qos_pub =
       rclcpp::QoS(rclcpp::KeepLast(50)).reliable().durability_volatile();
-    const auto can_qos_sub = rclcpp::SensorDataQoS();
+    // Keep enough recent CAN frames to absorb short executor scheduling gaps
+    // without building a large stale-data backlog.
+    const auto can_qos_sub = rclcpp::SensorDataQoS().keep_last(50);
 
     rclcpp::SubscriptionOptions can_sub_options;
     can_sub_options.content_filter_options.filter_expression =
