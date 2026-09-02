@@ -71,6 +71,7 @@ private:
   double bottom_pos_rad_{0.0};
   double feed_pos_rad_{1.3};
   double feed_duration_sec_{0.6};
+  double feed_roller_stop_ratio_{0.5};
   double opening_max_rad_s_{4.0};
   double feeding_max_rad_s_{6.0};
   double returning_max_rad_s_{4.0};
@@ -150,6 +151,7 @@ private:
   float under_belt_measured_rpm_{0.0f};
 
   int roller_cmd_rpm_{0};
+  bool roller_stopped_during_feed_{false};
   bool belt_auto_started_{false};
   bool has_ball_{false};
   double filtered_roller_current_a_{0.0};

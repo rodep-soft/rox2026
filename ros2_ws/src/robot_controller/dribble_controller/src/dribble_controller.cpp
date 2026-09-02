@@ -131,6 +131,7 @@ void DribbleControllerNode::position_mode_callback(
   // 今の状態以外に移行もしくは，ベルト発射中の場合はベルト発射を中断する
   if (target_mode != position_mode_ || shot_cycle_active_) {
     shot_cycle_active_ = false;
+    roller_stopped_during_feed_ = false;
     pre_shot_state_ = PreShotState::IDLE;
     set_spring_clearance(false);
     is_arm_moving_ = true;
@@ -201,6 +202,7 @@ void DribbleControllerNode::start_shot_cycle()
   shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::BELT_SPINUP;
   shot_phase_start_time_ = now();
   shot_phase_start_pos_rad_ = arm_cmd_pos_rad_;
+  roller_stopped_during_feed_ = false;
   position_mode_ = robot_msgs::msg::ArmPosition::DRIBBLE;
 
   // 上下のベルトが両方とも回転基準未満の場合だけ、自動で回転を開始する
@@ -402,7 +404,7 @@ void DribbleControllerNode::spring_operation_state_callback(
 void DribbleControllerNode::update_and_publish_roller_command()
 {
   const int target_rpm = roller_target_rpm();
-  if (emergency_stop_active_) {
+  if (emergency_stop_active_ || roller_stopped_during_feed_) {
     roller_cmd_rpm_ = 0;
   } else if (!shot_cycle_active_ &&
     position_mode_ == robot_msgs::msg::ArmPosition::OPEN && target_rpm == 0)
@@ -560,6 +562,7 @@ void DribbleControllerNode::control_timer_callback()
       if (!spring_retracted && elapsed_sec >= belt_clearance_timeout_sec_) {
         // ばね退避に時間がかかりすぎたときのタイムアウト
         shot_cycle_active_ = false;
+        roller_stopped_during_feed_ = false;
         set_spring_clearance(false);
         position_mode_ = pre_shot_saved_position_mode_;
         if (position_mode_ != robot_msgs::msg::ArmPosition::DRIBBLE) {
@@ -582,6 +585,7 @@ void DribbleControllerNode::control_timer_callback()
         shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::FEEDING;
         shot_phase_start_time_ = now();
         shot_phase_start_pos_rad_ = arm_cmd_pos_rad_;
+        roller_stopped_during_feed_ = false;
         position_mode_ = robot_msgs::msg::ArmPosition::FEED;
         RCLCPP_INFO(
           get_logger(),
@@ -605,6 +609,15 @@ void DribbleControllerNode::control_timer_callback()
         phase_max_vel_rad_s, phase_max_rad_s2);
       position_command_rad = trajectory.position_rad;
 
+      if (is_feeding && !roller_stopped_during_feed_ &&
+        elapsed_sec >= trajectory.duration_sec * feed_roller_stop_ratio_)
+      {
+        roller_stopped_during_feed_ = true;
+        RCLCPP_INFO(
+          get_logger(), "Shot Cycle: stopped roller at %.0f%% of FEED trajectory",
+          feed_roller_stop_ratio_ * 100.0);
+      }
+
       if (elapsed_sec >= trajectory.duration_sec + hold_duration_sec) {
         position_command_rad = phase_target_rad;
         shot_phase_start_pos_rad_ = phase_target_rad;
@@ -612,9 +625,11 @@ void DribbleControllerNode::control_timer_callback()
 
         if (is_feeding) {
           shot_cycle_phase_ = robot_msgs::msg::ShotCycleState::RETURNING;
-          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING");
+          roller_stopped_during_feed_ = false;
+          RCLCPP_INFO(get_logger(), "Shot Cycle: FEED -> RETURNING; restarting roller");
         } else {
           shot_cycle_active_ = false;
+          roller_stopped_during_feed_ = false;
           set_spring_clearance(false);
           has_ball_ = false;
           ball_detected_counter_ = 0;
@@ -666,7 +681,7 @@ int DribbleControllerNode::roller_target_rpm() const
       case robot_msgs::msg::ShotCycleState::BELT_SPINUP:
         return shot_cycle_opening_rpm_;
       case robot_msgs::msg::ShotCycleState::FEEDING:
-        return shot_cycle_feeding_rpm_;
+        return roller_stopped_during_feed_ ? 0 : shot_cycle_feeding_rpm_;
       case robot_msgs::msg::ShotCycleState::RETURNING:
         return shot_cycle_returning_rpm_;
     }
@@ -806,6 +821,8 @@ void DribbleControllerNode::load_parameters()
     "slow_fire_dribble_position_rad", slow_fire_dribble_position_rad_);
   // ショットサイクル
   feed_duration_sec_ = declare_parameter("feed_duration_sec", feed_duration_sec_);
+  feed_roller_stop_ratio_ = declare_parameter(
+    "feed_roller_stop_ratio", feed_roller_stop_ratio_);
   belt_shot_delay_sec_ = declare_parameter("belt_shot_delay_sec", belt_shot_delay_sec_);
   belt_clearance_timeout_sec_ = declare_parameter(
     "belt_clearance_timeout_sec", belt_clearance_timeout_sec_);
@@ -968,6 +985,8 @@ rcl_interfaces::msg::SetParametersResult DribbleControllerNode::parameter_callba
     } else if (name == "feed_duration_sec") {
       updated = update_double(parameter, feed_duration_sec_, 0.0, any_double_max);
       affects_trajectory = true;
+    } else if (name == "feed_roller_stop_ratio") {
+      updated = update_double(parameter, feed_roller_stop_ratio_, 0.0, 1.0);
     } else if (name == "belt_shot_delay_sec") {
       updated = update_double(parameter, belt_shot_delay_sec_, 0.0, any_double_max);
     } else if (name == "belt_clearance_timeout_sec") {

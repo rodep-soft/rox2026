@@ -31,8 +31,8 @@
 1. ボタン押下と同時にドリブルローラを shot_cycle_opening_rpm へ上げ、beltを自動ONする。
 2. 同時に、ばねを現在の累積待機位置から standby_offset_rad 分だけ収納する。
 3. ベルトを自動起動した場合は belt_shot_delay_sec の経過と、ばねの収納・停止完了の両方を待つ。
-4. DRIBBLEからFEEDへ移動して押し込み射出する。
-5. DRIBBLEへ戻り、ばねを累積待機位置へ戻して、自動起動したbeltを停止する。
+4. DRIBBLEからFEEDへ移動して押し込み射出し、`feed_roller_stop_ratio` の地点でドリブルローラを停止する。
+5. RETURNINGへ移行するとドリブルローラを再回転させ、DRIBBLEへ戻った後にばねを累積待機位置へ戻して、自動起動したbeltを停止する。
 
 ### beltが既に回っている場合
 
@@ -57,6 +57,7 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 - `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）
 - `dribble_position_rad``open_position_rad``home_position_rad``feed_position_rad`
 - feed_duration_sec
+- `feed_roller_stop_ratio`（FEED軌道中にドリブルローラを停止する割合。0.0〜1.0）
 - `opening_max_rad_s`
 - `feeding_max_rad_s`
 - `returning_max_rad_s`
