@@ -19,6 +19,9 @@
 #define LAUNCHER_MAIN_LED_COUNT       20U
 #define LAUNCHER_SIDE_LED_COUNT        9U
 #define MIDDLE_FRONT_LED_COUNT         7U
+#define BELT_OUTPUT_FIRST_LED         29U
+#define BELT_OUTPUT_CENTER_LED        32U
+#define BELT_OUTPUT_LED_COUNT          7U
 #define LAUNCHER_LEVEL_COUNT          10U
 #define MIDDLE_CHAIN_START            20U
 #define CHASSIS_FRONT_CENTER          15U
@@ -33,8 +36,14 @@
 #define EMERGENCY_WAVE_COUNT           2U
 #define EMERGENCY_BRIGHTNESS         220U
 #define CHASSIS_GLOW_RADIUS_Q8   (4L * 256L)
-#define CHASSIS_BASE_INTENSITY        12U
+#define CHASSIS_BASE_INTENSITY        48U
 #define CHASSIS_PEAK_INTENSITY       255U
+#define CHASSIS_IDLE_NORMAL_R         80U
+#define CHASSIS_IDLE_NORMAL_G        220U
+#define CHASSIS_IDLE_NORMAL_B        255U
+#define CHASSIS_IDLE_REVERSED_R      255U
+#define CHASSIS_IDLE_REVERSED_G      250U
+#define CHASSIS_IDLE_REVERSED_B      190U
 #define ARM_OPEN_HEAD_SPEED_Q8_PER_MS 16U
 #define ARM_OPEN_FILL_SPEED_Q8_PER_MS 32U
 #define FIRING_WAVE_MS               233U
@@ -361,10 +370,10 @@ static void LED_RenderBeltLauncher(uint8_t status, uint32_t now_ms) {
 		if (level < center_lit_count) {
 			int32_t distance_q8 = (int32_t)level * 256L - belt_wave_head_q8;
 			if (distance_q8 < 0L) distance_q8 = -distance_q8;
-			intensity = 6U;
+			intensity = 18U;
 			if (distance_q8 < radius_q8) {
 				const uint32_t strength = (uint32_t)(radius_q8 - distance_q8);
-				intensity += (uint16_t)(214U * strength * strength /
+				intensity += (uint16_t)(237U * strength * strength /
 						((uint32_t)radius_q8 * (uint32_t)radius_q8));
 			}
 		}
@@ -381,10 +390,10 @@ static void LED_RenderBeltLauncher(uint8_t status, uint32_t now_ms) {
 		if (level < side_lit_count) {
 			int32_t distance_q8 = (int32_t)level * 256L - belt_wave_head_q8;
 			if (distance_q8 < 0L) distance_q8 = -distance_q8;
-			intensity = 6U;
+			intensity = 18U;
 			if (distance_q8 < radius_q8) {
 				const uint32_t strength = (uint32_t)(radius_q8 - distance_q8);
-				intensity += (uint16_t)(214U * strength * strength /
+				intensity += (uint16_t)(237U * strength * strength /
 						((uint32_t)radius_q8 * (uint32_t)radius_q8));
 			}
 		}
@@ -399,6 +408,27 @@ static void LED_RenderBeltLauncher(uint8_t status, uint32_t now_ms) {
 		const uint8_t intensity = center_intensity[LAUNCHER_LEVEL_COUNT - 1U];
 		setPixelPA6(LAUNCHER_MAIN_LED_COUNT + LAUNCHER_SIDE_LED_COUNT + i,
 				0U, intensity,
+				(uint8_t)((uint16_t)intensity * 90U / 255U));
+	}
+
+	/*
+	 * PB4 physical LEDs 30..36 (indices 29..35): show belt output from
+	 * the center outward. Levels 1..4 light 1/3/5/7 LEDs, while reusing
+	 * the moving Emerald intensity gradient from the main belt display.
+	 */
+	const uint16_t output_radius = (uint16_t)(belt_level - 1U);
+	for (uint16_t i = 0U; i < BELT_OUTPUT_LED_COUNT; i++) {
+		const uint16_t pixel = (uint16_t)(BELT_OUTPUT_FIRST_LED + i);
+		const uint16_t distance = (pixel > BELT_OUTPUT_CENTER_LED) ?
+				(pixel - BELT_OUTPUT_CENTER_LED) :
+				(BELT_OUTPUT_CENTER_LED - pixel);
+		uint8_t intensity = 0U;
+		if (distance <= output_radius) {
+			const uint16_t source_level =
+					(uint16_t)(belt_level - 1U - distance);
+			intensity = center_intensity[source_level];
+		}
+		setPixelPA6(pixel, 0U, intensity,
 				(uint8_t)((uint16_t)intensity * 90U / 255U));
 	}
 }
@@ -904,23 +934,27 @@ void LED_Effects_Render(uint8_t mode, uint8_t status, uint32_t grid_states) {
 		if (reversed) {
 			if (dribble) {
 				/* Reversed dribbling uses Gold gradients on both chains. */
-				LED_RenderDriveLauncherGradient(now_ms, false, false);
+				LED_RenderDriveLauncherGradient(now_ms, true, false);
 				LED_RenderChassisWaves(now_ms, 1200U, 3U, true,
 						255U, 215U, 0U, CHASSIS_BASE_INTENSITY);
 			} else {
 				/* Upper wave is opposite to normal; chassis stays solid Gold. */
-				LED_RenderDriveLauncherGradient(now_ms, false, false);
-				LED_SetChassisAll(255U, 215U, 0U);
+				LED_RenderDriveLauncherGradient(now_ms, true, false);
+				LED_SetChassisAll(CHASSIS_IDLE_REVERSED_R,
+						CHASSIS_IDLE_REVERSED_G,
+						CHASSIS_IDLE_REVERSED_B);
 			}
 		} else {
 			/* Normal drive keeps a blue gradient on the upper LED chain. */
-			LED_RenderDriveLauncherGradient(now_ms, true, true);
+			LED_RenderDriveLauncherGradient(now_ms, false, true);
 			if (dribble) {
 				LED_RenderChassisWaves(now_ms, 1200U, 3U,
 						roller_reverse, 0U, 22U, 255U,
 						CHASSIS_BASE_INTENSITY);
 			} else {
-				LED_SetChassisAll(0U, 22U, 255U);
+				LED_SetChassisAll(CHASSIS_IDLE_NORMAL_R,
+						CHASSIS_IDLE_NORMAL_G,
+						CHASSIS_IDLE_NORMAL_B);
 			}
 		}
 
