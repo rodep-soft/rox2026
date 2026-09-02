@@ -59,11 +59,11 @@
 
     # スティック入力の加速の加速度制限
     # linear: [m/s^2]　angular: [rad/s^2]
-    linear_x_acceleration_limit: 2.8
-    linear_y_acceleration_limit: 2.2
+    linear_x_acceleration_limit: 3.0
+    linear_y_acceleration_limit: 2.3
     angular_z_acceleration_limit: 15.0
 
     # スティック入力の減速の加速度制限
-    linear_x_deceleration_limit: 2.8
-    linear_y_deceleration_limit: 2.8
+    linear_x_deceleration_limit: 3.0
+    linear_y_deceleration_limit: 3.0
     angular_z_deceleration_limit: 15.0
