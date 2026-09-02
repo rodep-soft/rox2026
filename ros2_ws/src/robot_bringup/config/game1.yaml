@@ -1,0 +1,40 @@
+game1_auto_node:
+  ros__parameters:
+    kp_linear: 1.0
+    kp_angular: 1.5
+    max_linear_vel: 1.5
+    max_angular_vel: 1.0
+    pos_tolerance: 0.08
+    yaw_tolerance: 0.05
+
+    # ── テストモード設定 (単一WP移動テスト) ──
+    test_mode: true
+    wp_test_x: 1.0
+    wp_test_y: 0.0
+    wp_test_yaw: 0.0
+
+    # ── Game 1 ウェイポイント設定 [x (m), y (m), yaw (rad)] ──
+    # 1. ゲート射出位置
+    wp_gate_x: 1.5
+    wp_gate_y: 0.0
+    wp_gate_yaw: 0.0
+
+    # 2. ゲート横回り込み通過点
+    wp_around_gate_x: 2.5
+    wp_around_gate_y: 1.0
+    wp_around_gate_yaw: 0.0
+
+    # 3. ボールキャッチ予想位置 (カメラ未検出時の代替ターゲット)
+    wp_ball_x: 3.5
+    wp_ball_y: 0.0
+    wp_ball_yaw: 0.0
+
+    # 4. パスエリア射出位置
+    wp_pass_area_x: 2.0
+    wp_pass_area_y: -1.0
+    wp_pass_area_yaw: -1.5708
+
+    # 5. スタート復帰位置
+    wp_start_x: 0.0
+    wp_start_y: 0.0
+    wp_start_yaw: 0.0

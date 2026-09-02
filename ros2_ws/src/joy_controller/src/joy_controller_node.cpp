@@ -6,10 +6,12 @@
 #include <memory>
 #include <stdexcept>
 
-JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
+JoyControllerNode::JoyControllerNode()
+: Node("joy_controller_node")
+{
   joy_timeout_ms_ = declare_parameter<int>("joy_timeout_ms", 200);
   state_publish_period_ms_ =
-      declare_parameter<int>("state_publish_period_ms", 20);
+    declare_parameter<int>("state_publish_period_ms", 20);
 
   is_emergency_stop_ = true;
 
@@ -17,17 +19,17 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
   max_vel_y_m_s_ = declare_parameter<double>("linear_y_limit", 2.0);
   max_vel_z_rad_s_ = declare_parameter<double>("angular_z_limit", 2.0);
   acceleration_x_m_s2_ =
-      declare_parameter<double>("linear_x_acceleration_limit", 2.0);
+    declare_parameter<double>("linear_x_acceleration_limit", 2.0);
   acceleration_y_m_s2_ =
-      declare_parameter<double>("linear_y_acceleration_limit", 2.0);
+    declare_parameter<double>("linear_y_acceleration_limit", 2.0);
   acceleration_yaw_rad_s2_ =
-      declare_parameter<double>("angular_z_acceleration_limit", 4.0);
+    declare_parameter<double>("angular_z_acceleration_limit", 4.0);
   deceleration_x_m_s2_ =
-      declare_parameter<double>("linear_x_deceleration_limit", 3.0);
+    declare_parameter<double>("linear_x_deceleration_limit", 3.0);
   deceleration_y_m_s2_ =
-      declare_parameter<double>("linear_y_deceleration_limit", 3.0);
+    declare_parameter<double>("linear_y_deceleration_limit", 3.0);
   deceleration_yaw_rad_s2_ =
-      declare_parameter<double>("angular_z_deceleration_limit", 6.0);
+    declare_parameter<double>("angular_z_deceleration_limit", 6.0);
   axis_deadzone_ = declare_parameter<double>("axis_deadzone", 0.05);
   axis_on_threshold_ = declare_parameter<double>("axis_on_threshold", 0.7);
 
@@ -40,17 +42,17 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
   dribble_enable_button_ = declare_parameter<int>("dribble_enable_button", 5);
   game2_start_button_ = declare_parameter<int>("game2_start_button", 9);
   heading_hold_toggle_button_ =
-      declare_parameter<int>("heading_hold_toggle_button", 8);
+    declare_parameter<int>("heading_hold_toggle_button", 8);
   slow_turn_button_ = declare_parameter<int>("slow_turn_button", 7);
   slow_fire_button_ = declare_parameter<int>("slow_fire_button", 4);
   trigger_chord_requests_shot_cycle_ =
-      declare_parameter<bool>("trigger_chord_requests_shot_cycle", false);
+    declare_parameter<bool>("trigger_chord_requests_shot_cycle", false);
   slow_turn_scale_ = declare_parameter<double>("slow_turn_scale", 0.5);
   slow_linear_scale_ = declare_parameter<double>("slow_linear_scale", 0.5);
   spring_arm_open_delay_ms_ =
-      declare_parameter<int>("spring_arm_open_delay_ms", 0);
+    declare_parameter<int>("spring_arm_open_delay_ms", 0);
   spring_arm_restore_delay_ms_ =
-      declare_parameter<int>("spring_arm_restore_delay_ms", 600);
+    declare_parameter<int>("spring_arm_restore_delay_ms", 600);
 
   left_trigger_axis_ = declare_parameter<int>("left_trigger_axis", 3);
   right_trigger_axis_ = declare_parameter<int>("right_trigger_axis", 4);
@@ -67,98 +69,98 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
     throw std::runtime_error("spring arm delays must be non-negative");
   }
   if (!std::isfinite(max_vel_x_m_s_) || max_vel_x_m_s_ < 0.0 ||
-      !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
-      !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0 ||
-      !std::isfinite(slow_turn_scale_) || slow_turn_scale_ < 0.0 ||
-      !std::isfinite(slow_linear_scale_) || slow_linear_scale_ < 0.0 ||
-      !std::isfinite(acceleration_x_m_s2_) || acceleration_x_m_s2_ <= 0.0 ||
-      !std::isfinite(acceleration_y_m_s2_) || acceleration_y_m_s2_ <= 0.0 ||
-      !std::isfinite(acceleration_yaw_rad_s2_) ||
-      acceleration_yaw_rad_s2_ <= 0.0 || !std::isfinite(deceleration_x_m_s2_) ||
-      deceleration_x_m_s2_ <= 0.0 || !std::isfinite(deceleration_y_m_s2_) ||
-      deceleration_y_m_s2_ <= 0.0 || !std::isfinite(deceleration_yaw_rad_s2_) ||
-      deceleration_yaw_rad_s2_ <= 0.0) {
+    !std::isfinite(max_vel_y_m_s_) || max_vel_y_m_s_ < 0.0 ||
+    !std::isfinite(max_vel_z_rad_s_) || max_vel_z_rad_s_ < 0.0 ||
+    !std::isfinite(slow_turn_scale_) || slow_turn_scale_ < 0.0 ||
+    !std::isfinite(slow_linear_scale_) || slow_linear_scale_ < 0.0 ||
+    !std::isfinite(acceleration_x_m_s2_) || acceleration_x_m_s2_ <= 0.0 ||
+    !std::isfinite(acceleration_y_m_s2_) || acceleration_y_m_s2_ <= 0.0 ||
+    !std::isfinite(acceleration_yaw_rad_s2_) ||
+    acceleration_yaw_rad_s2_ <= 0.0 || !std::isfinite(deceleration_x_m_s2_) ||
+    deceleration_x_m_s2_ <= 0.0 || !std::isfinite(deceleration_y_m_s2_) ||
+    deceleration_y_m_s2_ <= 0.0 || !std::isfinite(deceleration_yaw_rad_s2_) ||
+    deceleration_yaw_rad_s2_ <= 0.0)
+  {
     throw std::runtime_error(
-        "velocity limits must be nonnegative and rate limits positive");
+            "velocity limits must be nonnegative and rate limits positive");
   }
   update_acceleration_limits();
 
   // joy_node -> joy_controller: 最新性を優先する操作入力。
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
-      "/joy", rclcpp::SensorDataQoS(),
-      std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
+    "/joy", rclcpp::SensorDataQoS(),
+    std::bind(&JoyControllerNode::joy_callback, this, std::placeholders::_1));
 
   // 周期送信する指令は最新値だけを保持する。
   const auto command_qos =
-      rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
+    rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
   // ボタン操作ごとに一度だけ送る要求は、短時間に連続しても欠落しないよう
   // 十分な履歴を持たせて確実配送する。古い操作の再実行を避けるためvolatileとする。
   const auto request_qos =
-      rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
+    rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
   const auto state_qos = rclcpp::QoS(1).reliable().transient_local();
   const auto emergency_stop_qos = state_qos;
-  const auto cmd_vel_topic =
-      declare_parameter<std::string>("cmd_vel_topic", "/drive/cmd_vel");
   emergency_stop_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/system/emergency_stop", emergency_stop_qos);
+    "/system/emergency_stop", emergency_stop_qos);
 
   spring_actuator_ready_sub_ = create_subscription<std_msgs::msg::Bool>(
-      "/spring/actuator_ready", state_qos,
-      std::bind(&JoyControllerNode::spring_actuator_ready_callback, this,
-                std::placeholders::_1));
+    "/spring/actuator_ready", state_qos,
+    std::bind(
+      &JoyControllerNode::spring_actuator_ready_callback, this,
+      std::placeholders::_1));
 
   game2_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
-      "/game2/state", state_qos,
-      [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
-        game2_state_ = msg->state;
-      });
+    "/game2/state", state_qos,
+    [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
+      game2_state_ = msg->state;
+    });
 
   pk_state_sub_ = create_subscription<robot_msgs::msg::Game2State>(
-      "/pk/state", state_qos,
-      [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
-        pk_state_ = msg->state;
-      });
+    "/pk/state", state_qos,
+    [this](const robot_msgs::msg::Game2State::SharedPtr msg) {
+      pk_state_ = msg->state;
+    });
 
-  mecanum_cmd_vel_pub_ =
-      create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic, command_qos);
+  mecanum_cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
+    "/drive/cmd_vel", command_qos);
   spring_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/spring/fire_request", command_qos);
+    "/spring/fire_request", command_qos);
 
   slow_fire_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/spring/slow_fire_request", command_qos);
+    "/spring/slow_fire_request", command_qos);
 
   belt_mode_pub_ = create_publisher<robot_msgs::msg::BeltMode>(
-      "/belt/command_mode", request_qos);
+    "/belt/command_mode", request_qos);
 
   dribble_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/dribble/command_enabled", command_qos);
+    "/dribble/command_enabled", command_qos);
 
   shot_cycle_request_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/dribble/shot_cycle_request", request_qos);
+    "/dribble/shot_cycle_request", request_qos);
 
   arm_position_mode_pub_ = create_publisher<robot_msgs::msg::ArmPosition>(
-      "/dribble/command_position", request_qos);
+    "/dribble/command_position", request_qos);
 
   game2_start_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/game2/command_start", request_qos);
+    "/game2/command_start", request_qos);
 
-  pk_start_pub_ =
-      create_publisher<std_msgs::msg::Bool>("/pk/start", request_qos);
+  pk_start_pub_ = create_publisher<std_msgs::msg::Bool>(
+    "/pk/start", request_qos);
 
-  pk_confirm_pub_ =
-      create_publisher<std_msgs::msg::Empty>("/pk/confirm", request_qos);
+  pk_confirm_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/confirm", request_qos);
 
-  pk_next_pub_ =
-      create_publisher<std_msgs::msg::Empty>("/pk/next", request_qos);
+  pk_next_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/next", request_qos);
 
-  pk_prev_pub_ =
-      create_publisher<std_msgs::msg::Empty>("/pk/prev", request_qos);
+  pk_prev_pub_ = create_publisher<std_msgs::msg::Empty>(
+    "/pk/prev", request_qos);
 
   heading_control_enable_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
+    "/heading_control/enable", rclcpp::QoS(1).reliable().transient_local());
 
   drive_reversed_pub_ = create_publisher<std_msgs::msg::Bool>(
-      "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
+    "/drive/reversed", rclcpp::QoS(1).reliable().transient_local());
 
   // 初期状態で Heading Hold を ON でパブリッシュ
   std_msgs::msg::Bool initial_heading_enable_msg;
@@ -168,28 +170,31 @@ JoyControllerNode::JoyControllerNode() : Node("joy_controller_node") {
   publish_stop_commands();
 
   joy_timeout_timer_ = create_wall_timer(
-      std::chrono::milliseconds(10),
-      std::bind(&JoyControllerNode::joy_timeout_timer_callback, this));
+    std::chrono::milliseconds(10),
+    std::bind(&JoyControllerNode::joy_timeout_timer_callback, this));
 
   state_publish_timer_ = create_wall_timer(
-      std::chrono::milliseconds(state_publish_period_ms_),
-      std::bind(&JoyControllerNode::state_publish_timer_callback, this));
+    std::chrono::milliseconds(state_publish_period_ms_),
+    std::bind(&JoyControllerNode::state_publish_timer_callback, this));
 
   loop_timer_ =
-      create_wall_timer(std::chrono::milliseconds(10),
-                        std::bind(&JoyControllerNode::loop_callback, this));
+    create_wall_timer(
+    std::chrono::milliseconds(10),
+    std::bind(&JoyControllerNode::loop_callback, this));
 
-  parameter_callback_handle_ = add_on_set_parameters_callback(std::bind(
+  parameter_callback_handle_ = add_on_set_parameters_callback(
+    std::bind(
       &JoyControllerNode::parameter_callback, this, std::placeholders::_1));
 }
 
 rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
-    const std::vector<rclcpp::Parameter> &parameters) {
+  const std::vector<rclcpp::Parameter> & parameters)
+{
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
 
-  for (const auto &param : parameters) {
-    const auto &name = param.get_name();
+  for (const auto & param : parameters) {
+    const auto & name = param.get_name();
 
     // 再起動が必要なパラメータの変更を拒否
     if (name == "state_publish_period_ms") {
@@ -205,13 +210,15 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
     if (param.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
       const int val = static_cast<int>(param.as_int());
       if (val < 0 && name != "joy_timeout_ms" && name != "slow_turn_button" &&
-          name != "slow_fire_button") {
+        name != "slow_fire_button")
+      {
         result.successful = false;
         result.reason = name + " must be non-negative";
         return result;
       }
       if (val < -1 &&
-          (name == "slow_turn_button" || name == "slow_fire_button")) {
+        (name == "slow_turn_button" || name == "slow_fire_button"))
+      {
         result.successful = false;
         result.reason = name + " must be >= -1";
         return result;
@@ -294,7 +301,8 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
         slow_linear_scale_ = val;
       }
     } else if (param.get_type() == rclcpp::ParameterType::PARAMETER_BOOL &&
-               name == "trigger_chord_requests_shot_cycle") {
+      name == "trigger_chord_requests_shot_cycle")
+    {
       trigger_chord_requests_shot_cycle_ = param.as_bool();
     }
   }
@@ -307,14 +315,16 @@ rcl_interfaces::msg::SetParametersResult JoyControllerNode::parameter_callback(
 }
 
 void JoyControllerNode::joy_callback(
-    const sensor_msgs::msg::Joy::SharedPtr msg) {
+  const sensor_msgs::msg::Joy::SharedPtr msg)
+{
   joy_timeout_active_ = false;
   joy_received_ = true;
   last_joy_received_time_ = std::chrono::steady_clock::now();
   joy_msg_ = *msg;
 }
 
-void JoyControllerNode::loop_callback() {
+void JoyControllerNode::loop_callback()
+{
   if (!joy_received_ || joy_timeout_active_) {
     return;
   }
@@ -338,17 +348,18 @@ void JoyControllerNode::loop_callback() {
   }
 
   const bool is_l2_active =
-      get_axis_value(joy_msg_, left_trigger_axis_) <= -axis_on_threshold_;
+    get_axis_value(joy_msg_, left_trigger_axis_) <= -axis_on_threshold_;
   const bool is_r2_active =
-      get_axis_value(joy_msg_, right_trigger_axis_) <= -axis_on_threshold_;
+    get_axis_value(joy_msg_, right_trigger_axis_) <= -axis_on_threshold_;
 
   // 2. DPAD 入力処理
   if (is_r2_active) {
     // R2 + □でHOME、R2 + DPAD左でOPENをDRIBBLEとのトグルで変更する。
     if (is_button_just_pressed(joy_msg_, square_button_)) {
       toggle_manual_arm_position(robot_msgs::msg::ArmPosition::HOME);
-    } else if (is_axis_just_triggered(joy_msg_, dpad_horizontal_axis_,
-                                      true)) // DPAD 左 (+1.0)
+    } else if (is_axis_just_triggered(
+        joy_msg_, dpad_horizontal_axis_,
+        true))                                 // DPAD 左 (+1.0)
     {
       toggle_manual_arm_position(robot_msgs::msg::ArmPosition::OPEN);
     }
@@ -356,7 +367,7 @@ void JoyControllerNode::loop_callback() {
     // R2非押下時: DPAD 上/下でベルトレベル昇降、DPAD 左/右でPKターゲット変更
     if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, true)) {
       belt_rpm_mode_ =
-          increment_mode(belt_rpm_mode_, robot_msgs::msg::BeltMode::LEVEL_4);
+        increment_mode(belt_rpm_mode_, robot_msgs::msg::BeltMode::LEVEL_4);
       RCLCPP_INFO(get_logger(), "Belt level changed to: %u", belt_rpm_mode_);
       publish_belt_mode(belt_rpm_mode_);
     } else if (is_axis_just_triggered(joy_msg_, dpad_vertical_axis_, false)) {
@@ -386,8 +397,9 @@ void JoyControllerNode::loop_callback() {
   // 3. ドリブル回転ON/OFF (R1)
   if (is_button_just_pressed(joy_msg_, dribble_enable_button_)) {
     dribble_enabled_ = !dribble_enabled_;
-    RCLCPP_INFO(get_logger(), "Dribble toggled: %s",
-                dribble_enabled_ ? "ON" : "OFF");
+    RCLCPP_INFO(
+      get_logger(), "Dribble toggled: %s",
+      dribble_enabled_ ? "ON" : "OFF");
     publish_dribble_enabled(dribble_enabled_);
   }
 
@@ -395,8 +407,9 @@ void JoyControllerNode::loop_callback() {
   if (is_button_just_pressed(joy_msg_, ps_button_)) {
     is_drive_reversed_ = !is_drive_reversed_;
     publish_drive_reversed(is_drive_reversed_);
-    RCLCPP_INFO(get_logger(), "Drive direction toggled: %s",
-                is_drive_reversed_ ? "REVERSED" : "FORWARD");
+    RCLCPP_INFO(
+      get_logger(), "Drive direction toggled: %s",
+      is_drive_reversed_ ? "REVERSED" : "FORWARD");
   }
 
   // 4b. Heading Hold ON/OFF 切替 (SHARE / BACK)
@@ -406,24 +419,26 @@ void JoyControllerNode::loop_callback() {
     hh_msg.data = is_heading_hold_enabled_;
     heading_control_enable_pub_->publish(hh_msg);
     if (is_heading_hold_enabled_) {
-      RCLCPP_INFO(get_logger(), "=== [JoyController] Heading Hold: ENABLED "
-                                "(IMU Stabilization ON) ===");
+      RCLCPP_INFO(
+        get_logger(), "=== [JoyController] Heading Hold: ENABLED "
+        "(IMU Stabilization ON) ===");
     } else {
-      RCLCPP_WARN(get_logger(), "=== [JoyController] Heading Hold: DISABLED "
-                                "(Raw Manual Passthrough Mode) ===");
+      RCLCPP_WARN(
+        get_logger(), "=== [JoyController] Heading Hold: DISABLED "
+        "(Raw Manual Passthrough Mode) ===");
     }
   }
 
   // 5. 自動シュートサイクル要求 (L2 + ○) / PKターゲット決定 (○単体)
   if (is_button_just_pressed(joy_msg_, circle_button_)) {
     if (is_l2_active) {
-      // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが
-      // PREPARING_SHOOT であれば射出許可
+      // 手動時は常に許可。自動モード時は Game2 または PK のいずれかが PREPARING_SHOOT であれば射出許可
       bool shot_allowed = false;
       if (!game2_active_ && !pk_active_) {
         shot_allowed = true;
       } else if (game2_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT ||
-                 pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT) {
+        pk_state_ == robot_msgs::msg::Game2State::PREPARING_SHOOT)
+      {
         shot_allowed = true;
       }
 
@@ -433,19 +448,17 @@ void JoyControllerNode::loop_callback() {
         req.data = true;
         shot_cycle_request_pub_->publish(req);
       } else {
-        RCLCPP_WARN(get_logger(),
-                    "Shot request ignored: Neither Game2 nor PK is in "
-                    "PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
-                    static_cast<unsigned>(game2_state_),
-                    static_cast<unsigned>(pk_state_));
+        RCLCPP_WARN(
+          get_logger(),
+          "Shot request ignored: Neither Game2 nor PK is in PREPARING_SHOOT (game2_state=%u, pk_state=%u)",
+          static_cast<unsigned>(game2_state_), static_cast<unsigned>(pk_state_));
       }
     } else {
       // L2非押下での ○ ボタン押下 -> PKターゲット決定・照準開始
       if (pk_active_ || pk_state_ == robot_msgs::msg::Game2State::SEARCHING) {
         std_msgs::msg::Empty confirm_msg;
         pk_confirm_pub_->publish(confirm_msg);
-        RCLCPP_INFO(get_logger(),
-                    "PK Target CONFIRMED! Aligning started (Circle button)");
+        RCLCPP_INFO(get_logger(), "PK Target CONFIRMED! Aligning started (Circle button)");
       }
     }
   }
@@ -454,8 +467,9 @@ void JoyControllerNode::loop_callback() {
   if (is_button_just_pressed(joy_msg_, game2_start_button_)) {
     game2_active_ = !game2_active_;
     pk_active_ = !pk_active_;
-    RCLCPP_INFO(get_logger(), "Auto Game mode toggled: %s (Game2/PK)",
-                game2_active_ ? "START" : "STOP");
+    RCLCPP_INFO(
+      get_logger(), "Auto Game mode toggled: %s (Game2/PK)",
+      game2_active_ ? "START" : "STOP");
     std_msgs::msg::Bool auto_msg;
     auto_msg.data = game2_active_;
     game2_start_pub_->publish(auto_msg);
@@ -465,17 +479,18 @@ void JoyControllerNode::loop_callback() {
   // 7. 手動オーバーライド: 自動モード中にスティック操作を検出したら自動解除
   if (game2_active_ || pk_active_) {
     const double raw_vx =
-        apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
+      apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_y_axis_));
     const double raw_vy =
-        apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
+      apply_axis_deadzone(get_axis_value(joy_msg_, left_stick_x_axis_));
     const double raw_wz =
-        apply_axis_deadzone(-get_axis_value(joy_msg_, right_stick_x_axis_));
+      apply_axis_deadzone(-get_axis_value(joy_msg_, right_stick_x_axis_));
 
     if (raw_vx != 0.0 || raw_vy != 0.0 || raw_wz != 0.0) {
       game2_active_ = false;
       pk_active_ = false;
-      RCLCPP_WARN(get_logger(),
-                  "Manual stick input detected! AUTO mode disengaged.");
+      RCLCPP_WARN(
+        get_logger(),
+        "Manual stick input detected! AUTO mode disengaged.");
       std_msgs::msg::Bool auto_msg;
       auto_msg.data = false;
       game2_start_pub_->publish(auto_msg);
@@ -486,16 +501,14 @@ void JoyControllerNode::loop_callback() {
   // 8. L2とR2の同時押しで設定された発射方式を要求
   const auto now_tp = std::chrono::steady_clock::now();
   const bool trigger_chord_active = is_l2_active && is_r2_active;
-  const bool was_l2_active =
-      last_joy_msg_.has_value() &&
-      get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
-          -axis_on_threshold_;
-  const bool was_r2_active =
-      last_joy_msg_.has_value() &&
-      get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
-          -axis_on_threshold_;
+  const bool was_l2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), left_trigger_axis_) <=
+    -axis_on_threshold_;
+  const bool was_r2_active = last_joy_msg_.has_value() &&
+    get_axis_value(last_joy_msg_.value(), right_trigger_axis_) <=
+    -axis_on_threshold_;
   const bool trigger_chord_just_pressed =
-      trigger_chord_active && !(was_l2_active && was_r2_active);
+    trigger_chord_active && !(was_l2_active && was_r2_active);
 
   if (trigger_chord_requests_shot_cycle_ && trigger_chord_just_pressed) {
     std_msgs::msg::Bool request;
@@ -505,29 +518,30 @@ void JoyControllerNode::loop_callback() {
   }
 
   const bool spring_fire_input =
-      trigger_chord_active && !trigger_chord_requests_shot_cycle_;
-  const bool spring_fire_requested =
-      spring_fire_input && spring_actuator_ready_;
+    trigger_chord_active && !trigger_chord_requests_shot_cycle_;
+  const bool spring_fire_requested = spring_fire_input && spring_actuator_ready_;
 
   // 初回だけアームOPENの遅延シーケンスを開始する。
   if (spring_fire_requested && spring_actuator_ready_ &&
-      !spring_fire_command_started_ && !spring_arm_restore_pending_) {
+    !spring_fire_command_started_ && !spring_arm_restore_pending_)
+  {
     spring_fire_command_started_ = true;
     spring_arm_open_pending_ = true;
     spring_arm_restore_pending_ = true;
     spring_sequence_start_time_ = now_tp;
     spring_fire_released_time_ = now_tp;
-    RCLCPP_INFO(get_logger(), "Spring fire accepted: arm OPEN delay=%d ms",
-                spring_arm_open_delay_ms_);
+    RCLCPP_INFO(
+      get_logger(),
+      "Spring fire accepted: arm OPEN delay=%d ms",
+      spring_arm_open_delay_ms_);
   } else if (!spring_fire_requested) {
     spring_fire_command_started_ = false;
   }
 
   if (spring_arm_open_pending_) {
     const auto elapsed_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            now_tp - spring_sequence_start_time_)
-            .count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - spring_sequence_start_time_).count();
     if (elapsed_ms >= spring_arm_open_delay_ms_) {
       spring_arm_open_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::OPEN);
@@ -542,7 +556,7 @@ void JoyControllerNode::loop_callback() {
 
   // L1を押している間も毎周期スロー発射要求を送信する。
   const bool slow_fire_requested =
-      slow_fire_button_ >= 0 && is_button_down(joy_msg_, slow_fire_button_);
+    slow_fire_button_ >= 0 && is_button_down(joy_msg_, slow_fire_button_);
   std_msgs::msg::Bool slow_fire_msg;
   slow_fire_msg.data = slow_fire_requested;
   slow_fire_pub_->publish(slow_fire_msg);
@@ -550,17 +564,17 @@ void JoyControllerNode::loop_callback() {
   // 発射開始から設定時間が経過したらアームをDRIBBLEへ戻す。
   if (spring_arm_restore_pending_ && !spring_arm_open_pending_) {
     const auto elapsed_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            now_tp - spring_fire_released_time_)
-            .count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+      now_tp - spring_fire_released_time_).count();
     if (elapsed_ms >= spring_arm_restore_delay_ms_) {
       spring_arm_restore_pending_ = false;
       publish_arm_position(robot_msgs::msg::ArmPosition::DRIBBLE);
       manual_arm_position_ = robot_msgs::msg::ArmPosition::DRIBBLE;
-      RCLCPP_INFO(get_logger(),
-                  "Spring shot complete -> Arm automatically restored to "
-                  "DRIBBLE (Dribble: %s)",
-                  dribble_enabled_ ? "ON" : "OFF");
+      RCLCPP_INFO(
+        get_logger(),
+        "Spring shot complete -> Arm automatically restored to "
+        "DRIBBLE (Dribble: %s)",
+        dribble_enabled_ ? "ON" : "OFF");
     }
   }
 
@@ -602,81 +616,90 @@ void JoyControllerNode::loop_callback() {
 }
 
 void JoyControllerNode::spring_actuator_ready_callback(
-    const std_msgs::msg::Bool::SharedPtr msg) {
+  const std_msgs::msg::Bool::SharedPtr msg)
+{
   spring_actuator_ready_ = msg->data;
 }
 
-void JoyControllerNode::joy_timeout_timer_callback() {
+void JoyControllerNode::joy_timeout_timer_callback()
+{
   if (!joy_received_) {
     return;
   }
 
   const auto now = std::chrono::steady_clock::now();
   const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                           now - last_joy_received_time_)
-                           .count();
+    now - last_joy_received_time_)
+    .count();
 
   if (elapsed > joy_timeout_ms_ && !joy_timeout_active_) {
     joy_timeout_active_ = true;
     last_joy_msg_.reset();
-    RCLCPP_WARN(get_logger(), "Joy message timeout (%ld ms). Stopping robot.",
-                elapsed);
+    RCLCPP_WARN(
+      get_logger(), "Joy message timeout (%ld ms). Stopping robot.",
+      elapsed);
     publish_stop_commands();
   }
 }
 
-void JoyControllerNode::state_publish_timer_callback() {
+void JoyControllerNode::state_publish_timer_callback()
+{
   publish_emergency_stop(is_emergency_stop_);
   publish_dribble_enabled(dribble_enabled_);
   publish_drive_reversed(is_drive_reversed_);
 }
 
-void JoyControllerNode::publish_emergency_stop(bool active) {
+void JoyControllerNode::publish_emergency_stop(bool active)
+{
   std_msgs::msg::Bool msg;
   msg.data = active;
   emergency_stop_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_belt_mode(uint8_t mode,
-                                          int8_t rpm_offset_step) {
+void JoyControllerNode::publish_belt_mode(uint8_t mode, int8_t rpm_offset_step)
+{
   robot_msgs::msg::BeltMode msg;
   msg.mode = mode;
   msg.rpm_offset_step = rpm_offset_step;
   belt_mode_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_arm_position(uint8_t position) {
+void JoyControllerNode::publish_arm_position(uint8_t position)
+{
   robot_msgs::msg::ArmPosition msg;
   msg.position = position;
   arm_position_mode_pub_->publish(msg);
 }
 
-void JoyControllerNode::toggle_manual_arm_position(uint8_t target_position) {
-  manual_arm_position_ = manual_arm_position_ == target_position
-                             ? robot_msgs::msg::ArmPosition::DRIBBLE
-                             : target_position;
+void JoyControllerNode::toggle_manual_arm_position(uint8_t target_position)
+{
+  manual_arm_position_ = manual_arm_position_ == target_position ?
+    robot_msgs::msg::ArmPosition::DRIBBLE : target_position;
   publish_arm_position(manual_arm_position_);
-  RCLCPP_INFO(get_logger(), "Manual arm position -> %s",
-              manual_arm_position_ == robot_msgs::msg::ArmPosition::DRIBBLE
-                  ? "DRIBBLE"
-                  : (manual_arm_position_ == robot_msgs::msg::ArmPosition::OPEN
-                         ? "OPEN"
-                         : "HOME"));
+  RCLCPP_INFO(
+    get_logger(), "Manual arm position -> %s",
+    manual_arm_position_ == robot_msgs::msg::ArmPosition::DRIBBLE ?
+    "DRIBBLE" :
+    (manual_arm_position_ == robot_msgs::msg::ArmPosition::OPEN ?
+    "OPEN" : "HOME"));
 }
 
-void JoyControllerNode::publish_dribble_enabled(bool enabled) {
+void JoyControllerNode::publish_dribble_enabled(bool enabled)
+{
   std_msgs::msg::Bool msg;
   msg.data = enabled;
   dribble_enabled_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_drive_reversed(bool reversed) {
+void JoyControllerNode::publish_drive_reversed(bool reversed)
+{
   std_msgs::msg::Bool msg;
   msg.data = reversed;
   drive_reversed_pub_->publish(msg);
 }
 
-void JoyControllerNode::publish_stop_commands() {
+void JoyControllerNode::publish_stop_commands()
+{
   velocity_limiter_x_.reset();
   velocity_limiter_y_.reset();
   velocity_limiter_yaw_.reset();
@@ -703,14 +726,15 @@ void JoyControllerNode::publish_stop_commands() {
 }
 
 void JoyControllerNode::publish_limited_velocity(
-    const double target_x_m_s, const double target_y_m_s,
-    const double target_yaw_rad_s) {
+  const double target_x_m_s, const double target_y_m_s,
+  const double target_yaw_rad_s)
+{
   const auto current_time = std::chrono::steady_clock::now();
   double dt_sec = 0.01;
   if (velocity_limiter_initialized_) {
     dt_sec =
-        std::chrono::duration<double>(current_time - last_velocity_update_time_)
-            .count();
+      std::chrono::duration<double>(current_time - last_velocity_update_time_)
+      .count();
     dt_sec = std::clamp(dt_sec, 0.001, 0.1);
   } else {
     velocity_limiter_initialized_ = true;
@@ -723,23 +747,29 @@ void JoyControllerNode::publish_limited_velocity(
   mecanum_cmd_vel_pub_->publish(cmd_vel_);
 }
 
-void JoyControllerNode::update_acceleration_limits() {
+void JoyControllerNode::update_acceleration_limits()
+{
   velocity_limiter_x_.set_limits(acceleration_x_m_s2_, deceleration_x_m_s2_);
   velocity_limiter_y_.set_limits(acceleration_y_m_s2_, deceleration_y_m_s2_);
-  velocity_limiter_yaw_.set_limits(acceleration_yaw_rad_s2_,
-                                   deceleration_yaw_rad_s2_);
+  velocity_limiter_yaw_.set_limits(
+    acceleration_yaw_rad_s2_,
+    deceleration_yaw_rad_s2_);
 }
 
-bool JoyControllerNode::is_button_down(const sensor_msgs::msg::Joy &msg,
-                                       int index) const {
+bool JoyControllerNode::is_button_down(
+  const sensor_msgs::msg::Joy & msg,
+  int index) const
+{
   if (index < 0 || static_cast<size_t>(index) >= msg.buttons.size()) {
     return false;
   }
   return msg.buttons[index] != 0;
 }
 
-bool JoyControllerNode::is_button_just_pressed(const sensor_msgs::msg::Joy &msg,
-                                               int index) const {
+bool JoyControllerNode::is_button_just_pressed(
+  const sensor_msgs::msg::Joy & msg,
+  int index) const
+{
   if (!last_joy_msg_.has_value()) {
     return is_button_down(msg, index);
   }
@@ -747,8 +777,10 @@ bool JoyControllerNode::is_button_just_pressed(const sensor_msgs::msg::Joy &msg,
          !is_button_down(last_joy_msg_.value(), index);
 }
 
-double JoyControllerNode::get_axis_value(const sensor_msgs::msg::Joy &msg,
-                                         int index) const {
+double JoyControllerNode::get_axis_value(
+  const sensor_msgs::msg::Joy & msg,
+  int index) const
+{
   if (index < 0 || static_cast<size_t>(index) >= msg.axes.size()) {
     return 0.0;
   }
@@ -759,12 +791,14 @@ double JoyControllerNode::get_axis_value(const sensor_msgs::msg::Joy &msg,
   return std::clamp(value, -1.0, 1.0);
 }
 
-bool JoyControllerNode::is_axis_just_triggered(const sensor_msgs::msg::Joy &msg,
-                                               int index, bool positive) const {
+bool JoyControllerNode::is_axis_just_triggered(
+  const sensor_msgs::msg::Joy & msg,
+  int index, bool positive) const
+{
   const double current_val = get_axis_value(msg, index);
-  const double last_val = last_joy_msg_.has_value()
-                              ? get_axis_value(last_joy_msg_.value(), index)
-                              : 0.0;
+  const double last_val = last_joy_msg_.has_value() ?
+    get_axis_value(last_joy_msg_.value(), index) :
+    0.0;
 
   if (positive) {
     return current_val >= axis_on_threshold_ && last_val < axis_on_threshold_;
@@ -773,28 +807,32 @@ bool JoyControllerNode::is_axis_just_triggered(const sensor_msgs::msg::Joy &msg,
   }
 }
 
-double JoyControllerNode::apply_axis_deadzone(double value) const {
+double JoyControllerNode::apply_axis_deadzone(double value) const
+{
   if (std::abs(value) < axis_deadzone_) {
     return 0.0;
   }
   return value;
 }
 
-uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode) {
+uint8_t JoyControllerNode::increment_mode(uint8_t mode, uint8_t maximum_mode)
+{
   if (mode < maximum_mode) {
     return mode + 1;
   }
   return maximum_mode;
 }
 
-uint8_t JoyControllerNode::decrement_mode(uint8_t mode) {
+uint8_t JoyControllerNode::decrement_mode(uint8_t mode)
+{
   if (mode > 0) {
     return mode - 1;
   }
   return 0;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char ** argv)
+{
   rclcpp::init(argc, argv);
   auto node = std::make_shared<JoyControllerNode>();
   rclcpp::spin(node);
