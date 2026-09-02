@@ -88,10 +88,7 @@ def create_socketcan_nodes(interface_name):
                 "interval_sec": 0.005,
                 # Match EduLite extended feedback, parameter-read response,
                 # and fault frame types in the kernel.
-                "filters": (
-                    "02000000:9F000000,11000000:9F000000,"
-                    "15000000:9F000000"
-                ),
+                "filters": ("02000000:9F000000,11000000:9F000000," "15000000:9F000000"),
                 "use_bus_time": False,
                 "auto_configure": True,
                 "auto_activate": True,
