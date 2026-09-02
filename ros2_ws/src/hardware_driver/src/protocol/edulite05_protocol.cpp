@@ -696,7 +696,19 @@ std::optional<can_msgs::msg::Frame> Protocol::create_target_frame(
     return std::nullopt;
   }
 
-  last_command_time_ = current_time;
+  // Keep the command schedule aligned to the configured period. The outer
+  // driver timer can run slightly early; rebasing to that callback time would
+  // make the following callback fail the same-period check and reduce a
+  // nominal 100 Hz stream to roughly 50--70 Hz.
+  if (last_command_time_ == TimePoint{}) {
+    last_command_time_ = current_time;
+  } else {
+    last_command_time_ += command_period;
+    // Drop missed periods instead of replaying a backlog after a long stall.
+    if (current_time - last_command_time_ >= command_period) {
+      last_command_time_ = current_time;
+    }
+  }
 
   if (config_.control_mode == ControlMode::VELOCITY) {
     auto velocity_target = target_value_;
