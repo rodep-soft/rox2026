@@ -19,7 +19,10 @@ def generate_launch_description():
                 executable="stm32_node",
                 name="stm32_driver_node",
                 output="screen",
-                parameters=[parameter_file],
+                parameters=[
+                    parameter_file,
+                    {"can_rx_topic": "/socketcan_bridge/stm32/rx"},
+                ],
             ),
             Node(
                 package="tf2_ros",
