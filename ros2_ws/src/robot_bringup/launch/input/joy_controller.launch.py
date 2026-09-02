@@ -28,11 +28,6 @@ def generate_launch_description():
                 default_value="joy_controller.yaml",
                 description="Joy controller parameter file in robot_bringup/config",
             ),
-            DeclareLaunchArgument(
-                "cmd_vel_topic",
-                default_value="/drive/cmd_vel",
-                description="Joystick velocity output topic",
-            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(launch_dir, "input", "joy.launch.py")
@@ -43,10 +38,7 @@ def generate_launch_description():
                 executable="joy_controller_node",
                 name="joy_controller",
                 output="screen",
-                parameters=[
-                    parameter_file,
-                    {"cmd_vel_topic": LaunchConfiguration("cmd_vel_topic")},
-                ],
+                parameters=[parameter_file],
             ),
         ]
     )
