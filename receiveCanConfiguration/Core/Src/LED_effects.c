@@ -20,8 +20,10 @@
 #define LAUNCHER_SIDE_LED_COUNT        9U
 #define MIDDLE_FRONT_LED_COUNT         7U
 #define BELT_OUTPUT_FIRST_LED         29U
-#define BELT_OUTPUT_CENTER_LED        32U
 #define BELT_OUTPUT_LED_COUNT          7U
+#define BELT_ADDED_STRIP_FIRST_LED    48U
+#define BELT_ADDED_STRIP_LED_COUNT     8U
+#define BELT_ADDED_STRIP_COUNT         2U
 #define LAUNCHER_LEVEL_COUNT          10U
 #define MIDDLE_CHAIN_START            20U
 #define CHASSIS_FRONT_CENTER          15U
@@ -100,6 +102,27 @@ static uint8_t LED_GlowIntensity(uint16_t distance) {
 	case 1U: return 110U;
 	case 2U: return 35U;
 	default: return 0U;
+	}
+}
+
+static void LED_GetDriveGradientColor(uint8_t glow, bool blue_gradient,
+		uint8_t *red, uint8_t *green, uint8_t *blue) {
+	const uint8_t primary = (uint8_t)(18U + 237U * glow / 255U);
+	uint8_t accent;
+	if (glow <= 160U) {
+		accent = (uint8_t)(10U + glow);
+	} else {
+		accent = (uint8_t)(170U -
+				(uint16_t)(glow - 160U) * 130U / 95U);
+	}
+	if (blue_gradient) {
+		*red = 0U;
+		*green = accent;
+		*blue = primary;
+	} else {
+		*red = primary;
+		*green = accent;
+		*blue = 0U;
 	}
 }
 
@@ -209,19 +232,31 @@ static void LED_RenderDriveLauncherGradient(uint32_t now_ms,
 					((uint32_t)radius_q8 * (uint32_t)radius_q8));
 		}
 
-		/* Blue is the same gradient as Gold with the primary channel swapped. */
-		const uint8_t primary = (uint8_t)(18U + 237U * glow / 255U);
-		uint8_t accent;
-		if (glow <= 160U) {
-			accent = (uint8_t)(10U + glow);
-		} else {
-			accent = (uint8_t)(170U -
-					(uint16_t)(glow - 160U) * 130U / 95U);
-		}
-		if (blue_gradient) {
-			LED_SetLauncherLevel(level, 0U, accent, primary);
-		} else {
-			LED_SetLauncherLevel(level, primary, accent, 0U);
+		uint8_t red, green, blue;
+		LED_GetDriveGradientColor((uint8_t)glow, blue_gradient,
+				&red, &green, &blue);
+		LED_SetLauncherLevel(level, red, green, blue);
+	}
+
+	/* Apply the same stopped-drive gradient to both appended PB4 strips. */
+	for (uint16_t strip = 0U; strip < BELT_ADDED_STRIP_COUNT; strip++) {
+		const uint16_t first = (uint16_t)(BELT_ADDED_STRIP_FIRST_LED +
+				strip * BELT_ADDED_STRIP_LED_COUNT);
+		for (uint16_t i = 0U; i < BELT_ADDED_STRIP_LED_COUNT; i++) {
+			int32_t distance_q8 = (int32_t)i * 256L - head_q8;
+			if (distance_q8 < 0L) distance_q8 = -distance_q8;
+			uint16_t glow = 0U;
+			if (distance_q8 < radius_q8) {
+				const uint32_t strength = (uint32_t)(radius_q8 - distance_q8);
+				glow = (uint16_t)(strength * strength * 255U /
+						((uint32_t)radius_q8 * (uint32_t)radius_q8));
+			}
+			uint8_t red, green, blue;
+			LED_GetDriveGradientColor((uint8_t)glow, blue_gradient,
+					&red, &green, &blue);
+			const uint16_t pixel_offset = (strip == 0U) ?
+					(uint16_t)(BELT_ADDED_STRIP_LED_COUNT - 1U - i) : i;
+			setPixelPA6((uint16_t)(first + pixel_offset), red, green, blue);
 		}
 	}
 }
@@ -412,24 +447,44 @@ static void LED_RenderBeltLauncher(uint8_t status, uint32_t now_ms) {
 	}
 
 	/*
-	 * PB4 physical LEDs 30..36 (indices 29..35): show belt output from
-	 * the center outward. Levels 1..4 light 1/3/5/7 LEDs, while reusing
-	 * the moving Emerald intensity gradient from the main belt display.
+	 * PB4 physical LEDs 30..36 (indices 29..35): while the belt is active,
+	 * keep all seven LEDs in the moving Emerald belt gradient.
 	 */
-	const uint16_t output_radius = (uint16_t)(belt_level - 1U);
 	for (uint16_t i = 0U; i < BELT_OUTPUT_LED_COUNT; i++) {
 		const uint16_t pixel = (uint16_t)(BELT_OUTPUT_FIRST_LED + i);
-		const uint16_t distance = (pixel > BELT_OUTPUT_CENTER_LED) ?
-				(pixel - BELT_OUTPUT_CENTER_LED) :
-				(BELT_OUTPUT_CENTER_LED - pixel);
-		uint8_t intensity = 0U;
-		if (distance <= output_radius) {
-			const uint16_t source_level =
-					(uint16_t)(belt_level - 1U - distance);
-			intensity = center_intensity[source_level];
+		int32_t distance_q8 = (int32_t)i * 256L - belt_wave_head_q8;
+		if (distance_q8 < 0L) distance_q8 = -distance_q8;
+		uint16_t intensity = 18U;
+		if (distance_q8 < radius_q8) {
+			const uint32_t strength = (uint32_t)(radius_q8 - distance_q8);
+			intensity += (uint16_t)(237U * strength * strength /
+					((uint32_t)radius_q8 * (uint32_t)radius_q8));
 		}
-		setPixelPA6(pixel, 0U, intensity,
+		setPixelPA6(pixel, 0U, (uint8_t)intensity,
 				(uint8_t)((uint16_t)intensity * 90U / 255U));
+	}
+
+	/*
+	 * The two appended 8-LED PB4 strips occupy indices 48..55 and 56..63.
+	 * Starting at the physical bottom of each strip, each belt level adds
+	 * two LEDs: 2/4/6/8 LEDs per strip. Active belt colors use the same
+	 * Emerald gradient as the main display. The first strip's
+	 * index order is reversed to match its opposite physical orientation.
+	 */
+	const uint16_t added_lit_count = (uint16_t)(2U * belt_level);
+	for (uint16_t strip = 0U; strip < BELT_ADDED_STRIP_COUNT; strip++) {
+		const uint16_t first = (uint16_t)(BELT_ADDED_STRIP_FIRST_LED +
+				strip * BELT_ADDED_STRIP_LED_COUNT);
+		for (uint16_t i = 0U; i < BELT_ADDED_STRIP_LED_COUNT; i++) {
+			uint8_t intensity = 0U;
+			if (i < added_lit_count) {
+				intensity = center_intensity[i];
+			}
+			const uint16_t pixel_offset = (strip == 0U) ?
+					(uint16_t)(BELT_ADDED_STRIP_LED_COUNT - 1U - i) : i;
+			setPixelPA6((uint16_t)(first + pixel_offset), 0U, intensity,
+					(uint8_t)((uint16_t)intensity * 90U / 255U));
+		}
 	}
 }
 

@@ -29,7 +29,7 @@
 #endif
 
 /* Independent SK6812/WS2812-compatible RGB strips (NEO_GRB, 800 kHz). */
-#define PB4_LED_NUM 48U
+#define PB4_LED_NUM 64U
 #define PB5_LED_NUM 38U
 
 /* Compatibility names retained so the existing animation code is unchanged. */
