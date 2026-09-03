@@ -19,10 +19,7 @@ def generate_launch_description():
                 executable="edulite05_node",
                 name="edulite05_driver",
                 output="screen",
-                parameters=[
-                    parameter_file,
-                    {"can_rx_topic": "/socketcan_bridge/edulite/rx"},
-                ],
+                parameters=[parameter_file],
             )
         ]
     )

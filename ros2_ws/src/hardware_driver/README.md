@@ -9,4 +9,8 @@ CAN ID、8 byteフレーム、エンディアン、デバイス固有プロト�
 - `stm32_node`: STM32とのheartbeat、LED、limit switch通信。詳細は[docs/stm32_node/README.md](docs/stm32_node/README.md)。
 - `vesc_node`: VESCのRPM指令とフィードバック。詳細は[docs/vesc_node/README.md](docs/vesc_node/README.md)。
 
-全ノードは`/socketcan_bridge/tx`へ`can_msgs/msg/Frame`を送信し、`/socketcan_bridge/rx`から受信する。起動設定と機体ごとのIDは`robot_bringup`で管理する。
+全ノードは`/socketcan_bridge/tx`へ`can_msgs/msg/Frame`を送信する。通常の
+`robot_bringup`では受信負荷を分離するため、VESC、STM32、EduLiteがそれぞれ
+`/socketcan_bridge/vesc/rx`、`/socketcan_bridge/stm32/rx`、
+`/socketcan_bridge/edulite/rx`を使用する。起動設定と機体ごとのIDは
+`robot_bringup`で管理する。

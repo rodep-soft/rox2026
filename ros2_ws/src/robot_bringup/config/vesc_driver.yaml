@@ -1,13 +1,13 @@
 /vesc_driver:
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
-    can_rx_topic: "/socketcan_bridge/rx"
+    can_rx_topic: "/socketcan_bridge/vesc/rx"
     target_topic: "/vesc/target"
     target_array_topic: "/vesc/target_array"
     state_topic: "/vesc/state"
     state_array_topic: "/vesc/state_array"
     update_period_ms: 25               # VESCへのCAN指令周期
-    state_array_publish_period_ms: 100 # state_arrayの配信周期
+    state_array_publish_period_ms: 500 # state_arrayの配信周期
     # モータごとのstateは受信後即時配信
 
     motors:
