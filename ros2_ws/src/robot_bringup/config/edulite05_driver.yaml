@@ -8,7 +8,7 @@
     state_array_topic: "/edulite/state_array"
     set_position_service: "/edulite/set_position"
     update_period_ms: 10
-    state_array_publish_period_ms: 500
+    state_array_publish_period_ms: 100
 
     motors:
       - front_left
