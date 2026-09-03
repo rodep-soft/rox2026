@@ -7,7 +7,7 @@
     state_topic: "/vesc/state"
     state_array_topic: "/vesc/state_array"
     update_period_ms: 25               # VESCへのCAN指令周期
-    state_array_publish_period_ms: 100 # state_arrayの配信周期
+    state_array_publish_period_ms: 500 # state_arrayの配信周期
     # モータごとのstateは受信後即時配信
 
     motors:

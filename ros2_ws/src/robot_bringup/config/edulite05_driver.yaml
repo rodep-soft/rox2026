@@ -8,7 +8,7 @@
     state_array_topic: "/edulite/state_array"
     set_position_service: "/edulite/set_position"
     update_period_ms: 10
-    state_array_publish_period_ms: 100
+    state_array_publish_period_ms: 500
 
     motors:
       - front_left
@@ -28,7 +28,7 @@
       speed_limit: 50.0      # [ rad/s ] 速度制限値
       current_feedback_enabled: false  #電流値フィードバックを取得するかどうか
       current_feedback_period_ms: 100 #電流値のフィードバックを受け取る周期
-      command_period_ms: 10           # 目標値の配信周期
+      command_period_ms: 15           # 目標値の配信周期
 
     front_right:
       immediate_state_publish: true
@@ -40,7 +40,7 @@
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
-      command_period_ms: 10
+      command_period_ms: 15
 
     rear_left:
       immediate_state_publish: true
@@ -52,7 +52,7 @@
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
-      command_period_ms: 10
+      command_period_ms: 15
 
     rear_right:
       immediate_state_publish: true
@@ -64,7 +64,7 @@
       speed_limit: 50.0
       current_feedback_enabled: false
       current_feedback_period_ms: 100
-      command_period_ms: 10
+      command_period_ms: 15
 
     spring:
       immediate_state_publish: true # 原点復帰用に即時配信

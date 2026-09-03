@@ -7,6 +7,6 @@
     led_command_topic: "/hardware/led_cmd"
     limit_switches_topic: "/hardware/limit_switches"
     timeout_ms: 1000            # stm32のタイムアウト検知時間 (500ms -> 1000msに緩和)
-    keep_alive_period_ms: 200   # heartbeatの送信と判断周期
+    keep_alive_period_ms: 150   # heartbeatの送信と判断周期
     imu_component_timeout_ms: 200 # 角速度・並進加速度の有効期限
     imu_reception_timeout_ms: 500 # 有効なQuaternion未受信をIMU信号途絶と判断する時間
