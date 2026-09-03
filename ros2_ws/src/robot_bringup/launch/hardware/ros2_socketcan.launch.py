@@ -34,24 +34,26 @@ def wait_for_can_interface(context):
 
 
 def create_socketcan_nodes(interface_name):
-    receiver = Node(
+    vesc_receiver = Node(
         package="ros2_socketcan",
         executable="socket_can_receiver_node_exe",
-        name="socket_can_receiver",
+        name="socket_can_receiver_vesc",
         output="screen",
         parameters=[
             {
                 "interface": interface_name,
                 "enable_can_fd": False,
                 "interval_sec": 0.005,
-                "filters": "0:0",
+                # VESC Status 1 uses extended ID 0x000009xx. Filter it in the
+                # kernel instead of copying all STM32 and EduLite traffic.
+                "filters": "00000900:9FFFFF00",
                 "use_bus_time": False,
                 # Let the node perform lifecycle transitions synchronously.
                 "auto_configure": True,
                 "auto_activate": True,
             }
         ],
-        remappings=[("from_can_bus", "/socketcan_bridge/rx")],
+        remappings=[("from_can_bus", "/socketcan_bridge/vesc/rx")],
     )
     stm32_receiver = Node(
         package="ros2_socketcan",
@@ -114,7 +116,7 @@ def create_socketcan_nodes(interface_name):
         ],
         remappings=[("to_can_bus", "/socketcan_bridge/tx")],
     )
-    return [receiver, stm32_receiver, edulite_receiver, sender]
+    return [vesc_receiver, stm32_receiver, edulite_receiver, sender]
 
 
 def generate_launch_description():

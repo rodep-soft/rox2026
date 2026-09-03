@@ -1,7 +1,7 @@
 /vesc_driver:
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
-    can_rx_topic: "/socketcan_bridge/rx"
+    can_rx_topic: "/socketcan_bridge/vesc/rx"
     target_topic: "/vesc/target"
     target_array_topic: "/vesc/target_array"
     state_topic: "/vesc/state"

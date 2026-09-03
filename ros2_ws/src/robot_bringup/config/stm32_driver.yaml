@@ -1,7 +1,7 @@
 /stm32_driver_node:
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
-    can_rx_topic: "/socketcan_bridge/rx"
+    can_rx_topic: "/socketcan_bridge/stm32/rx"
     imu_topic: /imu/data
     imu_frame_id: stm32_imu_link
     led_command_topic: "/hardware/led_cmd"

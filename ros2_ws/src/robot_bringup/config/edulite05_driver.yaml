@@ -1,7 +1,7 @@
 /edulite05_driver:
   ros__parameters:
     can_tx_topic: "/socketcan_bridge/tx"
-    can_rx_topic: "/socketcan_bridge/rx"
+    can_rx_topic: "/socketcan_bridge/edulite/rx"
     target_topic: "/edulite/target"
     target_array_topic: "/edulite/target_array"
     state_topic: "/edulite/state"

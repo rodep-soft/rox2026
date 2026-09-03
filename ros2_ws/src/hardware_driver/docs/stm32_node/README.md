@@ -12,8 +12,9 @@ STM32とのheartbeat、LED指令、limit switch受信を担当する。belt・dr
 
 ## 通信
 
-CANの送受信トピックは`can_tx_topic`と`can_rx_topic`で設定する。既定値はそれぞれ
-`/socketcan_bridge/tx`と`/socketcan_bridge/rx`である。
+CANの送受信トピックは`can_tx_topic`と`can_rx_topic`で設定する。通常の
+`robot_bringup`ではそれぞれ`/socketcan_bridge/tx`と
+`/socketcan_bridge/stm32/rx`を使用する。
 
 | 方向 | CAN ID | DLC | 内容 |
 |---|---:|---:|---|
