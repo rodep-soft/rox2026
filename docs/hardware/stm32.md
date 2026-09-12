@@ -20,7 +20,7 @@ CANの送受信トピックは`can_tx_topic`と`can_rx_topic`で設定する。�
 |---|---:|---:|---|
 | RDK→STM32 | `0x101` | 0 | heartbeat |
 | STM32→RDK | `0x100` | 0 | heartbeat応答 |
-| RDK→STM32 | 0x201 | 5 | /hardware/led_cmdのUInt64 |
+| RDK→STM32 | `0x201` | 5 | /hardware/led_cmdのUInt64 |
 | STM32→RDK | `0x310` | 1 | limit switch 8 bit |
 | STM32→RDK | `0x320` | 8 | quaternion X, Y, Z, W（int16 LE、1/16384） |
 | STM32→RDK | `0x321` | 6 | angular velocity X, Y, Z（int16 LE、1/16 deg/s） |

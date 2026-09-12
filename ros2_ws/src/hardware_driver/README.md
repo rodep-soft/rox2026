@@ -5,9 +5,9 @@ CAN ID、8 byteフレーム、エンディアン、デバイス固有プロト�
 
 ## ノード
 
-- `edulite05_node`: EduLite 05のvelocity、PP、CSP制御。詳細は[docs/edulite05_node/README.md](docs/edulite05_node/README.md)。
-- `stm32_node`: STM32とのheartbeat、LED、limit switch通信。詳細は[docs/stm32_node/README.md](docs/stm32_node/README.md)。
-- `vesc_node`: VESCのRPM指令とフィードバック。詳細は[docs/vesc_node/README.md](docs/vesc_node/README.md)。
+- `edulite05_node`: EduLite 05のvelocity、PP、CSP制御。詳細は[EduLite 05ドライバー](../../../docs/hardware/edulite05.md)。
+- `stm32_node`: STM32とのheartbeat、LED、limit switch通信。詳細は[STM32ドライバー](../../../docs/hardware/stm32.md)。
+- `vesc_node`: VESCのRPM指令とフィードバック。詳細は[VESCドライバー](../../../docs/hardware/vesc.md)。
 
 全ノードは`/socketcan_bridge/tx`へ`can_msgs/msg/Frame`を送信する。通常の
 `robot_bringup`では受信負荷を分離するため、VESC、STM32、EduLiteがそれぞれ
