@@ -95,11 +95,15 @@ READY復帰時に`position_reference_set=true`なら通常制御へ戻り、fals
 | `position_tolerance_rad` | 待機位置・目標位置到達判定の許容誤差[rad] |
 | `fire_increment_rad` | 発射要求1回で減算する回転角度[rad] |
 | `slow_fire_move_spring` | trueなら収納後にばねを低速発射し、falseならアームとローラのみ動作 |
+| `slow_fire_retract_travel_rad` | 低速発射前に待機位置から収納方向へ動かす量[rad] |
+| `slow_fire_delay_sec` | 要求受付からばね動作開始までの待ち時間[s] |
 | `slow_fire_arm_only_duration_sec` | アームのみモードを有効にする総時間[s] |
 | `slow_fire_stroke_rad` | 収納位置から低速で押し出す相対回転量[rad] |
 | `slow_fire_base_velocity_rad_s` | 低速発射の押し出し速度[rad/s] |
 | `slow_fire_velocity_gain_rad_per_m` | IMU補正後cmd_velの前進速度1 m/sあたりに減算する押し出し速度[rad/s] |
+| `slow_fire_min_velocity_rad_s` / `slow_fire_max_velocity_rad_s` | 速度補正後の押し出し速度下限・上限[rad/s] |
 | `slow_fire_return_velocity_rad_s` | 低速発射の復帰速度[rad/s] |
+| `slow_fire_settle_timeout_sec` | 低速発射目標送信後に実機到達を待つ猶予[s] |
 | `cmd_vel_topic` | スロー発射速度補正に使うIMU補正後の速度指令トピック |
 | `cmd_vel_timeout_sec` | 速度指令が途絶えた場合に補正を無効化するまでの時間[s] |
 | `homing_velocity_rad_s` | ホーミング時の目標移動速度の大きさ[rad/s] |
@@ -114,7 +118,7 @@ READY復帰時に`position_reference_set=true`なら通常制御へ戻り、fals
 
 ```bash
 ros2 topic echo /edulite/state
-ros2 topic echo /limit_switchs
+ros2 topic echo /hardware/limit_switches
 ros2 topic echo /edulite/target
 ros2 topic pub --once /spring/fire_request std_msgs/msg/Bool "{data: true}"
 ```

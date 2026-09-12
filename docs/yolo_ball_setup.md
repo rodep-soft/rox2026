@@ -71,7 +71,8 @@ yolo export model=runs/detect/train/weights/best.pt format=onnx
 
 ## STEP 4. RDK X5 (BPU) へのデプロイ ＆ ROS 2 Launch 起動
 
-ダウンロードしたモデルファイルを RDK X5 に配置し、追加済みの `yolo_launch.py` で起動します。
+ダウンロードしたモデルファイルを RDK X5 に配置します。現在のYOLO・StereoNet統合launchは
+`robot_bringup/launch/exclusion/`に置かれており、通常起動経路には含まれません。
 
 ```bash
 # 環境読み込み
@@ -79,13 +80,13 @@ source /opt/tros/humble/setup.bash
 source ~/rox2026/ros2_ws/install/setup.bash
 
 # YOLO ボール検出ノードの起動
-ros2 launch robot_bringup yolo_launch.py
+ros2 launch robot_bringup exclusion/yolo_launch.py
 
 # 230AI ステレオビジョン ＋ YOLO ボール検出の同時起動
-ros2 launch robot_bringup vision_launch.py enable_yolo:=true
+ros2 launch robot_bringup exclusion/vision_launch.py enable_yolo:=true
 
 # ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出の一括起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
+ros2 launch robot_bringup exclusion/robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
 ```
 
 ---

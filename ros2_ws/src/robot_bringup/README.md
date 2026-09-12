@@ -1,239 +1,143 @@
 # robot_bringup
 
-ROX 2026のnode構成、parameter YAML、通常起動と機構別テスト起動を管理する。
-controllerやdriverの処理本体は持たず、どのnodeをどの設定で起動するかを決める。
+ROX2026のlaunchファイルとパラメーターYAMLを管理するROS 2パッケージです。controllerやdriverの実装は持たず、用途ごとにどのノードをどの設定で起動するかを定義します。
 
 ## ディレクトリ
 
 ```text
 robot_bringup/
-├── config/       controller・driverのparameter
-└── launch/
-    ├── controllers/  robot_controller
-    ├── hardware/     EduLite・VESC単体launch
-    ├── input/        joy_node・joy_controller
-    └── test/         機構別の組み合わせ起動
+├── config/             # controller、driver、センサーのパラメーター
+├── launch/
+│   ├── controllers/    # controller単位のlaunch
+│   ├── hardware/       # SocketCAN、VESC、EduLite 05、STM32
+│   ├── input/          # joy_node、joy_controller
+│   └── test/           # 機構別の実機試験
+└── scripts/            # 診断、カメラ変換、解析補助
 ```
 
-## 通常起動
+## 主要launch
+
+| launch | 用途 |
+|---|---|
+| `manual_robot.launch.py` | 手動操作、全controller、hardware、Foxglove |
+| `game1.launch.py` | Game 1制御 |
+| `game2_auto.launch.py` | Game 2自動照準。手動系・カメラ系を個別に無効化可能 |
+| `pk_auto.launch.py` | PK用の手動選択・自動照準 |
+| `game3_robot.launch.py` | Game 3用Joy設定と機構構成 |
+| `hardware/hardware.launch.py` | SocketCANと全hardware driver |
+
+### 手動操作
 
 ```bash
-ros2 launch robot_bringup robot.launch.py
+ros2 launch robot_bringup manual_robot.launch.py
 ```
 
-`can_interface`の既定値は`can0`。別interfaceを使う場合は次のように指定する。
+主な引数:
+
+| 引数 | 既定値 | 説明 |
+|---|---|---|
+| `can_interface` | `can0` | SocketCANインターフェース |
+| `enable_foxglove` | `true` | Foxglove Bridgeを起動 |
+| `foxglove_port` | `8765` | Foxglove WebSocketポート |
+
+### Game 2自動照準
 
 ```bash
-ros2 launch robot_bringup robot.launch.py can_interface:=can1
+ros2 launch robot_bringup game2_auto.launch.py
 ```
 
-通常起動では以下をすべて起動する。
-
-- ros2_socketcan sender・receiver
-- STM32 driver
-- VESC driver 3台
-- EduLite driver 6台
-- belt・dribble、mecanum、Spring、dribble位置controller
-- `joy_node`とjoy_controller
-- （オプション）`enable_vision:=true` 指定時に `hobot_stereonet` ビジョンノード
+既定では手動操作系、ビジョン、自動照準を起動します。機構を動かさず照準だけ確認する場合は次のように実行します。
 
 ```bash
-# ビジョン機能 ＋ AprilTag 検出付きで通常起動する場合
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true
+ros2 launch robot_bringup game2_auto.launch.py test_alignment_only:=true
 ```
 
-Joy deviceの既定値は`/dev/input/js0`である。別deviceを使う場合は通常起動へ
-`device:=/dev/input/js1`のように渡す。
+主な引数は `enable_manual`、`enable_vision`、`enable_game2_auto`、`test_alignment_only`、`can_interface` です。カメラの既定値はMIPI channel 1、10 fps、180度回転、ROI 800×480、AprilTagサイズ0.18 mです。
 
-## Game3起動
+### PK自動照準
+
+```bash
+ros2 launch robot_bringup pk_auto.launch.py
+```
+
+構成とカメラ引数はGame 2と同様で、`pk_auto_aim.yaml` を使用します。
+
+### Game 3
 
 ```bash
 ros2 launch robot_bringup game3_robot.launch.py
 ```
 
-Game3は`game3_joy_controller.yaml`を読み込み、L2+R2でShot Cycleを要求する。
-Spring fireとslow fireの要求は送らないが、Spring controllerは位置制御のため
-起動する。R2による走行・旋回減速も維持する。
+`game3_joy_controller.yaml` ではL2+R2をShot Cycleへ割り当て、通常・低速Spring発射要求を無効化します。
 
-## vision_launch.py & apriltag_launch.py (230AI ビジョン・AprilTag 検出)
+## Hardware構成
 
-| 引数 | 既定値 | 説明 |
-|---|---|---|
-| `stereonet_version` | `v2.4_int16` | hobot_stereonet モデルバージョン (`v2.4_int16`, `v2.5_int16` 等) |
-| `enable_apriltag` | `false` | AprilTag 検出ノードを同時に起動するか |
-| `tag_family` | `tag36h11` | AprilTag ファミリー (`tag36h11`, `tag25h9`, `tag16h5`) |
-| `tag_size` | `0.16` | AprilTag の一辺のサイズ (メートル単位, 例: `0.16` = 16cm) |
-| `publish_visual_enabled` | `True` | Web UI 表示用の描画画像トピック配信 |
-| `publish_pcd_enabled` | `True` | PointCloud2 トピック (`~/stereonet_pointcloud2`) 配信 |
-
-起動例:
 ```bash
-# ビジョン ＋ AprilTag 検出を起動
-ros2 launch robot_bringup vision_launch.py enable_apriltag:=true tag_family:=tag36h11 tag_size:=0.16
-
-# AprilTag 単体起動（補正済み左画像を入力トピックとして使用）
-ros2 launch robot_bringup apriltag_launch.py image_topic:=/StereoNetNode/rectify_left_image
-```
-AprilTag 検出結果は `/tf` および `/detections` トピック等に出力されます。
-Web可視化確認は、ブラウザから `http://<RDK_IP>:8000` にアクセスしてください。
-
-## yolo_launch.py (RDK X5 BPU 加速 YOLO ボール検出)
-
-| 引数 | 既定値 | 説明 |
-|---|---|---|
-| `image_topic` | `/StereoNetNode/rectify_left_image` | YOLO 入力画像トピック |
-| `model_name` | `yolov5s` | 使用モデル (`yolov5s`, `yolov8n` 等) |
-| `score_threshold` | `0.4` | 検出確信度しきい値 (0.0 〜 1.0) |
-| `use_bpu` | `true` | RDK X5 BPU ハードウェアアクセラレータ使用 |
-
-起動例:
-```bash
-# YOLO ボール検出ノード単体起動
-ros2 launch robot_bringup yolo_launch.py
-
-# 230AI ビジョン ＋ YOLO ボール検出を起動
-ros2 launch robot_bringup vision_launch.py enable_yolo:=true
-
-# ロボット全体 ＋ ビジョン ＋ AprilTag ＋ YOLO ボール検出を一括起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_yolo:=true
-## game2_shooter.launch.py (Game 2 パネル自動戦術射出ノード)
-
-| 引数 | 既定値 | 説明 |
-|---|---|---|
-| `base_frame` | `base_link` | ロボット基準フレーム ID |
-| `target_distance` | `1.5` | Game2 パネルまでの射程距離 (メートル) |
-| `rpm_bottom` | `3000.0` | 下段パネル用射出ベルト RPM |
-| `rpm_middle` | `4500.0` | 中段パネル用射出ベルト RPM |
-| `rpm_top` | `6000.0` | 上段パネル用射出ベルト RPM |
-
-起動例:
-```bash
-# Game 2 パネル戦術自動射出ノード単体起動
-ros2 launch robot_bringup game2_shooter.launch.py
-
-# ロボット全機能 ＋ ビジョン ＋ AprilTag ＋ Game 2 自動戦術ノードを一括起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true enable_game2:=true
-```
-## game2.launch.py (Game 2 試合本番用一括起動 Launch)
-
-Game 2 試合に必要なモジュールのみを最軽量でピンポイント起動します（正面 CSI カメラ ＋ AprilTag 検出 ＋ Game 2 戦術ノード ＋ 全コントローラー）。
-
-起動例:
-```bash
-# Game 2 試合本番用ワンコマンド起動
-ros2 launch robot_bringup game2.launch.py
-
-# パラメータ調整して起動 (例: 射程距離 1.8m、ベルト回転数変更)
-ros2 launch robot_bringup game2.launch.py target_distance:=1.8 rpm_bottom:=3200.0 rpm_top:=6200.0
+ros2 launch robot_bringup hardware/hardware.launch.py can_interface:=can0
 ```
 
+このlaunchは、送信socketを1つ、VESC・STM32・EduLite用のフィルター付き受信socketをそれぞれ1つ起動します。その後、3種類のdriverを各YAMLで起動します。
 
-
-
-| 引数 | 既定値 | 説明 |
+| driver | 設定 | 主な担当 |
 |---|---|---|
-| `video_device` | `/dev/video0` | V4L2 カメラのデバイスパス |
-| `image_width` | `640` | 画像幅 |
-| `image_height` | `480` | 画像高さ |
-| `pixel_format` | `YUYV` | ピクセルフォーマット (`YUYV`, `mjpeg` 等) |
-| `enable_apriltag` | `false` | Webカメラ画像からの AprilTag 検出を有効化 |
+| `vesc_driver` | `vesc_driver.yaml` | 上ベルト、下ベルト、ドリブルローラー |
+| `edulite05_driver` | `edulite05_driver.yaml` | 4輪、Spring、ドリブル姿勢 |
+| `stm32_driver` | `stm32_driver.yaml` | heartbeat、LED、リミットスイッチ、IMU |
 
-起動例:
-```bash
-# Webカメラ (/dev/video0) を単体起動
-ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0
-
-# Webカメラ ＋ AprilTag 検出を同時に起動
-ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
-
-# ロボット全体起動と同時に Webカメラも起動
-ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
-```
-配信トピック: `/webcam/image_raw`, `/webcam/camera_info`
-
-## hardware.launch.py
-
-| 引数 | 既定値 | `true`で起動するもの |
-|---|---|---|
-| `can_interface` | `can0` | SocketCAN interfaceを選ぶ |
-| `use_vesc` | `true` | belt・dribble用VESC 3台 |
-| `use_stm32` | `true` | limit switch・LED・heartbeat用STM32 |
-| `use_edulite_mecanum` | `true` | mecanum用EduLite 4台 |
-| `use_edulite_spring` | `true` | Spring用EduLite |
-| `use_edulite_dribble_position` | `true` | dribble位置用EduLite |
-
-SocketCAN bridgeはhardwareの選択に関係なく起動する。VESCのnode名は
-`vesc_driver`で、1つのnodeが`vesc_driver.yaml`から全モーターに対応する
-parameterだけを読む。
-
-## 機構別テストlaunch
-
-| launch | 起動するcontroller | 起動するhardware |
-|---|---|---|
-| `test/robot_belt_dribble.launch.py` | belt・dribble、Joy | VESC 3台 |
-| `test/robot_mecanum.launch.py` | mecanum、Joy | mecanum EduLite 4台 |
-| `test/robot_dribble_position.launch.py` | Spring、dribble位置、Joy | STM32、Spring・位置EduLite |
-
-例:
+CANインターフェースはROS 2起動前に作成され、UPしている必要があります。
 
 ```bash
-ros2 launch robot_bringup test/robot_belt_dribble.launch.py
+ip -details -statistics link show can0
 ```
 
-テストlaunchでもSocketCAN bridgeが起動する。同じCAN interfaceに対して通常launchと
-テストlaunchを同時起動しない。
+## 機構別テスト
 
-## config一覧
+| launch | 対象 |
+|---|---|
+| `test/robot_belt_dribble.launch.py` | VESC、ベルト、ドリブルローラー |
+| `test/robot_mecanum.launch.py` | 4輪EduLite、Heading Hold、メカナム |
+| `test/robot_dribble_position.launch.py` | STM32、Spring、ドリブル姿勢 |
+| `test/belt_hardware.launch.py` | ベルトhardware単体 |
+| `test/hardware_test.launch.py` | hardware driverの組み合わせ確認 |
 
-| YAML | 対象 | 主な設定 |
-|---|---|---|
-| `joy_controller.yaml` | Joy変換 | button・axis index、timeout、速度上限 |
-| `game3_joy_controller.yaml` | Game3 Joy変換 | L2+R2のShot Cycle、Spring fire無効 |
-| `dribble_controller.yaml` | dribble | ローラーRPM、姿勢角度、shot cycle時間・速度 |
-| `belt_dribble_controller.yaml` | belt・dribble | level RPM、許容差、feedback timeout |
-| `mecanum_controller.yaml` | mecanum | 寸法、補正係数、車輪速度上限 |
-| `spring_controller.yaml` | Spring | limit switch index、速度、時間 |
-| `dribble_position_controller.yaml` | dribble位置 | 各位置、許容差、timeout |
-| `vesc_driver.yaml` | VESC 3台 | CAN ID、RPM topic、最大RPM、timeout |
-| `edulite05_driver.yaml` | EduLite 6台 | motor ID、mode、topic、feedback有無 |
-| `stm32_driver.yaml` | STM32 | CAN topic、limit switch・LED topic、heartbeat |
+通常launchと機構別test launchを同じCANインターフェースで同時起動しないでください。送信ノードやdriverが重複します。
 
-## 設定変更時の確認
+## 設定ファイル
 
-1. YAMLのnode名がlaunchのnode名と一致していることを確認する。
-2. 単位を確認する。RPM、rad/s、rad、m、ms、sを混同しない。
-3. VESC・EduLiteのIDが実機と一致することを確認する。
-4. topicのpublish側とsubscribe側の型が一致することを確認する。
-5. Humble Docker内でbuildする。
-6. 機構別test launchで1系統ずつ確認してから通常launchを使う。
+| YAML | 対象 |
+|---|---|
+| `joy_controller.yaml` | ボタン・軸、入力timeout、速度・加減速制限 |
+| `mecanum_controller.yaml` | 機体寸法、車輪ID、速度上限 |
+| `heading_hold.yaml` | IMU姿勢保持と速度feed-forward |
+| `belt_controller.yaml` | 上下ベルトのレベル別RPM |
+| `dribble_controller.yaml` | ローラー、姿勢、Shot Cycle、ボール検出 |
+| `spring_controller.yaml` | 原点復帰、通常・低速発射 |
+| `led_controller.yaml` | LED更新周期と表示保持時間 |
+| `game2_auto_aim.yaml` / `pk_auto_aim.yaml` | AprilTag配置、照準、timeout |
+| `vesc_driver.yaml` | VESC ID、RPM・電流制御、feedback timeout |
+| `edulite05_driver.yaml` | EduLite ID、制御モード、位置基準 |
+| `stm32_driver.yaml` | CAN topic、heartbeat、IMU有効期限 |
 
-## 起動後の確認例
+YAML最上位のノード名は、launchで指定するノード名と一致させてください。
+
+## 起動後の確認
 
 ```bash
 ros2 node list
 ros2 topic list -t
-ros2 topic echo /operation_mode
-ros2 topic echo /underbelt/current/rpm
-ros2 topic echo /limit_switchs
-ros2 topic hz /dribble/position_feedback
+ros2 topic echo /system/emergency_stop
+ros2 topic echo /hardware/limit_switches
+ros2 topic hz /imu/data
+ros2 topic hz /vesc/state_array
+ros2 topic hz /edulite/state_array
 ```
 
-CAN interface自体はROS 2起動前に存在し、UPしている必要がある。
+## 設定変更時の注意
 
-```bash
-ip -details link show can0
-```
+1. RPM、rad/s、rad、m、ms、sの単位を確認します。
+2. logical IDと実機のCAN IDを混同しないでください。
+3. YAMLを変更したら対象パッケージを再ビルドし、使用中のinstallをsourceし直します。
+4. 機構別launchで1系統ずつ確認してから統合launchを使用します。
+5. ビルド成功、CANログ、ROSトピック、実機動作を別々の検証結果として記録します。
 
-## よくある問題
-
-- YAMLを変えたのに反映されない: sourceしているinstallが古い可能性があるため再buildする。
-- parameterが既定値になる: YAML最上位のnode名とlaunchの`name`を比較する。
-- 同じdriverが複数起動する: 通常launchと機構別test launchの重複起動を確認する。
-- CANを受信できない: `can_interface`、bridge topic、CAN bitrate、実機電源を確認する。
-- 一部機構だけ不要: `hardware.launch.py`の`use_*`引数をfalseにする。
-
-処理内容と安全動作は`robot_controller/README.md`、CAN変換と実機driverは
-`hardware_driver/README.md`、Joy操作は`joy_controller/README.md`を参照する。
-
-さらに詳しいcallback・timer処理は、各パッケージREADME冒頭の
-「node別の詳細資料」から個別READMEを参照する。
+個々の制御ロジックは[robot_controller](../robot_controller/README.md)、CAN変換は[hardware_driver](../hardware_driver/README.md)、操作方法は[joy_controller](../joy_controller/README.md)を参照してください。

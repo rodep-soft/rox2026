@@ -7,7 +7,6 @@
 | 種別 | topic | 内容 |
 |---|---|---|
 | sub | `/dribble/command_enabled` | ローラー正転ON/OFF |
-| sub | `/dribble/position_mode` | `DRIBBLE``OPEN``FEED` 姿勢 |
 | sub | `/dribble/command_position` | `DRIBBLE``OPEN``FEED``HOME` 姿勢 |
 | sub | `/dribble/shot_cycle_request` | `FEED → DRIBBLE` 自動射出動作 |
 | sub | `/belt/command_mode` | beltの現在モード把握（0=STOP1〜4=LEVEL） |
@@ -18,13 +17,14 @@
 | pub | `/dribble/shot_cycle_state` | サイクル進行フェーズ（LED通知用） |
 
 ## 各姿勢（Position Mode）の役割
-- `OPEN`：ボール排出用姿勢（角度: `-1.27 rad`回転: `0 RPM`）。
-- `FEED`：ベルト射出押し込み姿勢（角度: `0.5 rad`）。
-- `HOME`：手動操作用のホーム姿勢（角度: `home_position_rad`）。
+- `DRIBBLE`：通常保持姿勢。現行YAMLは`-0.93 rad`。
+- `OPEN`：ボール排出用姿勢。現行YAMLは`-1.35 rad`。
+- `FEED`：ベルト射出押し込み姿勢。現行YAMLは`0.95 rad`。
+- `HOME`：手動操作用のホーム姿勢。現行YAMLは`0.2 rad`。
 
 ## shot cycleの動作
 
-`/shot_cycle/request`にtrueが届くとOPEN状態を経由せずに直接射出角度(FEED)へ移行してボールを射出する。
+`/dribble/shot_cycle_request`にtrueが届くとOPEN状態を経由せずに直接射出角度(FEED)へ移行してボールを射出する。
 
 ### beltがSTOPの場合（自動spin-up）
 
@@ -46,12 +46,16 @@ emergency stopが有効な場合はshot cycle要求を無視する。
 
 - `dribble_on_rpm`（DRIBBLE姿勢・ボール保持中のRPM）
 - `slow_fire_dribble_rpm`（スロー発射中のRPM。負値で逆回転）
-- `ball_detection_threshold_a`（ボール検知閾値[A]デフォルト1.7）
-- `ball_lost_threshold_a`（ボール喪失閾値[A]デフォルト1.0）
-- `current_lpf_alpha`（電流値一次ローパスフィルタ最新値係数デフォルト0.3）
+- `ball_detection_threshold_a` / `ball_lost_threshold_a`（ボール保持・喪失の電流閾値[A]。現行YAMLは4.2/2.8）
+- `current_lpf_alpha`（電流値一次ローパスフィルタの最新値係数。現行YAMLは0.07）
+- `ball_detection_debounce_count` / `ball_lost_debounce_count`（状態確定に必要な連続判定数）
 - `cmd_vel_timeout_sec`（IMU補正後速度指令が途絶えたと判定する時間）
 - `cmd_vel_acc_lpf_alpha`（速度指令から求めた加速度のフィルタ係数）
 - `forward_velocity_reduction_rpm_per_mps`（前進速度1 m/sあたりに減算するRPM）
+- `backward_velocity_boost_rpm_per_mps`（後退速度に応じて加算するRPM）
+- `backward_acc_rpm_per_mps2`（後退加速度に応じて加算するRPM）
+- `turning_boost_rpm_per_rad_s`（旋回速度に応じて加算するRPM）
+- `max_boost_rpm`（運動補正で加算する最大RPM）
 - `max_reduction_rpm`（前進時に減算する最大RPM）
 - `shot_cycle_belt_spinup_level`（1〜4shot cycle時にbeltをONするレベル）
 - `belt_shot_delay_sec`（ローラ高回転開始からFEED開始までの最短待機時間[s]）

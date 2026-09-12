@@ -1,112 +1,74 @@
 # robot_controller
 
-Joyから受けた機構指令と非常停止トピック（`/emergency_stop`）を制御判断へ変換し、各専門コントローラーノードが自律して `hardware_driver` へ機構目標値をパブリッシュする。
+ROX2026の機構制御、走行補正、競技用自動制御をまとめたROS 2パッケージです。操作入力や自動制御の要求を受け、`hardware_driver` が扱うVESC・EduLite 05向けのアクチュエーター目標値へ変換します。
 
-## ノード構成・役割一覧
+## 主なノード
 
-1. **`mecanum_controller_node`**:
-   - 足回り（4輪オムニ/メカナム）の逆運動学計算および車輪速度出力。
-2. **`spring_controller_node`**:
-   - ばねの自動装填および解放（発射）制御。
-3. **`belt_controller_node`**:
-   - 上下ベルト（アンダー/アッパー）の目標RPM回転速度制御。
-4. **`dribble_controller_node`**:
-   - ドリブルローラーのRPMと姿勢角度（`DRIBBLE`, `OPEN`, `FEED`）を統合制御。
+| ノード | 役割 | 詳細 |
+|---|---|---|
+| `mecanum_controller_node` | 機体速度から4輪の角速度を計算 | [mecanum.md](../../../docs/controllers/mecanum.md) |
+| `heading_hold_node` | IMUを使った旋回方向保持と速度指令補正 | `config/heading_hold.yaml` |
+| `spring_controller_node` | 原点復帰、待機位置、通常・低速発射 | [spring.md](../../../docs/controllers/spring.md) |
+| `belt_controller_node` | 上下ベルトのレベル・RPM制御 | `config/belt_controller.yaml` |
+| `dribble_controller_node` | ローラー、アーム姿勢、Shot Cycle | [dribble.md](../../../docs/controllers/dribble.md) |
+| `led_controller_node` | ロボット状態を64 bit LED指令へ集約 | `config/led_controller.yaml` |
+| `game2_aim_node` / `pk_aim_node` | AprilTagを用いた自動照準 | [game2-aim.md](../../../docs/controllers/game2-aim.md) |
 
----
+表中の設定ファイルは `../robot_bringup/config/` 配下にあります。
 
-## システム全体系トピック・ノード構成
+## 通常のデータ経路
 
 ```mermaid
 flowchart LR
-  subgraph input["操作入力"]
-    joy["joy_node"]
-    joy_controller["joy_controller"]
-    joy -->|"/joy"| joy_controller
-  end
+  joy[joy_node] -->|/joy| input[joy_controller]
+  input -->|/drive/cmd_vel| heading[heading_hold]
+  heading -->|/mecanum/cmd_vel_heading| mecanum[mecanum_controller]
+  mecanum -->|/edulite/target_array| edulite[edulite05_driver]
 
-  subgraph controllers["robot_controller"]
-    mecanum["mecanum_controller"]
-    spring["spring_controller"]
-    belt["belt_controller"]
-    dribble["dribble_controller"]
-  end
+  input -->|/belt/command_mode| belt[belt_controller]
+  belt -->|/vesc/target_array| vesc[vesc_driver]
 
-  subgraph drivers["hardware_driver"]
-    vesc["vesc_driver"]
-    edulite["edulite05_driver"]
-  end
+  input -->|/dribble/command_enabled| dribble[dribble_controller]
+  input -->|/dribble/command_position| dribble
+  dribble -->|/vesc/target| vesc
+  dribble -->|/edulite/target| edulite
 
-  joy_controller -->|"/mecanum/cmd_vel"| mecanum
-  joy_controller -->|"/emergency_stop"| mecanum
-  joy_controller -->|"/emergency_stop"| spring
-  joy_controller -->|"/emergency_stop"| belt
-  joy_controller -->|"/emergency_stop"| dribble
+  input -->|/spring/fire_request| spring[spring_controller]
+  spring -->|/edulite/target| edulite
 
-  joy_controller -->|"/belt/mode"| belt
-  joy_controller -->|"/dribble/enabled"| dribble
-  joy_controller -->|"/dribble/position_mode"| dribble
-  joy_controller -->|"/spring/fire_request"| spring
-  joy_controller -->|"/shot_cycle/request"| belt
-  belt -->|"/shot_cycle/start"| dribble
-
-  belt -->|"/vesc/target_array"| vesc
-  dribble -->|"/vesc/target"| vesc
-  mecanum -->|"/edulite/target_array"| edulite
-  spring -->|"/edulite/target (ID 4)"| edulite
-  dribble -->|"/edulite/target (ID 5)"| edulite
+  input -->|/system/emergency_stop| controllers[各機構controller]
 ```
 
----
+`/drive/cmd_vel` は手動操作と自動制御で共有されます。Heading Holdが無効な場合も `heading_hold_node` が入力を通過させ、メカナム制御は `/mecanum/cmd_vel_heading` を受け取ります。
 
-## システム全体の状態遷移・連携の仕組み
+## Shot Cycle
 
-### 1. 自動シュート（Shot Cycle）の連携フロー
-操縦者が **`L2 + ○`** ボタンを押すと、全自動で以下のシーケンスが実行されます。
+通常の自動射出要求は `/dribble/shot_cycle_request` で `dribble_controller_node` が受け取ります。
 
+1. ベルトが停止中なら、指定レベルでベルトを起動します。
+2. ドリブルローラーを準備回転数へ上げ、Springへ退避要求を送ります。
+3. 最短待機時間とSpringの退避完了を確認して、アームを `FEED` へ動かします。
+4. FEED軌道の途中でローラーを停止し、押し込み後に `RETURNING` へ移ります。
+5. ローラーを再始動し、アームとSpringを待機位置へ戻します。
+6. Shot Cycleが起動したベベルトだけを停止します。
+
+正確な状態遷移とタイムアウトは[ドリブルコントローラー資料](../../../docs/controllers/dribble.md)を参照してください。
+
+## 非常停止と入力断
+
+- ソフトウェア非常停止は `/system/emergency_stop` で共有します。
+- 各機構ノードは非常停止を個別に処理し、停止指令や状態遷移を安全側へ戻します。
+- Joy入力が `joy_timeout_ms` を超えて途絶えると、`joy_controller` が走行・ベルト・ドリブルの停止指令を送ります。
+- 非常停止トピックだけに依存せず、VESC・EduLite・各controllerにも個別のtimeoutがあります。
+
+## ビルドとテスト
+
+```bash
+cd /root/ros2_ws
+colcon build --symlink-install --packages-select robot_controller
+source install/setup.bash
+colcon test --packages-select robot_controller
+colcon test-result --verbose
 ```
-[ JoyController ]
-     │ L2+○ 押下 ➔ /shot_cycle/request (true) をパブリッシュ
-     ▼
-[ belt_controller ]
-     │ ベルトを目標RPM（Level 1〜6）に加速
-     │ 上下ベルトの実RPMが目標値に到達＆0.3秒安定維持（ready）を確認
-     ▼ /shot_cycle/start (true) をパブリッシュ
-[ dribble_controller ]
-     │
-     ├──① [ Mode: OPEN (-1.0 rad) ] ──> アームが開いてボールを受ける
-     │     │ 0.3秒間保持
-     │     ▼
-     ├──② [ Mode: FEED (1.3 rad) ] ───> ボールをベルトへグッと押し込み（シュート！）
-     │     │ 0.6秒間保持
-     │     ▼
-     └──③ [ Mode: DRIBBLE (0.35 rad) ] ─> 通常姿勢へ自動復帰
-```
 
----
-
-### 2. 各ノードごとの独立状態一覧
-
-#### 🛞 `mecanum_controller`
-- **状態**: なし（純粋な4輪キネマティクス計算機）
-- **遷移**: `/emergency_stop == true` ➔ 0 rad/s 停止。それ以外 ➔ ジョイスティック入力に従い全方向走行。
-
-#### 🔫 `spring_controller`
-- **状態**: `LOAD` (自動再装填) ➔ `READY` (準備完了) ➔ `FIRE` (ばね解放)
-- **遷移**: リミットスイッチONで `READY`。`L1+○` 押下で `FIRE` 実行。
-
-#### ──────── `belt_controller`
-- **状態**: `BeltMode` (`STOP`, `LEVEL_1` 〜 `LEVEL_4`)
-- **速度設定**: 各レベルの上下ベルトRPMを個別に設定でき、実行中のparameter変更にも対応
-- **送信方式**: 指令受信時は即時送信し、非常停止中のみゼロ指令を周期送信
-- **設定再読み込み**: `ros2 param load /belt_controller_node ros2_ws/src/robot_bringup/config/belt_controller.yaml`
-- **遷移**: 十字キー上下でレベル変更。`/emergency_stop == true` ➔ 0 RPM 停止。
-
-#### 🌀 `dribble_controller`
-- **ローラー**: R1でON/OFF。非常停止時は0 RPM。
-- **姿勢**: `DRIBBLE`、`OPEN`、`FEED`。シュート時は自動シーケンス。
-- **非常停止**: ローラーを停止し、姿勢を`DRIBBLE`位置へ戻す。
-
-#### 🎮 `joy_controller`
-- **状態**: `is_emergency_stop_` (非常停止: `HOME`ボタン) / `forward_reverse_` (前後反転: `PS`ボタン)
-- **保護**: 200ms以上の入力断時に自動で停止・非常停止を安全パブリッシュ。
+実機試験は機構別launchを使用し、非常停止、指令timeout、CAN feedback断、再接続を1系統ずつ確認してください。

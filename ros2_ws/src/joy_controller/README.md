@@ -68,7 +68,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 | **R2 + DPAD 左** | **【手動アーム操作】 OPEN ↔ DRIBBLE** |
 | **左スティック (上下/左右)** | 前後 / 左右の並進移動 |
 | **右スティック (左右)** | 旋回動作 |
-| **R2 + スティック (並進・旋回)** | **低速走行・低速旋回** (線速度は `slow_linear_scale` (初期値0.5)、旋回速度は `slow_turn_scale` (初期値0.5) で倍率変更可) |
+| **R2 + スティック (並進・旋回)** | **低速走行・低速旋回**。現行YAMLでは並進`0.2`倍、旋回`0.3`倍 |
 
 ## Joy入力の処理順
 
@@ -77,7 +77,7 @@ Joy nodeは機構のCANや到達判定を行わず、操作意図をROS topicへ
 1. Homeの立ち上がりで非常停止を切り替える。
 2. 非常停止中でなければ、R2の状態とDPAD上下でbelt levelを変更する。
 3. R1でdribbler、PSで走行反転、L2+○でshot cycle、OptionsでGame2を操作する。
-4. L1+R1+△でSpring発射、R2+□またはR2+DPAD左でarm位置を切り替える。
+4. L2+R2でSpring発射、L1で低速発射、R2+□またはR2+DPAD左でarm位置を切り替える。
 5. Game2が有効でなければ、stick入力を`cmd_vel`へ変換してpublishする。
 6. 現在の入力を前回値として保存する。
 
@@ -98,17 +98,17 @@ SpringはL2とR2を押している間、毎周期trueを送る。受信側はREA
 ## STOPと通信断
 
 起動直後は`publish_stop_commands()`を実行し、走行0、belt STOP、dribbler OFFをpublishする。
-`/emergency_stop`は初期値trueで、状態再送timerからpublishされる。
+`/system/emergency_stop`は初期値trueで、状態再送timerからpublishされる。
 
 最後のJoy受信から`joy_timeout_ms`を超えると、走行0、belt STOP、dribbler OFFを即時publishする。
 
-ここでの`/emergency_stop`は専用ハードウェアE-stop入力ではなく、Homeで切り替えるソフトウェア上の停止状態である。
+ここでの`/system/emergency_stop`は専用ハードウェアE-stop入力ではなく、Homeで切り替えるソフトウェア上の停止状態である。
 
 ## callbackの役割
 
 | callback | 実行契機 | 役割 |
 |---|---|---|
-| `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/mecanum/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
+| `joy_callback` | `/joy`受信時 | 入力を読み取り、button/chordの立ち上がりを検出する。mode、belt、dribbleの内部状態を更新し、`/drive/cmd_vel`、shot cycle要求、手動位置指令を即時publishする。 |
 | `state_publish_timer_callback` | `state_publish_period_ms`周期 | emergency stop、belt mode、dribble enabledを再送する。 |
 | `joy_timeout_timer_callback` | 10ms周期 | Joy入力断を監視する。最後の入力から`joy_timeout_ms`を超えた場合は、STOPと各停止指令を即時publishする。 |
 | `shot_cycle_running_callback` | `/shot_cycle/running`受信時 | shot cycleが実際に動作中かを保持し、動作中はHome以外のmode変更を抑止する。 |
@@ -128,8 +128,12 @@ SpringはL2とR2を押している間、毎周期trueを送る。受信側はREA
 | `linear_y_limit` | double | スティック全倒し時の最大左右速度[m/s] |
 | `angular_z_limit` | double | スティック全倒し時の最大旋回速度[rad/s] |
 | `slow_turn_button` | int | 低速走行・低速旋回を有効化するボタン番号。デフォルト: 7 (R2)、-1で無効 |
-| `slow_turn_scale` | double | 低速旋回時の旋回速度倍率（減速率）。デフォルト: 0.5 (1/2) |
-| `slow_linear_scale` | double | 低速走行時の並進（前後・左右）線速度倍率（減速率）。デフォルト: 0.5 (1/2) |
+| `slow_turn_scale` | double | 低速旋回時の旋回速度倍率。現行YAML: 0.3 |
+| `slow_linear_scale` | double | 低速走行時の並進速度倍率。現行YAML: 0.2 |
+| `linear_x_acceleration_limit` / `linear_y_acceleration_limit` | double | 並進加速度上限[m/s²] |
+| `angular_z_acceleration_limit` | double | 旋回加速度上限[rad/s²] |
+| `linear_x_deceleration_limit` / `linear_y_deceleration_limit` | double | 並進減速度上限[m/s²] |
+| `angular_z_deceleration_limit` | double | 旋回減速度上限[rad/s²] |
 
 Joyの各軸は通常`-1.0`から`1.0`であるため、各`*_limit`を直接掛けて`cmd_vel`へ
 変換する。同じ値で出力を制限するため、最大速度を変更するときに調整するparameterは
@@ -182,13 +186,19 @@ Shot Cycleを要求する。`slow_fire_button: -1`によりSpring slow fireも�
 
 | 種別 | topic | 型 |
 |---|---|---|
-| publish | `/shot_cycle/request` | `std_msgs/msg/Bool` |
-| publish | `/belt/mode` | `std_msgs/msg/UInt8` |
+| subscribe | `/joy` | `sensor_msgs/msg/Joy` |
+| subscribe | `/spring/actuator_ready` | `std_msgs/msg/Bool` |
+| subscribe | `/game2/state` / `/pk/state` | `robot_msgs/msg/Game2State` |
+| publish | `/dribble/shot_cycle_request` | `std_msgs/msg/Bool` |
+| publish | `/belt/command_mode` | `robot_msgs/msg/BeltMode` |
 | publish | `/dribble/command_enabled` | `std_msgs/msg/Bool` |
 | publish | `/spring/fire_request` | `std_msgs/msg/Bool` |
-| publish | `/dribble/command_position` | `std_msgs/msg/UInt8` |
-| publish | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
-| publish | `/emergency_stop` | `std_msgs/msg/Bool` |
-| publish | `/game2/start` | `std_msgs/msg/Bool` |
+| publish | `/spring/slow_fire_request` | `std_msgs/msg/Bool` |
+| publish | `/dribble/command_position` | `robot_msgs/msg/ArmPosition` |
+| publish | `/drive/cmd_vel` | `geometry_msgs/msg/Twist` |
+| publish | `/system/emergency_stop` | `std_msgs/msg/Bool` |
+| publish | `/game2/command_start` | `std_msgs/msg/Bool` |
+| publish | `/pk/start` | `std_msgs/msg/Bool` |
+| publish | `/pk/confirm` / `/pk/next` / `/pk/prev` | `std_msgs/msg/Empty` |
 | publish | `/heading_control/enable` | `std_msgs/msg/Bool` |
 | publish | `/drive/reversed` | `std_msgs/msg/Bool` |

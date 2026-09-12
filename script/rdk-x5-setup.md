@@ -115,13 +115,13 @@ source /opt/tros/humble/setup.bash
 source ~/rox2026/ros2_ws/install/setup.bash
 
 # 230AI 単体ビジョン起動
-ros2 launch robot_bringup vision_launch.py
+ros2 launch robot_bringup exclusion/vision_launch.py
 
 # 230AI ビジョン ＋ AprilTag 検出を同時に起動 (tag36h11, 16cmタグ)
-ros2 launch robot_bringup vision_launch.py enable_apriltag:=true tag_family:=tag36h11 tag_size:=0.16
+ros2 launch robot_bringup exclusion/vision_launch.py enable_apriltag:=true tag_family:=tag36h11 tag_size:=0.16
 
 # ロボット全体起動 ＋ ビジョン ＋ AprilTag 同時起動
-ros2 launch robot_bringup robot.launch.py enable_vision:=true enable_apriltag:=true
+ros2 launch robot_bringup exclusion/robot.launch.py enable_vision:=true enable_apriltag:=true
 ```
 
 ### 5.4. 動作確認
@@ -146,12 +146,12 @@ v4l2-ctl --list-devices
 ### 6.3. ROS 2 Launch 起動
 ```bash
 # USB Webカメラ単体起動 (/dev/video0)
-ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0
+ros2 launch robot_bringup exclusion/webcam_launch.py video_device:=/dev/video0
 
 # USB Webカメラ ＋ AprilTag 検出を同時に起動
-ros2 launch robot_bringup webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
+ros2 launch robot_bringup exclusion/webcam_launch.py video_device:=/dev/video0 enable_apriltag:=true
 
 # ロボット全体起動と同時に Webカメラを起動
-ros2 launch robot_bringup robot.launch.py enable_webcam:=true video_device:=/dev/video0
+ros2 launch robot_bringup exclusion/robot.launch.py enable_webcam:=true video_device:=/dev/video0
 ```
 配信トピック: `/webcam/image_raw` (`sensor_msgs/msg/Image`), `/webcam/camera_info`

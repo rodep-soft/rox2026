@@ -94,7 +94,7 @@
   - 照準がズレた状態での誤射を物理的に防止します。
 
 ### ③ 射出完了の保険タイマー（Fallback Timer）
-- 射出ボタン（L2+○）を押した後、何らかの通信不調で `/shot_cycle/state` の完了応答が届かない場合：
+- 射出ボタン（L2+○）を押した後、何らかの通信不調で `/dribble/shot_cycle_state` の完了応答が届かない場合：
   - **5.0秒（`shot_fallback_timeout`）経過で強制的にベルトを停止し、確定フラグを解除して `SEARCHING` へ安全に復帰** します。
 
 ### ④ 手動操作（`STANDBY`）の完全独立
@@ -109,8 +109,8 @@
 - `/detections` (`apriltag_msgs/AprilTagDetectionArray`): AprilTag 認識結果
 - `/camera/camera_info` (`sensor_msgs/CameraInfo`): カメラ内部パラメータ
 - `/imu/data` (`sensor_msgs/Imu`): 機体姿勢ジャイロ・ダンピング用
-- `/shot_cycle/state` (`robot_msgs/ShotCycleState`): 射出シーケンス状態 (`IDLE`, `FEEDING`, `RETURNING` 等)
-- `/shot_cycle/request` (`std_msgs/Bool`): 射出ボタン押下通知
+- `/dribble/shot_cycle_state` (`robot_msgs/ShotCycleState`): 射出シーケンス状態 (`IDLE`, `BELT_SPINUP`, `FEEDING`, `RETURNING`)
+- `/dribble/shot_cycle_request` (`std_msgs/Bool`): 射出要求
 
 ### パブリッシュ (配信)
 - `/drive/cmd_vel` (`geometry_msgs/Twist`): 旋回照準角速度コマンド
@@ -178,6 +178,12 @@
 | `target_distance` | `4.0` | 想定射出距離 (4.0m) |
 | `base_frame` | `"base_link"` | 機体座標系フレーム名 |
 
+現在のGame 2 YAMLでは、未検出時の自動探索旋回は`search_angular_z: 0.0`で無効、
+ターゲット確定には`min_detection_frames: 2`の連続検出が必要である。倒れ判定は
+`min_standing_aspect_ratio: 0.15`、`max_standing_tilt_deg: 95.0`、2枚狙いの
+`midpoint_blend_ratio`は0.50に設定されている。これらは会場・カメラ条件に依存するため、
+変更時は`test_alignment_only:=true`で照準だけを先に検証する。
+
 ---
 
 ## 8. 起動手順 (Launch Commands)
@@ -194,7 +200,7 @@ ros2 launch robot_bringup game2_auto.launch.py
 
 ### 単体ノードのテスト起動
 ```bash
-ros2 launch robot_bringup pk_aim.launch.py
+ros2 launch robot_bringup controllers/pk_aim.launch.py
 # または
-ros2 launch robot_bringup game2_auto_aim.launch.py
+ros2 launch robot_bringup controllers/game2_auto_aim.launch.py
 ```

@@ -7,8 +7,8 @@
 
 - 実装: `src/mecanum_controller_node.cpp`
 - 宣言: `include/mecanum_controller/mecanum_controller_node.hpp`
-- 設定: `robot_bringup/config/mecanum_controller.yaml`
-- 起動: `robot_bringup/launch/controllers/mecanum_controller.launch.py`
+- 設定: `ros2_ws/src/robot_bringup/config/mecanum_controller.yaml`
+- 起動: `ros2_ws/src/robot_bringup/launch/controllers/mecanum_controller.launch.py`
 
 `publish_wheel_commands()`へ計算とpublishを集約している。cmd_velを受信すると即時計算して
 publishする。非常停止の開始・解除も受信時に即時反映し、非常停止中だけ全輪ゼロ指令を
@@ -18,8 +18,8 @@ publishする。非常停止の開始・解除も受信時に即時反映し、�
 
 | 種別 | topic | 型 |
 |---|---|---|
-| sub | `/mecanum/cmd_vel` | `geometry_msgs/msg/Twist` |
-| sub | `/emergency_stop` | `std_msgs/msg/Bool` |
+| sub | `/mecanum/cmd_vel_heading` | `geometry_msgs/msg/Twist` |
+| sub | `/system/emergency_stop` | `std_msgs/msg/Bool` |
 | pub | `/edulite/target_array` | `actuator_msgs/msg/ActuatorTargetArray` |
 
 ## 計算順
@@ -38,14 +38,15 @@ publishする。非常停止の開始・解除も受信時に即時反映し、�
 cmd_velの`linear.x`、`linear.y`、`angular.z`のどれかがNaN・Infなら、最後の指令を
 ゼロへ置き換えて全輪0をpublishする。
 
-半径、寸法、上限には起動時検証がある。不正値はWARNまたはERROR後に安全な
+現在のYAMLでは車輪半径`0.075 m`、機体長`0.355 m`、機体幅`0.353 m`、
+車輪速度上限`50 rad/s`である。半径、寸法、上限には起動時検証があり、不正値はWARNまたはERROR後に安全な
 既定値へ補正し、nodeは起動を続ける。上限はEduLite仕様に合わせて50 rad/s以下。
 
 ## 確認方法
 
 ```bash
 ros2 topic echo /edulite/target_array
-ros2 topic pub --once /mecanum/cmd_vel geometry_msgs/msg/Twist \
+ros2 topic pub --once /mecanum/cmd_vel_heading geometry_msgs/msg/Twist \
   "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 ```
 

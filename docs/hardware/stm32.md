@@ -36,15 +36,18 @@ IMUの各CANフレームは最新値として保持し、100 Hzのquaternion受�
 最新の角速度・並進加速度と合わせて`sensor_msgs/msg/Imu`を`/imu/data`へpublishする。
 角速度または並進加速度が未受信、もしくは`imu_component_timeout_ms`を超えて
 更新されていない場合は、対応する`covariance[0]`を`-1`として無効であることを示す。
+有効なquaternionを`imu_reception_timeout_ms`以上受信できない場合は、IMU信号途絶を
+WARNで通知する。現行YAMLはcomponent 200 ms、reception 500 msである。
 
 ## limit switch
 
-CANデータ先頭byteを`UInt8`として`/limit_switchs`へpublishする。Spring controllerが
+CANデータ先頭byteを`UInt8`として`/hardware/limit_switches`へpublishする。Spring controllerが
 `limit_switch_bit_offset`で指定したbitを取り出し、0ならOFF、1ならONとして扱う。
 
 ## heartbeat
 
-`keep_alive_period_ms`周期で`0x101`を送る。最終`0x100`応答から`timeout_ms`を超えると
+`keep_alive_period_ms`周期で`0x101`を送る。現行YAMLでは150 ms周期、timeoutは
+1000 msである。最終`0x100`応答から`timeout_ms`を超えると
 WARNを一度出す。応答復帰で内部timeout状態は解除されるが、現在は復帰INFO、
 診断topic、他nodeを停止する連携はない。
 
@@ -57,4 +60,4 @@ RPM topicを作成せず、そのencode/decode関数も呼ばない。新しい�
 ## 調査
 
 limit switchが出ない場合は`candump can0`でID `0x310`と対象byteを確認し、その後
-`ros2 topic echo /limit_switchs`で値を確認する。
+`ros2 topic echo /hardware/limit_switches`で値を確認する。

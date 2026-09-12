@@ -37,6 +37,9 @@ CAN受信購読にはContent Filterを適用し、設定されたVESCのStatus 1
 | `update_period_ms` | 各VESCへCAN指令を送信する周期 [ms] |
 | `state_array_publish_period_ms` | `/vesc/state_array`を配信する周期 [ms] |
 
+現行YAMLではCAN指令周期は25 ms、状態配列周期は500 msである。個別の
+`/vesc/state`は有効なCANフィードバック受信時に即時配信する。
+
 停止状態から回転を始める場合と回転方向を反転する場合は、`startup_current_a`による
 電流制御を行う。回転方向が指令と一致し、実回転数が
 `rpm_control_threshold_rpm`に達するとRPM制御へ移行する。目標RPMが閾値より低い場合は、
@@ -44,4 +47,5 @@ CAN受信購読にはContent Filterを適用し、設定されたVESCのStatus 1
 `rpm_control_threshold_rpm`が0以下の場合は始動電流制御を使用せず、停止状態から
 直接RPM制御を行う。
 
-現在の割り当てはupper beltがlogical ID 10、under beltが11、dribbleが12である。
+現在の割り当てはupper beltがlogical ID 10 / controller ID 51、under beltが
+logical ID 11 / controller ID 52、dribbleがlogical ID 12 / controller ID 50である。
