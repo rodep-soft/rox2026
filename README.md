@@ -8,7 +8,7 @@
 
 [![ROS 2](https://img.shields.io/badge/ROS_2-Humble-22314E?style=for-the-badge&logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
 [![C++](https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-Development-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Platform](https://img.shields.io/badge/Platform-RDK_X5-F5A623?style=for-the-badge)](#-システム構成)
 [![License](https://img.shields.io/badge/License-MIT-2EA44F?style=for-the-badge)](LICENSE)
 
@@ -74,26 +74,29 @@ flowchart LR
 
 ## Quick Start
 
-### 1. コンテナを起動
+### RDK X5 — Native ROS 2
+
+実機のRDK X5ではDockerを使用せず、ROS 2 Humbleをネイティブで実行します。初回セットアップでは、OS・ネットワーク・CAN・ROS 2依存関係をまとめて構成するスクリプトを使用できます。
 
 ```bash
-git clone <repository-url> rox2026
-cd rox2026
-docker compose build
-docker compose up -d
-docker compose exec ros2_rox2026 bash
+git clone git@github.com:rodep-soft/rox2026.git ~/rox2026
+cd ~/rox2026
+chmod +x script/rdk_setup.sh
+./script/rdk_setup.sh
 ```
 
-### 2. ROS 2ワークスペースをビルド
+セットアップ後、RDK X5上でワークスペースをビルドします。
 
 ```bash
 source /opt/ros/humble/setup.bash
-cd /root/ros2_ws
+cd ~/rox2026/ros2_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 3. モードを選んで起動
+詳細は[RDK X5セットアップガイド](script/rdk-x5-setup.md)を参照してください。
+
+### Launch
 
 ```bash
 # Game 1（手動操作）
@@ -109,6 +112,22 @@ ros2 launch robot_bringup pk_auto.launch.py
 ros2 launch robot_bringup game3_robot.launch.py
 ```
 
+### Docker — Development Environment
+
+DockerはPC上での開発、依存関係の統一、ビルド確認に使用します。RDK X5の実機運用には使用しません。
+
+```bash
+git clone git@github.com:rodep-soft/rox2026.git
+cd rox2026
+docker compose build
+docker compose up -d
+docker compose exec ros2_rox2026 bash
+
+# container: /root/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
 ## Development Commands
 
 ROS 2環境を導入済みのホストでは、リポジトリ直下のMakefileも利用できます。
@@ -120,7 +139,7 @@ make clean-build pkg=robot_controller
 make can-check
 ```
 
-コンテナ内の作業ディレクトリは `/root/ros2_ws` です。実機パラメーターとCAN IDは `ros2_ws/src/robot_bringup/config/` で管理しています。
+Dockerコンテナ内の作業ディレクトリは `/root/ros2_ws` です。RDK X5上では `~/rox2026/ros2_ws` を使用します。実機パラメーターとCAN IDは `ros2_ws/src/robot_bringup/config/` で管理しています。
 
 ## Documentation
 

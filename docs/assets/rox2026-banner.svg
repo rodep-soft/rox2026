@@ -1,40 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
   <title id="title">ROX2026</title>
-  <desc id="desc">ROX2026 robot control system banner</desc>
+  <desc id="desc">ROX2026 robot control system</desc>
   <defs>
-    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#07111f"/>
-      <stop offset="0.52" stop-color="#102840"/>
-      <stop offset="1" stop-color="#07111f"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#080b10"/>
+      <stop offset="1" stop-color="#111827"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#00d4ff"/>
-      <stop offset="1" stop-color="#5b7cff"/>
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#6366f1"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" fill="none" stroke="#69d7ff" stroke-opacity=".08"/>
-    </pattern>
+    <clipPath id="logoClip">
+      <rect x="72" y="68" width="142" height="142" rx="22"/>
+    </clipPath>
   </defs>
-  <rect width="1200" height="320" rx="24" fill="url(#background)"/>
-  <rect width="1200" height="320" rx="24" fill="url(#grid)"/>
-  <path d="M0 255H185l50-50h220l32 32h178l72-72h215l38 38h230" fill="none" stroke="url(#accent)" stroke-width="3" opacity=".5"/>
-  <g fill="none" stroke="#00d4ff" stroke-width="3" opacity=".8">
-    <circle cx="106" cy="84" r="38"/>
-    <circle cx="106" cy="84" r="16"/>
-    <path d="M106 28v18M106 122v18M50 84h18M144 84h18M67 45l13 13M132 110l13 13M145 45l-13 13M80 110l-13 13"/>
+  <rect width="1200" height="300" rx="18" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="298" rx="17" fill="none" stroke="#334155"/>
+  <path d="M0 246H1200" stroke="#1e293b"/>
+  <image href="data:image/png;base64,/9j/2wCEAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDIBCQkJDAsMGA0NGDIhHCEyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMv/AABEIAPAA8AMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/APf6KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACisXVvFF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TqNkESxR+U9udoBtN5YnrgOMfjiu9pkkUc0TxSorxuCrKwyGB6gigDiodW1DU/BuuS/apHu1gbyY41Cyx5j4+6ByW3Yx2x3zVq0t9b066s7X7QViuZZJHUO9x5Sqi4XzJOeWB6/3jiumtLC0sVZbW2ihDHLbFAz9fWrFAHALrOs3CWxmgMsgmhKiWAxbZzHKXiHTIUheffqamsdd1t4bVr+VoYZJCJJYrR3dG2A7CuwYBYnnB6YznmuzltLeeeGaWCN5YSTE7KCUJGCQe3FTUAYfhp7owX6Xk80ssd7Mo81cbU3nbjjkbcEfWtyiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/Z" x="72" y="68" width="142" height="142" clip-path="url(#logoClip)"/>
+  <rect x="72" y="68" width="142" height="142" rx="22" fill="none" stroke="#334155" stroke-width="2"/>
+  <path d="M242 54V220" stroke="url(#accent)" stroke-width="4"/>
+  <g transform="translate(890 48)" fill="none" stroke="#334155" stroke-width="2">
+    <path d="M0 0h184l54 54v150H54L0 150Z"/>
+    <path d="M38 38h112l50 50v78H88l-50-50Z"/>
+    <path d="M76 76h42l44 44v8h-42l-44-44Z" stroke="url(#accent)" stroke-width="3"/>
   </g>
-  <g fill="#00d4ff">
-    <circle cx="235" cy="205" r="6"/><circle cx="455" cy="205" r="6"/>
-    <circle cx="665" cy="237" r="6"/><circle cx="737" cy="165" r="6"/>
-    <circle cx="952" cy="165" r="6"/><circle cx="990" cy="203" r="6"/>
+  <text x="282" y="142" fill="#f8fafc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="84" font-weight="750" letter-spacing="4">ROX</text>
+  <text x="494" y="142" fill="url(#accent)" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="84" font-weight="300" letter-spacing="2">2026</text>
+  <text x="286" y="188" fill="#94a3b8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" font-weight="500" letter-spacing="4">ROBOT CONTROL SYSTEM</text>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" letter-spacing="2">
+    <text x="112" y="264" fill="#64748b">ROS 2 HUMBLE</text>
+    <text x="285" y="264" fill="#334155">/</text>
+    <text x="312" y="264" fill="#64748b">SOCKETCAN</text>
+    <text x="455" y="264" fill="#334155">/</text>
+    <text x="482" y="264" fill="#64748b">RDK X5</text>
+    <text x="1100" y="264" text-anchor="end" fill="#64748b">RoDEP</text>
   </g>
-  <text x="600" y="135" text-anchor="middle" fill="#f3f8ff" font-family="Segoe UI,Arial,sans-serif" font-size="86" font-weight="800" letter-spacing="10">ROX2026</text>
-  <rect x="365" y="160" width="470" height="4" rx="2" fill="url(#accent)" filter="url(#glow)"/>
-  <text x="600" y="202" text-anchor="middle" fill="#8ddfff" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="600" letter-spacing="5">ROBOT CONTROL SYSTEM</text>
-  <text x="600" y="238" text-anchor="middle" fill="#a9b9ca" font-family="Segoe UI,Arial,sans-serif" font-size="15" letter-spacing="3">ROS 2  /  CAN  /  AUTONOMOUS CONTROL</text>
-  <text x="1090" y="288" text-anchor="end" fill="#6f8498" font-family="Segoe UI,Arial,sans-serif" font-size="14" letter-spacing="2">RoDEP</text>
 </svg>
