@@ -19,14 +19,14 @@ robot_bringup/
 
 | launch | 用途 |
 |---|---|
-| `manual_robot.launch.py` | 手動操作、全controller、hardware、Foxglove |
-| `game1.launch.py` | Game 1制御 |
+| `manual_robot.launch.py` | Game 1の手動操作、全controller、hardware、Foxglove |
+| `game1.launch.py` | Game 1自動制御ノード単体 |
 | `game2_auto.launch.py` | Game 2自動照準。手動系・カメラ系を個別に無効化可能 |
 | `pk_auto.launch.py` | PK用の手動選択・自動照準 |
 | `game3_robot.launch.py` | Game 3用Joy設定と機構構成 |
 | `hardware/hardware.launch.py` | SocketCANと全hardware driver |
 
-### 手動操作
+### Game 1（手動操作）
 
 ```bash
 ros2 launch robot_bringup manual_robot.launch.py
