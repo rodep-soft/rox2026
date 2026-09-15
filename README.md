@@ -2,119 +2,138 @@
 
 <img src="docs/assets/rox2026-banner.svg" alt="ROX2026 Robot Control System" width="100%">
 
-### ROS 2 × CANで動く、RoDEPの競技ロボット制御システム
+九州工業大学ロボットサークル RoDEPが開発した、ROX2026競技ロボットの制御ソフトウェアです。
 
-九州工業大学ロボットサークル **RoDEP** が開発する、ROX2026向けソフトウェアです。
-
-[![ROS 2](https://img.shields.io/badge/ROS_2-Humble-22314E?style=for-the-badge&logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
-[![C++](https://img.shields.io/badge/C++-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](https://isocpp.org/)
-[![Docker](https://img.shields.io/badge/Docker-Development-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Platform](https://img.shields.io/badge/Platform-RDK_X5-F5A623?style=for-the-badge)](#-システム構成)
-[![License](https://img.shields.io/badge/License-MIT-2EA44F?style=for-the-badge)](LICENSE)
-
-**Mecanum Drive · Automatic Shooting · AprilTag Auto Aim · CAN Motor Control · LED Feedback**
-
-[Overview](#overview) · [Architecture](#システム構成) · [Quick Start](#quick-start) · [Documentation](#documentation)
+[![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?style=flat-square&logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
+[![C++17](https://img.shields.io/badge/C++-17-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![RDK X5](https://img.shields.io/badge/Target-RDK_X5-334155?style=flat-square)](#実行環境)
+[![MIT License](https://img.shields.io/badge/License-MIT-2EA44F?style=flat-square)](LICENSE)
 
 </div>
 
----
+## 概要
 
-## Overview
+このリポジトリには、ゲームパッドによる手動操作、メカナム走行、ボール保持・射出機構、AprilTagを使った自動照準、CANデバイスとの通信処理が含まれています。
 
-ROX2026は、ゲームパッドによる手動操作から競技用の自動照準・射出までをROS 2で統合しています。機構制御とCANプロトコルを分離し、VESC、EduLite 05、STM32を共通のROSインターフェースから扱います。
-
-| Operation | Control | Hardware | Vision |
-|---|---|---|---|
-| DualSense入力 | メカナム走行 | VESC | AprilTag検出 |
-| 手動・競技モード | ベルト・ドリブル | EduLite 05 | Game 2自動照準 |
-| 非常停止・反転操作 | Spring射出 | STM32 | Foxglove可視化 |
+実機ではRDK X5上のROS 2 Humbleをネイティブで使用します。VESC、EduLite 05、STM32固有のCAN処理は `hardware_driver` にまとめ、上位の制御ノードはlogical IDとROS 2メッセージで各機構を扱います。
 
 ## システム構成
 
 ```mermaid
 flowchart LR
-  JOY[DualSense] --> INPUT[joy_controller]
-  CAM[Camera / AprilTag] --> AUTO[Auto Controllers]
-  IMU[IMU] --> CTRL[robot_controller]
+  joy[DualSense] --> joy_controller
+  camera[Camera / AprilTag] --> auto_controller[自動制御]
+  imu[IMU] --> robot_controller
 
-  INPUT --> CTRL
-  AUTO --> CTRL
-  CTRL --> DRIVER[hardware_driver]
-  DRIVER --> CAN{{SocketCAN}}
+  joy_controller --> robot_controller
+  auto_controller --> robot_controller
+  robot_controller --> hardware_driver
+  hardware_driver --> socketcan[SocketCAN]
 
-  CAN --> VESC[VESC<br/>Belt / Dribble Roller]
-  CAN --> EDU[EduLite 05<br/>Wheels / Spring / Arm]
-  CAN --> STM[STM32<br/>LED / IMU / Limit Switch]
+  socketcan --> vesc[VESC<br/>上下ベルト・ドリブルローラー]
+  socketcan --> edulite[EduLite 05<br/>車輪・Spring・ドリブル姿勢]
+  socketcan --> stm32[STM32<br/>LED・IMU・リミットスイッチ]
 ```
 
-### Hardware mapping
+### 主な機能
 
-| Device | Logical ID / CAN ID | 担当 |
-|---|---|---|
-| EduLite 05 | Logical ID `0–3` | 4輪メカナム |
-| EduLite 05 | Logical ID `4` | Spring |
-| EduLite 05 | Logical ID `5` | ドリブル姿勢 |
-| VESC | Logical ID `10` | 上ベルト |
-| VESC | Logical ID `11` | 下ベルト |
-| VESC | Logical ID `12` | ドリブルローラー |
-| STM32 | CAN `0x100–0x322` | heartbeat、LED、リミットスイッチ、IMU |
+- DualSenseによるメカナム走行と機構操作
+- IMUを利用したHeading Hold
+- 上下ベルト、ドリブルローラー、ドリブル姿勢の制御
+- Springの原点復帰、通常発射、低速発射
+- Game 2およびPKのAprilTag自動照準
+- ROS 2とVESC、EduLite 05、STM32間のCAN通信
+- Foxgloveによる状態確認
 
-## ROS 2 Packages
+### ハードウェアの割り当て
 
-| Package | 役割 |
+| デバイス | ID | 担当 |
+|---|---:|---|
+| EduLite 05 | logical ID 0–3 | 4輪メカナム |
+| EduLite 05 | logical ID 4 | Spring |
+| EduLite 05 | logical ID 5 | ドリブル姿勢 |
+| VESC | logical ID 10 | 上ベルト |
+| VESC | logical ID 11 | 下ベルト |
+| VESC | logical ID 12 | ドリブルローラー |
+| STM32 | CAN ID 0x100 / 0x101 | heartbeat |
+| STM32 | CAN ID 0x201 | LED指令 |
+| STM32 | CAN ID 0x310 | リミットスイッチ |
+| STM32 | CAN ID 0x320–0x322 | IMU |
+
+## ROS 2パッケージ
+
+| パッケージ | 内容 |
 |---|---|
-| [`joy_controller`](ros2_ws/src/joy_controller/README.md) | Joy入力を走行・機構指令と運転モードへ変換 |
-| [`robot_controller`](ros2_ws/src/robot_controller/README.md) | 状態遷移、軌道生成、安全処理、自動制御 |
-| [`hardware_driver`](ros2_ws/src/hardware_driver/README.md) | ROSメッセージとCANフレームを相互変換 |
-| [`robot_bringup`](ros2_ws/src/robot_bringup/README.md) | launch、実機パラメーター、競技モード、機構別テスト |
-| `actuator_msgs` | アクチュエーター指令・状態・位置校正サービス |
-| `robot_msgs` | ROX2026固有の制御・テレメトリメッセージ |
+| [`joy_controller`](ros2_ws/src/joy_controller/README.md) | Joy入力を走行・機構指令へ変換 |
+| [`robot_controller`](ros2_ws/src/robot_controller/README.md) | 機構の状態遷移、軌道生成、自動制御 |
+| [`hardware_driver`](ros2_ws/src/hardware_driver/README.md) | ROS 2メッセージとCANフレームを相互変換 |
+| [`robot_bringup`](ros2_ws/src/robot_bringup/README.md) | launchファイルと実機パラメーターを管理 |
+| `actuator_msgs` | アクチュエーター共通の指令・状態・サービス定義 |
+| `robot_msgs` | ROX2026固有のメッセージ定義 |
 | `ros2_socketcan` | SocketCANとROS 2トピックのブリッジ |
 
-## Quick Start
+## 実行環境
 
-### RDK X5 — Native ROS 2
+ROX2026はRDK X5上でROS 2 Humbleをネイティブ実行します。DockerはPC上での開発とビルド確認にのみ使用します。
 
-実機のRDK X5ではDockerを使用せず、ROS 2 Humbleをネイティブで実行します。初回セットアップでは、OS・ネットワーク・CAN・ROS 2依存関係をまとめて構成するスクリプトを使用できます。
+### RDK X5のセットアップ
+
+RDK X5にはUbuntu 22.04 Desktopイメージを書き込み、初回起動後にUSBメモリから `rdk_setup.sh` だけをホームディレクトリへコピーします。ネットワークへ接続し、ROS 2 Humbleが利用できることを確認してから、セットアップスクリプトを一般ユーザーで実行します。
 
 ```bash
-git clone git@github.com:rodep-soft/rox2026.git ~/rox2026
-cd ~/rox2026
-chmod +x script/rdk_setup.sh
-./script/rdk_setup.sh
+cd ~
+chmod +x rdk_setup.sh
+./rdk_setup.sh
 ```
 
-セットアップ後、RDK X5上でワークスペースをビルドします。
+`rdk_setup.sh` 自体を `sudo` で実行しないでください。必要な管理者権限はスクリプト内で要求されます。このスクリプトは、ネットワーク、SSH、Bluetooth、CAN、ROS 2依存パッケージ、Ninja、ccache、シェル環境を設定し、GitHub認証後に `main-v2` ブランチを `~/rox2026` へクローンします。実行中にWi-FiやGitHubなどの設定を対話形式で入力します。詳しい内容は[RDK X5セットアップ手順](script/rdk-x5-setup.md)を参照してください。
+
+### ビルド
+
+RDK X5では `ros2_ws/Makefile` をビルドの入口として使用します。`make build` は `colcon` からCMakeのNinjaジェネレーターを呼び出し、ccacheと並列ビルドを有効にします。`rdk_setup.sh` を完了していればROS 2環境と依存パッケージは設定済みです。
 
 ```bash
-source /opt/ros/humble/setup.bash
 cd ~/rox2026/ros2_ws
-colcon build --symlink-install
+make build
 source install/setup.bash
 ```
 
-詳細は[RDK X5セットアップガイド](script/rdk-x5-setup.md)を参照してください。
+新しい端末では、セットアップスクリプトが作成したシェル設定により、ビルド済みワークスペースが自動的に読み込まれます。ビルド設定は必要に応じて変更できます。
 
-### Launch
+```bash
+# ビルド時に使用するジョブ数とcolconの並列ワーカー数を指定
+make build BUILD_JOBS=4 PARALLEL_WORKERS=2
+
+# 指定したパッケージと、その依存先までビルド
+make build-package PACKAGE=robot_controller
+
+# テストを有効にしてビルドし、テストを実行
+make test
+```
+
+## 起動
+
+用途に応じて次のlaunchファイルを使用します。
 
 ```bash
 # Game 1（手動操作）
 ros2 launch robot_bringup manual_robot.launch.py
 
-# Game 2 自動照準
+# Game 2自動照準
 ros2 launch robot_bringup game2_auto.launch.py
 
-# PK 自動照準
+# PK自動照準
 ros2 launch robot_bringup pk_auto.launch.py
 
 # Game 3
 ros2 launch robot_bringup game3_robot.launch.py
 ```
 
-### Docker — Development Environment
+機構別の起動方法やlaunch引数は[robot_bringupの説明](ros2_ws/src/robot_bringup/README.md)を参照してください。
 
-DockerはPC上での開発、依存関係の統一、ビルド確認に使用します。RDK X5の実機運用には使用しません。
+## PC上の開発環境
+
+開発用PCではDocker ComposeでROS 2 Humble環境を構築できます。このコンテナは実機運用を目的としたものではありません。
 
 ```bash
 git clone git@github.com:rodep-soft/rox2026.git
@@ -122,15 +141,16 @@ cd rox2026
 docker compose build
 docker compose up -d
 docker compose exec ros2_rox2026 bash
+```
 
-# container: /root/ros2_ws
-colcon build --symlink-install
+コンテナ内の作業ディレクトリは `/root/ros2_ws` です。RDK X5と同じく、ワークスペースのMakefileからNinjaビルドを実行します。
+
+```bash
+make build
 source install/setup.bash
 ```
 
-## Development Commands
-
-ROS 2環境を導入済みのホストでは、リポジトリ直下のMakefileも利用できます。
+リポジトリ直下のMakefileには、Dockerの起動や診断で使用するショートカットもあります。ビルド設定を明示して実行する場合は、`ros2_ws` ディレクトリのMakefileを使用してください。
 
 ```bash
 make build
@@ -139,13 +159,11 @@ make clean-build pkg=robot_controller
 make can-check
 ```
 
-Dockerコンテナ内の作業ディレクトリは `/root/ros2_ws` です。RDK X5上では `~/rox2026/ros2_ws` を使用します。実機パラメーターとCAN IDは `ros2_ws/src/robot_bringup/config/` で管理しています。
+## ドキュメント
 
-## Documentation
+### Controller
 
-### Controllers
-
-| Document | 内容 |
+| 資料 | 内容 |
 |---|---|
 | [Mecanum Controller](docs/controllers/mecanum.md) | 逆運動学、車輪速度制限、非常停止 |
 | [Spring Controller](docs/controllers/spring.md) | 原点復帰、通常発射、低速発射 |
@@ -154,46 +172,37 @@ Dockerコンテナ内の作業ディレクトリは `/root/ros2_ws` です。RDK
 
 ### Hardware
 
-| Document | 内容 |
+| 資料 | 内容 |
 |---|---|
-| [VESC Driver](docs/hardware/vesc.md) | RPM・始動電流制御、フィードバック |
+| [VESC Driver](docs/hardware/vesc.md) | RPM制御、始動電流制御、フィードバック |
 | [EduLite 05 Driver](docs/hardware/edulite05.md) | Velocity、PP、CSP、位置基準 |
 | [STM32 Driver](docs/hardware/stm32.md) | CANプロトコル、LED、IMU、heartbeat |
 
-### Setup & Tools
+### セットアップと補助ツール
 
-| Document | 内容 |
+| 資料 | 内容 |
 |---|---|
-| [YOLO Ball Detection](docs/yolo_ball_setup.md) | RDK X5向けボール検出 |
-| [RDK X5 Scripts](script/README.md) | セットアップ、診断、ログ解析 |
-| [Raspberry Pi 5 Forwarder](raspi_controller/RasberryPi5/README.md) | DualSense冗長転送 |
-| [RDK X5 Receiver](raspi_controller/RDKX5/README.md) | DualSense冗長受信 |
+| [YOLOボール検出](docs/yolo_ball_setup.md) | RDK X5向けボール検出の導入 |
+| [スクリプト一覧](script/README.md) | RDK X5セットアップ、診断、ログ解析 |
+| [Raspberry Pi 5 Forwarder](raspi_controller/RasberryPi5/README.md) | DualSense入力の冗長転送 |
+| [RDK X5 Receiver](raspi_controller/RDKX5/README.md) | DualSense入力の冗長受信 |
 
-## Repository Layout
+## ディレクトリ構成
 
 ```text
 rox2026/
-├── docs/
-│   ├── controllers/       # 機構・自動制御の詳細
-│   └── hardware/          # CANデバイスとdriverの詳細
-├── raspi_controller/      # DualSense冗長通信
-├── receiveCanConfiguration/
-├── ros2_ws/
-│   └── src/               # ROS 2 packages
-├── script/                # セットアップ・診断・解析
+├── docs/                       詳細資料
+│   ├── controllers/            機構・自動制御
+│   └── hardware/               CANデバイスとdriver
+├── raspi_controller/           DualSense冗長通信
+├── receiveCanConfiguration/    STM32 firmware
+├── ros2_ws/src/                ROS 2パッケージ
+├── script/                     セットアップ・診断・解析
 ├── docker-compose.yml
 ├── Dockerfile
 └── Makefile
 ```
 
-## License
+## ライセンス
 
-Distributed under the [MIT License](LICENSE).
-
----
-
-<div align="center">
-
-**Built by RoDEP · Kyushu Institute of Technology**
-
-</div>
+このリポジトリは[MIT License](LICENSE)で公開されています。

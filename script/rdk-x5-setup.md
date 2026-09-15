@@ -2,13 +2,15 @@
 
 ## 0. `rdk_setup.sh` による初期セットアップ
 
-RDK X5 のOSを書き込んだ後、RoDEP環境をまとめてセットアップする場合は、リポジトリのルートで次のスクリプトを実行します。
+RDK X5へOSを書き込んだ後、USBメモリから `rdk_setup.sh` だけをホームディレクトリへコピーし、一般ユーザーで実行します。リポジトリを事前にクローンする必要はありません。
 
 ```bash
-cd ~/rox2026
-chmod +x script/rdk_setup.sh
-./script/rdk_setup.sh
+cd ~
+chmod +x rdk_setup.sh
+./rdk_setup.sh
 ```
+
+スクリプトはGitHubのSSH認証を設定した後、`main-v2` ブランチを `~/rox2026` へクローンします。すでに同じ場所にGitリポジトリが存在する場合は、クローンを省略します。
 
 ### 実行時の注意
 
@@ -22,25 +24,24 @@ chmod +x script/rdk_setup.sh
 スクリプトを実行すると、基本的に次の順番で入力を求められます。
 
 1. `Change login/SSH password now? [y/N]:`
-   - `y` を入力して、ログインパスワードを新しく登録します。
-   - `passwd` が起動したら、現在のパスワードを入力した後、新しいパスワードとして `rodeprodep` を入力し、確認でも同じパスワードを入力します。
-2. `RoDEP-5Ghz Wi-Fi Password:`
-   - Wi-Fiパスワードとして `rodeprodep` を入力します。
-   - パスワードは画面に表示されません。入力後、Enterを押します。
-   - Wi-FiのGUI設定で `Keep ...` の確認が表示された場合は、既定の選択を変更せず、そのまま Enter を押します。
+   - ログインパスワードを変更する場合は `y` を入力し、`passwd` の案内に従います。
+   - 変更しない場合はEnterを押します。
+2. `Wi-Fi connection profile name or SSID (blank to skip):`
+   - Wi-Fiへ接続済みの場合、この入力は表示されません。
+   - 未接続の場合は、保存済みの接続名または接続先のSSIDを入力します。空欄のままEnterを押すとWi-Fi設定を省略します。
+   - 新しいSSIDを指定した場合は、続けてWi-Fiパスワードを入力します。オープンネットワークの場合は空欄にします。
 3. `sudo` のパスワード入力
    - パッケージのインストールやネットワーク設定などで求められた場合、現在のユーザーのログインパスワードを入力します。
 4. GitHub CLIの認証（未認証の場合のみ）
    - `gh auth login` の案内で、GitHub.com、SSH接続（`SSH`）、既存の公開鍵（`/home/<ユーザー名>/.ssh/id_ed25519.pub`）を選択します。
-   - GitHubアカウントは `rodepshare@gmail.com` を使用します。
+   - リポジトリへアクセスできるGitHubアカウントで認証します。
    - GitHubへのSSH接続確認に失敗すると、スクリプトはそこで終了します。
 5. `Authenticate Tailscale now? [y/N]:`
    - このRDKがまだTailscaleに接続されていない場合だけ表示されます。
    - `y` を入力し、表示されたTailscaleの認証URLを開きます。
-   - `rodepshare@gmail.com` に紐づくGitHubアカウントでログインして、Tailscaleの認証を完了します。
+   - 使用するTailscaleアカウントでログインして認証を完了します。
 
 パスワード入力中は、入力内容が画面に表示されないことがあります。
-`rodeprodep` は初期設定用のパスワードとして扱い、セットアップ完了後に変更してください。
 
 ### スクリプトが行う処理
 
