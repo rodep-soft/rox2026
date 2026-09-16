@@ -13,7 +13,7 @@
 
 ## 概要
 
-このリポジトリには、ゲームパッドによる手動操作、メカナム走行、ボール保持・射出機構、AprilTagを使った自動照準、CANデバイスとの通信処理が含まれています。
+このリポジトリには、PS5による手動操作、メカナム走行、ボール保持・射出機構、AprilTagを使った自動照準、CANデバイスとの通信処理が含まれています。
 
 実機ではRDK X5上のROS 2 Humbleをネイティブで使用します。VESC、EduLite 05、STM32固有のCAN処理は `hardware_driver` にまとめ、上位の制御ノードはlogical IDとROS 2メッセージで各機構を扱います。
 
@@ -40,7 +40,7 @@ flowchart LR
 - DualSenseによるメカナム走行と機構操作
 - IMUを利用したHeading Hold
 - 上下ベルト、ドリブルローラー、ドリブル姿勢の制御
-- Springの原点復帰、通常発射、低速発射
+- ばね発射機構の原点復帰、通常発射、低速発射
 - Game 2およびPKのAprilTag自動照準
 - ROS 2とVESC、EduLite 05、STM32間のCAN通信
 - Foxgloveによる状態確認
@@ -50,7 +50,7 @@ flowchart LR
 | デバイス | ID | 担当 |
 |---|---:|---|
 | EduLite 05 | logical ID 0–3 | 4輪メカナム |
-| EduLite 05 | logical ID 4 | Spring |
+| EduLite 05 | logical ID 4 | ばね発射機構 |
 | EduLite 05 | logical ID 5 | ドリブル姿勢 |
 | VESC | logical ID 10 | 上ベルト |
 | VESC | logical ID 11 | 下ベルト |
@@ -106,9 +106,6 @@ make build BUILD_JOBS=4 PARALLEL_WORKERS=2
 
 # 指定したパッケージと、その依存先までビルド
 make build-package PACKAGE=robot_controller
-
-# テストを有効にしてビルドし、テストを実行
-make test
 ```
 
 ## 起動
