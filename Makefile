@@ -1,4 +1,4 @@
-.PHONY: dev sync build launch-robot launch-manual test-cam test-apriltag test-yolo test-imu test-ekf launch-game1 launch-game2 debug can-check help
+.PHONY: dev sync build launch-robot launch-manual test-cam test-apriltag test-yolo test-imu test-ekf launch-game2 debug can-check help
 
 # Docker & Workspace
 dev:
@@ -48,9 +48,6 @@ launch-robot:
 launch-manual:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup manual_robot.launch.py
 
-launch-game1:
-	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup robot.launch.py enable_game1:=true
-
 launch-game2:
 	cd ros2_ws && . install/setup.bash && ros2 launch robot_bringup robot.launch.py enable_game2:=true
 
@@ -79,11 +76,9 @@ help:
 	@echo "  make can-check                    : Run pro-level CAN bus & node health check"
 	@echo "  make launch-robot                 : Launch all main robot nodes"
 	@echo "  make launch-manual                : Launch manual control mode"
-	@echo "  make launch-game1                 : Launch robot with Game1 Auto mode"
 	@echo "  make launch-game2                 : Launch robot with Game2 Auto mode"
 	@echo "  make test-cam                     : Test webcam stream (/image_raw)"
 	@echo "  make test-apriltag                : Test AprilTag detection"
 	@echo "  make test-yolo                    : Test YOLO ball detection"
 	@echo "  make test-imu                     : Test BNO055 IMU sensor"
 	@echo "  make test-ekf                     : Test EKF sensor fusion"
-

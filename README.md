@@ -125,8 +125,9 @@ ros2 launch robot_bringup game2_auto.launch.py
 # PK自動照準
 ros2 launch robot_bringup pk_auto.launch.py
 
-# Game 3
+# Game 3（専用の操作・機構設定）
 ros2 launch robot_bringup game3_robot.launch.py
+
 ```
 
 機構別の起動方法やlaunch引数は[robot_bringupの説明](ros2_ws/src/robot_bringup/README.md)を参照してください。

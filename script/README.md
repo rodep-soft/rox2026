@@ -54,18 +54,6 @@ python3 script/analyze_dribble_current.py <ログまたはrosbag>
 python3 script/analyze_dribble_current.py <ログ> --lid 12 --alpha 0.07
 ```
 
-### `test_game1_wp_move.py`
-
-Game1のwaypoint移動を確認するROS 2テストノードです。`/odometry/filtered` を購読し、指定した相対目標位置・姿勢へ移動するための速度指令を `/drive/cmd_vel` に出力します。移動完了時は `/game1/wp_test/completed` に `Bool` をpublishします。
-
-ROS 2環境をsourceした状態で実行してください。
-
-```bash
-python3 script/test_game1_wp_move.py
-```
-
-目標位置、速度上限、許容誤差、タイムアウトなどは、スクリプト内でROS 2パラメータとして定義されています。
-
 ## 注意
 
 - ネットワーク設定やパッケージのインストールを行うスクリプトは、RDK X5上で実行してください。

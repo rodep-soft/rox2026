@@ -20,10 +20,9 @@ robot_bringup/
 | launch | 用途 |
 |---|---|
 | `manual_robot.launch.py` | Game 1の手動操作、全controller、hardware、Foxglove |
-| `game1.launch.py` | Game 1自動制御ノード単体 |
 | `game2_auto.launch.py` | Game 2自動照準。手動系・カメラ系を個別に無効化可能 |
 | `pk_auto.launch.py` | PK用の手動選択・自動照準 |
-| `game3_robot.launch.py` | Game 3用Joy設定と機構構成 |
+| `game3_robot.launch.py` | Game 3専用のJoy設定と機構構成 |
 | `hardware/hardware.launch.py` | SocketCANと全hardware driver |
 
 ### Game 1（手動操作）
@@ -68,7 +67,7 @@ ros2 launch robot_bringup pk_auto.launch.py
 ros2 launch robot_bringup game3_robot.launch.py
 ```
 
-`game3_joy_controller.yaml` ではL2+R2をShot Cycleへ割り当て、通常・低速Spring発射要求を無効化します。
+Game 3では自動制御を起動せず、専用の `game3_joy_controller.yaml` と `game3_belt_controller.yaml` を使用します。L2+R2をShot Cycleへ割り当て、通常・低速Spring発射要求を無効化しています。
 
 ## Hardware構成
 

@@ -135,16 +135,6 @@ add_controller_custom(
   tf2_geometry_msgs
   tf2_ros)
 add_controller(
-  game1_auto_node
-  auto_controllers/game1_shooter
-  game1_auto_node.cpp
-  geometry_msgs
-  nav_msgs
-  rclcpp
-  sensor_msgs
-  std_msgs
-  robot_msgs)
-add_controller(
   led_controller_node
   led_controller
   led_controller.cpp
@@ -171,11 +161,7 @@ ament_target_dependencies(
   tf2
   tf2_geometry_msgs)
 
-add_executable(test_game1_wp_move_node auto_controllers/game1_shooter/src/test_game1_wp_move_node.cpp)
-ament_target_dependencies(
-  test_game1_wp_move_node geometry_msgs nav_msgs rclcpp std_msgs)
-
-list(APPEND controller_nodes mecanum_odometry_node heading_hold_node test_game1_wp_move_node)
+list(APPEND controller_nodes mecanum_odometry_node heading_hold_node)
 install(TARGETS ${controller_nodes} DESTINATION lib/${PROJECT_NAME})
 
 set(controller_include_directories
@@ -184,7 +170,6 @@ set(controller_include_directories
     led_controller
     belt_controller
     dribble_controller
-    auto_controllers/game1_shooter
     auto_controllers/game2_shooter)
 foreach(directory IN LISTS controller_include_directories)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include/ DESTINATION include)

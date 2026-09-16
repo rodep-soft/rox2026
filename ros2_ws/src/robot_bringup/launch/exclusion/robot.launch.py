@@ -50,12 +50,6 @@ def generate_launch_description():
         ),
     )
 
-    # Game1 自動シーケンスノード
-    game1_shooter_launch = include(
-        "game1.launch.py",
-        condition=IfCondition(LaunchConfiguration("enable_game1")),
-    )
-
     # Game2 パネル戦術自動射出ノード (YAMLからパラメータ一括読み込み)
     game2_shooter_launch = include(
         "game2_auto_aim.launch.py",
@@ -106,11 +100,6 @@ def generate_launch_description():
                 description="Enable BPU-accelerated YOLO ball detection node",
             ),
             DeclareLaunchArgument(
-                "enable_game1",
-                default_value="false",
-                description="Enable Game1 auto sequence shooter node",
-            ),
-            DeclareLaunchArgument(
                 "enable_game2",
                 default_value="false",
                 description="Enable Game2 tactical panel shooter node",
@@ -143,7 +132,6 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
-            game1_shooter_launch,
             game2_shooter_launch,
             ekf_launch,
             IncludeLaunchDescription(
