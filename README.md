@@ -178,6 +178,8 @@ make can-check
 | [VESC Driver](docs/hardware/vesc.md) | RPM制御、始動電流制御、フィードバック |
 | [EduLite 05 Driver](docs/hardware/edulite05.md) | Velocity、PP、CSP、位置基準 |
 | [STM32 Driver](docs/hardware/stm32.md) | CANプロトコル、LED、IMU、heartbeat |
+| [LED表示ガイド](docs/hardware/led-guide.md) | LEDの色と表示パターン |
+| [LED通信仕様](docs/hardware/led-protocol.md) | CAN ID 0x201のビット割り当てと優先順位 |
 
 ### セットアップと補助ツール
 

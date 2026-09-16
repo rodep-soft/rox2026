@@ -50,9 +50,9 @@ def generate_launch_description():
         ),
     )
 
-    # Game2 パネル戦術自動射出ノード (YAMLからパラメータ一括読み込み)
-    game2_shooter_launch = include(
-        "game2_auto_aim.launch.py",
+    # Game2 パネル戦術自動照準ノード (YAMLからパラメータ一括読み込み)
+    game2_aim_launch = include(
+        "controllers/game2_auto_aim.launch.py",
         condition=IfCondition(LaunchConfiguration("enable_game2")),
     )
 
@@ -132,7 +132,7 @@ def generate_launch_description():
             hardware_launch,
             vision_launch,
             webcam_launch,
-            game2_shooter_launch,
+            game2_aim_launch,
             ekf_launch,
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(

@@ -9,6 +9,8 @@ STM32とのheartbeat、LED指令、limit switch受信を担当する。belt・dr
 - protocol宣言: `hardware_driver/include/stm32_driver/stm32_protocol.hpp`
 - protocol実装: `hardware_driver/src/protocol/stm32_protocol.cpp`
 - 設定: `robot_bringup/config/stm32_driver.yaml`
+- LED表示: [LED表示ガイド](led-guide.md)
+- LED通信仕様: [LEDコマンド ビット割り当て仕様](led-protocol.md)
 
 ## 通信
 

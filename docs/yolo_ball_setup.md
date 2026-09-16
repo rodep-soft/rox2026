@@ -91,6 +91,6 @@ ros2 launch robot_bringup exclusion/robot.launch.py enable_vision:=true enable_a
 
 ---
 
-## 📊 検出結果の取得
+## 検出結果の取得
 
 YOLO が検出したボールのバウンディングボックス（画面上座標）および確信度は ROS 2 トピックから取得可能です。

@@ -93,19 +93,6 @@ add_controller(
   std_msgs
   robot_msgs)
 add_controller(
-  game2_auto_node
-  auto_controllers/game2_shooter
-  game2_auto_node.cpp
-  geometry_msgs
-  rclcpp
-  rcl_interfaces
-  sensor_msgs
-  std_msgs
-  robot_msgs
-  apriltag_msgs
-  tf2
-  tf2_ros)
-add_controller(
   game2_aim
   auto_controllers/game2_aim
   game2_aim_node.cpp
@@ -169,8 +156,7 @@ set(controller_include_directories
     spring_controller
     led_controller
     belt_controller
-    dribble_controller
-    auto_controllers/game2_shooter)
+    dribble_controller)
 foreach(directory IN LISTS controller_include_directories)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${directory}/include/ DESTINATION include)
 endforeach()
