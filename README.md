@@ -127,7 +127,6 @@ ros2 launch robot_bringup pk_auto.launch.py
 
 # Game 3（専用の操作・機構設定）
 ros2 launch robot_bringup game3_robot.launch.py
-
 ```
 
 機構別の起動方法やlaunch引数は[robot_bringupの説明](ros2_ws/src/robot_bringup/README.md)を参照してください。
@@ -156,7 +155,6 @@ source install/setup.bash
 ```bash
 make build
 make build-pkg pkg=hardware_driver
-make clean-build pkg=robot_controller
 make can-check
 ```
 

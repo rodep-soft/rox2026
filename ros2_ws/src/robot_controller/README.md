@@ -50,7 +50,7 @@ flowchart LR
 3. 最短待機時間とSpringの退避完了を確認して、アームを `FEED` へ動かします。
 4. FEED軌道の途中でローラーを停止し、押し込み後に `RETURNING` へ移ります。
 5. ローラーを再始動し、アームとSpringを待機位置へ戻します。
-6. Shot Cycleが起動したベベルトだけを停止します。
+6. Shot Cycleが起動したベルトだけを停止します。
 
 正確な状態遷移とタイムアウトは[ドリブルコントローラー資料](../../../docs/controllers/dribble.md)を参照してください。
 
@@ -64,8 +64,8 @@ flowchart LR
 ## ビルドとテスト
 
 ```bash
-cd /root/ros2_ws
-colcon build --symlink-install --packages-select robot_controller
+cd ~/rox2026/ros2_ws
+make build-test
 source install/setup.bash
 colcon test --packages-select robot_controller
 colcon test-result --verbose

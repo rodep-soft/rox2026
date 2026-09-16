@@ -11,11 +11,12 @@ RDK X5の初期セットアップスクリプトです。ログインパスワ�
 詳しい入力内容と実行手順は [`rdk-x5-setup.md`](./rdk-x5-setup.md) を参照してください。
 
 ```bash
-chmod +x script/rdk_setup.sh
-./script/rdk_setup.sh
+cd ~
+chmod +x rdk_setup.sh
+./rdk_setup.sh
 ```
 
-`sudo` を付けて実行しないでください。スクリプトの途中で必要に応じて `sudo` のパスワードが求められます。
+初期セットアップでは、USBメモリから `rdk_setup.sh` だけをホームディレクトリへコピーして実行します。リポジトリはスクリプトが `~/rox2026` へクローンします。`sudo` を付けて実行せず、スクリプト内で求められた場合にパスワードを入力します。
 
 ### `rdk-x5-setup.md`
 
@@ -53,9 +54,3 @@ python3 script/analyze_dribble_current.py <ログまたはrosbag>
 # logical_id とLPF係数を指定する場合
 python3 script/analyze_dribble_current.py <ログ> --lid 12 --alpha 0.07
 ```
-
-## 注意
-
-- ネットワーク設定やパッケージのインストールを行うスクリプトは、RDK X5上で実行してください。
-- Bluetoothやカメラの確認では、対象デバイスを事前に接続・ペアリングモードにしてください。
-- ログ解析やROS 2テストでは、入力ログの場所とROS 2環境のsource状態を確認してください。

@@ -1,4 +1,4 @@
-# RDK X5 redundant DualSense receiver — final v2
+# RDK X5 redundant DualSense receiver
 
 Receives the same DualSense `evdev` stream over Wi-Fi UDP and Bluetooth RFCOMM, deduplicates it, and creates one Linux virtual input device named `Remote DualSense` through Interception Tools `uinput`.
 
@@ -27,7 +27,7 @@ The 5-second removal delay was selected from the final unplug/reconnect tests. S
 ## Install
 
 ```bash
-cd rdk_controller_bridge_final_v2
+cd ~/rox2026/raspi_controller/RDKX5
 sudo ./install.sh
 sudo ./enable.sh
 ```

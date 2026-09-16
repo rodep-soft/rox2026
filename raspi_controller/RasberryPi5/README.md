@@ -1,4 +1,4 @@
-# Raspberry Pi 5 DualSense redundant forwarder — final v3
+# Raspberry Pi 5 DualSense redundant forwarder
 
 DualSense connected to the Raspberry Pi is forwarded to the RDK X5 over both:
 
@@ -24,7 +24,7 @@ HEARTBEAT_INTERVAL=0.05
 ## Install
 
 ```bash
-cd raspi_controller_forwarder_final_v3
+cd ~/rox2026/raspi_controller/RasberryPi5
 sudo ./install.sh
 ```
 
@@ -133,4 +133,3 @@ sudo ip link set wlan0 up
 ```bash
 sudo ./diagnose.sh
 ```
-
