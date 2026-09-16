@@ -293,7 +293,7 @@ fi
 # ====================================================
 REPO_URL="git@github.com:rodep-soft/rox2026.git"
 REPO_DIR="$HOME/rox2026"
-REPO_BRANCH="main-v2"
+REPO_BRANCH="main"
 
 SSH_DIR="$HOME/.ssh"
 SSH_KEY="$SSH_DIR/id_ed25519"

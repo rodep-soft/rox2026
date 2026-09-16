@@ -86,7 +86,7 @@ chmod +x rdk_setup.sh
 ./rdk_setup.sh
 ```
 
-`rdk_setup.sh` 自体を `sudo` で実行しないでください。必要な管理者権限はスクリプト内で要求されます。このスクリプトは、ネットワーク、SSH、Bluetooth、CAN、ROS 2依存パッケージ、Ninja、ccache、シェル環境を設定し、GitHub認証後に `main-v2` ブランチを `~/rox2026` へクローンします。実行中にWi-FiやGitHubなどの設定を対話形式で入力します。詳しい内容は[RDK X5セットアップ手順](script/rdk-x5-setup.md)を参照してください。
+`rdk_setup.sh` 自体を `sudo` で実行しないでください。必要な管理者権限はスクリプト内で要求されます。このスクリプトは、ネットワーク、SSH、Bluetooth、CAN、ROS 2依存パッケージ、Ninja、ccache、シェル環境を設定し、GitHub認証後に `main` ブランチを `~/rox2026` へクローンします。実行中にWi-FiやGitHubなどの設定を対話形式で入力します。詳しい内容は[RDK X5セットアップ手順](script/rdk-x5-setup.md)を参照してください。
 
 ### ビルド
 

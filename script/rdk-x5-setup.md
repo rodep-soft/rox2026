@@ -10,7 +10,7 @@ chmod +x rdk_setup.sh
 ./rdk_setup.sh
 ```
 
-スクリプトはGitHubのSSH認証を設定した後、`main-v2` ブランチを `~/rox2026` へクローンします。すでに同じ場所にGitリポジトリが存在する場合は、クローンを省略します。
+スクリプトはGitHubのSSH認証を設定した後、`main` ブランチを `~/rox2026` へクローンします。すでに同じ場所にGitリポジトリが存在する場合は、クローンを省略します。
 
 ### 実行時の注意
 
@@ -53,7 +53,7 @@ chmod +x rdk_setup.sh
    - `ros-humble-apriltag-ros`
    - `ros-humble-tf2-ros` の再インストール
 5. SSH・Bluetoothサービスの有効化と起動
-6. GitHub CLIの認証確認、`main-v2` ブランチのクローン
+6. GitHub CLIの認証確認、`main` ブランチのクローン
 7. Tailscaleのインストールとサービス起動
 8. CANインターフェース `can0` の設定
    - bitrate: `1000000`
